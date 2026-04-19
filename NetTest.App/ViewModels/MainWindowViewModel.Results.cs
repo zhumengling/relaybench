@@ -76,50 +76,52 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void ApplyStunResult(StunProbeResult result)
     {
         _lastStunResult = result;
+        var transportLabel = result.TransportProtocol == StunTransportProtocol.Tcp ? "TCP" : "UDP";
 
         StunSummary =
-            $"检测时间：{result.CheckedAt:yyyy-MM-dd HH:mm:ss}\n" +
-            $"服务器：{result.ServerHost}:{result.ServerPort}\n" +
-            $"解析地址：{string.Join(", ", result.ResolvedAddresses)}\n" +
-            $"本地 UDP 端点：{result.LocalEndpoint ?? "未获取"}\n" +
-            $"响应节点：{result.RespondingServer ?? "无响应"}\n" +
-            $"响应来源：{result.ResponseOrigin ?? "未返回"}\n" +
-            $"映射地址：{result.MappedAddress ?? "未获取"}\n" +
-            $"OTHER-ADDRESS：{result.OtherAddress ?? "未返回"}\n" +
-            $"CHANGED-ADDRESS：{result.ChangedAddress ?? "未返回"}\n" +
-            $"RTT：{result.RoundTrip?.TotalMilliseconds.ToString("F0") ?? "--"} ms\n" +
-            $"映射判断：{result.MappingBehaviorHint ?? "无"}\n" +
-            $"NAT 归类：{result.NatType ?? "未归类"}\n" +
-            $"归类可信度：{result.ClassificationConfidence}\n" +
-            $"归类说明：{result.NatTypeSummary ?? "无"}\n" +
-            $"错误：{result.Error ?? "无"}";
+            $"?????{result.CheckedAt:yyyy-MM-dd HH:mm:ss}\n" +
+            $"?????{transportLabel}\n" +
+            $"????{result.ServerHost}:{result.ServerPort}\n" +
+            $"?????{string.Join(", ", result.ResolvedAddresses)}\n" +
+            $"?????{result.LocalEndpoint ?? "???"}\n" +
+            $"?????{result.RespondingServer ?? "???"}\n" +
+            $"?????{result.ResponseOrigin ?? "???"}\n" +
+            $"?????{result.MappedAddress ?? "???"}\n" +
+            $"OTHER-ADDRESS?{result.OtherAddress ?? "???"}\n" +
+            $"CHANGED-ADDRESS?{result.ChangedAddress ?? "???"}\n" +
+            $"RTT?{result.RoundTrip?.TotalMilliseconds.ToString("F0") ?? "--"} ms\n" +
+            $"?????{result.MappingBehaviorHint ?? "?"}\n" +
+            $"NAT ???{result.NatType ?? "???"}\n" +
+            $"??????{result.ClassificationConfidence}\n" +
+            $"?????{result.NatTypeSummary ?? "?"}\n" +
+            $"???{result.Error ?? "?"}";
 
         StunCoverageSummary =
-            $"测试覆盖：{result.CoverageSummary}\n" +
-            $"复核建议：{result.ReviewRecommendation}";
+            $"?????{result.CoverageSummary}\n" +
+            $"?????{result.ReviewRecommendation}";
 
         StunAttributeSummary = result.Attributes.Count == 0
-            ? "没有可展示的 STUN 属性。"
+            ? "?????? STUN ???"
             : string.Join("\n", result.Attributes.Select(pair => $"{pair.Key}: {pair.Value}"));
 
         StunTestSummary = result.Tests.Count == 0
-            ? "没有采集到 NAT 类型归类测试过程。"
+            ? "????? NAT ???????"
             : string.Join(
                 "\n\n",
                 result.Tests.Select(test =>
                     $"{test.TestName}\n" +
-                    $"目标：{test.RequestTarget}\n" +
-                    $"请求模式：{test.RequestMode}\n" +
-                    $"是否成功：{(test.Success ? "是" : "否")}\n" +
-                    $"本地端点：{test.LocalEndpoint ?? "--"}\n" +
-                    $"映射地址：{test.MappedAddress ?? "--"}\n" +
-                    $"响应来源：{test.ResponseOrigin ?? "--"}\n" +
-                    $"备用地址：{test.AlternateAddress ?? "--"}\n" +
-                    $"RTT：{FormatMilliseconds(test.RoundTrip)}\n" +
-                    $"摘要：{test.Summary}\n" +
-                    $"错误：{test.Error ?? "无"}"));
+                    $"???{test.RequestTarget}\n" +
+                    $"?????{test.RequestMode}\n" +
+                    $"?????{(test.Success ? "?" : "?")}\n" +
+                    $"?????{test.LocalEndpoint ?? "--"}\n" +
+                    $"?????{test.MappedAddress ?? "--"}\n" +
+                    $"?????{test.ResponseOrigin ?? "--"}\n" +
+                    $"?????{test.AlternateAddress ?? "--"}\n" +
+                    $"RTT?{FormatMilliseconds(test.RoundTrip)}\n" +
+                    $"???{test.Summary}\n" +
+                    $"???{test.Error ?? "?"}"));
 
-        AppendModuleOutput("STUN 返回", StunSummary, StunCoverageSummary, StunTestSummary);
+        AppendModuleOutput("STUN ??", StunSummary, StunCoverageSummary, StunTestSummary);
     }
 
     private void ApplyProxyResult(ProxyDiagnosticsResult result)
@@ -188,7 +190,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             summaryBuilder.AppendLine($"缓存隔离：{FormatScenarioStatus(cacheIsolation)}");
         }
 
-        summaryBuilder.AppendLine($"流式输出速率：{FormatTokensPerSecond(stream?.OutputTokensPerSecond, stream?.OutputTokenCountEstimated == true)}");
+        summaryBuilder.AppendLine($"流式输出速率：{FormatTokensPerSecond(stream?.OutputTokensPerSecond, stream?.OutputTokenCountEstimated == true, stream?.OutputTokensPerSecondSampleCount ?? 1)}");
         summaryBuilder.AppendLine($"流式输出量：{FormatOutputCount(stream)}");
         summaryBuilder.AppendLine($"长流稳定简测：{BuildLongStreamingDigest(result.LongStreamingResult)}");
         summaryBuilder.AppendLine($"可追溯性：{result.TraceabilitySummary ?? "未识别"}");
@@ -212,8 +214,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             detailBuilder.AppendLine($"首 Token：{FormatMilliseconds(scenario.FirstTokenLatency)}");
             detailBuilder.AppendLine($"总输出耗时：{FormatMilliseconds(scenario.GenerationDuration)}");
             detailBuilder.AppendLine($"输出量：{FormatOutputCount(scenario)}");
-            detailBuilder.AppendLine($"输出速率：{FormatTokensPerSecond(scenario.OutputTokensPerSecond, scenario.OutputTokenCountEstimated)}");
-            detailBuilder.AppendLine($"端到端速率：{FormatTokensPerSecond(scenario.EndToEndTokensPerSecond, scenario.OutputTokenCountEstimated)}");
+            detailBuilder.AppendLine($"输出速率：{FormatTokensPerSecond(scenario.OutputTokensPerSecond, scenario.OutputTokenCountEstimated, scenario.OutputTokensPerSecondSampleCount)}");
+            detailBuilder.AppendLine($"端到端速率：{FormatTokensPerSecond(scenario.EndToEndTokensPerSecond, scenario.OutputTokenCountEstimated, scenario.OutputTokensPerSecondSampleCount)}");
             detailBuilder.AppendLine($"最大 chunk 间隔：{FormatMillisecondsDoubleValue(scenario.MaxChunkGapMilliseconds)}");
             detailBuilder.AppendLine($"平均 chunk 间隔：{FormatMillisecondsDoubleValue(scenario.AverageChunkGapMilliseconds)}");
             detailBuilder.AppendLine($"摘要：{scenario.Summary}");
@@ -322,7 +324,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 $"第 {round.index + 1} 轮：" +
                 $"模型列表={(round.value.ModelsRequestSucceeded ? "成功" : "失败")}，" +
                 $"普通对话 {(round.value.ChatRequestSucceeded ? "成功" : "失败")}（{FormatMilliseconds(round.value.ChatLatency)}），" +
-                $"流式={(round.value.StreamRequestSucceeded ? "成功" : "失败")}（首 Token {FormatMilliseconds(round.value.StreamFirstTokenLatency)} / {FormatTokensPerSecond(streamScenario?.OutputTokensPerSecond, streamScenario?.OutputTokenCountEstimated == true)}），" +
+                $"流式={(round.value.StreamRequestSucceeded ? "成功" : "失败")}（首 Token {FormatMilliseconds(round.value.StreamFirstTokenLatency)} / {FormatTokensPerSecond(streamScenario?.OutputTokensPerSecond, streamScenario?.OutputTokenCountEstimated == true, streamScenario?.OutputTokensPerSecondSampleCount ?? 1)}），" +
                 $"Responses={FormatScenarioStatus(responsesScenario)}，" +
                 $"结构化输出={FormatScenarioStatus(structuredOutputScenario)}，" +
                 $"边缘={round.value.EdgeSignature ?? "未识别"}，" +

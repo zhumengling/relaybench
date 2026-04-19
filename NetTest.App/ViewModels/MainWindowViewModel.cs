@@ -43,6 +43,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _pingSummary = "暂无 Ping 结果。";
     private string _chatGptSummary = "运行官方 API 可用性检测后，这里会显示 loc、colo 和支持地区判断。";
     private string _chatGptRawTrace = string.Empty;
+    private string _selectedStunTransportKey = "udp";
     private string _stunServer = DefaultStunServerHost;
     private string _stunSummary = "运行 STUN 检测后，这里会显示映射地址与 OTHER-ADDRESS 行为。";
     private string _stunAttributeSummary = string.Empty;
@@ -56,8 +57,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _isProxyBatchEditorOpen;
     private bool _isProxyModelPickerOpen;
     private bool _isProxyTrendChartOpen;
+    private bool _isProxyTrendChartAutoOpenSuppressed;
     private bool _isProxyChartImageOnlyMode;
     private ProxyChartRetryMode _proxyChartRetryMode;
+    private CancellationTokenSource? _currentProxyOperationCancellationSource;
+    private bool _proxyCancellationRequestedByUser;
     private ProxySingleExecutionMode _lastProxySingleExecutionMode = ProxySingleExecutionMode.Basic;
     private ProxySingleExecutionPlan? _currentProxySingleExecutionPlan;
     private string _proxyChartRetryButtonText = "重试基础诊断";
@@ -67,6 +71,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private int _proxyChartDelayMilliseconds;
     private bool _suppressProxyCatalogSelectionApply;
     private ProxyModelPickerTarget _proxyModelPickerTarget = ProxyModelPickerTarget.DefaultModel;
+    private ProxyBatchEditorItemViewModel? _proxyBatchTemplateModelTargetRow;
     private string _proxyModelCatalogFilterText = string.Empty;
     private string? _selectedProxyCatalogModel;
     private string _proxyModelCatalogSummary = "点击拉取模型列表后，这里会显示可用模型数量、推荐模型和边缘观察。";

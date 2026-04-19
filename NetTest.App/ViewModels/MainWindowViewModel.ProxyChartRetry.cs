@@ -57,13 +57,13 @@ public sealed partial class MainWindowViewModel
 
     private async Task RetrySingleProxyChartAsync()
     {
-        await ExecuteBusyActionAsync($"正在重试{GetSingleProxyExecutionDisplayName()}...", async () =>
+        await ExecuteProxyBusyActionAsync($"正在重试{GetSingleProxyExecutionDisplayName()}...", async cancellationToken =>
         {
             var executionPlan = BuildProxySingleExecutionPlan(_lastProxySingleExecutionMode);
             _currentProxySingleExecutionPlan = executionPlan;
             StartSingleProxyChartLiveSession();
             var progress = new Progress<ProxyDiagnosticsLiveProgress>(UpdateSingleProxyChartLive);
-            var result = await RunSingleProxyDiagnosticsAsync(progress, executionPlan);
+            var result = await RunSingleProxyDiagnosticsAsync(progress, executionPlan, cancellationToken: cancellationToken);
             _proxySingleChartRuns.Add(result);
             ApplyProxyResult(result);
             ShowFinalSingleProxyChart(result);
@@ -80,13 +80,15 @@ public sealed partial class MainWindowViewModel
 
     private async Task RetryProxyStabilityChartAsync()
     {
-        await ExecuteBusyActionAsync("正在追加稳定性重试 5 轮...", async () =>
+        await ExecuteProxyBusyActionAsync("正在追加稳定性重试 5 轮...", async cancellationToken =>
         {
             _proxyChartRequestedRounds = Math.Max(_proxyChartRequestedRounds, _proxyStabilityChartRounds.Count) + StabilityRetryAppendRounds;
-            IsProxyTrendChartOpen = true;
+            ResetProxyTrendChartAutoOpenSuppression();
+            AutoOpenProxyTrendChartIfAllowed();
 
             for (var retryIndex = 0; retryIndex < StabilityRetryAppendRounds; retryIndex++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var currentRoundNumber = _proxyStabilityChartRounds.Count + 1;
                 ProxyChartDialogStatusSummary = $"正在追加稳定性重试 {retryIndex + 1}/{StabilityRetryAppendRounds}（累计第 {currentRoundNumber}/{_proxyChartRequestedRounds} 轮）...";
                 ProxyChartDialogEmptyStateText = "正在执行追加稳定性重试...";
@@ -107,7 +109,7 @@ public sealed partial class MainWindowViewModel
                         $"追加稳定性重试 {retryIndex + 1}/{StabilityRetryAppendRounds}：第 {currentRoundNumber}/{_proxyChartRequestedRounds} 轮 - {progress.CurrentScenarioResult.DisplayName} / {progress.CurrentScenarioResult.CapabilityStatus}";
                 });
 
-                var roundResult = await _proxyDiagnosticsService.RunAsync(BuildProxySettings(), liveProgress);
+                var roundResult = await _proxyDiagnosticsService.RunAsync(BuildProxySettings(), liveProgress, cancellationToken);
                 _proxyStabilityChartRounds.Add(roundResult);
                 UpdateProxySeriesChartLive(_proxyStabilityChartRounds, _proxyChartRequestedRounds, _proxyChartDelayMilliseconds);
             }
@@ -136,16 +138,18 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        await ExecuteBusyActionAsync("正在追加入口组整组重试 5 轮...", async () =>
+        await ExecuteProxyBusyActionAsync("正在追加入口组整组重试 5 轮...", async cancellationToken =>
         {
             var plan = _lastProxyBatchPlan;
             var timeoutSeconds = ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 120);
             var enableLongStreamingTest = ProxyBatchEnableLongStreamingTest;
             var longStreamSegmentCount = GetProxyLongStreamSegmentCount();
-            IsProxyTrendChartOpen = true;
+            ResetProxyTrendChartAutoOpenSuppression();
+            AutoOpenProxyTrendChartIfAllowed();
 
             for (var retryIndex = 0; retryIndex < BatchRetryAppendRounds; retryIndex++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 List<ProxyBatchProbeRow> liveRows = [];
                 var currentRunNumber = _proxyBatchChartRuns.Count + 1;
                 ProxyChartDialogStatusSummary = $"正在追加整组重试 {retryIndex + 1}/{BatchRetryAppendRounds}（累计第 {currentRunNumber} 轮整组）...";
@@ -168,7 +172,8 @@ public sealed partial class MainWindowViewModel
                     enableLongStreamingTest,
                     longStreamSegmentCount,
                     progress,
-                    rowProgress);
+                    rowProgress,
+                    cancellationToken);
                 _proxyBatchChartRuns.Add(rows.ToArray());
                 ApplyProxyBatchResults(_proxyBatchChartRuns, plan);
                 RecordBatchProxyTrends(rows);

@@ -9,6 +9,7 @@ public sealed partial class MainWindowViewModel
     private enum ProxyBatchKeySource
     {
         Default,
+        BatchDefault,
         SiteGroup,
         Entry
     }
@@ -16,7 +17,8 @@ public sealed partial class MainWindowViewModel
     private enum ProxyBatchEditorMode
     {
         SharedKeyGroup,
-        MultiKey
+        MultiKey,
+        BulkImport
     }
 
     private sealed record ProxyBatchSiteGroupContext(

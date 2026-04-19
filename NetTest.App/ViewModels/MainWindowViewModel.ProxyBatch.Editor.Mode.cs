@@ -32,6 +32,27 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(ProxyBatchEditorModeIndex));
         OnPropertyChanged(nameof(ProxyBatchGuideSummary));
         OnPropertyChanged(nameof(ProxyBatchEditorFormModeSummary));
+        OnPropertyChanged(nameof(ProxyBatchEditorListSummary));
+        OnPropertyChanged(nameof(ProxyBatchEditorSelectionSummary));
+
+        if (SelectedProxyBatchEditorItem is null)
+        {
+            if (mode == ProxyBatchEditorMode.BulkImport)
+            {
+                ClearProxyBatchEntryFields();
+            }
+
+            return;
+        }
+
+        if (mode == ProxyBatchEditorMode.BulkImport)
+        {
+            LoadProxyBatchEntryFields(SelectedProxyBatchEditorItem);
+        }
+        else
+        {
+            LoadProxyBatchEditorForm(SelectedProxyBatchEditorItem);
+        }
     }
 
     private void PersistProxyBatchDraftState()
@@ -63,11 +84,19 @@ public sealed partial class MainWindowViewModel
             return ProxyBatchEditorMode.MultiKey;
         }
 
-        return _proxyBatchEditorMode;
+        return _proxyBatchEditorMode == ProxyBatchEditorMode.BulkImport
+            ? ProxyBatchEditorMode.SharedKeyGroup
+            : _proxyBatchEditorMode;
     }
 
     private static ProxyBatchEditorMode ResolveProxyBatchEditorMode(ProxyBatchDraftSnapshot draft)
     {
+        var requestedMode = (ProxyBatchEditorMode)Math.Clamp(draft.EditorModeIndex, 0, 2);
+        if (requestedMode == ProxyBatchEditorMode.BulkImport)
+        {
+            return requestedMode;
+        }
+
         var hasSharedKeyOrModel =
             !string.IsNullOrWhiteSpace(NormalizeNullable(draft.SiteGroupApiKey)) ||
             !string.IsNullOrWhiteSpace(NormalizeNullable(draft.SiteGroupModel));
@@ -85,7 +114,7 @@ public sealed partial class MainWindowViewModel
             return ProxyBatchEditorMode.MultiKey;
         }
 
-        return (ProxyBatchEditorMode)Math.Clamp(draft.EditorModeIndex, 0, 1);
+        return requestedMode;
     }
 
     private ProxyBatchEditorMode ResolveProxyBatchEditorMode(ProxyBatchEditorItemViewModel item)

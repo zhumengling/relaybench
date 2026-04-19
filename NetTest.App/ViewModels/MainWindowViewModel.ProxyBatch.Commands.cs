@@ -7,24 +7,18 @@ namespace NetTest.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private Task RunProxyBatchAsync()
-        => ExecuteBusyActionAsync("正在运行入口组检测...", RunProxyBatchCoreAsync);
+        => ExecuteProxyBusyActionAsync("正在运行入口组检测...", RunProxyBatchCoreAsync);
 
     private Task OpenProxyBatchEditorAsync()
     {
         SyncProxyBatchEditorItemsFromText();
+        SetProxyBatchEditorMode(ProxyBatchEditorMode.BulkImport);
+        ResetProxyBatchTemplateDraft(clearSelection: true);
         SelectedProxyBatchEditorItem = null;
-        SetProxyBatchEditorMode(ProxyBatchEditorMode.SharedKeyGroup);
-        if (string.IsNullOrWhiteSpace(ProxyBatchFormBaseUrl))
-        {
-            LoadCurrentProxyConfigIntoBatchForm();
-        }
-
         IsProxyBatchEditorOpen = true;
-        /*
-        // StatusMessage = mode == ProxyBatchEditorMode.SharedKeyGroup
-            ? $"已加入 {item.DisplayTitle}，共用 Key 信息已保留，可继续补下一个入口。"
-            : $"已加入 {item.DisplayTitle}，可以继续填写下一条。";
-        */
+        StatusMessage = ProxyBatchSiteGroups.Count == 0
+            ? "已打开站点录入面板，可开始录入第一个站点。"
+            : "已打开站点录入面板；左侧可选已有站点，右侧可继续录入新站点。";
         return Task.CompletedTask;
     }
 
@@ -37,84 +31,129 @@ public sealed partial class MainWindowViewModel
 
     private Task AddCurrentProxyBaseUrlToBatchAsync()
     {
-        LoadCurrentProxyConfigIntoBatchForm();
-        StatusMessage = "已把主页默认网址和 key 带入填写面板。";
+        SetProxyBatchEditorMode(ProxyBatchEditorMode.BulkImport);
+        ResetProxyBatchTemplateDraft(clearSelection: true);
+
+        var firstRow = ProxyBatchTemplateDraftItems[0];
+        var baseUrl = NormalizeNullable(ProxyBaseUrl) ?? string.Empty;
+        firstRow.EntryName = string.IsNullOrWhiteSpace(baseUrl)
+            ? string.Empty
+            : BuildBatchDefaultName(baseUrl, 1);
+        firstRow.BaseUrl = baseUrl;
+        firstRow.EntryApiKey = NormalizeNullable(ProxyApiKey);
+        firstRow.EntryModel = NormalizeNullable(ProxyModel);
+
+        RefreshProxyBatchTemplateDraftState();
+        StatusMessage = string.IsNullOrWhiteSpace(baseUrl)
+            ? "主页还没有默认网址，已为你保留一个空白站点，可直接开始填写。"
+            : "已把主页的网址、key 和模型带入当前站点的第一行。";
         SaveState();
         return Task.CompletedTask;
     }
 
     private Task CommitProxyBatchEditorItemAsync()
-        => SelectedProxyBatchEditorItem is null
-            ? AddProxyBatchEditorItemAsync()
-            : UpdateProxyBatchEditorItemAsync();
-
-    private Task AddProxyBatchEditorItemAsync()
     {
-        var mode = ResolveEffectiveProxyBatchEditorMode();
-        SetProxyBatchEditorMode(mode);
-        var item = BuildProxyBatchEditorItemFromForm();
-        ProxyBatchEditorItems.Add(item);
-        NormalizeSiteGroupConsistency(item.SiteGroupName);
-        RebuildProxyBatchTargetsTextFromEditorItems(persistState: false);
-        PrepareProxyBatchEditorFormForNextAdd(item, mode);
-        /*
-        StatusMessage = mode == ProxyBatchEditorMode.SharedKeyGroup
-            ? $"已加入 {item.DisplayTitle}，共用 Key 信息已保留，可继续补下一个入口。"
-            : $"已加入 {item.DisplayTitle}，可以继续填写下一条。";
-        StatusMessage = $"已新增条目：{item.DisplayTitle}";
-        */
-        StatusMessage = mode == ProxyBatchEditorMode.SharedKeyGroup
-            ? $"已加入 {item.DisplayTitle}，共用 Key 信息已保留，可继续补下一个入口。"
-            : $"已加入 {item.DisplayTitle}，可以继续填写下一条。";
-        SaveState();
-        return Task.CompletedTask;
-    }
+        var siteItems = BuildCommittedProxyBatchSiteItemsFromDraft();
+        var siteName = siteItems[0].SiteGroupName ?? BuildProxyBatchTemplateSiteName(siteItems);
+        var selectedGroupName = SelectedProxyBatchSiteGroup?.GroupName;
+        var mergedItems = ProxyBatchEditorItems
+            .Select(CloneProxyBatchEditorItem)
+            .ToList();
 
-    private Task UpdateProxyBatchEditorItemAsync()
-    {
-        if (SelectedProxyBatchEditorItem is null)
+        var replacedSelectedSite = false;
+        var replacedSameNameSite = false;
+
+        if (!string.IsNullOrWhiteSpace(selectedGroupName))
         {
-            StatusMessage = "请先从左侧列表选中一条记录，再更新。";
-            return Task.CompletedTask;
+            replacedSelectedSite = RemoveProxyBatchSiteGroup(mergedItems, selectedGroupName);
         }
 
-        SetProxyBatchEditorMode(ResolveEffectiveProxyBatchEditorMode());
-        var previousGroupName = SelectedProxyBatchEditorItem.SiteGroupName;
-        var updated = BuildProxyBatchEditorItemFromForm();
-        SelectedProxyBatchEditorItem.ApplyFrom(updated);
-        NormalizeSiteGroupConsistency(previousGroupName);
-        NormalizeSiteGroupConsistency(SelectedProxyBatchEditorItem.SiteGroupName);
+        if (RemoveProxyBatchSiteGroup(mergedItems, siteName))
+        {
+            replacedSameNameSite = true;
+        }
+
+        mergedItems.AddRange(siteItems.Select(CloneProxyBatchEditorItem));
+        if (mergedItems.Count > MaxProxyBatchSourceEntries)
+        {
+            throw new InvalidOperationException($"保存后会超过 {MaxProxyBatchSourceEntries} 个网址，请先删除不用的站点或缩减当前表格行数。");
+        }
+
+        ApplyProxyBatchEditorItems(mergedItems
+            .Select(CreateProxyBatchConfigItemSnapshot)
+            .ToArray());
         RebuildProxyBatchTargetsTextFromEditorItems(persistState: false);
-        StatusMessage = $"已更新条目：{SelectedProxyBatchEditorItem.DisplayTitle}";
+
+        SelectedProxyBatchEditorItem = null;
+        ResetProxyBatchTemplateDraft(clearSelection: true);
+
+        StatusMessage = replacedSelectedSite || replacedSameNameSite
+            ? $"已保存站点：{siteName}。右侧已清空，可继续录入下一个站点。"
+            : $"已加入站点：{siteName}。右侧已清空，可继续录入下一个站点。";
         SaveState();
         return Task.CompletedTask;
     }
+
+    private Task AddProxyBatchEditorItemAsync()
+        => CommitProxyBatchEditorItemAsync();
+
+    private Task UpdateProxyBatchEditorItemAsync()
+        => CommitProxyBatchEditorItemAsync();
 
     private Task DeleteProxyBatchEditorItemAsync()
     {
-        if (SelectedProxyBatchEditorItem is null)
+        if (SelectedProxyBatchSiteGroup is null)
         {
-            StatusMessage = "请先从左侧列表选中一条记录，再删除。";
+            StatusMessage = "请先从左侧列表选中一个站点，再删除。";
             return Task.CompletedTask;
         }
 
-        var displayTitle = SelectedProxyBatchEditorItem.DisplayTitle;
-        var groupName = SelectedProxyBatchEditorItem.SiteGroupName;
-        ProxyBatchEditorItems.Remove(SelectedProxyBatchEditorItem);
-        NormalizeSiteGroupConsistency(groupName);
+        var groupName = SelectedProxyBatchSiteGroup.GroupName;
+        var mergedItems = ProxyBatchEditorItems
+            .Select(CloneProxyBatchEditorItem)
+            .ToList();
+        if (!RemoveProxyBatchSiteGroup(mergedItems, groupName))
+        {
+            StatusMessage = $"没有找到站点：{groupName}";
+            return Task.CompletedTask;
+        }
+
+        ApplyProxyBatchEditorItems(mergedItems
+            .Select(CreateProxyBatchConfigItemSnapshot)
+            .ToArray());
         RebuildProxyBatchTargetsTextFromEditorItems(persistState: false);
+
         SelectedProxyBatchEditorItem = null;
-        StatusMessage = $"已删除条目：{displayTitle}";
+        ResetProxyBatchTemplateDraft(clearSelection: true);
+        StatusMessage = $"已删除站点：{groupName}。右侧已清空，可继续录入下一个站点。";
         SaveState();
         return Task.CompletedTask;
     }
 
     private Task ResetProxyBatchEditorFormAsync()
     {
+        SetProxyBatchEditorMode(ProxyBatchEditorMode.BulkImport);
         SelectedProxyBatchEditorItem = null;
-        LoadCurrentProxyConfigIntoBatchForm();
-        StatusMessage = "填写面板已清空，并带入主页默认项。";
+        ResetProxyBatchTemplateDraft(clearSelection: true);
+        StatusMessage = "当前站点已清空，只保留第一行空白，可继续录入。";
         SaveState();
         return Task.CompletedTask;
+    }
+
+    private static bool RemoveProxyBatchSiteGroup(List<ProxyBatchEditorItemViewModel> items, string groupName)
+    {
+        var removed = false;
+        for (var index = items.Count - 1; index >= 0; index--)
+        {
+            if (!string.Equals(ResolveProxyBatchSiteGroupName(items[index]), groupName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            items.RemoveAt(index);
+            removed = true;
+        }
+
+        return removed;
     }
 }

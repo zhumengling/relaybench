@@ -319,7 +319,10 @@ public sealed partial class MainWindowViewModel
 
     private void LoadExtendedState(AppStateSnapshot snapshot)
     {
+        _selectedStunTransportKey = StunServerPresetCatalog.ResolveTransportKey(snapshot.StunTransportKey, snapshot.StunServer);
+        OnPropertyChanged(nameof(SelectedStunTransportKey));
         StunServer = NormalizeStunServerHost(snapshot.StunServer);
+        RefreshStunServerOptions(syncCurrentHost: true);
         RouteTarget = string.IsNullOrWhiteSpace(snapshot.RouteTarget) ? "chatgpt.com" : snapshot.RouteTarget;
         SelectedRouteResolverKey = ResolveRouteResolverKey(snapshot.RouteResolverKey);
         RouteMaxHopsText = string.IsNullOrWhiteSpace(snapshot.RouteMaxHopsText) || string.Equals(snapshot.RouteMaxHopsText.Trim(), "12", StringComparison.Ordinal)
@@ -340,6 +343,7 @@ public sealed partial class MainWindowViewModel
 
     private void ApplyExtendedStateToSnapshot(AppStateSnapshot snapshot)
     {
+        snapshot.StunTransportKey = SelectedStunTransportKey;
         snapshot.StunServer = StunServer;
         snapshot.RouteTarget = RouteTarget;
         snapshot.RouteResolverKey = SelectedRouteResolverKey;

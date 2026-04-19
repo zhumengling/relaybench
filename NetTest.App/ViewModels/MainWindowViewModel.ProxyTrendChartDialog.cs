@@ -2,6 +2,23 @@ namespace NetTest.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    private void ResetProxyTrendChartAutoOpenSuppression()
+        => _isProxyTrendChartAutoOpenSuppressed = false;
+
+    private void SuppressProxyTrendChartAutoOpen()
+        => _isProxyTrendChartAutoOpenSuppressed = true;
+
+    private bool AutoOpenProxyTrendChartIfAllowed()
+    {
+        if (_isProxyTrendChartAutoOpenSuppressed)
+        {
+            return false;
+        }
+
+        IsProxyTrendChartOpen = true;
+        return true;
+    }
+
     private Task OpenProxyTrendChartAsync()
     {
         if (ProxyChartDialogImage is null)
@@ -32,6 +49,7 @@ public sealed partial class MainWindowViewModel
             return Task.CompletedTask;
         }
 
+        ResetProxyTrendChartAutoOpenSuppression();
         IsProxyTrendChartOpen = true;
         return Task.CompletedTask;
     }
@@ -45,6 +63,7 @@ public sealed partial class MainWindowViewModel
         }
 
         ActivateProxyChartView(ProxyChartViewMode.BatchComparison);
+        ResetProxyTrendChartAutoOpenSuppression();
         IsProxyTrendChartOpen = true;
         RefreshProxyChartsForViewportContextChange();
         return Task.CompletedTask;
@@ -59,6 +78,7 @@ public sealed partial class MainWindowViewModel
         }
 
         ActivateProxyChartView(ProxyChartViewMode.BatchDeepComparison);
+        ResetProxyTrendChartAutoOpenSuppression();
         IsProxyTrendChartOpen = true;
         RefreshProxyChartsForViewportContextChange();
         return Task.CompletedTask;
@@ -66,6 +86,7 @@ public sealed partial class MainWindowViewModel
 
     private Task CloseProxyTrendChartAsync()
     {
+        SuppressProxyTrendChartAutoOpen();
         IsProxyChartImageOnlyMode = false;
         IsProxyTrendChartOpen = false;
         RefreshProxyChartsForViewportContextChange();
@@ -76,7 +97,7 @@ public sealed partial class MainWindowViewModel
     {
         if (HasProxyChartDialogImage)
         {
-            IsProxyTrendChartOpen = true;
+            AutoOpenProxyTrendChartIfAllowed();
         }
     }
 }

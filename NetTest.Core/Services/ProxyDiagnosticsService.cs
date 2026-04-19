@@ -33,14 +33,15 @@ public sealed partial class ProxyDiagnosticsService
     public async Task<ProxyDiagnosticsResult> RunAsync(
         ProxyEndpointSettings settings,
         IProgress<ProxyDiagnosticsLiveProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int streamThroughputSampleCount = 1)
     {
         if (!TryValidateSettings(settings, out var normalizedSettings, out var baseUri, out var error))
         {
             return BuildValidationFailure(settings, error);
         }
 
-        return await RunSingleCoreAsync(normalizedSettings, baseUri, progress, cancellationToken);
+        return await RunSingleCoreAsync(normalizedSettings, baseUri, progress, cancellationToken, streamThroughputSampleCount);
     }
 
     public async Task<ProxyModelCatalogResult> FetchModelsAsync(

@@ -126,7 +126,7 @@ public sealed partial class ProxyDiagnosticsService
                 sampleModels.Count,
                 sampleModels);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
         {
             stopwatch.Stop();
             var failureKind = ClassifyException(ex);
@@ -378,7 +378,7 @@ public sealed partial class ProxyDiagnosticsService
                     TraceId: traceId),
                 preview);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
         {
             stopwatch.Stop();
             var failureKind = ClassifyException(ex);
@@ -465,7 +465,7 @@ public sealed partial class ProxyDiagnosticsService
             {
                 streamOutcome = await ReadStreamingResponseAsync(response, stopwatch, streamContentParser, cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
             {
                 stopwatch.Stop();
                 return new ProxyProbeScenarioResult(

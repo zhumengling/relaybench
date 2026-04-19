@@ -135,6 +135,7 @@ public sealed partial class MainWindowViewModel
         var siteGroupReference = ResolveExistingSiteGroupReference(
             NormalizeNullable(ProxyBatchFormSiteGroupName),
             SelectedProxyBatchEditorItem);
+        var templateRow = _proxyBatchTemplateModelTargetRow;
 
         return target switch
         {
@@ -162,6 +163,10 @@ public sealed partial class MainWindowViewModel
                     NormalizeNullable(siteGroupReference?.SiteGroupApiKey),
                     NormalizeNullable(ProxyApiKey)) ?? string.Empty,
                 NormalizeNullable(ProxyBatchFormModel) ?? string.Empty),
+            ProxyModelPickerTarget.BatchTemplateRowModel => new ProxyModelPickerContext(
+                NormalizeNullable(templateRow?.BaseUrl) ?? string.Empty,
+                ResolveProxyBatchTemplateRowApiKey(templateRow) ?? string.Empty,
+                NormalizeNullable(templateRow?.EntryModel) ?? string.Empty),
             _ => new ProxyModelPickerContext(string.Empty, string.Empty, string.Empty)
         };
     }
@@ -186,6 +191,7 @@ public sealed partial class MainWindowViewModel
             ProxyModelPickerTarget.DefaultModel => ProxyModel,
             ProxyModelPickerTarget.BatchSharedModel => ProxyBatchFormSiteGroupModel,
             ProxyModelPickerTarget.BatchEntryModel => ProxyBatchFormModel,
+            ProxyModelPickerTarget.BatchTemplateRowModel => _proxyBatchTemplateModelTargetRow?.EntryModel ?? string.Empty,
             _ => string.Empty
         };
 
@@ -203,6 +209,19 @@ public sealed partial class MainWindowViewModel
                 ProxyBatchFormModel = normalizedModel;
                 StatusMessage = $"已回填本条目模型：{normalizedModel}";
                 break;
+            case ProxyModelPickerTarget.BatchTemplateRowModel:
+                if (_proxyBatchTemplateModelTargetRow is not null)
+                {
+                    _proxyBatchTemplateModelTargetRow.EntryModel = normalizedModel;
+                    StatusMessage = $"已回填模板行模型：{normalizedModel}";
+                }
+                else
+                {
+                    StatusMessage = $"已选择模型：{normalizedModel}";
+                }
+
+                SaveState();
+                break;
             default:
                 ProxyModel = normalizedModel;
                 StatusMessage = $"已选择默认模型：{normalizedModel}";
@@ -219,6 +238,7 @@ public sealed partial class MainWindowViewModel
         {
             ProxyModelPickerTarget.BatchSharedModel => "入口组的同站共用模型",
             ProxyModelPickerTarget.BatchEntryModel => "入口组的本条目模型",
+            ProxyModelPickerTarget.BatchTemplateRowModel => "模板表当前行模型",
             _ => "主页默认模型"
         };
 
@@ -231,6 +251,7 @@ public sealed partial class MainWindowViewModel
     {
         DefaultModel,
         BatchSharedModel,
-        BatchEntryModel
+        BatchEntryModel,
+        BatchTemplateRowModel
     }
 }

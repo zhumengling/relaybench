@@ -336,6 +336,10 @@ public sealed partial class ProxyDiagnosticsService
         return ProxyFailureKind.Unknown;
     }
 
+    private static bool IsCancellationRequestedException(Exception ex, CancellationToken cancellationToken)
+        => cancellationToken.IsCancellationRequested &&
+           ex is OperationCanceledException;
+
     private static ProxyFailureKind ClassifySocketFailure(SocketException socketException)
         => socketException.SocketErrorCode switch
         {

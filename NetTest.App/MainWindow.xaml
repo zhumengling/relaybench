@@ -67,7 +67,8 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.ColumnSpan="3"
+        <Border x:Name="MainShellBorder"
+                Grid.ColumnSpan="3"
                 Padding="7"
                 Background="{StaticResource PanelBrush}"
                 BorderBrush="{StaticResource PanelBorderBrush}"
@@ -215,7 +216,8 @@
                             </Grid>
                         </Border>
 
-                        <Grid Grid.Row="1"
+                        <Grid x:Name="WorkbenchPageHost"
+                              Grid.Row="1"
                               Margin="0,4,0,0">
                             <pages:SingleStationPage Visibility="{Binding IsSingleStationPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <pages:BatchComparisonPage Visibility="{Binding IsBatchComparisonPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
@@ -227,10 +229,12 @@
             </Grid>
         </Border>
 
-        <Grid Panel.ZIndex="21"
+        <Grid x:Name="ProxyChartOverlay"
+              Panel.ZIndex="21"
               Background="#660F172A"
-              Visibility="{Binding IsProxyTrendChartOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Margin="18"
+              Visibility="Collapsed">
+            <Border x:Name="ProxyChartOverlayPanel"
+                    Margin="18"
                     Padding="12"
                     Background="{StaticResource PanelBrushStrong}"
                     BorderBrush="{StaticResource PanelBorderBrush}"
@@ -305,6 +309,11 @@
                                     </Style>
                                 </Button.Style>
                             </Button>
+                            <Button MinWidth="112"
+                                    Margin="12,0,0,0"
+                                    Command="{Binding StopCurrentProxyTestCommand}"
+                                    IsEnabled="{Binding CanStopCurrentProxyTest, Mode=OneWay}"
+                                    Content="停止测试" />
                             <Button MinWidth="112"
                                     Margin="12,0,0,0"
                                     Command="{Binding CloseProxyTrendChartCommand}"
@@ -493,10 +502,12 @@
             </Border>
         </Grid>
 
-        <Grid Panel.ZIndex="20"
+        <Grid x:Name="ProxyModelPickerOverlay"
+              Panel.ZIndex="20"
               Background="#660F172A"
-              Visibility="{Binding IsProxyModelPickerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Width="920"
+              Visibility="Collapsed">
+            <Border x:Name="ProxyModelPickerOverlayPanel"
+                    Width="920"
                     MaxHeight="660"
                     Padding="14"
                     Background="{StaticResource PanelBrushStrong}"
@@ -604,10 +615,12 @@
             </Border>
         </Grid>
 
-        <Grid Panel.ZIndex="20"
+        <Grid x:Name="OfficialApiTraceOverlay"
+              Panel.ZIndex="20"
               Background="#660F172A"
-              Visibility="{Binding IsOfficialApiTraceDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Width="980"
+              Visibility="Collapsed">
+            <Border x:Name="OfficialApiTraceOverlayPanel"
+                    Width="980"
                     MaxHeight="720"
                     Padding="14"
                     Background="{StaticResource PanelBrushStrong}"
@@ -668,11 +681,13 @@
             </Border>
         </Grid>
 
-        <Grid Panel.ZIndex="19"
+        <Grid x:Name="ProxyBatchEditorOverlay"
+              Panel.ZIndex="19"
               Background="#660F172A"
-              Visibility="{Binding IsProxyBatchEditorOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Width="1020"
-                    MaxHeight="700"
+              Visibility="Collapsed">
+            <Border x:Name="ProxyBatchEditorOverlayPanel"
+                    Width="1120"
+                    MaxHeight="720"
                     Padding="14"
                     Background="{StaticResource PanelBrushStrong}"
                     BorderBrush="{StaticResource PanelBorderBrush}"
@@ -688,16 +703,16 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="270" />
+                        <ColumnDefinition Width="300" />
                         <ColumnDefinition Width="10" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Row="0" Grid.ColumnSpan="3">
-                        <TextBlock Style="{StaticResource DialogTitleTextStyle}" Text="第 1 步：维护入口组" />
+                        <TextBlock Style="{StaticResource DialogTitleTextStyle}" Text="第 1 步：按站点维护入口组" />
                         <TextBlock Margin="0,6,0,0"
                                    Style="{StaticResource SectionHintTextStyle}"
-                                   Text="这里只维护入口组本身。左侧看已录入列表，右侧逐项填写；快速对比、排行榜勾选和候选深度测试仍在批量对比页执行。" />
+                                   Text="左侧按站点管理，右侧一次录一个站点。右侧表格里的所有行会作为同一个站点保存；点完“加入入口组”后，会自动清空，只保留第一行空白继续下一个。" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{StaticResource AccentBrush}"
                                    Text="{Binding ProxyBatchTargetDigestSummary, Mode=OneWay}" />
@@ -716,15 +731,15 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="已录入入口组" />
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="已录入站点" />
                             <TextBlock Grid.Row="1"
                                        Margin="0,6,0,6"
                                        Style="{StaticResource SectionHintTextStyle}"
                                        Text="{Binding ProxyBatchEditorListSummaryDisplay, Mode=OneWay}" />
                             <ListBox Grid.Row="2"
                                      Margin="0,4,0,0"
-                                     ItemsSource="{Binding ProxyBatchEditorItems}"
-                                     SelectedItem="{Binding SelectedProxyBatchEditorItem, Mode=TwoWay}">
+                                     ItemsSource="{Binding ProxyBatchSiteGroups}"
+                                     SelectedItem="{Binding SelectedProxyBatchSiteGroup, Mode=TwoWay}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel>
@@ -761,10 +776,12 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="入口组录入" />
+
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="当前站点录入" />
                             <StackPanel Grid.Row="1" Margin="0,6,0,0">
                                 <TextBlock Foreground="{StaticResource AccentBrush}"
                                            TextWrapping="Wrap"
@@ -773,97 +790,132 @@
                                            Style="{StaticResource SectionHintTextStyle}"
                                            Text="{Binding ProxyBatchEditorSelectionSummary, Mode=OneWay}" />
                             </StackPanel>
-                            <TabControl Grid.Row="2"
+
+                            <Border Grid.Row="2"
+                                    Margin="0,8,0,0"
+                                    Padding="10,8"
+                                    Background="#F8FAFC"
+                                    BorderBrush="{StaticResource PanelBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10">
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Text="直接按表格填写“名称 / URL / Key / 模型”即可。可以一行一行录，也可以从剪贴板粘贴 Excel、整表或零散数据；如果只粘贴了 URL 或 key，空白列会自动沿用上一行。站点名留空时，会按第一条有效名称或域名命名。" />
+                            </Border>
+
+                            <Grid Grid.Row="3"
+                                  Margin="0,8,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <WrapPanel>
+                                    <Button MinWidth="104"
+                                            Command="{Binding AddProxyBatchTemplateRowCommand}"
+                                            Content="新增一行" />
+                                    <Button MinWidth="128"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding PasteProxyBatchTemplateRowsCommand}"
+                                            Content="从剪贴板粘贴" />
+                                    <Button MinWidth="120"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding ClearProxyBatchTemplateEmptyRowsCommand}"
+                                            Content="清理空白行" />
+                                </WrapPanel>
+
+                                <Border Grid.Row="1"
                                         Margin="0,8,0,0"
-                                        Style="{StaticResource ProxyBatchTabControlStyle}"
-                                        SelectedIndex="{Binding ProxyBatchEditorModeIndex, Mode=TwoWay}">
-                                <TabItem Header="同站共用 Key">
-                                    <ScrollViewer Background="Transparent"
-                                                  VerticalScrollBarVisibility="Auto">
-                                        <Grid Margin="0,2,0,0">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="124" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="112" />
-                                            </Grid.ColumnDefinitions>
+                                        BorderBrush="{StaticResource PanelBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Background="#FFFFFF">
+                                    <DataGrid AutoGenerateColumns="False"
+                                              CanUserAddRows="False"
+                                              CanUserDeleteRows="False"
+                                              GridLinesVisibility="Horizontal"
+                                              HeadersVisibility="Column"
+                                              ItemsSource="{Binding ProxyBatchTemplateDraftItems}"
+                                              PreviewMouseLeftButtonDown="ProxyBatchDraftDataGrid_OnPreviewMouseLeftButtonDown"
+                                              RowHeaderWidth="0">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Width="1.15*"
+                                                                Binding="{Binding EntryName, UpdateSourceTrigger=PropertyChanged}"
+                                                                Header="名称" />
+                                            <DataGridTextColumn Width="2.15*"
+                                                                Binding="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                                                                Header="URL" />
+                                            <DataGridTextColumn Width="1.45*"
+                                                                Binding="{Binding EntryApiKey, UpdateSourceTrigger=PropertyChanged}"
+                                                                Header="Key" />
+                                            <DataGridTemplateColumn Width="0.8*"
+                                                                    Header="状态"
+                                                                    IsReadOnly="True">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock VerticalAlignment="Center"
+                                                                   Text="{Binding TemplateStatus}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding TemplateStatus}" Value="缺 URL">
+                                                                            <Setter Property="Foreground" Value="#D97706" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding TemplateStatus}" Value="URL 无效">
+                                                                            <Setter Property="Foreground" Value="#DC2626" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="1.9*"
+                                                                    Header="模型">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <DockPanel LastChildFill="True">
+                                                            <Button DockPanel.Dock="Right"
+                                                                    Width="28"
+                                                                    Height="24"
+                                                                    Margin="6,0,0,0"
+                                                                    Command="{Binding DataContext.FetchProxyBatchTemplateRowModelsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Content="⟳"
+                                                                    ToolTip="按本行 URL + key 拉取模型；如果本行 key 为空，会自动沿用上一行或主页默认 key。" />
+                                                            <TextBlock VerticalAlignment="Center"
+                                                                       Text="{Binding EntryModel}"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                                <DataGridTemplateColumn.CellEditingTemplate>
+                                                    <DataTemplate>
+                                                        <DockPanel LastChildFill="True">
+                                                            <Button DockPanel.Dock="Right"
+                                                                    Width="28"
+                                                                    Height="24"
+                                                                    Margin="6,0,0,0"
+                                                                    Command="{Binding DataContext.FetchProxyBatchTemplateRowModelsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Content="⟳"
+                                                                    ToolTip="按本行 URL + key 拉取模型；如果本行 key 为空，会自动沿用上一行或主页默认 key。" />
+                                                            <TextBox Padding="0"
+                                                                     BorderThickness="0"
+                                                                     Background="Transparent"
+                                                                     Text="{Binding EntryModel, UpdateSourceTrigger=PropertyChanged}" />
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellEditingTemplate>
+                                            </DataGridTemplateColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Border>
+                            </Grid>
 
-                                            <TextBlock Grid.Row="0"
-                                                       Grid.ColumnSpan="3"
-                                                       Margin="0,0,0,6"
-                                                       Style="{StaticResource SectionHintTextStyle}"
-                                                       Text="先写同站组和共用 Key，再连续补入口地址，最适合同一个站点的多个入口共用一把 Key。" />
-
-                                            <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="同站组名称" />
-                                            <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormSiteGroupName, UpdateSourceTrigger=PropertyChanged}" />
-
-                                            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="同站共用 Key" />
-                                            <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormSiteGroupApiKey, UpdateSourceTrigger=PropertyChanged}" />
-
-                                            <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="同站共用模型" />
-                                            <TextBox Grid.Row="3" Grid.Column="1" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormSiteGroupModel, UpdateSourceTrigger=PropertyChanged}" />
-                                            <Button Grid.Row="3" Grid.Column="2" Width="112" Margin="6,0,0,0" Command="{Binding FetchProxyBatchSharedModelsCommand}" Content="拉取模型" />
-
-                                            <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="入口名称" />
-                                            <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormEntryName, UpdateSourceTrigger=PropertyChanged}" />
-
-                                            <TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="入口地址" />
-                                            <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
-                                        </Grid>
-                                    </ScrollViewer>
-                                </TabItem>
-
-                                <TabItem Header="独立 Key / 模型">
-                                    <ScrollViewer Background="Transparent"
-                                                  VerticalScrollBarVisibility="Auto">
-                                        <Grid Margin="0,2,0,0">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="124" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="112" />
-                                            </Grid.ColumnDefinitions>
-
-                                            <TextBlock Grid.Row="0"
-                                                       Grid.ColumnSpan="3"
-                                                       Margin="0,0,0,6"
-                                                       Style="{StaticResource SectionHintTextStyle}"
-                                                       Text="每条入口都可以带自己的 Key；如果只是为了左侧好区分，可以顺手填一个站点归类。" />
-
-                                            <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="站点归类" />
-                                            <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormSiteGroupName, UpdateSourceTrigger=PropertyChanged}" />
-
-                                            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="入口名称" />
-                                            <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormEntryName, UpdateSourceTrigger=PropertyChanged}" />
-
-                                            <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="入口地址" />
-                                            <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
-
-                                            <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="本条目 Key" />
-                                            <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormApiKey, UpdateSourceTrigger=PropertyChanged}" />
-
-                                            <TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="模型" />
-                                            <TextBox Grid.Row="5" Grid.Column="1" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormModel, UpdateSourceTrigger=PropertyChanged}" />
-                                            <Button Grid.Row="5" Grid.Column="2" Width="112" Margin="6,0,0,0" Command="{Binding FetchProxyBatchEntryModelsCommand}" Content="拉取模型" />
-                                        </Grid>
-                                    </ScrollViewer>
-                                </TabItem>
-                            </TabControl>
-                            <Border Grid.Row="3"
+                            <Border Grid.Row="4"
                                     Margin="0,8,0,0"
                                     Padding="10,8"
                                     Background="#F5F7FA"
@@ -871,7 +923,7 @@
                                     BorderThickness="1"
                                     CornerRadius="10">
                                 <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                           Text="{Binding ProxyBatchGuideSummary, Mode=OneWay}" />
+                                           Text="{Binding ProxyBatchTemplateSummary, Mode=OneWay}" />
                             </Border>
                         </Grid>
                     </Border>
@@ -891,7 +943,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock VerticalAlignment="Center"
                                        Style="{StaticResource SectionHintTextStyle}"
-                                       Text="建议先在这里维护好入口组；关闭弹窗后回到批量页，按“快速对比 → 勾选候选项 → 深度测试”的顺序继续。" />
+                                       Text="建议流程：先在这里把站点录好，再回到批量对比页按“快速对比 → 勾选候选项 → 深度测试”的顺序继续。左侧点站点可回填，右侧点“加入入口组”后会自动清空为下一站点。" />
                             <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
                                 <Button MinWidth="144" Command="{Binding AddCurrentProxyBaseUrlToBatchCommand}" Content="带入主页网址 / Key" />
                                 <Button MinWidth="120"
@@ -902,7 +954,7 @@
                                         Command="{Binding DeleteProxyBatchEditorItemCommand}"
                                         Content="删除选中"
                                         IsEnabled="{Binding IsProxyBatchEditorItemSelected}" />
-                                <Button MinWidth="104" Command="{Binding ResetProxyBatchEditorFormCommand}" Content="新建下一条" />
+                                <Button MinWidth="116" Command="{Binding ResetProxyBatchEditorFormCommand}" Content="清空当前站点" />
                                 <Button MinWidth="128"
                                         Command="{Binding RunProxyBatchCommand}"
                                         Style="{StaticResource PrimaryActionButtonStyle}"

@@ -251,15 +251,15 @@ public sealed partial class MainWindowViewModel
             ProxyChartViewMode.BatchComparison,
             new ProxyChartDialogSnapshot(
                 "中转站入口组累计对比图",
-                "这里直接比较多个 URL 在多轮整组测试后的平均延迟、平均 TTFT 和综合能力。无论是单站点多入口，还是多站点多 Key，最终目标都是找出长期更稳的 URL。",
+                "这里直接比较多个 URL 在多轮整组测试后的平均延迟、每秒生成 token 数、平均 TTFT 和综合能力。无论是单站点多入口，还是多站点多 Key，最终目标都是找出长期更稳的 URL。",
                 $"当前已累计 {runCount} 轮入口组测试，共 {aggregateRows.Length} 个 URL。\n" +
                 $"当前推荐：{best.Entry.Name}\n" +
                 $"推荐地址：{best.Entry.BaseUrl}\n" +
-                $"推荐原因：平均普通对话 {FormatMillisecondsValue(best.AverageChatLatencyMs)}，平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)}，综合能力 {FormatBatchDisplayedCapabilityAverage(best)}，基础/增强拆分见右侧摘要。\n\n" +
+                $"推荐原因：平均普通对话 {FormatMillisecondsValue(best.AverageChatLatencyMs)}，每秒生成 token 数 {FormatTokensPerSecond(best.AverageStreamTokensPerSecond)}，平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)}，综合能力 {FormatBatchDisplayedCapabilityAverage(best)}，基础/增强拆分见右侧摘要。\n\n" +
                 BuildProxyBatchTopSummary(aggregateRows),
                 BuildProxyBatchCapabilitySummaryText(aggregateRows, "多入口累计对比摘要"),
                 BuildProxyBatchCapabilityDetailText(aggregateRows, "多入口累计对比明细"),
-                "蓝条：平均普通对话延迟，越长代表越快。\n橙条：平均 TTFT，越长代表首字响应越快。\n绿条：入口组综合能力；第二行会补充基础/增强拆分，深度测试请看单次图表。",
+                "蓝条：平均普通对话延迟，越长代表越快。\n紫条：每秒生成 token 数，越长代表生成越快。\n橙条：平均 TTFT，越长代表首字响应越快。\n绿条：入口组综合能力。",
                 chartResult.HasChart ? chartResult.Summary : chartResult.Error ?? chartResult.Summary,
                 "正在等待入口组累计图表生成。",
                 chartResult.ChartImage),

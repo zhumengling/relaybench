@@ -15,7 +15,8 @@ public sealed partial class ProxyDiagnosticsService
         ProxyEndpointSettings settings,
         Uri baseUri,
         IProgress<ProxyDiagnosticsLiveProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int streamThroughputSampleCount = 1)
     {
         using var client = CreateClient(baseUri, settings);
         var resolvedAddresses = await ResolveAddressesAsync(baseUri, cancellationToken);
@@ -61,14 +62,25 @@ public sealed partial class ProxyDiagnosticsService
             chatProbe.ScenarioResult,
             scenarioResults);
 
+        var streamPayload = BuildChatPayload(effectiveModel, stream: true);
         var streamProbe = await ProbeStreamingScenarioAsync(
             client,
             chatPath,
-            BuildChatPayload(effectiveModel, stream: true),
+            streamPayload,
             ProxyProbeScenarioKind.ChatCompletionsStream,
             "流式对话",
             TryParseChatStreamContent,
             MatchProbeExpectation,
+            cancellationToken);
+        streamProbe = await SampleStreamingThroughputAsync(
+            client,
+            chatPath,
+            streamPayload,
+            streamProbe,
+            "流式对话",
+            TryParseChatStreamContent,
+            MatchProbeExpectation,
+            streamThroughputSampleCount,
             cancellationToken);
         scenarioResults.Add(streamProbe);
         ReportSingleProgress(

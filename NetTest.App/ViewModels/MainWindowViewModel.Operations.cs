@@ -45,7 +45,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             if (CanRunProxyFromQuickSuite())
             {
-                await RunProxyCoreAsync(BuildBasicProxySingleExecutionPlan());
+                await RunProxyCoreAsync(BuildBasicProxySingleExecutionPlan(), CancellationToken.None);
             }
             else
             {
@@ -70,13 +70,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
         => ExecuteBusyActionAsync("正在拉取中转站模型列表...", FetchProxyModelsCoreAsync);
 
     private Task RunBasicProxyAsync()
-        => ExecuteBusyActionAsync("正在运行基础中转站诊断...", () => RunProxyCoreAsync(BuildBasicProxySingleExecutionPlan()));
+        => ExecuteProxyBusyActionAsync("正在运行基础中转站诊断...", cancellationToken => RunProxyCoreAsync(BuildBasicProxySingleExecutionPlan(), cancellationToken));
 
     private Task RunDeepProxyAsync()
-        => ExecuteBusyActionAsync("正在运行中转站深度诊断...", () => RunProxyCoreAsync(BuildDeepProxySingleExecutionPlan()));
+        => ExecuteProxyBusyActionAsync("正在运行中转站深度诊断...", cancellationToken => RunProxyCoreAsync(BuildDeepProxySingleExecutionPlan(), cancellationToken));
 
     private Task RunProxySeriesAsync()
-        => ExecuteBusyActionAsync("正在运行中转站稳定性序列...", RunProxySeriesCoreAsync);
+        => ExecuteProxyBusyActionAsync("正在运行中转站稳定性序列...", RunProxySeriesCoreAsync);
 
     private async Task ExecuteBusyActionAsync(string startMessage, Func<Task> action)
     {
@@ -96,6 +96,79 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             IsBusy = false;
         }
+    }
+
+    private async Task ExecuteProxyBusyActionAsync(string startMessage, Func<CancellationToken, Task> action)
+    {
+        IsBusy = true;
+        StatusMessage = startMessage;
+        BeginCurrentProxyOperationCancellation();
+
+        try
+        {
+            await action(_currentProxyOperationCancellationSource!.Token);
+            LastRunAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        }
+        catch (OperationCanceledException) when (_currentProxyOperationCancellationSource?.IsCancellationRequested == true)
+        {
+            var cancelMessage = _proxyCancellationRequestedByUser
+                ? "已停止当前测试，可关闭弹窗或重新发起测试。"
+                : "当前测试已取消。";
+            StatusMessage = cancelMessage;
+            ProxyChartDialogStatusSummary = cancelMessage;
+            DashboardCards[3].Status = "已停止";
+            DashboardCards[3].Detail = "当前测试已手动停止。";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"执行失败：{ex.Message}";
+        }
+        finally
+        {
+            EndCurrentProxyOperationCancellation();
+            IsBusy = false;
+        }
+    }
+
+    private void BeginCurrentProxyOperationCancellation()
+    {
+        EndCurrentProxyOperationCancellation();
+        _proxyCancellationRequestedByUser = false;
+        _currentProxyOperationCancellationSource = new CancellationTokenSource();
+        RefreshCurrentProxyTestCommandStates();
+    }
+
+    private void EndCurrentProxyOperationCancellation()
+    {
+        _currentProxyOperationCancellationSource?.Dispose();
+        _currentProxyOperationCancellationSource = null;
+        _proxyCancellationRequestedByUser = false;
+        RefreshCurrentProxyTestCommandStates();
+    }
+
+    private bool CanStopCurrentProxyTestAction()
+        => CanStopCurrentProxyTest;
+
+    private Task StopCurrentProxyTestAsync()
+    {
+        if (_currentProxyOperationCancellationSource is { IsCancellationRequested: false } cancellationSource)
+        {
+            _proxyCancellationRequestedByUser = true;
+            cancellationSource.Cancel();
+            StatusMessage = "已请求停止当前测试，将在当前请求步骤结束后停止。";
+            ProxyChartDialogStatusSummary = StatusMessage;
+            DashboardCards[3].Status = "已停止";
+            DashboardCards[3].Detail = "当前测试停止请求已发送。";
+        }
+
+        RefreshCurrentProxyTestCommandStates();
+        return Task.CompletedTask;
+    }
+
+    private void RefreshCurrentProxyTestCommandStates()
+    {
+        StopCurrentProxyTestCommand?.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(CanStopCurrentProxyTest));
     }
 
     private async Task RunNetworkCoreAsync()
@@ -125,23 +198,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private async Task RunStunCoreAsync()
     {
-        var result = await _stunProbeService.ProbeAsync(StunServer.Trim());
+        var result = await _stunProbeService.ProbeAsync(StunServer.Trim(), GetSelectedStunTransportProtocol());
         ApplyStunResult(result);
         DashboardCards[2].Status = result.Success ? "完成" : "失败";
         DashboardCards[2].Detail = result.Success
-            ? $"{result.NatType ?? "--"} / {result.ClassificationConfidence} / {result.MappedAddress ?? "--"}"
+            ? $"{(result.TransportProtocol == StunTransportProtocol.Tcp ? "TCP" : "UDP")} / {result.NatType ?? "--"} / {result.ClassificationConfidence} / {result.MappedAddress ?? "--"}"
             : result.Error ?? "STUN 检测失败。";
         AppendHistory("STUN", "STUN 检测", StunSummary);
     }
 
-    private async Task RunProxyCoreAsync(ProxySingleExecutionPlan executionPlan)
+    private async Task RunProxyCoreAsync(ProxySingleExecutionPlan executionPlan, CancellationToken cancellationToken)
     {
         _currentProxySingleExecutionPlan = executionPlan;
         _lastProxySingleExecutionMode = executionPlan.Mode;
         _proxySingleChartRuns.Clear();
         StartSingleProxyChartLiveSession();
         var progress = new Progress<ProxyDiagnosticsLiveProgress>(UpdateSingleProxyChartLive);
-        var result = await RunSingleProxyDiagnosticsAsync(BuildProxySettings(), progress, executionPlan);
+        var result = await RunSingleProxyDiagnosticsAsync(BuildProxySettings(), progress, executionPlan, cancellationToken: cancellationToken);
 
         _proxySingleChartRuns.Add(result);
         ApplyProxyResult(result);
@@ -157,16 +230,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private Task<ProxyDiagnosticsResult> RunSingleProxyDiagnosticsAsync(
         IProgress<ProxyDiagnosticsLiveProgress>? progress,
         ProxySingleExecutionPlan executionPlan,
-        bool updateSingleChartPhases = true)
-        => RunSingleProxyDiagnosticsAsync(BuildProxySettings(), progress, executionPlan, updateSingleChartPhases);
+        bool updateSingleChartPhases = true,
+        CancellationToken cancellationToken = default)
+        => RunSingleProxyDiagnosticsAsync(BuildProxySettings(), progress, executionPlan, updateSingleChartPhases, cancellationToken);
 
     private async Task<ProxyDiagnosticsResult> RunSingleProxyDiagnosticsAsync(
         ProxyEndpointSettings settings,
         IProgress<ProxyDiagnosticsLiveProgress>? progress,
         ProxySingleExecutionPlan executionPlan,
-        bool updateSingleChartPhases = true)
+        bool updateSingleChartPhases = true,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _proxyDiagnosticsService.RunAsync(settings, progress);
+        var streamThroughputSampleCount = executionPlan.Mode == ProxySingleExecutionMode.Basic ? 3 : 1;
+        var result = await _proxyDiagnosticsService.RunAsync(
+            settings,
+            progress,
+            cancellationToken,
+            streamThroughputSampleCount: streamThroughputSampleCount);
 
         if (executionPlan.EnableProtocolCompatibilityTest ||
             executionPlan.EnableErrorTransparencyTest ||
@@ -195,7 +275,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 executionPlan.EnableCacheMechanismTest,
                 executionPlan.EnableCacheIsolationTest,
                 executionPlan.CacheIsolationAlternateApiKey,
-                progress);
+                progress,
+                cancellationToken);
         }
 
         if (executionPlan.EnableLongStreamingTest)
@@ -210,7 +291,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 : settings with { Model = result.EffectiveModel };
             var longStreamingResult = await _proxyDiagnosticsService.RunLongStreamingTestAsync(
                 longStreamingSettings,
-                GetProxyLongStreamSegmentCount());
+                GetProxyLongStreamSegmentCount(),
+                cancellationToken);
             result = result with { LongStreamingResult = longStreamingResult };
         }
 
@@ -314,7 +396,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
-    private async Task RunProxySeriesCoreAsync()
+    private async Task RunProxySeriesCoreAsync(CancellationToken cancellationToken)
     {
         var rounds = ParseBoundedInt(ProxySeriesRoundsText, fallback: 5, min: 1, max: 50);
         var delayMilliseconds = ParseBoundedInt(ProxySeriesDelayMsText, fallback: 1200, min: 0, max: 30_000);
@@ -340,7 +422,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             rounds,
             delayMilliseconds,
             progress,
-            roundProgress);
+            roundProgress,
+            cancellationToken);
 
         ApplyProxyStabilityResult(result);
         ShowFinalProxySeriesChart(result);

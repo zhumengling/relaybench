@@ -24,6 +24,7 @@ public sealed record ProxyProbeScenarioResult(
     TimeSpan? GenerationDuration = null,
     double? OutputTokensPerSecond = null,
     double? EndToEndTokensPerSecond = null,
+    int OutputTokensPerSecondSampleCount = 1,
     double? MaxChunkGapMilliseconds = null,
     double? AverageChunkGapMilliseconds = null,
     string? RequestId = null,

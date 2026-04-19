@@ -423,7 +423,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         => value.HasValue ? $"{value.Value:F0} ms" : "--";
 
     private static string BuildBadgeTooltipDescription(ProxyBatchDeepComparisonBadge badge)
-        => $"{badge.Description}{Environment.NewLine}?????{ResolveBadgeValueExplanation(badge)}";
+        => $"{badge.Description}{Environment.NewLine}状态说明：{ResolveBadgeValueExplanation(badge)}";
 
     private static string ResolveBadgeValueExplanation(ProxyBatchDeepComparisonBadge badge)
     {
@@ -435,27 +435,27 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
                 int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var totalCount) &&
                 totalCount > 0)
             {
-                return $"?? 5 ???? {passCount} ??? {totalCount} ??";
+                return $"基础 5 项里已通过 {passCount} 项，共 {totalCount} 项。";
             }
 
             return badge.State switch
             {
-                ProxyBatchDeepComparisonBadgeState.Running => "?? 5 ??????????????",
-                ProxyBatchDeepComparisonBadgeState.Pending => "?? 5 ??????",
-                _ => $"?? 5 ?????? {badge.Value}?"
+                ProxyBatchDeepComparisonBadgeState.Running => "基础 5 项仍在执行，当前结果还未全部返回。",
+                ProxyBatchDeepComparisonBadgeState.Pending => "基础 5 项尚未开始。",
+                _ => $"基础 5 项当前显示 {badge.Value}。"
             };
         }
 
         return badge.Value switch
         {
-            "OK" => "????????",
-            "NO" => "????????????????????",
-            "RV" => "????????????????",
-            "SK" => "???????????????????????",
-            "Off" => "???????????????????",
-            "--" when badge.State == ProxyBatchDeepComparisonBadgeState.Running => "?????????????????",
-            "--" => "??????????",
-            _ => $"????? {badge.Value}?"
+            "OK" => "已通过，表示该专项探针结果符合预期。",
+            "NO" => "未通过，表示该专项探针已执行，但当前入口未满足预期。",
+            "RV" => "待复核，表示已拿到结果，但需要人工复核后再下结论。",
+            "SK" => "已跳过，表示本轮没有执行该专项探针或被策略跳过。",
+            "Off" => "未启用，表示当前执行计划没有开启该专项探针。",
+            "--" when badge.State == ProxyBatchDeepComparisonBadgeState.Running => "执行中，表示该专项探针尚未返回最终结果。",
+            "--" => "未开始，表示该专项探针还没跑到这一项。",
+            _ => $"当前显示 {badge.Value}。"
         };
     }
 

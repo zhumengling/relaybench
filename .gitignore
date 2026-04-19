@@ -10,6 +10,7 @@ release/
 .dotnet-cli/
 .superpowers/
 .tmp/
+.tmp_stunprobe/
 
 # IDE / OS
 .vs/

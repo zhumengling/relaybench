@@ -13,6 +13,11 @@ public sealed partial class MainWindowViewModel
 
         foreach (var item in ProxyBatchEditorItems)
         {
+            if (IsEmptyProxyBatchEditorItem(item))
+            {
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(item.SiteGroupName))
             {
                 activeSiteGroupName = null;
@@ -30,6 +35,8 @@ public sealed partial class MainWindowViewModel
         }
 
         ProxyBatchTargetsText = builder.ToString().TrimEnd();
+        OnPropertyChanged(nameof(ProxyBatchEditorListSummary));
+        OnPropertyChanged(nameof(ProxyBatchEditorListSummaryDisplay));
         if (_lastProxySingleResult is not null)
         {
             RefreshProxyManagedEntryAssessment(_lastProxySingleResult);
@@ -42,20 +49,27 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    private static bool IsEmptyProxyBatchEditorItem(ProxyBatchEditorItemViewModel item)
+        => string.IsNullOrWhiteSpace(item.EntryName) &&
+           string.IsNullOrWhiteSpace(item.BaseUrl) &&
+           string.IsNullOrWhiteSpace(item.EntryApiKey) &&
+           string.IsNullOrWhiteSpace(item.EntryModel) &&
+           string.IsNullOrWhiteSpace(item.SiteGroupName) &&
+           string.IsNullOrWhiteSpace(item.SiteGroupApiKey) &&
+           string.IsNullOrWhiteSpace(item.SiteGroupModel);
+
     private ProxyBatchEditorItemViewModel BuildProxyBatchEditorItemFromForm()
     {
         var baseUrl = ProxyBatchFormBaseUrl.Trim();
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
             throw new InvalidOperationException("请输入入口地址，例如 https://example.com/v1。");
-            throw new InvalidOperationException("请先填写入口地址。");
         }
 
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
             throw new InvalidOperationException($"入口地址格式不正确：{baseUrl}。请填写以 http:// 或 https:// 开头的完整地址。");
-            throw new InvalidOperationException($"入口地址不是有效的绝对 URI：{baseUrl}");
         }
 
         var entryName = NormalizeNullable(ProxyBatchFormEntryName) ?? BuildBatchDefaultName(baseUrl, ProxyBatchEditorItems.Count + 1);
@@ -117,11 +131,27 @@ public sealed partial class MainWindowViewModel
         ProxyBatchFormModel = item.EntryModel ?? string.Empty;
     }
 
+    private void LoadProxyBatchEntryFields(ProxyBatchEditorItemViewModel item)
+    {
+        ProxyBatchFormEntryName = item.EntryName;
+        ProxyBatchFormBaseUrl = item.BaseUrl;
+        ProxyBatchFormApiKey = item.EntryApiKey ?? string.Empty;
+        ProxyBatchFormModel = item.EntryModel ?? string.Empty;
+    }
+
     private void ClearProxyBatchEditorForm()
     {
         ProxyBatchFormSiteGroupName = string.Empty;
         ProxyBatchFormSiteGroupApiKey = string.Empty;
         ProxyBatchFormSiteGroupModel = string.Empty;
+        ProxyBatchFormEntryName = string.Empty;
+        ProxyBatchFormBaseUrl = string.Empty;
+        ProxyBatchFormApiKey = string.Empty;
+        ProxyBatchFormModel = string.Empty;
+    }
+
+    private void ClearProxyBatchEntryFields()
+    {
         ProxyBatchFormEntryName = string.Empty;
         ProxyBatchFormBaseUrl = string.Empty;
         ProxyBatchFormApiKey = string.Empty;

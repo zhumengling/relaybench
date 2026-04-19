@@ -125,7 +125,7 @@ public sealed partial class ProxyDiagnosticsService
                 requestId,
                 traceId);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
         {
             return new ProxyStreamingStabilityResult(
                 DateTimeOffset.Now,

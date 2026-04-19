@@ -7,8 +7,8 @@ namespace NetTest.App.Services;
 
 public sealed class ProxyBatchComparisonChartRenderService
 {
-    private const int DefaultChartWidth = 1080;
-    private const int MinChartWidth = 860;
+    private const int DefaultChartWidth = 1240;
+    private const int MinChartWidth = 980;
     private const double HorizontalPadding = 20;
     private const double HeaderHeight = 86;
     private const double FooterHeight = 36;
@@ -16,14 +16,16 @@ public sealed class ProxyBatchComparisonChartRenderService
     private const double TableHeaderHeight = 28;
     private const double RankColumnX = 28;
     private const double EntryColumnX = 86;
-    private const double ChatBarX = 386;
-    private const double ChatBarWidth = 150;
-    private const double TtftBarX = 556;
-    private const double TtftBarWidth = 150;
-    private const double StabilityBarX = 726;
-    private const double StabilityBarWidth = 130;
-    private const double VerdictColumnX = 876;
-    private const double VerdictBadgeWidth = 126;
+    private const double ChatBarX = 376;
+    private const double ChatBarWidth = 132;
+    private const double TokensBarX = 524;
+    private const double TokensBarWidth = 132;
+    private const double TtftBarX = 672;
+    private const double TtftBarWidth = 132;
+    private const double StabilityBarX = 820;
+    private const double StabilityBarWidth = 116;
+    private const double VerdictColumnX = 952;
+    private const double VerdictBadgeWidth = 138;
     private const double DefaultContentWidth = DefaultChartWidth - (HorizontalPadding * 2);
     private int _chartWidth = DefaultChartWidth;
 
@@ -45,6 +47,7 @@ public sealed class ProxyBatchComparisonChartRenderService
         var chartHeight = (int)Math.Ceiling(HeaderHeight + TableHeaderHeight + FooterHeight + (ordered.Length * RowHeight) + 18);
         var chatLatencyMax = PickChatLatencyMax(ordered);
         var ttftMax = PickTtftMax(ordered);
+        var tokensPerSecondMax = PickTokensPerSecondMax(ordered);
 
         DrawingVisual visual = new();
         using (var context = visual.RenderOpen())
@@ -55,7 +58,7 @@ public sealed class ProxyBatchComparisonChartRenderService
 
             for (var index = 0; index < ordered.Length; index++)
             {
-                DrawRow(context, ordered[index], index, HeaderHeight + TableHeaderHeight + (index * RowHeight), chatLatencyMax, ttftMax);
+                DrawRow(context, ordered[index], index, HeaderHeight + TableHeaderHeight + (index * RowHeight), chatLatencyMax, tokensPerSecondMax, ttftMax);
             }
 
             DrawFooter(context, chartHeight);
@@ -68,7 +71,7 @@ public sealed class ProxyBatchComparisonChartRenderService
         var best = ordered[0];
         var summary =
             $"入口组对比图已生成：共 {ordered.Length} 个 URL，已累计 {ordered.Max(item => item.RunCount)} 轮整组，当前推荐 {best.Name}，" +
-            $"平均普通延迟 {FormatMilliseconds(best.ChatLatencyMs)}，平均 TTFT {FormatMilliseconds(best.TtftMs)}，综合能力 {best.StabilityText}，稳定性 {BuildStabilityLabel(best)}。";
+            $"平均普通延迟 {FormatMilliseconds(best.ChatLatencyMs)}，每秒生成 token 数 {FormatTokensPerSecond(best.TokensPerSecond)}，平均 TTFT {FormatMilliseconds(best.TtftMs)}，综合能力 {best.StabilityText}，稳定性 {BuildStabilityLabel(best)}。";
 
         return new ProxyTrendChartRenderResult(true, summary, bitmap, null);
     }
@@ -83,7 +86,7 @@ public sealed class ProxyBatchComparisonChartRenderService
         var best = items[0];
         var roundCount = items.Max(item => item.RunCount);
         var subtitle =
-            $"累计 {roundCount} 轮整组测试，共 {items.Count} 个 URL；TOP 1：{TrimText(best.Name, 26)}  |  平均普通 {FormatMilliseconds(best.ChatLatencyMs)}  |  平均 TTFT {FormatMilliseconds(best.TtftMs)}  |  {BuildStabilityLabel(best)}";
+            $"累计 {roundCount} 轮整组测试，共 {items.Count} 个 URL；TOP 1：{TrimText(best.Name, 26)}  |  平均普通 {FormatMilliseconds(best.ChatLatencyMs)}  |  tok/s {FormatTokensPerSecond(best.TokensPerSecond)}  |  平均 TTFT {FormatMilliseconds(best.TtftMs)}  |  {BuildStabilityLabel(best)}";
         DrawText(context, subtitle, new Point(ScaleX(30), 48), 11.5, FontWeights.Normal, CreateBrush(102, 112, 133));
     }
 
@@ -95,6 +98,7 @@ public sealed class ProxyBatchComparisonChartRenderService
         DrawText(context, "排名", new Point(ScaleX(RankColumnX), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
         DrawText(context, "入口 / URL", new Point(ScaleX(EntryColumnX), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
         DrawText(context, "平均普通延迟", new Point(ScaleX(ChatBarX + 4), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "每秒生成 token 数", new Point(ScaleX(TokensBarX + 4), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
         DrawText(context, "平均 TTFT", new Point(ScaleX(TtftBarX + 4), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
         DrawText(context, "稳定性", new Point(ScaleX(StabilityBarX + 4), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
         DrawText(context, "结论", new Point(ScaleX(VerdictColumnX + 8), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
@@ -106,6 +110,7 @@ public sealed class ProxyBatchComparisonChartRenderService
         int index,
         double top,
         double chatLatencyMax,
+        double tokensPerSecondMax,
         double ttftMax)
     {
         var rect = new Rect(HorizontalPadding, top, _chartWidth - (HorizontalPadding * 2), RowHeight - 4);
@@ -126,6 +131,13 @@ public sealed class ProxyBatchComparisonChartRenderService
             chatLatencyMax,
             FormatMilliseconds(item.ChatLatencyMs),
             Color.FromRgb(37, 99, 235));
+        DrawBarCell(
+            context,
+            new Rect(ScaleX(TokensBarX), top + 12, ScaleWidth(TokensBarWidth), 16),
+            item.TokensPerSecond ?? 0,
+            tokensPerSecondMax,
+            FormatTokensPerSecond(item.TokensPerSecond),
+            Color.FromRgb(124, 58, 237));
         DrawBarCell(
             context,
             new Rect(ScaleX(TtftBarX), top + 12, ScaleWidth(TtftBarWidth), 16),
@@ -223,7 +235,7 @@ public sealed class ProxyBatchComparisonChartRenderService
     {
         DrawText(
             context,
-            "读图说明：蓝条比较平均普通对话延迟，橙条比较平均 TTFT，越长代表越快；绿条显示入口组综合能力，第二行补充基础/增强拆分，深度测试请看单次图表。",
+            "读图说明：蓝条比较平均普通对话延迟，越长代表越快；紫条比较每秒生成 token 数，越长代表生成越快（快速测试默认按 3 次采样均值）；橙条比较平均 TTFT，越长代表首字响应越快；绿条显示入口组综合能力。",
             new Point(20, chartHeight - 22),
             10.4,
             FontWeights.Normal,
@@ -294,6 +306,9 @@ public sealed class ProxyBatchComparisonChartRenderService
     private static string FormatMilliseconds(double? value)
         => value.HasValue ? $"{value.Value:F0} ms" : "--";
 
+    private static string FormatTokensPerSecond(double? value)
+        => value.HasValue ? $"{value.Value:F1} tok/s" : "--";
+
     private static double PickTtftMax(IEnumerable<ProxyBatchComparisonChartItem> items)
     {
         var maxObserved = items
@@ -304,6 +319,18 @@ public sealed class ProxyBatchComparisonChartRenderService
             .Max();
 
         return Math.Max(600, Math.Ceiling(maxObserved * 1.15 / 100d) * 100d);
+    }
+
+    private static double PickTokensPerSecondMax(IEnumerable<ProxyBatchComparisonChartItem> items)
+    {
+        var maxObserved = items
+            .Select(item => item.TokensPerSecond)
+            .Where(value => value.HasValue)
+            .Select(value => value!.Value)
+            .DefaultIfEmpty(12)
+            .Max();
+
+        return Math.Max(6, Math.Ceiling(maxObserved * 1.15));
     }
 
     private static double PickChatLatencyMax(IEnumerable<ProxyBatchComparisonChartItem> items)

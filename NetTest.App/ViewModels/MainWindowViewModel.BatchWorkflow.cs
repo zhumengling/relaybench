@@ -116,13 +116,14 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        await ExecuteBusyActionAsync($"正在对 {selectedRows.Length} 个候选站点执行深度测试...", async () =>
+        await ExecuteProxyBusyActionAsync($"正在对 {selectedRows.Length} 个候选站点执行深度测试...", async cancellationToken =>
         {
             var executionPlan = BuildDeepProxySingleExecutionPlan();
             StartBatchDeepComparisonLiveSession(selectedRows, executionPlan);
 
             for (var index = 0; index < selectedRows.Length; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var row = selectedRows[index];
                 PrepareBatchDeepRowForExecution(row, index, selectedRows.Length);
                 StatusMessage = $"正在执行候选深度测试 {index + 1}/{selectedRows.Length}：{row.EntryName}";
@@ -134,8 +135,13 @@ public sealed partial class MainWindowViewModel
                         BuildBatchProxySettings(row),
                         progress,
                         executionPlan,
-                        updateSingleChartPhases: false);
+                        updateSingleChartPhases: false,
+                        cancellationToken: cancellationToken);
                     ApplyBatchDeepTestResult(row, result, executionPlan);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -255,7 +261,7 @@ public sealed partial class MainWindowViewModel
     }
 
     private static string BuildBatchRankingQuickMetrics(ProxyBatchAggregateRow row)
-        => $"平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)} | 平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)} | 平均速率 {FormatTokensPerSecond(row.AverageStreamTokensPerSecond)}";
+        => $"平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)} | 平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)} | 平均速率（三次均值） {FormatTokensPerSecond(row.AverageStreamTokensPerSecond)}";
 
     private static string BuildBatchRankingCapabilitySummary(ProxyBatchAggregateRow row)
         => $"{BuildBatchStabilityLabel(row)} | 综合能力 {FormatBatchDisplayedCapabilityAverage(row)} | {BuildBatchCapabilityBreakdown(row, includeDeepHint: false)}";

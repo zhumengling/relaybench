@@ -164,6 +164,7 @@ public sealed partial class MainWindowViewModel
                 FormatBatchDisplayedCapabilityAverage(row),
                 row.AverageTtftMs,
                 row.AverageChatLatencyMs,
+                row.AverageStreamTokensPerSecond,
                 row.LatestResult.Verdict ?? "待复核",
                 BuildProxyBatchAggregateSecondaryText(row),
                 row.RunCount))
@@ -175,7 +176,7 @@ public sealed partial class MainWindowViewModel
             rows
                 .Take(maxCount)
                 .Select((row, index) =>
-                    $"TOP {index + 1}  {row.Entry.Name}  |  平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)}  |  平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)}  |  综合能力 {FormatBatchDisplayedCapabilityAverage(row)}  |  {BuildBatchCapabilityBreakdown(row, includeDeepHint: false)}"));
+                    $"TOP {index + 1}  {row.Entry.Name}  |  平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)}  |  平均速率 {FormatTokensPerSecond(row.AverageStreamTokensPerSecond)}  |  平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)}  |  综合能力 {FormatBatchDisplayedCapabilityAverage(row)}  |  {BuildBatchCapabilityBreakdown(row, includeDeepHint: false)}"));
 
     private static string BuildProxyBatchCapabilitySummaryText(IReadOnlyList<ProxyBatchAggregateRow> rows, string heading)
     {

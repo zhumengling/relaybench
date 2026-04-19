@@ -6,7 +6,7 @@ namespace NetTest.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    private async Task RunProxyBatchCoreAsync()
+    private async Task RunProxyBatchCoreAsync(CancellationToken cancellationToken)
     {
         IsProxyBatchEditorOpen = false;
 
@@ -37,7 +37,8 @@ public sealed partial class MainWindowViewModel
             enableLongStreamingTest,
             longStreamSegmentCount,
             progress,
-            rowProgress);
+            rowProgress,
+            cancellationToken);
 
         _proxyBatchChartRuns.Add(rows.ToArray());
         ApplyProxyBatchResults(_proxyBatchChartRuns, plan);
@@ -92,6 +93,7 @@ public sealed partial class MainWindowViewModel
             .Count();
         var inlineKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.Entry);
         var siteGroupKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.SiteGroup);
+        var batchDefaultKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.BatchDefault);
         var defaultKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.Default);
 
         ProxyBatchSummary =
@@ -101,7 +103,7 @@ public sealed partial class MainWindowViewModel
             $"独立条目：{standaloneCount}\n" +
             $"站点组子入口：{groupedCount}\n" +
             $"站点组数量：{siteGroupCount}\n" +
-            $"密钥来源：条目内 {inlineKeyCount} 项 / 站点组继承 {siteGroupKeyCount} 项 / 默认密钥回退 {defaultKeyCount} 项\n" +
+            $"密钥来源：条目内 {inlineKeyCount} 项 / 站点组继承 {siteGroupKeyCount} 项 / 批量默认 key 回退 {batchDefaultKeyCount} 项 / 主页默认 key 回退 {defaultKeyCount} 项\n" +
             $"累计采样：{allRows.Length} 条\n" +
             $"/models 通过：{modelsSuccessCount}/{allRows.Length}\n" +
             $"普通对话通过：{chatSuccessCount}/{allRows.Length}\n" +
@@ -155,7 +157,7 @@ public sealed partial class MainWindowViewModel
             builder.AppendLine($"最近一轮普通对话：{(row.value.LatestResult.ChatRequestSucceeded ? "成功" : "失败")} / 延迟 {FormatMilliseconds(row.value.LatestResult.ChatLatency)}");
             builder.AppendLine($"最近一轮流式对话：{(row.value.LatestResult.StreamRequestSucceeded ? "成功" : "失败")} / 首 Token {FormatMilliseconds(row.value.LatestResult.StreamFirstTokenLatency)}");
             var latestStreamScenario = FindScenario(GetScenarioResults(row.value.LatestResult), ProxyProbeScenarioKind.ChatCompletionsStream);
-            builder.AppendLine($"最近一轮输出速率：{FormatTokensPerSecond(latestStreamScenario?.OutputTokensPerSecond, latestStreamScenario?.OutputTokenCountEstimated == true)} / 输出 {latestStreamScenario?.OutputTokenCount?.ToString() ?? "--"} token");
+            builder.AppendLine($"最近一轮输出速率：{FormatTokensPerSecond(latestStreamScenario?.OutputTokensPerSecond, latestStreamScenario?.OutputTokenCountEstimated == true, latestStreamScenario?.OutputTokensPerSecondSampleCount ?? 1)} / 输出 {latestStreamScenario?.OutputTokenCount?.ToString() ?? "--"} token");
             builder.AppendLine($"最近一轮 Responses：{FormatScenarioStatus(FindScenario(GetScenarioResults(row.value.LatestResult), ProxyProbeScenarioKind.Responses))}");
             builder.AppendLine($"最近一轮结构化输出：{FormatScenarioStatus(FindScenario(GetScenarioResults(row.value.LatestResult), ProxyProbeScenarioKind.StructuredOutput))}");
             if (row.value.LatestResult.LongStreamingResult is { } longStreamingResult)

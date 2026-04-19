@@ -8,6 +8,7 @@ public sealed record ProxyBatchComparisonChartItem(
     string StabilityText,
     double? TtftMs,
     double? ChatLatencyMs,
+    double? TokensPerSecond,
     string Verdict,
     string SecondaryText,
     int RunCount);

@@ -446,7 +446,7 @@ public sealed partial class MainWindowViewModel
 
         if (scenario?.OutputTokensPerSecond is not null)
         {
-            parts.Add($"速率 {FormatTokensPerSecond(scenario.OutputTokensPerSecond, scenario.OutputTokenCountEstimated)}");
+            parts.Add($"速率 {FormatTokensPerSecond(scenario.OutputTokensPerSecond, scenario.OutputTokenCountEstimated, scenario.OutputTokensPerSecondSampleCount)}");
         }
 
         var outputCount = FormatOutputCount(scenario);

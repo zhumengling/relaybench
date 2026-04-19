@@ -28,45 +28,31 @@ public sealed partial class StunProbeService
         IPEndPoint? localEndpoint,
         StunResponse primaryResponse,
         BindingTestOutcome changeIpPortTest,
+        bool changeRequestConfirmed,
         BindingTestOutcome? alternateBasicTest,
         BindingTestOutcome? changePortOnlyTest)
     {
         var behindNat = !IsSameEndpoint(localEndpoint, primaryResponse.MappedEndPoint);
+        var mappingChangedOnAlternate =
+            alternateBasicTest?.Success == true &&
+            alternateBasicTest.Response is not null &&
+            !string.Equals(primaryResponse.MappedAddress, alternateBasicTest.Response.MappedAddress, StringComparison.OrdinalIgnoreCase);
 
-        if (!behindNat)
-        {
-            return changeIpPortTest.Success ? "开放互联网" : "对称 UDP 防火墙 / 过滤未知";
-        }
-
-        if (changeIpPortTest.Success)
-        {
-            return "完全锥形 NAT";
-        }
-
-        if (alternateBasicTest?.Success == true && alternateBasicTest.Response is not null)
-        {
-            if (!string.Equals(primaryResponse.MappedAddress, alternateBasicTest.Response.MappedAddress, StringComparison.OrdinalIgnoreCase))
-            {
-                return "对称 NAT";
-            }
-
-            if (changePortOnlyTest?.Success == true)
-            {
-                return "受限锥形 NAT";
-            }
-
-            return "端口受限锥形 NAT";
-        }
-
-        return primaryResponse.AlternateEndpoint is null
-            ? "NAT 已检测到，但服务器能力不足，无法细分类型"
-            : "NAT 已检测到，但辅助测试不足，类型待复核";
+        return StunNatClassificationHelper.ClassifyUdpNatType(
+            behindNat,
+            changeIpPortTest.Success,
+            changeRequestConfirmed,
+            primaryResponse.AlternateEndpoint is not null,
+            alternateBasicTest?.Success == true,
+            mappingChangedOnAlternate,
+            changePortOnlyTest?.Success == true);
     }
 
     private static string BuildNatTypeSummary(
         string natType,
         BindingTestOutcome primaryTest,
         BindingTestOutcome changeIpPortTest,
+        bool changeRequestConfirmed,
         BindingTestOutcome? alternateBasicTest,
         BindingTestOutcome? changePortOnlyTest)
     {
@@ -74,7 +60,7 @@ public sealed partial class StunProbeService
         [
             $"归类结果：{natType}。",
             $"测试 I：{(primaryTest.Success ? "成功" : "失败")}。",
-            $"测试 II：{(changeIpPortTest.Success ? "成功" : "失败")}。"
+            $"测试 II：{DescribeChangeRequestOutcome(changeIpPortTest, changeRequestConfirmed)}。"
         ];
 
         if (alternateBasicTest is not null)
@@ -94,6 +80,7 @@ public sealed partial class StunProbeService
     private static string BuildClassificationConfidence(
         StunResponse primaryResponse,
         BindingTestOutcome changeIpPortTest,
+        bool changeRequestConfirmed,
         BindingTestOutcome? alternateBasicTest,
         BindingTestOutcome? changePortOnlyTest)
     {
@@ -102,7 +89,7 @@ public sealed partial class StunProbeService
             return "低：当前 STUN 服务器未提供 OTHER-ADDRESS / CHANGED-ADDRESS，只能完成基础映射判断。";
         }
 
-        if (changeIpPortTest.Success && alternateBasicTest?.Success == true && changePortOnlyTest?.Success == true)
+        if (changeRequestConfirmed && alternateBasicTest?.Success == true && changePortOnlyTest?.Success == true)
         {
             return "高：基础 Binding、切换 IP/端口、备用地址复测与切换端口测试都已完成。";
         }
@@ -112,7 +99,12 @@ public sealed partial class StunProbeService
             return "中：已具备备用地址复测，但过滤行为仍可能偏保守，建议结合复测确认。";
         }
 
-        if (changeIpPortTest.Success)
+        if (changeIpPortTest.Success && !changeRequestConfirmed)
+        {
+            return "低：CHANGE-REQUEST 收到了响应，但服务器没有证明自己真的切换了响应地址。";
+        }
+
+        if (changeRequestConfirmed)
         {
             return "中：已确认 CHANGE-REQUEST 可响应，但备用地址链路不完整。";
         }
@@ -124,13 +116,14 @@ public sealed partial class StunProbeService
         StunResponse primaryResponse,
         BindingTestOutcome primaryTest,
         BindingTestOutcome changeIpPortTest,
+        bool changeRequestConfirmed,
         BindingTestOutcome? alternateBasicTest,
         BindingTestOutcome? changePortOnlyTest)
     {
         List<string> parts =
         [
             $"测试 I 基础 Binding：{(primaryTest.Success ? "完成" : "失败")}",
-            $"测试 II 切换 IP/端口：{(changeIpPortTest.Success ? "完成" : "失败")}",
+            $"测试 II 切换 IP/端口：{DescribeChangeRequestOutcome(changeIpPortTest, changeRequestConfirmed)}",
             $"服务器是否给出备用地址：{(primaryResponse.AlternateEndpoint is null ? "否" : $"是（{primaryResponse.AlternateEndpoint}）")}",
             $"测试 I' 备用地址 Binding：{DescribeOptionalCoverage(alternateBasicTest)}",
             $"测试 III 切换端口：{DescribeOptionalCoverage(changePortOnlyTest)}"
@@ -146,6 +139,7 @@ public sealed partial class StunProbeService
     private static string BuildReviewRecommendation(
         StunResponse primaryResponse,
         BindingTestOutcome changeIpPortTest,
+        bool changeRequestConfirmed,
         BindingTestOutcome? alternateBasicTest,
         BindingTestOutcome? changePortOnlyTest,
         string natType)
@@ -153,6 +147,11 @@ public sealed partial class StunProbeService
         if (primaryResponse.AlternateEndpoint is null)
         {
             return "当前服务器更像普通 STUN，只能确认公网映射，无法完整区分受限锥形、端口受限锥形与更细过滤行为；建议换一个支持 RFC 5780 的 STUN 服务器复测。";
+        }
+
+        if (changeIpPortTest.Success && !changeRequestConfirmed)
+        {
+            return "服务器对 CHANGE-REQUEST 的支持未被确认，当前结果不能直接当作完全锥形 NAT；建议换一个支持 RFC 5780 的 UDP STUN 服务器复测。";
         }
 
         if (!changeIpPortTest.Success && alternateBasicTest?.Success != true)
@@ -183,6 +182,49 @@ public sealed partial class StunProbeService
         }
 
         return outcome.Success ? "完成" : $"失败（{outcome.Error ?? "未返回响应"}）";
+    }
+
+    private static string DescribeChangeRequestOutcome(BindingTestOutcome outcome, bool confirmed)
+    {
+        if (!outcome.Success)
+        {
+            return "失败";
+        }
+
+        return confirmed
+            ? "完成，且已确认切换"
+            : "收到响应，但未确认切换";
+    }
+
+    private static bool WasChangeRequestConfirmed(
+        IPEndPoint primaryEndpoint,
+        StunResponse primaryResponse,
+        BindingTestOutcome changeIpPortTest)
+    {
+        if (!changeIpPortTest.Success || changeIpPortTest.Response is null)
+        {
+            return false;
+        }
+
+        var alternateEndpoint = primaryResponse.AlternateEndpoint;
+        if (alternateEndpoint is not null)
+        {
+            if (IsSameEndpoint(changeIpPortTest.RespondingEndpoint, alternateEndpoint) ||
+                IsSameEndpoint(changeIpPortTest.Response.ResponseOriginEndpoint, alternateEndpoint))
+            {
+                return true;
+            }
+        }
+
+        if (changeIpPortTest.RespondingEndpoint is not null &&
+            !IsSameEndpoint(changeIpPortTest.RespondingEndpoint, primaryEndpoint))
+        {
+            return true;
+        }
+
+        return primaryResponse.ResponseOriginEndpoint is not null &&
+               changeIpPortTest.Response.ResponseOriginEndpoint is not null &&
+               !IsSameEndpoint(primaryResponse.ResponseOriginEndpoint, changeIpPortTest.Response.ResponseOriginEndpoint);
     }
 
     private static bool IsSameEndpoint(IPEndPoint? localEndpoint, IPEndPoint? mappedEndPoint)

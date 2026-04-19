@@ -10,6 +10,7 @@ public sealed partial class MainWindowViewModel
     {
         var defaultBaseUrl = ProxyBaseUrl.Trim();
         var defaultApiKey = ProxyApiKey.Trim();
+        var batchDefaultApiKey = NormalizeNullable(ProxyBatchFormSiteGroupApiKey);
         var defaultModel = NormalizeNullable(ProxyModel);
         var sourceEntries = ParseProxyBatchSourceEntries(ProxyBatchTargetsText, allowEmpty: true);
         var usesFallbackDefaultEntry = false;
@@ -43,28 +44,31 @@ public sealed partial class MainWindowViewModel
         List<ProxyBatchTargetEntry> targets = [];
         foreach (var sourceEntry in sourceEntries)
         {
-            var effectiveApiKey = FirstNonEmpty(sourceEntry.ApiKey, sourceEntry.SiteGroupApiKey, defaultApiKey);
+            var effectiveApiKey = FirstNonEmpty(sourceEntry.ApiKey, sourceEntry.SiteGroupApiKey, batchDefaultApiKey, defaultApiKey);
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
             {
-                throw new InvalidOperationException($"条目“{sourceEntry.Name}”缺少可用密钥。请在该条目里填 key，或在主页填写默认 key。");
+                throw new InvalidOperationException($"条目“{sourceEntry.Name}”缺少可用密钥。请先在右侧表格里填写该行 key，或使用主页默认 key。");
             }
 
             var effectiveModel = FirstNonEmpty(sourceEntry.Model, sourceEntry.SiteGroupModel, defaultModel);
             if (string.IsNullOrWhiteSpace(effectiveModel))
             {
                 throw new InvalidOperationException(
-                    $"条目“{BuildBatchProbeDisplayName(sourceEntry.Name, sourceEntry.SiteGroupName)}”缺少模型。请先在主页默认模型或入口组模型栏点击“拉取并选择模型”。");
+                    $"条目“{BuildBatchProbeDisplayName(sourceEntry.Name, sourceEntry.SiteGroupName)}”缺少模型。请先在主页默认模型里选择，或在右侧表格最后一列为该行拉取 / 填写模型。");
             }
 
             var keySource = !string.IsNullOrWhiteSpace(sourceEntry.ApiKey)
                 ? ProxyBatchKeySource.Entry
                 : !string.IsNullOrWhiteSpace(sourceEntry.SiteGroupApiKey)
                     ? ProxyBatchKeySource.SiteGroup
-                    : ProxyBatchKeySource.Default;
+                    : !string.IsNullOrWhiteSpace(batchDefaultApiKey)
+                        ? ProxyBatchKeySource.BatchDefault
+                        : ProxyBatchKeySource.Default;
             var apiKeyAlias = keySource switch
             {
-                ProxyBatchKeySource.Entry => "本条目 key",
-                ProxyBatchKeySource.SiteGroup => $"同站组 {sourceEntry.SiteGroupName}",
+                ProxyBatchKeySource.Entry => "本行 key",
+                ProxyBatchKeySource.SiteGroup => $"站点内继承（{sourceEntry.SiteGroupName}）",
+                ProxyBatchKeySource.BatchDefault => "已带入的默认 key",
                 _ => "主页默认 key"
             };
 
@@ -123,7 +127,7 @@ public sealed partial class MainWindowViewModel
             var isGroupChild = TryStripGroupEntryMarker(rawLine, out var normalizedLine);
             if (isGroupChild && currentSiteGroup is null)
             {
-                throw new InvalidOperationException("发现了同站子入口，但前面还没有站点组。请先添加同站组名称和共用 key。");
+                throw new InvalidOperationException("发现了站点子入口，但前面还没有对应的站点头，请先检查保存前的数据格式。");
             }
 
             var parts = normalizedLine.Split('|')
@@ -194,7 +198,7 @@ public sealed partial class MainWindowViewModel
             var name = parts[1];
             if (string.IsNullOrWhiteSpace(name))
             {
-                throw new InvalidOperationException("站点组缺少名称。请填写“同站组名称”。");
+                throw new InvalidOperationException("站点头缺少名称，请检查入口组数据格式。");
             }
 
             siteGroup = new ProxyBatchSiteGroupContext(

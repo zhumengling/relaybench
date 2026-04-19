@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using NetTest.App.Infrastructure;
+using NetTest.App.Services;
 
 namespace NetTest.App.ViewModels;
 
@@ -16,7 +17,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<ProxyBatchEditorItemViewModel> ProxyBatchEditorItems { get; } = [];
 
+    public ObservableCollection<ProxyBatchEditorItemViewModel> ProxyBatchTemplateDraftItems { get; } = [];
+
+    public ObservableCollection<ProxyBatchSiteGroupViewModel> ProxyBatchSiteGroups { get; } = [];
+
     public ObservableCollection<ProxyBatchRankingRowViewModel> ProxyBatchRankingRows { get; } = [];
+
+    public ObservableCollection<SelectionOption> StunTransportOptions { get; } =
+        new(StunServerPresetCatalog.BuildTransportOptions());
+
+    public ObservableCollection<SelectionOption> VisibleStunServerOptions { get; } = [];
 
     public ObservableCollection<SelectionOption> WorkbenchPageOptions { get; } =
     [
@@ -85,6 +95,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand ResetProxyBatchEditorFormCommand { get; }
 
+    public AsyncRelayCommand PreviewProxyBatchSharedImportCommand { get; }
+
+    public AsyncRelayCommand ImportProxyBatchSharedEntriesCommand { get; }
+
+    public AsyncRelayCommand PreviewProxyBatchIndependentImportCommand { get; }
+
+    public AsyncRelayCommand ImportProxyBatchIndependentEntriesCommand { get; }
+
+    public AsyncRelayCommand AddProxyBatchTemplateRowCommand { get; }
+
+    public AsyncRelayCommand PasteProxyBatchTemplateRowsCommand { get; }
+
+    public AsyncRelayCommand ApplyProxyBatchTemplateDefaultsCommand { get; }
+
+    public AsyncRelayCommand ClearProxyBatchTemplateEmptyRowsCommand { get; }
+
+    public AsyncRelayCommand<ProxyBatchEditorItemViewModel?> FetchProxyBatchTemplateRowModelsCommand { get; }
+
     public AsyncRelayCommand CloseProxyModelPickerCommand { get; }
 
     public AsyncRelayCommand OpenProxyTrendChartCommand { get; }
@@ -94,6 +122,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand OpenBatchDeepComparisonChartCommand { get; }
 
     public AsyncRelayCommand CloseProxyTrendChartCommand { get; }
+
+    public AsyncRelayCommand StopCurrentProxyTestCommand { get; }
 
     public AsyncRelayCommand RetryProxyChartCommand { get; }
 

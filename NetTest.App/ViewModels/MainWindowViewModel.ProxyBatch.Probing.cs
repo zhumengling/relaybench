@@ -12,7 +12,8 @@ public sealed partial class MainWindowViewModel
         bool enableLongStreamingTest,
         int longStreamSegmentCount,
         IProgress<string>? progress,
-        IProgress<ProxyBatchProbeRow>? rowProgress)
+        IProgress<ProxyBatchProbeRow>? rowProgress,
+        CancellationToken cancellationToken = default)
     {
         var concurrency = Math.Clamp(entries.Count, 1, 4);
         using SemaphoreSlim gate = new(concurrency, concurrency);
@@ -20,9 +21,12 @@ public sealed partial class MainWindowViewModel
 
         var tasks = entries.Select(async entry =>
         {
-            await gate.WaitAsync();
+            var enteredGate = false;
+            await gate.WaitAsync(cancellationToken);
+            enteredGate = true;
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var settings = new ProxyEndpointSettings(
                     entry.BaseUrl,
                     entry.ApiKey,
@@ -31,7 +35,10 @@ public sealed partial class MainWindowViewModel
                     timeoutSeconds);
 
                 progress?.Report($"正在探测 {entry.Name}：基础兼容性诊断...");
-                var result = await _proxyDiagnosticsService.RunAsync(settings);
+                var result = await _proxyDiagnosticsService.RunAsync(
+                    settings,
+                    cancellationToken: cancellationToken,
+                    streamThroughputSampleCount: 3);
                 if (enableLongStreamingTest)
                 {
                     progress?.Report($"正在探测 {entry.Name}：长流稳定简测（{longStreamSegmentCount} 段）...");
@@ -40,7 +47,8 @@ public sealed partial class MainWindowViewModel
                         : settings with { Model = result.EffectiveModel };
                     var longStreamingResult = await _proxyDiagnosticsService.RunLongStreamingTestAsync(
                         longStreamingSettings,
-                        longStreamSegmentCount);
+                        longStreamSegmentCount,
+                        cancellationToken);
                     result = result with { LongStreamingResult = longStreamingResult };
                 }
 
@@ -52,7 +60,10 @@ public sealed partial class MainWindowViewModel
             }
             finally
             {
-                gate.Release();
+                if (enteredGate)
+                {
+                    gate.Release();
+                }
             }
         });
 

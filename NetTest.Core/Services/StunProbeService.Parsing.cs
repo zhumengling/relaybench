@@ -151,6 +151,8 @@ public sealed partial class StunProbeService
         string RequestMode,
         bool Success,
         IPEndPoint? LocalEndpoint,
+        IPEndPoint? RequestEndpoint,
+        IPEndPoint? RespondingEndpoint,
         StunResponse? Response,
         TimeSpan? RoundTrip,
         string Summary,

@@ -1,4 +1,5 @@
 ﻿using NetTest.App.Infrastructure;
+using NetTest.App.Services;
 
 namespace NetTest.App.ViewModels;
 
@@ -19,6 +20,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 FetchProxyModelsCommand.RaiseCanExecuteChanged();
                 FetchProxyBatchSharedModelsCommand.RaiseCanExecuteChanged();
                 FetchProxyBatchEntryModelsCommand.RaiseCanExecuteChanged();
+                AddProxyBatchTemplateRowCommand.RaiseCanExecuteChanged();
+                PasteProxyBatchTemplateRowsCommand.RaiseCanExecuteChanged();
+                ApplyProxyBatchTemplateDefaultsCommand.RaiseCanExecuteChanged();
+                ClearProxyBatchTemplateEmptyRowsCommand.RaiseCanExecuteChanged();
+                FetchProxyBatchTemplateRowModelsCommand.RaiseCanExecuteChanged();
                 OpenProxyBatchEditorCommand.RaiseCanExecuteChanged();
                 RunProxyCommand.RaiseCanExecuteChanged();
                 RunProxyDeepCommand.RaiseCanExecuteChanged();
@@ -27,6 +33,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 RunProxyBatchCommand.RaiseCanExecuteChanged();
                 RunSelectedBatchDeepTestsCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(CanRunSelectedBatchDeepTests));
+                StopCurrentProxyTestCommand.RaiseCanExecuteChanged();
+                OnPropertyChanged(nameof(CanStopCurrentProxyTest));
                 RetryProxyChartCommand.RaiseCanExecuteChanged();
                 ToggleProxyChartViewCommand.RaiseCanExecuteChanged();
                 ToggleProxyChartImageOnlyModeCommand.RaiseCanExecuteChanged();
@@ -94,10 +102,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
         private set => SetProperty(ref _chatGptRawTrace, value);
     }
 
+    public string SelectedStunTransportKey
+    {
+        get => _selectedStunTransportKey;
+        set
+        {
+            var normalized = StunServerPresetCatalog.ResolveTransportKey(value, StunServer);
+            if (SetProperty(ref _selectedStunTransportKey, normalized))
+            {
+                RefreshStunServerOptions(syncCurrentHost: true);
+            }
+        }
+    }
+
     public string StunServer
     {
         get => _stunServer;
-        set => SetProperty(ref _stunServer, value);
+        set => SetProperty(ref _stunServer, NormalizeStunServerHost(value));
     }
 
     public string StunSummary
@@ -189,6 +210,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public bool HasProxyChartRetryAction
         => _proxyChartRetryMode is not ProxyChartRetryMode.None;
+
+    public bool CanStopCurrentProxyTest
+        => IsBusy &&
+           _currentProxyOperationCancellationSource is { IsCancellationRequested: false };
 
     public string ProxyChartRetryButtonText
     {

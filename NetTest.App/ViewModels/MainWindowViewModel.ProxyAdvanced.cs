@@ -552,7 +552,7 @@ public sealed partial class MainWindowViewModel
             : FindScenario(GetScenarioResults(referenceResult), ProxyProbeScenarioKind.ChatCompletionsStream);
         ProxyOverviewThroughput = streamScenario is null
             ? "速率 --"
-            : $"{FormatTokensPerSecond(streamScenario.OutputTokensPerSecond, streamScenario.OutputTokenCountEstimated)} / 输出 {streamScenario.OutputTokenCount?.ToString() ?? "--"}";
+            : $"{FormatTokensPerSecond(streamScenario.OutputTokensPerSecond, streamScenario.OutputTokenCountEstimated, streamScenario.OutputTokensPerSecondSampleCount)} / 输出 {streamScenario.OutputTokenCount?.ToString() ?? "--"}";
 
         var longStreamingResult = preferredSingleResult?.LongStreamingResult ?? preferredBatchResult?.LongStreamingResult;
         ProxyOverviewLongStream = longStreamingResult is null
@@ -574,14 +574,21 @@ public sealed partial class MainWindowViewModel
             $"{FormatMillisecondsDoubleValue(best.AverageChatLatencyMs)} / {FormatTokensPerSecond(best.AverageStreamTokensPerSecond)}";
     }
 
-    private static string FormatTokensPerSecond(double? value, bool estimated = false)
+    private static string FormatTokensPerSecond(double? value, bool estimated = false, int sampleCount = 1)
     {
         if (!value.HasValue)
         {
             return "--";
         }
 
-        return estimated ? $"{value.Value:F1} tok/s（估算）" : $"{value.Value:F1} tok/s";
+        var suffix = sampleCount > 1
+            ? estimated
+                ? $"（{sampleCount}次均值，估算）"
+                : $"（{sampleCount}次均值）"
+            : estimated
+                ? "（估算）"
+                : string.Empty;
+        return $"{value.Value:F1} tok/s{suffix}";
     }
 
     private static string FormatMillisecondsDoubleValue(double? value)

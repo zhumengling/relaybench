@@ -4,6 +4,7 @@ public sealed record StunProbeResult(
     DateTimeOffset CheckedAt,
     string ServerHost,
     int ServerPort,
+    StunTransportProtocol TransportProtocol,
     IReadOnlyList<string> ResolvedAddresses,
     bool Success,
     string? LocalEndpoint,

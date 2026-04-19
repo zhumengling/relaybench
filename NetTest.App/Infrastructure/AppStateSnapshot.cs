@@ -2,6 +2,8 @@
 
 public sealed class AppStateSnapshot
 {
+    public string StunTransportKey { get; set; } = "udp";
+
     public string StunServer { get; set; } = "stun.cloudflare.com";
 
     public string ProxyBaseUrl { get; set; } = string.Empty;

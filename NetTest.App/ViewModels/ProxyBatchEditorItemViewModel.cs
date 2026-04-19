@@ -1,4 +1,4 @@
-﻿using NetTest.App.Infrastructure;
+using NetTest.App.Infrastructure;
 
 namespace NetTest.App.ViewModels;
 
@@ -114,8 +114,20 @@ public sealed class ProxyBatchEditorItemViewModel : ObservableObject
         }
     }
 
+    public string ResolvedEntryName
+        => string.IsNullOrWhiteSpace(EntryName)
+            ? BuildFallbackEntryName(BaseUrl)
+            : EntryName.Trim();
+
+    public string TemplateStatus
+        => string.IsNullOrWhiteSpace(BaseUrl)
+            ? "缺 URL"
+            : LooksLikeUrl(BaseUrl)
+                ? "有效"
+                : "URL 无效";
+
     public string DisplayTitle
-        => string.IsNullOrWhiteSpace(SiteGroupName) ? EntryName : $"{SiteGroupName} / {EntryName}";
+        => string.IsNullOrWhiteSpace(SiteGroupName) ? ResolvedEntryName : $"{SiteGroupName} / {ResolvedEntryName}";
 
     public string KeyDisplay
     {
@@ -158,6 +170,8 @@ public sealed class ProxyBatchEditorItemViewModel : ObservableObject
 
     private void NotifySummaryChanged()
     {
+        OnPropertyChanged(nameof(ResolvedEntryName));
+        OnPropertyChanged(nameof(TemplateStatus));
         OnPropertyChanged(nameof(DisplayTitle));
         OnPropertyChanged(nameof(KeyDisplay));
         OnPropertyChanged(nameof(ModelDisplay));
@@ -168,5 +182,20 @@ public sealed class ProxyBatchEditorItemViewModel : ObservableObject
     {
         var value = apiKey.Trim();
         return value.Length <= 10 ? "******" : $"{value[..6]}...{value[^4..]}";
+    }
+
+    private static bool LooksLikeUrl(string? value)
+        => Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri) &&
+           (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
+    private static string BuildFallbackEntryName(string? baseUrl)
+    {
+        if (Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) &&
+            !string.IsNullOrWhiteSpace(uri.Host))
+        {
+            return uri.Host;
+        }
+
+        return "未命名入口";
     }
 }

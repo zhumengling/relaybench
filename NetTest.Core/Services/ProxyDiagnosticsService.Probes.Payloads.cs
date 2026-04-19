@@ -739,7 +739,7 @@ public sealed partial class ProxyDiagnosticsService
             ? 0
             : TokenCountEstimator.EstimateOutputTokens(normalizedText);
         var effectiveTokenCount = usageTokenCount ?? (estimatedTokenCount > 0 ? estimatedTokenCount : null);
-        var effectiveGenerationDuration = generationDuration ?? elapsed;
+        var effectiveGenerationDuration = ResolveThroughputWindow(elapsed, generationDuration, effectiveTokenCount);
 
         var outputTokensPerSecond = effectiveTokenCount is > 0 &&
                                     effectiveGenerationDuration > TimeSpan.Zero
@@ -757,6 +757,34 @@ public sealed partial class ProxyDiagnosticsService
             effectiveGenerationDuration,
             outputTokensPerSecond,
             endToEndTokensPerSecond);
+    }
+
+    private static TimeSpan ResolveThroughputWindow(
+        TimeSpan elapsed,
+        TimeSpan? generationDuration,
+        int? outputTokenCount)
+    {
+        var candidate = generationDuration ?? elapsed;
+        if (candidate <= TimeSpan.Zero || elapsed <= TimeSpan.Zero || elapsed <= candidate)
+        {
+            return candidate;
+        }
+
+        // 某些“流式”返回会把全部内容与 [DONE] 一起快速冲进缓冲区，
+        // 这会把首 token 后窗口压到几毫秒甚至更低，进而算出离谱 tok/s。
+        if (candidate < TimeSpan.FromMilliseconds(20))
+        {
+            return elapsed;
+        }
+
+        // 短回复样本本来就不适合用极短生成窗口算吞吐，退回端到端窗口会更稳定。
+        if (outputTokenCount is > 0 and < 8 &&
+            candidate < TimeSpan.FromMilliseconds(120))
+        {
+            return elapsed;
+        }
+
+        return candidate;
     }
 
 }

@@ -23,6 +23,7 @@ public sealed partial class MainWindowViewModel
 
     private void StartSingleProxyChartLiveSession()
     {
+        ResetProxyTrendChartAutoOpenSuppression();
         var executionPlan = GetActiveSingleExecutionPlan();
         SetProxyChartRetryMode(ProxyChartRetryMode.Single, GetSingleProxyChartRetryButtonText());
         var baseUrl = string.IsNullOrWhiteSpace(ProxyBaseUrl) ? "（未填写）" : ProxyBaseUrl.Trim();
@@ -66,7 +67,7 @@ public sealed partial class MainWindowViewModel
                 $"正在初始化{GetSingleProxyExecutionDisplayName()}实时图表...",
                 chartResult.ChartImage),
             activate: true);
-        IsProxyTrendChartOpen = true;
+        AutoOpenProxyTrendChartIfAllowed();
     }
 
     private void UpdateSingleProxyChartLive(ProxyDiagnosticsLiveProgress progress)
@@ -114,7 +115,7 @@ public sealed partial class MainWindowViewModel
                 $"正在等待{GetSingleProxyExecutionDisplayName()}图表数据...",
                 chartResult.ChartImage),
             activate: true);
-        IsProxyTrendChartOpen = true;
+        AutoOpenProxyTrendChartIfAllowed();
     }
 
     private void ShowSingleProxySupplementalChartPhase(ProxyDiagnosticsResult result, string phaseTitle, string phaseStatus)
@@ -149,112 +150,215 @@ public sealed partial class MainWindowViewModel
                 $"正在等待{GetSingleProxyExecutionDisplayName()}图表数据...",
                 chartResult.ChartImage),
             activate: true);
-        IsProxyTrendChartOpen = true;
+        AutoOpenProxyTrendChartIfAllowed();
     }
 
-    private IReadOnlyList<ProxySingleCapabilityChartItem> BuildLiveSingleCapabilityChartItems(
-        IReadOnlyList<ProxyProbeScenarioResult> scenarios,
-        int modelCount,
-        IReadOnlyList<string> sampleModels,
-        int completedBaselineCount,
-        int totalBaselineCount)
-    {
-        var items = BuildSingleCapabilityChartItems(
-            scenarios,
-            modelCount,
-            sampleModels,
-            completedBaselineCount,
-            totalBaselineCount).ToList();
-        var nextOrder = ResolveNextSingleCapabilityOrder(items);
-        AppendCompletedSupplementalCapabilityChartItems(items, ref nextOrder, scenarios);
-        AppendPendingSupplementalCapabilityChartItems(items, ref nextOrder, skipExisting: true);
-        return items;
-    }
-
-    private static void AppendCompletedSupplementalCapabilityChartItems(
-        ICollection<ProxySingleCapabilityChartItem> items,
-        ref int nextOrder,
-        IReadOnlyList<ProxyProbeScenarioResult> scenarios)
-    {
-        AddScenarioChartItemIfPresent(
-            items,
-            ref nextOrder,
-            scenarios,
-            ProxyProbeScenarioKind.StreamingIntegrity,
-            "\u589e\u5f3a\u6d4b\u8bd5",
-            "\u957f\u6d41\u4fdd\u6301\u4e0e\u5185\u5bb9\u5b8c\u6574\u6027",
-            "\u6d41\u5f0f\u5b8c\u6574\u6027",
-            previewOverride: BuildStreamingIntegrityDigest,
-            detailOverride: scenario => BuildScenarioChartDetail(scenario, "SSE \u7247\u6bb5\u5b8c\u6574\u6027"));
-
-        AddScenarioChartItemIfPresent(
-            items,
-            ref nextOrder,
-            scenarios,
-            ProxyProbeScenarioKind.SystemPromptMapping,
-            "\u6df1\u5ea6\u6d4b\u8bd5",
-            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
-            "System Prompt",
-            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u89d2\u8272\u6620\u5c04\u4e0e\u6307\u4ee4\u6ce8\u5165"));
-        AddScenarioChartItemIfPresent(
-            items,
-            ref nextOrder,
-            scenarios,
-            ProxyProbeScenarioKind.FunctionCalling,
-            "\u6df1\u5ea6\u6d4b\u8bd5",
-            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
-            "Function Calling",
-            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u5de5\u5177\u8c03\u7528\u534f\u8bae\u5bf9\u9f50"));
-        AddScenarioChartItemIfPresent(
-            items,
-            ref nextOrder,
-            scenarios,
-            ProxyProbeScenarioKind.ErrorTransparency,
-            "\u6df1\u5ea6\u6d4b\u8bd5",
-            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
-            "\u9519\u8bef\u900f\u4f20",
-            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u4e0a\u6e38\u9519\u8bef\u4e0e\u72b6\u6001\u7801\u6620\u5c04"));
-        AddScenarioChartItemIfPresent(
-            items,
-            ref nextOrder,
-            scenarios,
-            ProxyProbeScenarioKind.OfficialReferenceIntegrity,
-            "\u6df1\u5ea6\u6d4b\u8bd5",
-            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
-            "\u5b98\u65b9\u5bf9\u7167\u5b8c\u6574\u6027",
-            previewOverride: BuildOfficialReferenceIntegrityDigest,
-            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u4e0e\u5b98\u65b9\u8f93\u51fa\u5bf9\u7167"));
-        AddScenarioChartItemIfPresent(
-            items,
-            ref nextOrder,
-            scenarios,
-            ProxyProbeScenarioKind.MultiModal,
-            "\u6df1\u5ea6\u6d4b\u8bd5",
-            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
-            "\u591a\u6a21\u6001",
-            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u56fe\u7247 / \u6587\u4ef6\u900f\u4f20"));
-        AddScenarioChartItemIfPresent(
-            items,
-            ref nextOrder,
-            scenarios,
-            ProxyProbeScenarioKind.CacheMechanism,
-            "\u6df1\u5ea6\u6d4b\u8bd5",
-            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
-            "\u7f13\u5b58\u547d\u4e2d",
-            previewOverride: BuildCacheMechanismDigest,
-            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u91cd\u590d Prompt \u547d\u4e2d\u7f13\u5b58"));
-        AddScenarioChartItemIfPresent(
-            items,
-            ref nextOrder,
-            scenarios,
-            ProxyProbeScenarioKind.CacheIsolation,
-            "\u6df1\u5ea6\u6d4b\u8bd5",
-            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
-            "\u7f13\u5b58\u9694\u79bb",
-            previewOverride: BuildCacheIsolationDigest,
-            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u8de8\u8d26\u6237\u9694\u79bb\u6821\u9a8c"));
-    }
-
+    private IReadOnlyList<ProxySingleCapabilityChartItem> BuildLiveSingleCapabilityChartItems(
+
+        IReadOnlyList<ProxyProbeScenarioResult> scenarios,
+
+        int modelCount,
+
+        IReadOnlyList<string> sampleModels,
+
+        int completedBaselineCount,
+
+        int totalBaselineCount)
+
+    {
+
+        var items = BuildSingleCapabilityChartItems(
+
+            scenarios,
+
+            modelCount,
+
+            sampleModels,
+
+            completedBaselineCount,
+
+            totalBaselineCount).ToList();
+
+        var nextOrder = ResolveNextSingleCapabilityOrder(items);
+
+        AppendCompletedSupplementalCapabilityChartItems(items, ref nextOrder, scenarios);
+
+        AppendPendingSupplementalCapabilityChartItems(items, ref nextOrder, skipExisting: true);
+
+        return items;
+
+    }
+
+
+
+    private static void AppendCompletedSupplementalCapabilityChartItems(
+
+        ICollection<ProxySingleCapabilityChartItem> items,
+
+        ref int nextOrder,
+
+        IReadOnlyList<ProxyProbeScenarioResult> scenarios)
+
+    {
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.StreamingIntegrity,
+
+            "\u589e\u5f3a\u6d4b\u8bd5",
+
+            "\u957f\u6d41\u4fdd\u6301\u4e0e\u5185\u5bb9\u5b8c\u6574\u6027",
+
+            "\u6d41\u5f0f\u5b8c\u6574\u6027",
+
+            previewOverride: BuildStreamingIntegrityDigest,
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "SSE \u7247\u6bb5\u5b8c\u6574\u6027"));
+
+
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.SystemPromptMapping,
+
+            "\u6df1\u5ea6\u6d4b\u8bd5",
+
+            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
+
+            "System Prompt",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u89d2\u8272\u6620\u5c04\u4e0e\u6307\u4ee4\u6ce8\u5165"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.FunctionCalling,
+
+            "\u6df1\u5ea6\u6d4b\u8bd5",
+
+            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
+
+            "Function Calling",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u5de5\u5177\u8c03\u7528\u534f\u8bae\u5bf9\u9f50"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.ErrorTransparency,
+
+            "\u6df1\u5ea6\u6d4b\u8bd5",
+
+            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
+
+            "\u9519\u8bef\u900f\u4f20",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u4e0a\u6e38\u9519\u8bef\u4e0e\u72b6\u6001\u7801\u6620\u5c04"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.OfficialReferenceIntegrity,
+
+            "\u6df1\u5ea6\u6d4b\u8bd5",
+
+            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
+
+            "\u5b98\u65b9\u5bf9\u7167\u5b8c\u6574\u6027",
+
+            previewOverride: BuildOfficialReferenceIntegrityDigest,
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u4e0e\u5b98\u65b9\u8f93\u51fa\u5bf9\u7167"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.MultiModal,
+
+            "\u6df1\u5ea6\u6d4b\u8bd5",
+
+            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
+
+            "\u591a\u6a21\u6001",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u56fe\u7247 / \u6587\u4ef6\u900f\u4f20"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.CacheMechanism,
+
+            "\u6df1\u5ea6\u6d4b\u8bd5",
+
+            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
+
+            "\u7f13\u5b58\u547d\u4e2d",
+
+            previewOverride: BuildCacheMechanismDigest,
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u91cd\u590d Prompt \u547d\u4e2d\u7f13\u5b58"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.CacheIsolation,
+
+            "\u6df1\u5ea6\u6d4b\u8bd5",
+
+            "\u534f\u8bae\u517c\u5bb9\u3001\u9519\u8bef\u900f\u4f20\u4e0e\u7f13\u5b58\u9694\u79bb",
+
+            "\u7f13\u5b58\u9694\u79bb",
+
+            previewOverride: BuildCacheIsolationDigest,
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u8de8\u8d26\u6237\u9694\u79bb\u6821\u9a8c"));
+
+    }
+
+
+
     private IReadOnlyList<ProxySingleCapabilityChartItem> BuildSupplementalPhaseSingleCapabilityChartItems(ProxyDiagnosticsResult result)
     {
         var items = BuildFinalSingleCapabilityChartItems(result).ToList();
@@ -420,7 +524,7 @@ public sealed partial class MainWindowViewModel
                 $"总判定：{result.Verdict ?? "待复核"}\n" +
                 $"建议用途：{result.Recommendation ?? "请结合稳定性结果继续判断。"}\n" +
                 $"已展示检测项：{completedCount}/{totalCount}\n" +
-                $"普通对话：{FormatMilliseconds(result.ChatLatency)} / TTFT：{FormatMilliseconds(result.StreamFirstTokenLatency)}",
+                $"普通对话：{FormatMilliseconds(result.ChatLatency)} / 每秒生成 token 数：{FormatTokensPerSecond(FindScenario(GetScenarioResults(result), ProxyProbeScenarioKind.ChatCompletionsStream)?.OutputTokensPerSecond, FindScenario(GetScenarioResults(result), ProxyProbeScenarioKind.ChatCompletionsStream)?.OutputTokenCountEstimated == true, FindScenario(GetScenarioResults(result), ProxyProbeScenarioKind.ChatCompletionsStream)?.OutputTokensPerSecondSampleCount ?? 1)} / TTFT：{FormatMilliseconds(result.StreamFirstTokenLatency)}",
                 BuildDialogCapabilityMatrix(result),
                 BuildDialogCapabilityDetail(result),
                 "基础能力用于看核心 API 通断；增强测试用于看长流与内容完整性；深度测试用于看协议兼容、错误透传、缓存与官方对照。",
@@ -428,11 +532,12 @@ public sealed partial class MainWindowViewModel
                 $"当前{GetSingleProxyExecutionDisplayName()}图表正在生成。",
                 chartResult.ChartImage),
             activate: true);
-        IsProxyTrendChartOpen = true;
+        AutoOpenProxyTrendChartIfAllowed();
     }
 
     private void StartProxySeriesChartLiveSession(int requestedRounds, int delayMilliseconds)
     {
+        ResetProxyTrendChartAutoOpenSuppression();
         SetProxyChartRetryMode(ProxyChartRetryMode.Stability, "追加重试 5 轮");
         var baseUrl = string.IsNullOrWhiteSpace(ProxyBaseUrl) ? "（未填写）" : ProxyBaseUrl.Trim();
         var placeholderRecords = BuildLiveSeriesChartEntries(Array.Empty<ProxyDiagnosticsResult>(), baseUrl, includePlaceholder: true);
@@ -454,7 +559,7 @@ public sealed partial class MainWindowViewModel
                 "正在等待第 1 轮结果...",
                 chartResult.ChartImage),
             activate: true);
-        IsProxyTrendChartOpen = true;
+        AutoOpenProxyTrendChartIfAllowed();
     }
 
     private void UpdateProxySeriesChartLive(
@@ -500,7 +605,7 @@ public sealed partial class MainWindowViewModel
                 "正在等待稳定性巡检图表数据...",
                 chartResult.ChartImage),
             activate: true);
-        IsProxyTrendChartOpen = true;
+        AutoOpenProxyTrendChartIfAllowed();
     }
 
     private void ShowFinalProxySeriesChart(ProxyStabilityResult result)
@@ -531,10 +636,12 @@ public sealed partial class MainWindowViewModel
                 "当前稳定性巡检图表正在生成。",
                 chartResult.ChartImage),
             activate: true);
+        AutoOpenProxyTrendChartIfAllowed();
     }
 
     private void StartProxyBatchChartLiveSession(IReadOnlyList<ProxyBatchTargetEntry> entries)
     {
+        ResetProxyTrendChartAutoOpenSuppression();
         SetProxyChartRetryMode(ProxyChartRetryMode.Batch, "追加整组重试 5 轮");
         _currentProxyBatchLiveRows = Array.Empty<ProxyBatchProbeRow>();
         _currentProxyBatchLiveTargetCount = entries.Count;
@@ -549,6 +656,7 @@ public sealed partial class MainWindowViewModel
                 placeholderBaseUrl,
                 0,
                 ProxyBatchEnableLongStreamingTest ? "0/6" : "0/5",
+                null,
                 null,
                 null,
                 "进行中",
@@ -576,12 +684,12 @@ public sealed partial class MainWindowViewModel
                 existingAggregateRows.Length == 0
                     ? "等待首个 URL 返回后，这里会显示多个入口的累计明细。"
                     : BuildProxyBatchCapabilityDetailText(existingAggregateRows, "历史累计明细（本轮开始前）"),
-                "实时图适合看：当前推荐项有没有切换、平均延迟和 TTFT 会不会被新一轮结果拉高、基础能力与长流增强项是否同步变差。",
+                "实时图适合看：当前推荐项有没有切换、平均延迟、每秒生成 token 数和 TTFT 会不会被新一轮结果拉偏、基础能力与长流增强项是否同步变差。",
                 $"入口组检测已启动，当前第 {currentRunNumber} 轮整组，共 {entries.Count} 个 URL。",
                 "正在等待入口组首个结果...",
                 chartResult.ChartImage),
             activate: true);
-        IsProxyTrendChartOpen = true;
+        AutoOpenProxyTrendChartIfAllowed();
     }
 
     private void UpdateProxyBatchChartLive(IReadOnlyList<ProxyBatchProbeRow> rows, int totalTargets)
@@ -611,7 +719,7 @@ public sealed partial class MainWindowViewModel
                 $"本轮已完成：{rows.Count}/{totalTargets}\n" +
                 $"当前推荐：{best.Entry.Name}\n" +
                 $"推荐地址：{best.Entry.BaseUrl}\n" +
-                $"推荐原因：平均普通对话 {FormatMillisecondsValue(best.AverageChatLatencyMs)}，平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)}，综合能力 {FormatBatchDisplayedCapabilityAverage(best)}，基础/增强拆分见右侧摘要。",
+                $"推荐原因：平均普通对话 {FormatMillisecondsValue(best.AverageChatLatencyMs)}，每秒生成 token 数 {FormatTokensPerSecond(best.AverageStreamTokensPerSecond)}，平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)}，综合能力 {FormatBatchDisplayedCapabilityAverage(best)}，基础/增强拆分见右侧摘要。",
                 BuildProxyBatchCapabilitySummaryText(aggregateRows, "多入口实时累计摘要"),
                 BuildProxyBatchCapabilityDetailText(aggregateRows, "多入口实时累计明细"),
                 "如果排行榜前几名频繁互换，通常说明入口组存在波动，或者基础能力与增强长流在不同轮次表现不一致。",
@@ -619,7 +727,7 @@ public sealed partial class MainWindowViewModel
                 "正在等待入口组累计图表数据...",
                 chartResult.ChartImage),
             activate: true);
-        IsProxyTrendChartOpen = true;
+        AutoOpenProxyTrendChartIfAllowed();
     }
 
 }

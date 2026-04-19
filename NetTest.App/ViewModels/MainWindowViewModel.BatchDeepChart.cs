@@ -84,6 +84,7 @@ public sealed partial class MainWindowViewModel
         IReadOnlyList<ProxyBatchRankingRowViewModel> selectedRows,
         ProxySingleExecutionPlan executionPlan)
     {
+        ResetProxyTrendChartAutoOpenSuppression();
         _currentBatchDeepExecutionPlan = executionPlan;
         _batchDeepChartStates.Clear();
 
@@ -272,7 +273,7 @@ public sealed partial class MainWindowViewModel
 
         if (activate)
         {
-            IsProxyTrendChartOpen = true;
+            AutoOpenProxyTrendChartIfAllowed();
         }
     }
 
@@ -634,10 +635,17 @@ public sealed partial class MainWindowViewModel
             return ProxyBatchDeepComparisonBadgeState.Pass;
         }
 
+        if (scenario.FailureKind is ProxyFailureKind.ConfigurationInvalid)
+        {
+            return ProxyBatchDeepComparisonBadgeState.Warn;
+        }
+
         var status = scenario.CapabilityStatus ?? string.Empty;
-        if (status.Contains("跳过", StringComparison.Ordinal) ||
-            status.Contains("待复核", StringComparison.Ordinal) ||
-            status.Contains("未运行", StringComparison.Ordinal))
+        if (status.Contains("??", StringComparison.Ordinal) ||
+            status.Contains("???", StringComparison.Ordinal) ||
+            status.Contains("???", StringComparison.Ordinal) ||
+            status.Contains("??", StringComparison.Ordinal) ||
+            status.Contains("??", StringComparison.Ordinal))
         {
             return ProxyBatchDeepComparisonBadgeState.Warn;
         }
@@ -652,20 +660,31 @@ public sealed partial class MainWindowViewModel
             return "OK";
         }
 
+        if (scenario.FailureKind is ProxyFailureKind.ConfigurationInvalid)
+        {
+            return "CFG";
+        }
+
         var status = scenario.CapabilityStatus ?? string.Empty;
-        if (status.Contains("跳过", StringComparison.Ordinal))
+        if (status.Contains("??", StringComparison.Ordinal))
         {
             return "SK";
         }
 
-        if (status.Contains("待复核", StringComparison.Ordinal))
+        if (status.Contains("???", StringComparison.Ordinal))
         {
             return "RV";
         }
 
-        if (status.Contains("未运行", StringComparison.Ordinal))
+        if (status.Contains("???", StringComparison.Ordinal))
         {
             return "--";
+        }
+
+        if (status.Contains("??", StringComparison.Ordinal) ||
+            status.Contains("??", StringComparison.Ordinal))
+        {
+            return "CFG";
         }
 
         return "NO";

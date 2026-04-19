@@ -199,15 +199,15 @@ public sealed partial class MainWindowViewModel
         keyMetricsBuilder.AppendLine($"普通对话延迟：{FormatMilliseconds(result.ChatLatency)}");
         keyMetricsBuilder.AppendLine($"流式 TTFT：{FormatMilliseconds(result.StreamFirstTokenLatency)}");
         keyMetricsBuilder.AppendLine($"流式总耗时：{FormatMilliseconds(result.StreamDuration)}");
-        keyMetricsBuilder.AppendLine($"流式输出速率：{FormatTokensPerSecond(stream?.OutputTokensPerSecond, stream?.OutputTokenCountEstimated == true)}");
-        keyMetricsBuilder.AppendLine($"流式端到端速率：{FormatTokensPerSecond(stream?.EndToEndTokensPerSecond, stream?.OutputTokenCountEstimated == true)}");
+        keyMetricsBuilder.AppendLine($"流式输出速率：{FormatTokensPerSecond(stream?.OutputTokensPerSecond, stream?.OutputTokenCountEstimated == true, stream?.OutputTokensPerSecondSampleCount ?? 1)}");
+        keyMetricsBuilder.AppendLine($"流式端到端速率：{FormatTokensPerSecond(stream?.EndToEndTokensPerSecond, stream?.OutputTokenCountEstimated == true, stream?.OutputTokensPerSecondSampleCount ?? 1)}");
         keyMetricsBuilder.AppendLine($"流式输出量：{FormatOutputCount(stream)}");
         keyMetricsBuilder.AppendLine($"流式最大 chunk 间隔：{FormatMillisecondsDoubleValue(stream?.MaxChunkGapMilliseconds)}");
         keyMetricsBuilder.AppendLine($"Responses 延迟：{FormatMilliseconds(responses?.Latency)}");
-        keyMetricsBuilder.AppendLine($"Responses 输出速率：{FormatTokensPerSecond(responses?.OutputTokensPerSecond, responses?.OutputTokenCountEstimated == true)}");
+        keyMetricsBuilder.AppendLine($"Responses 输出速率：{FormatTokensPerSecond(responses?.OutputTokensPerSecond, responses?.OutputTokenCountEstimated == true, responses?.OutputTokensPerSecondSampleCount ?? 1)}");
         keyMetricsBuilder.AppendLine($"Responses 输出量：{FormatOutputCount(responses)}");
         keyMetricsBuilder.AppendLine($"结构化输出延迟：{FormatMilliseconds(structuredOutput?.Latency)}");
-        keyMetricsBuilder.AppendLine($"结构化输出速率：{FormatTokensPerSecond(structuredOutput?.OutputTokensPerSecond, structuredOutput?.OutputTokenCountEstimated == true)}");
+        keyMetricsBuilder.AppendLine($"结构化输出速率：{FormatTokensPerSecond(structuredOutput?.OutputTokensPerSecond, structuredOutput?.OutputTokenCountEstimated == true, structuredOutput?.OutputTokensPerSecondSampleCount ?? 1)}");
         keyMetricsBuilder.AppendLine($"结构化输出量：{FormatOutputCount(structuredOutput)}");
         if (showProtocolCompatibility)
         {
@@ -301,7 +301,7 @@ public sealed partial class MainWindowViewModel
         }
 
         var throughputPart = scenario?.OutputTokensPerSecond is not null
-            ? $"；速率 {FormatTokensPerSecond(scenario.OutputTokensPerSecond, scenario.OutputTokenCountEstimated)}；输出 {FormatOutputCount(scenario)}"
+            ? $"；速率 {FormatTokensPerSecond(scenario.OutputTokensPerSecond, scenario.OutputTokenCountEstimated, scenario.OutputTokensPerSecondSampleCount)}；输出 {FormatOutputCount(scenario)}"
             : string.Empty;
 
         return $"{status}{donePart}；{codePart}；{latencyPart}{throughputPart}；{preview}";
