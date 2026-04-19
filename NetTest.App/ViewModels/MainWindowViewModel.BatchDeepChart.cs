@@ -266,7 +266,8 @@ public sealed partial class MainWindowViewModel
                     ? $"{chartResult.Summary} 已完成 {completedCount}/{orderedStates.Length}。"
                     : chartResult.Error ?? chartResult.Summary,
                 "正在等待候选站点深度测试总览图...",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                chartResult.HitRegions),
             activate: activate);
 
         if (activate)
@@ -322,15 +323,16 @@ public sealed partial class MainWindowViewModel
         var baselineKinds = GetBatchDeepBaselineScenarioKinds();
         var completedCount = baselineKinds.Count(kind => state.ScenarioResults.ContainsKey(kind));
         var passCount = baselineKinds.Count(kind => state.ScenarioResults.TryGetValue(kind, out var scenario) && scenario.Success);
+        var (title, description) = GetBatchDeepBadgeDefinition("B5");
 
         if (!state.HasStarted)
         {
-            return new ProxyBatchDeepComparisonBadge("B5", "--", ProxyBatchDeepComparisonBadgeState.Pending);
+            return new ProxyBatchDeepComparisonBadge("B5", "--", ProxyBatchDeepComparisonBadgeState.Pending, title, description);
         }
 
         if (completedCount < baselineKinds.Count)
         {
-            return new ProxyBatchDeepComparisonBadge("B5", $"{passCount}/5", ProxyBatchDeepComparisonBadgeState.Running);
+            return new ProxyBatchDeepComparisonBadge("B5", $"{passCount}/5", ProxyBatchDeepComparisonBadgeState.Running, title, description);
         }
 
         return new ProxyBatchDeepComparisonBadge(
@@ -340,7 +342,9 @@ public sealed partial class MainWindowViewModel
                 ? ProxyBatchDeepComparisonBadgeState.Pass
                 : passCount >= 3
                     ? ProxyBatchDeepComparisonBadgeState.Warn
-                    : ProxyBatchDeepComparisonBadgeState.Fail);
+                    : ProxyBatchDeepComparisonBadgeState.Fail,
+            title,
+            description);
     }
 
     private static ProxyBatchDeepComparisonBadge BuildBatchDeepScenarioBadge(
@@ -349,9 +353,11 @@ public sealed partial class MainWindowViewModel
         string label,
         bool enabled)
     {
+        var (title, description) = GetBatchDeepBadgeDefinition(label);
+
         if (!enabled)
         {
-            return new ProxyBatchDeepComparisonBadge(label, "Off", ProxyBatchDeepComparisonBadgeState.Pending);
+            return new ProxyBatchDeepComparisonBadge(label, "Off", ProxyBatchDeepComparisonBadgeState.Pending, title, description);
         }
 
         if (state.ScenarioResults.TryGetValue(kind, out var scenario))
@@ -359,21 +365,58 @@ public sealed partial class MainWindowViewModel
             return new ProxyBatchDeepComparisonBadge(
                 label,
                 ResolveBatchDeepScenarioBadgeValue(scenario),
-                ResolveBatchDeepScenarioBadgeState(scenario));
+                ResolveBatchDeepScenarioBadgeState(scenario),
+                title,
+                description);
         }
 
         if (state.IsCompleted)
         {
-            return new ProxyBatchDeepComparisonBadge(label, "SK", ProxyBatchDeepComparisonBadgeState.Warn);
+            return new ProxyBatchDeepComparisonBadge(label, "SK", ProxyBatchDeepComparisonBadgeState.Warn, title, description);
         }
 
         if (state.IsRunning && state.CompletedCount > 0)
         {
-            return new ProxyBatchDeepComparisonBadge(label, "--", ProxyBatchDeepComparisonBadgeState.Running);
+            return new ProxyBatchDeepComparisonBadge(label, "--", ProxyBatchDeepComparisonBadgeState.Running, title, description);
         }
 
-        return new ProxyBatchDeepComparisonBadge(label, "--", ProxyBatchDeepComparisonBadgeState.Pending);
+        return new ProxyBatchDeepComparisonBadge(label, "--", ProxyBatchDeepComparisonBadgeState.Pending, title, description);
     }
+
+    private static (string Title, string Description) GetBatchDeepBadgeDefinition(string label)
+        => label switch
+        {
+            "B5" => (
+                "基础 5 项",
+                "快速核对基础 5 项：/models、普通对话、流式对话、Responses、结构化输出。数值表示通过项数 / 5。"),
+            "Sys" => (
+                "System Prompt 映射",
+                "检查中转站是否能正确传递 system 指令，避免系统提示词被吞掉、改写或错位。"),
+            "Fn" => (
+                "Function Calling",
+                "检查工具调用 / function calling 的请求格式、参数回填和响应结构是否兼容。"),
+            "Err" => (
+                "错误透传",
+                "检查报错时是否能保留原始错误语义，而不是统一改写成模糊或误导性的错误。"),
+            "Str" => (
+                "流式完整性",
+                "检查流式输出是否连续、收尾是否完整，以及是否存在截断、乱序或异常结束。"),
+            "Ref" => (
+                "官方对照",
+                "把关键结果与官方接口基线做对照，判断能力、格式和表现是否明显偏离。"),
+            "MM" => (
+                "多模态",
+                "检查图片等多模态输入是否可以被正确接收、转发并返回可用结果。"),
+            "Cch" => (
+                "缓存命中",
+                "检查重复请求是否表现出缓存命中迹象，用来判断站点是否存在复用响应的缓存层。"),
+            "Iso" => (
+                "缓存隔离",
+                "检查不同账号 / key / 会话之间的缓存是否正确隔离，避免出现串号或交叉命中。"),
+            _ => (
+                label,
+                "该标签表示本轮深度测试中的一个专项探针结果。")
+        };
 
     private ProxyBatchRankingRowViewModel? GetCurrentBatchDeepRunningRow()
         => _batchDeepChartStates

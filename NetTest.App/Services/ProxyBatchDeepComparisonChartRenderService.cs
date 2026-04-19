@@ -43,6 +43,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
             .ToArray();
         _chartWidth = ResolveChartWidth(preferredWidth);
         var chartHeight = (int)Math.Ceiling(HeaderHeight + TableHeaderHeight + FooterHeight + (ordered.Length * RowHeight) + 18);
+        List<ProxyChartHitRegion> hitRegions = [];
 
         DrawingVisual visual = new();
         using (var context = visual.RenderOpen())
@@ -53,7 +54,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
 
             for (var index = 0; index < ordered.Length; index++)
             {
-                DrawRow(context, ordered[index], index, HeaderHeight + TableHeaderHeight + (index * RowHeight));
+                DrawRow(context, ordered[index], index, HeaderHeight + TableHeaderHeight + (index * RowHeight), hitRegions);
             }
 
             DrawFooter(context, chartHeight);
@@ -70,7 +71,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
             ? $"候选站点深度测试总览图已生成：共 {ordered.Length} 个候选项，已完成 {completedCount}/{ordered.Length}，当前 TOP 1 为 {best.Name}。"
             : $"候选站点深度测试进行中：已完成 {completedCount}/{ordered.Length}，当前执行 {running.Name}，排行榜保留 TOP 1 {best.Name}。";
 
-        return new ProxyTrendChartRenderResult(true, summary, bitmap, null);
+        return new ProxyTrendChartRenderResult(true, summary, bitmap, null, hitRegions);
     }
 
     private void DrawHeader(DrawingContext context, IReadOnlyList<ProxyBatchDeepComparisonChartItem> items)
@@ -133,7 +134,8 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         DrawingContext context,
         ProxyBatchDeepComparisonChartItem item,
         int index,
-        double top)
+        double top,
+        ICollection<ProxyChartHitRegion> hitRegions)
     {
         var rect = new Rect(HorizontalPadding, top, _chartWidth - (HorizontalPadding * 2), RowHeight - 5);
         var background = index % 2 == 0
@@ -168,7 +170,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
 
         DrawProgressBlock(context, item, top + 11);
         DrawStageBlock(context, item, top + 10);
-        DrawBadgeMatrix(context, item.Badges, top + 8);
+        DrawBadgeMatrix(context, item.Badges, top + 8, hitRegions);
         DrawVerdictBlock(context, item, top + 10);
     }
 
@@ -245,7 +247,8 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
     private void DrawBadgeMatrix(
         DrawingContext context,
         IReadOnlyList<ProxyBatchDeepComparisonBadge> badges,
-        double top)
+        double top,
+        ICollection<ProxyChartHitRegion> hitRegions)
     {
         var rows = new[]
         {
@@ -260,7 +263,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
             {
                 var badge = rows[rowIndex][index];
                 var x = ScaleX(MatrixColumnX + (index * 76));
-                DrawMatrixBadge(context, badge, x, y, ScaleWidth(72), 18);
+                DrawMatrixBadge(context, badge, x, y, ScaleWidth(72), 18, hitRegions);
             }
         }
     }
@@ -271,7 +274,8 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         double x,
         double y,
         double width,
-        double height)
+        double height,
+        ICollection<ProxyChartHitRegion> hitRegions)
     {
         ResolveBadgePalette(
             badge.State,
@@ -283,6 +287,10 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         context.DrawRoundedRectangle(background, new Pen(border, 1), rect, 7, 7);
         DrawText(context, badge.Label, new Point(x + 6, y + 2), 9.4, FontWeights.SemiBold, foreground);
         DrawText(context, badge.Value, new Point(x + width - 24, y + 2), 9.2, FontWeights.SemiBold, foreground);
+        hitRegions.Add(new ProxyChartHitRegion(
+            rect,
+            $"{badge.Title} ({badge.Label} {badge.Value})",
+            BuildBadgeTooltipDescription(badge)));
     }
 
     private void DrawVerdictBlock(DrawingContext context, ProxyBatchDeepComparisonChartItem item, double top)
@@ -413,6 +421,43 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
 
     private static string FormatMilliseconds(double? value)
         => value.HasValue ? $"{value.Value:F0} ms" : "--";
+
+    private static string BuildBadgeTooltipDescription(ProxyBatchDeepComparisonBadge badge)
+        => $"{badge.Description}{Environment.NewLine}?????{ResolveBadgeValueExplanation(badge)}";
+
+    private static string ResolveBadgeValueExplanation(ProxyBatchDeepComparisonBadge badge)
+    {
+        if (string.Equals(badge.Label, "B5", StringComparison.Ordinal))
+        {
+            var parts = badge.Value.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length == 2 &&
+                int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var passCount) &&
+                int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var totalCount) &&
+                totalCount > 0)
+            {
+                return $"?? 5 ???? {passCount} ??? {totalCount} ??";
+            }
+
+            return badge.State switch
+            {
+                ProxyBatchDeepComparisonBadgeState.Running => "?? 5 ??????????????",
+                ProxyBatchDeepComparisonBadgeState.Pending => "?? 5 ??????",
+                _ => $"?? 5 ?????? {badge.Value}?"
+            };
+        }
+
+        return badge.Value switch
+        {
+            "OK" => "????????",
+            "NO" => "????????????????????",
+            "RV" => "????????????????",
+            "SK" => "???????????????????????",
+            "Off" => "???????????????????",
+            "--" when badge.State == ProxyBatchDeepComparisonBadgeState.Running => "?????????????????",
+            "--" => "??????????",
+            _ => $"????? {badge.Value}?"
+        };
+    }
 
     private static bool IsHealthyVerdict(string verdict)
         => verdict.Contains("稳定", StringComparison.Ordinal) ||

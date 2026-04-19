@@ -965,7 +965,7 @@ public sealed class PortScanDiagnosticsService
             : target;
 
         var requestText =
-            $"HEAD / HTTP/1.1\r\nHost: {hostHeader}\r\nUser-Agent: NetTest/{EngineVersion}\r\nAccept: */*\r\nConnection: close\r\n\r\n";
+            $"HEAD / HTTP/1.1\r\nHost: {hostHeader}\r\nUser-Agent: RelayBench/{EngineVersion}\r\nAccept: */*\r\nConnection: close\r\n\r\n";
         var requestBytes = Encoding.ASCII.GetBytes(requestText);
 
         await stream.WriteAsync(requestBytes.AsMemory(0, requestBytes.Length), cancellationToken);
@@ -2099,7 +2099,7 @@ public sealed class PortScanDiagnosticsService
             Timeout = TimeSpan.FromSeconds(5)
         };
 
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("NetTestSuite/1.0 (Windows desktop diagnostics)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("RelayBenchSuite/1.0 (Windows desktop diagnostics)");
         client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
         return client;
     }

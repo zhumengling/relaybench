@@ -12,7 +12,9 @@ public enum ProxyBatchDeepComparisonBadgeState
 public sealed record ProxyBatchDeepComparisonBadge(
     string Label,
     string Value,
-    ProxyBatchDeepComparisonBadgeState State);
+    ProxyBatchDeepComparisonBadgeState State,
+    string Title,
+    string Description);
 
 public sealed record ProxyBatchDeepComparisonChartItem(
     int Rank,

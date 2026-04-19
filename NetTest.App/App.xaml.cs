@@ -38,8 +38,8 @@ public partial class App : Application
         {
             WriteStartupLog(BuildExceptionText("启动失败。", ex));
             MessageBox.Show(
-                $"NetTest 启动失败，请查看日志：{StartupLogPath}",
-                "NetTest",
+                $"RelayBench 启动失败，请查看日志：{StartupLogPath}",
+                "RelayBench",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(-1);
@@ -56,8 +56,8 @@ public partial class App : Application
     {
         WriteStartupLog(BuildExceptionText("UI 线程未处理异常。", e.Exception));
         MessageBox.Show(
-            $"NetTest 运行中出现未处理异常，请查看日志：{StartupLogPath}",
-            "NetTest",
+            $"RelayBench 运行中出现未处理异常，请查看日志：{StartupLogPath}",
+            "RelayBench",
             MessageBoxButton.OK,
             MessageBoxImage.Error);
         e.Handled = true;

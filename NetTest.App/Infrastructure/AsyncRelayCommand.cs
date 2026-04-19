@@ -45,7 +45,7 @@ public sealed class AsyncRelayCommand : ICommand
             {
                 MessageBox.Show(
                     ex.Message,
-                    "NetTest",
+                    "RelayBench",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }

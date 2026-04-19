@@ -28,7 +28,7 @@ public sealed partial class ProxyDiagnosticsService
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", settings.ApiKey);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("NetTestSuite/0.2");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("RelayBenchSuite/0.2");
         return client;
     }
 

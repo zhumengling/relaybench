@@ -20,7 +20,7 @@ public sealed partial class CloudflareSpeedTestService
             Timeout = TimeSpan.FromMinutes(5)
         };
 
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("NetTestSuite/0.3 (Windows desktop diagnostics)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("RelayBenchSuite/0.3 (Windows desktop diagnostics)");
         client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
         return client;
     }

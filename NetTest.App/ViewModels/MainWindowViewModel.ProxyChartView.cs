@@ -1,4 +1,5 @@
-﻿using System.Windows.Media.Imaging;
+using System.Windows.Media.Imaging;
+using NetTest.App.Services;
 
 namespace NetTest.App.ViewModels;
 
@@ -20,7 +21,8 @@ internal sealed record ProxyChartDialogSnapshot(
     string GuideSummary,
     string StatusSummary,
     string EmptyStateText,
-    BitmapSource? Image);
+    BitmapSource? Image,
+    IReadOnlyList<ProxyChartHitRegion>? HitRegions = null);
 
 public sealed partial class MainWindowViewModel
 {
@@ -29,6 +31,7 @@ public sealed partial class MainWindowViewModel
     private ProxyChartDialogSnapshot? _proxyTrendChartSnapshot;
     private ProxyChartDialogSnapshot? _proxyBatchChartSnapshot;
     private ProxyChartDialogSnapshot? _proxyBatchDeepChartSnapshot;
+    private IReadOnlyList<ProxyChartHitRegion> _proxyChartDialogHitRegions = Array.Empty<ProxyChartHitRegion>();
 
     public bool CanToggleProxyChartView
         => !IsBusy &&
@@ -58,6 +61,9 @@ public sealed partial class MainWindowViewModel
 
     public string BatchDeepComparisonChartStatusSummary
         => _proxyBatchDeepChartSnapshot?.StatusSummary ?? "勾选排行榜列表项并开始深度测试后，这里显示候选站点深度测试总览图。";
+
+    internal IReadOnlyList<ProxyChartHitRegion> CurrentProxyChartHitRegions
+        => _proxyChartDialogHitRegions;
 
     private bool CanToggleProxyChartViewAction()
         => CanToggleProxyChartView;
@@ -171,6 +177,7 @@ public sealed partial class MainWindowViewModel
         ProxyChartDialogStatusSummary = snapshot.StatusSummary;
         ProxyChartDialogEmptyStateText = snapshot.EmptyStateText;
         ProxyChartDialogImage = snapshot.Image;
+        _proxyChartDialogHitRegions = snapshot.HitRegions ?? Array.Empty<ProxyChartHitRegion>();
         RefreshProxyChartViewState();
     }
 
@@ -185,5 +192,3 @@ public sealed partial class MainWindowViewModel
         ToggleProxyChartImageOnlyModeCommand.RaiseCanExecuteChanged();
     }
 }
-
-

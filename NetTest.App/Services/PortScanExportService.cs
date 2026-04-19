@@ -297,7 +297,7 @@ public sealed class PortScanExportService
         StringBuilder builder = new();
         builder.Append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
         builder.Append("<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\" xmlns:vt=\"http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes\">");
-        builder.Append("<Application>NetTest</Application>");
+        builder.Append("<Application>RelayBench</Application>");
         builder.Append($"<TitlesOfParts><vt:vector size=\"{sheets.Count}\" baseType=\"lpstr\">");
         foreach (var sheet in sheets)
         {
@@ -315,7 +315,7 @@ public sealed class PortScanExportService
         var now = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
         return
             "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
-            $"<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><dc:creator>NetTest</dc:creator><cp:lastModifiedBy>NetTest</cp:lastModifiedBy><dcterms:created xsi:type=\"dcterms:W3CDTF\">{now}</dcterms:created><dcterms:modified xsi:type=\"dcterms:W3CDTF\">{now}</dcterms:modified></cp:coreProperties>";
+            $"<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><dc:creator>RelayBench</dc:creator><cp:lastModifiedBy>RelayBench</cp:lastModifiedBy><dcterms:created xsi:type=\"dcterms:W3CDTF\">{now}</dcterms:created><dcterms:modified xsi:type=\"dcterms:W3CDTF\">{now}</dcterms:modified></cp:coreProperties>";
     }
 
     private static string BuildWorkbookXml(IReadOnlyList<ExcelSheetDefinition> sheets)

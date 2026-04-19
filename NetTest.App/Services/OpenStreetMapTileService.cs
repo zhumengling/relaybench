@@ -73,7 +73,7 @@ public sealed class OpenStreetMapTileService
         {
             Timeout = TimeSpan.FromSeconds(10)
         };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("NetTestSuite/0.2 (Windows desktop diagnostics)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("RelayBenchSuite/0.2 (Windows desktop diagnostics)");
         return client;
     }
 }

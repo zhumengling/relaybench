@@ -359,7 +359,7 @@ public sealed partial class RouteDiagnosticsService
             Timeout = TimeSpan.FromSeconds(5)
         };
 
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("NetTestSuite/0.9 (Windows desktop diagnostics)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("RelayBenchSuite/0.9 (Windows desktop diagnostics)");
         client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
         return client;
     }

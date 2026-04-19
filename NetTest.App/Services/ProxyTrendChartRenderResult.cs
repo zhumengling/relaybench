@@ -6,4 +6,5 @@ public sealed record ProxyTrendChartRenderResult(
     bool HasChart,
     string Summary,
     BitmapSource? ChartImage,
-    string? Error);
+    string? Error,
+    IReadOnlyList<ProxyChartHitRegion>? HitRegions = null);

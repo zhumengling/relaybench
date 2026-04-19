@@ -5,7 +5,7 @@
         xmlns:pages="clr-namespace:NetTest.App.Views.Pages"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="NetTest 网络诊断套件"
+        Title="RelayBench 中转站测试工作台"
         Width="1440"
         Height="860"
         MinWidth="1120"
@@ -29,7 +29,7 @@
                 BorderThickness="1"
                 CornerRadius="22">
             <StackPanel>
-                <TextBlock FontSize="24" FontWeight="Bold" Text="NetTest 网络诊断套件" />
+                <TextBlock FontSize="24" FontWeight="Bold" Text="RelayBench 中转站测试工作台" />
                 <TextBlock Margin="0,8,0,0"
                            Foreground="{StaticResource MutedBrush}"
                            TextWrapping="Wrap"
@@ -86,7 +86,7 @@
                         Background="{StaticResource InputBrush}"
                         CornerRadius="18">
                     <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Text="NetTest 网络诊断套件" />
+                        <TextBlock FontSize="24" FontWeight="Bold" Text="RelayBench 中转站测试工作台" />
                         <TextBlock Margin="0,6,0,0"
                                    Foreground="{StaticResource MutedBrush}"
                                    TextWrapping="Wrap"
@@ -458,8 +458,11 @@
                                 <MouseBinding Gesture="LeftDoubleClick"
                                               Command="{Binding ToggleProxyChartImageOnlyModeCommand}" />
                             </ScrollViewer.InputBindings>
-                            <Image HorizontalAlignment="Left"
+                            <Image x:Name="ProxyChartDialogImageControl"
+                                   HorizontalAlignment="Left"
                                    VerticalAlignment="Top"
+                                   MouseMove="ProxyChartDialogImage_OnMouseMove"
+                                   MouseLeave="ProxyChartDialogImage_OnMouseLeave"
                                    Stretch="None"
                                    Source="{Binding ProxyChartDialogImage, Mode=OneWay}" />
                         </ScrollViewer>

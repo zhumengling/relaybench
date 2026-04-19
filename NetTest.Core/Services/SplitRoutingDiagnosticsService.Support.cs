@@ -74,7 +74,7 @@ public sealed partial class SplitRoutingDiagnosticsService
             Timeout = TimeSpan.FromSeconds(8)
         };
 
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("NetTestSuite/0.4 (Windows desktop diagnostics)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("RelayBenchSuite/0.4 (Windows desktop diagnostics)");
         client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
         return client;
     }

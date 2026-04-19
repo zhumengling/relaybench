@@ -116,7 +116,7 @@ public sealed class DiagnosticReportService
     private static void WriteTextReport(string filePath, IReadOnlyList<DiagnosticReportSection> sections)
     {
         StringBuilder builder = new();
-        builder.AppendLine("NetTest 网络诊断报告");
+        builder.AppendLine("RelayBench ???????");
         builder.AppendLine($"生成时间：{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}");
         builder.AppendLine();
 
@@ -175,6 +175,6 @@ public sealed class DiagnosticReportService
         }
 
         var sanitized = builder.ToString().Trim();
-        return string.IsNullOrWhiteSpace(sanitized) ? "nettest-report" : sanitized;
+        return string.IsNullOrWhiteSpace(sanitized) ? "relaybench-report" : sanitized;
     }
 }

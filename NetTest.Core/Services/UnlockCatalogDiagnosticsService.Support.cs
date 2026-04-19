@@ -145,7 +145,7 @@ public sealed partial class UnlockCatalogDiagnosticsService
             Timeout = TimeSpan.FromSeconds(8)
         };
 
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("NetTestSuite/0.8 (Windows desktop diagnostics)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("RelayBenchSuite/0.8 (Windows desktop diagnostics)");
         client.DefaultRequestHeaders.Accept.ParseAdd("*/*");
         return client;
     }
