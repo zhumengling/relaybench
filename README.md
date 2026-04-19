@@ -1,4 +1,4 @@
-﻿﻿# RelayBench
+# RelayBench
 
 用来给中转站跑分，对比一下速度，筛选出最快的那个入口。
 
