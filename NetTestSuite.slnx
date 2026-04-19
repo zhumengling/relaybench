@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="NetTest.App/NetTest.App.csproj" />
+  <Project Path="NetTest.Core/NetTest.Core.csproj" />
+</Solution>

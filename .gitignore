@@ -1,0 +1,27 @@
+# Build outputs
+**/bin/
+**/obj/
+dist/
+release/
+
+# Local development artifacts
+.artifacts/
+.codex/
+.dotnet-cli/
+.superpowers/
+.tmp/
+
+# IDE / OS
+.vs/
+*.user
+*.suo
+Thumbs.db
+.DS_Store
+
+# Runtime-generated local state
+config/
+data/
+
+# Logs / temp files
+*.log
+tmp_utf8_test.txt

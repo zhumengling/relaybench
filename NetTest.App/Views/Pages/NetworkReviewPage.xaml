@@ -1,0 +1,1118 @@
+﻿<UserControl x:Class="NetTest.App.Views.Pages.NetworkReviewPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="NetworkReviewSubmenuItemStyle"
+               TargetType="ListBoxItem"
+               BasedOn="{StaticResource PresetCardListBoxItemStyle}">
+            <Setter Property="Width" Value="132" />
+            <Setter Property="MinHeight" Value="44" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+        </Style>
+
+        <Style x:Key="ReviewPaneBorderStyle"
+               TargetType="Border">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
+
+        <Style x:Key="ReviewDividerBorderStyle"
+               TargetType="Border">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+        </Style>
+
+        <Style x:Key="ReviewPaneTextBoxStyle"
+               TargetType="TextBox"
+               BasedOn="{StaticResource ReadOnlyOutputTextBoxStyle}">
+            <Setter Property="MinHeight" Value="118" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style x:Key="ReviewPaneConsoleTextBoxStyle"
+               TargetType="TextBox"
+               BasedOn="{StaticResource ReadOnlyConsoleTextBoxStyle}">
+            <Setter Property="MinHeight" Value="118" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style x:Key="ReviewPaneRawTextBoxStyle"
+               TargetType="TextBox"
+               BasedOn="{StaticResource ReadOnlyRawLogTextBoxStyle}">
+            <Setter Property="MinHeight" Value="118" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style x:Key="ReviewFlatTabControlStyle"
+               TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid KeyboardNavigation.TabNavigation="Local">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TabPanel Grid.Row="0"
+                                      Margin="0,0,0,6"
+                                      IsItemsHost="True"
+                                      Background="Transparent" />
+                            <ContentPresenter Grid.Row="1"
+                                              ContentSource="SelectedContent" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ReviewFlatTabItemStyle"
+               TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Padding" Value="9,3" />
+            <Setter Property="FontSize" Value="10.4" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Margin="0,0,4,0"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              ContentSource="Header"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource InputHoverBrush}" />
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#D0D5DD" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#EEF4FF" />
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ReviewResultListBoxStyle"
+               TargetType="ListBox"
+               BasedOn="{StaticResource {x:Type ListBox}}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+        </Style>
+
+        <Style x:Key="ReviewResultListBoxItemStyle"
+               TargetType="ListBoxItem"
+               BasedOn="{StaticResource ListBoxItemStyle}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0,6,0,6" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="Transparent"
+                                BorderBrush="#EAECF0"
+                                BorderThickness="0,0,0,1">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Stretch"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#F8FAFC" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#EEF4FF" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="OfficialApiOverviewBorderStyle"
+               TargetType="Border">
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="#EAECF0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+
+        <Style x:Key="OfficialApiTraceButtonStyle"
+               TargetType="Button">
+            <Setter Property="MinWidth" Value="104" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Background="Transparent">
+        <Grid Margin="0,0,2,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x7F51;&#x7EDC;&#x590D;&#x6838;&#x5B50;&#x83DC;&#x5355;" />
+                    <ListBox Grid.Row="1"
+                             Margin="0,6,0,0"
+                             ItemsSource="{Binding NetworkReviewToolOptions}"
+                             SelectedValuePath="Key"
+                             SelectedValue="{Binding SelectedNetworkReviewToolKey, Mode=TwoWay}"
+                             Style="{StaticResource PresetCardListBoxStyle}">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <StaticResource ResourceKey="NetworkReviewSubmenuItemStyle" />
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock FontWeight="SemiBold"
+                                           TextAlignment="Center"
+                                           Text="{Binding DisplayName}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1"
+                    Margin="0,4,0,0"
+                    Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                       Text="{Binding SelectedNetworkReviewToolDisplayName}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding SelectedNetworkReviewToolDescription}" />
+                        </StackPanel>
+
+                        <Border Grid.Column="1"
+                                Padding="8,2"
+                                Background="#EEF4FF"
+                                BorderBrush="{StaticResource AccentBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="{Binding SelectedNetworkReviewToolGroupName}" />
+                        </Border>
+                    </Grid>
+
+                    <Border Grid.Row="1"
+                            Margin="0,8,0,8"
+                            BorderBrush="{StaticResource PanelBorderBrush}"
+                            BorderThickness="0,0,0,1" />
+
+                    <Grid Grid.Row="2">
+                        <Grid Visibility="{Binding IsNetworkReviewBasicNetworkSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                           Text="&#x5148;&#x505A;&#x672C;&#x673A;&#x57FA;&#x7840;&#x7F51;&#x7EDC;&#x5FEB;&#x7167;&#xFF0C;&#x9002;&#x5408;&#x5FEB;&#x901F;&#x5224;&#x65AD;&#x662F;&#x4E0D;&#x662F;&#x4F60;&#x81EA;&#x5DF1;&#x7684;&#x7F51;&#x7EDC;&#x3001;DNS &#x6216;&#x516C;&#x7F51;&#x51FA;&#x53E3;&#x5148;&#x51FA;&#x4E86;&#x95EE;&#x9898;&#x3002;" />
+                                <Button Grid.Column="1"
+                                        MinWidth="128"
+                                        Command="{Binding RunNetworkCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="&#x5F00;&#x59CB;&#x68C0;&#x6D4B;" />
+                            </Grid>
+
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.2*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="1*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Style="{StaticResource ReviewPaneBorderStyle}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x57FA;&#x7840;&#x7F51;&#x7EDC;&#x6458;&#x8981;" />
+                                        <TextBox Grid.Row="1"
+                                                 Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                                 Text="{Binding NetworkSummary, Mode=OneWay}" />
+                                    </Grid>
+                                </Border>
+
+                                <Grid Grid.Column="2">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="8" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <Border Grid.Row="0" Style="{StaticResource ReviewPaneBorderStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x6D3B;&#x52A8;&#x7F51;&#x5361;" />
+                                            <TextBox Grid.Row="1"
+                                                     Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                                     Text="{Binding AdapterSummary, Mode=OneWay}" />
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Grid.Row="2" Style="{StaticResource ReviewPaneBorderStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Ping &#x8FD4;&#x56DE;" />
+                                            <TextBox Grid.Row="1"
+                                                     Style="{StaticResource ReviewPaneConsoleTextBoxStyle}"
+                                                     Text="{Binding PingSummary, Mode=OneWay}" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                        <Grid Visibility="{Binding IsNetworkReviewOfficialApiSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                           Text="&#x5148;&#x68C0;&#x67E5;&#x5B98;&#x65B9;&#x5165;&#x53E3; / API &#x662F;&#x5426;&#x53EF;&#x8BBF;&#x95EE;&#xFF0C;&#x5E76;&#x652F;&#x6301;&#x9010;&#x9879;&#x67E5;&#x770B;&#x539F;&#x59CB; Trace&#x3002;" />
+                                <Button Grid.Column="1"
+                                        MinWidth="128"
+                                        Command="{Binding RunChatGptTraceCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="&#x5F00;&#x59CB;&#x68C0;&#x6D4B;" />
+                            </Grid>
+
+                            <Border Grid.Row="2"
+                                    Style="{StaticResource OfficialApiOverviewBorderStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x68C0;&#x6D4B;&#x6982;&#x89C8;" />
+                                        <TextBlock Margin="0,4,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{StaticResource TextBrush}"
+                                                   Text="{Binding UnlockCatalogSummary, Mode=OneWay}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1"
+                                               Margin="12,0,0,0"
+                                               VerticalAlignment="Top"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               Text="&#x53EF;&#x70B9;&#x51FB;&#x53F3;&#x4FA7;&#x67E5;&#x770B;&#x539F;&#x59CB; trace" />
+                                </Grid>
+                            </Border>
+
+                            <Border Grid.Row="4"
+                                    Style="{StaticResource ReviewPaneBorderStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5B98;&#x65B9;&#x5165;&#x53E3; / API &#x5217;&#x8868;" />
+                                        <TextBlock Grid.Column="1"
+                                                   Style="{StaticResource SectionHintTextStyle}"
+                                                   Text="&#x70B9;&#x51FB;&#x6309;&#x94AE;&#x67E5;&#x770B;&#x539F;&#x59CB; Trace" />
+                                    </Grid>
+
+                                    <ScrollViewer Grid.Row="1"
+                                                  Margin="0,6,0,0"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  Background="Transparent">
+                                        <ItemsControl ItemsSource="{Binding OfficialApiStatusRows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Padding="0,8"
+                                                            BorderBrush="#EAECF0"
+                                                            BorderThickness="0,0,0,1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <StackPanel Grid.Column="0">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <Border Padding="7,2"
+                                                                            Margin="0,0,8,0"
+                                                                            Background="#F5F7FA"
+                                                                            BorderBrush="#D0D5DD"
+                                                                            BorderThickness="1"
+                                                                            CornerRadius="999">
+                                                                        <TextBlock FontSize="10"
+                                                                                   FontWeight="SemiBold"
+                                                                                   Foreground="{StaticResource MutedBrush}"
+                                                                                   Text="{Binding Provider}" />
+                                                                    </Border>
+                                                                    <TextBlock VerticalAlignment="Center"
+                                                                               FontSize="11.4"
+                                                                               FontWeight="SemiBold"
+                                                                               Foreground="{StaticResource TextBrush}"
+                                                                               Text="{Binding Name}" />
+                                                                </StackPanel>
+
+                                                                <TextBlock Margin="0,4,0,0"
+                                                                           TextWrapping="Wrap"
+                                                                           Foreground="{StaticResource MutedBrush}"
+                                                                           Text="{Binding Summary}" />
+
+                                                                <TextBlock Margin="0,3,0,0"
+                                                                           FontFamily="Consolas"
+                                                                           FontSize="10.2"
+                                                                           Foreground="#667085"
+                                                                           Text="{Binding EndpointMetaText}" />
+                                                            </StackPanel>
+
+                                                            <StackPanel Grid.Column="1"
+                                                                        Margin="12,0,0,0"
+                                                                        HorizontalAlignment="Right">
+                                                                <Border Padding="8,3"
+                                                                        Background="{Binding StatusBackground}"
+                                                                        CornerRadius="999">
+                                                                    <TextBlock FontWeight="SemiBold"
+                                                                               Foreground="{Binding StatusForeground}"
+                                                                               Text="{Binding AvailabilityText}" />
+                                                                </Border>
+                                                                <Button Command="{Binding OpenRawTraceCommand}"
+                                                                        Style="{StaticResource OfficialApiTraceButtonStyle}"
+                                                                        Content="&#x539F;&#x59CB; Trace" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Grid>
+                            </Border>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsNetworkReviewSpeedTestSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="&#x6D4B;&#x901F;&#x65B9;&#x6848;" />
+                                <ComboBox Grid.Column="1"
+                                          Margin="8,0,0,0"
+                                          ItemsSource="{Binding SpeedTestProfiles}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValuePath="Key"
+                                          SelectedValue="{Binding SelectedSpeedTestProfileKey, Mode=TwoWay}"
+                                          Style="{StaticResource CompactComboBoxStyle}" />
+                                <Button Grid.Column="3"
+                                        MinWidth="128"
+                                        Margin="0"
+                                        Command="{Binding RunSpeedTestCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="&#x5F00;&#x59CB;&#x6D4B;&#x901F;" />
+                            </Grid>
+
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,6,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding SelectedSpeedTestProfileDescription}" />
+
+                            <Grid Grid.Row="3">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="8" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="8" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" Style="{StaticResource ReviewPaneBorderStyle}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x6D4B;&#x901F;&#x603B;&#x89C8;" />
+                                        <TextBox Grid.Row="1"
+                                                 Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                                 Text="{Binding SpeedTestSummary, Mode=OneWay}" />
+                                    </Grid>
+                                </Border>
+
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="1*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Style="{StaticResource ReviewPaneBorderStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5EF6;&#x8FDF; / &#x6296;&#x52A8;&#x91C7;&#x6837;" />
+                                            <TextBox Grid.Row="1"
+                                                     Style="{StaticResource ReviewPaneConsoleTextBoxStyle}"
+                                                     Text="{Binding SpeedTestLatencyDetail, Mode=OneWay}" />
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Grid.Column="2" Style="{StaticResource ReviewPaneBorderStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x4F20;&#x8F93;&#x6D4B;&#x91CF;" />
+                                            <TextBox Grid.Row="1"
+                                                     Style="{StaticResource ReviewPaneConsoleTextBoxStyle}"
+                                                     Text="{Binding SpeedTestTransferDetail, Mode=OneWay}" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <Border Grid.Row="4" Style="{StaticResource ReviewPaneBorderStyle}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x4E22;&#x5305;&#x8BC4;&#x4F30;" />
+                                        <TextBox Grid.Row="1"
+                                                 Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                                 Text="{Binding SpeedTestPacketLossDetail, Mode=OneWay}" />
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsNetworkReviewRouteSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="180" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="170" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="&#x76EE;&#x6807;&#x57DF;&#x540D;" />
+                                <TextBox Grid.Column="1"
+                                         Margin="8,0,0,0"
+                                         Style="{StaticResource CompactInputTextBoxStyle}"
+                                         Text="{Binding RouteTarget, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="3"
+                                           VerticalAlignment="Center"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="&#x89E3;&#x6790;&#x5668;" />
+                                <ComboBox Grid.Column="4"
+                                          Margin="8,0,0,0"
+                                          ItemsSource="{Binding RouteResolverOptions}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValuePath="Key"
+                                          SelectedValue="{Binding SelectedRouteResolverKey, Mode=TwoWay}"
+                                          Style="{StaticResource CompactComboBoxStyle}" />
+                                <Button Grid.Column="6"
+                                        MinWidth="104"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding RunRouteCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="&#x5355;&#x6B21;&#x63A2;&#x6D4B;" />
+                                <Button Grid.Column="7"
+                                        MinWidth="104"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding RunRouteContinuousCommand}"
+                                        Content="&#x6301;&#x7EED;&#x63A2;&#x6D4B;" />
+                                <Button Grid.Column="8"
+                                        MinWidth="96"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding StopRouteContinuousCommand}"
+                                        Content="&#x505C;&#x6B62;" />
+                            </Grid>
+
+                            <Grid Grid.Row="1" Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="76" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="76" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="76" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="76" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="76" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="&#x6700;&#x5927;&#x8DF3;&#x6570;" />
+                                <TextBox Grid.Column="1" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding RouteMaxHopsText, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="3" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="&#x8D85;&#x65F6;(ms)" />
+                                <TextBox Grid.Column="4" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding RouteTimeoutMsText, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="6" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="&#x6BCF;&#x8DF3;&#x91C7;&#x6837;" />
+                                <TextBox Grid.Column="7" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding RouteSamplesPerHopText, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="9" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="&#x6301;&#x7EED;&#x65F6;&#x957F;(s)" />
+                                <TextBox Grid.Column="10" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding RouteContinuousDurationSecondsText, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="12" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="&#x95F4;&#x9694;(ms)" />
+                                <TextBox Grid.Column="13" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding RouteContinuousIntervalMsText, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+
+                            <Grid Grid.Row="3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.05*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="1*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Grid Grid.Column="0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="8" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <Border Grid.Row="0" Style="{StaticResource ReviewPaneBorderStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x8DEF;&#x7531;&#x603B;&#x89C8;" />
+                                            <TextBox Grid.Row="1"
+                                                     Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                                     Text="{Binding RouteSummary, Mode=OneWay}" />
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Grid.Row="2" Style="{StaticResource ReviewPaneBorderStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x9010;&#x8DF3;&#x7ED3;&#x679C;" />
+                                            <TextBox Grid.Row="1"
+                                                     Style="{StaticResource ReviewPaneConsoleTextBoxStyle}"
+                                                     Text="{Binding RouteHopSummary, Mode=OneWay}" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <Grid Grid.Column="2">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="8" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <Border Grid.Row="0" Style="{StaticResource ReviewPaneBorderStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5730;&#x7406;&#x8DEF;&#x5F84;&#x56FE;" />
+                                            <Border Grid.Row="1"
+                                                    Margin="0,6,0,0"
+                                                    Padding="2"
+                                                    Background="#FAFBFC"
+                                                    BorderBrush="Transparent"
+                                                    BorderThickness="0"
+                                                    CornerRadius="8">
+                                                <Image Height="200"
+                                                       Stretch="Uniform"
+                                                       Source="{Binding RouteMapImage}" />
+                                            </Border>
+                                            <TextBox Grid.Row="2"
+                                                     Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                                     MinHeight="74"
+                                                     Text="{Binding RouteMapSummary, Mode=OneWay}" />
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Grid.Row="2" Style="{StaticResource ReviewPaneBorderStyle}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x539F;&#x59CB;&#x8F93;&#x51FA; / &#x5730;&#x7406;&#x6458;&#x8981;" />
+                                            <TextBox Grid.Row="1"
+                                                     Style="{StaticResource ReviewPaneRawTextBoxStyle}"
+                                                     Text="{Binding RouteRawOutput, Mode=OneWay}" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsNetworkReviewSplitRoutingSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                       Text="&#x5F53;&#x5730;&#x533A;&#x89E3;&#x9501;&#x3001;&#x51FA;&#x53E3;&#x56FD;&#x5BB6;&#x3001;DNS &#x8FD4;&#x56DE;&#x6216;&#x5206;&#x6D41;&#x7ED3;&#x679C;&#x770B;&#x8D77;&#x6765;&#x4E0D;&#x5BF9;&#x65F6;&#xFF0C;&#x76F4;&#x63A5;&#x5728;&#x8FD9;&#x91CC;&#x68C0;&#x67E5;&#x51FA;&#x53E3;&#x4E0E;&#x5206;&#x6D41;&#x94FE;&#x8DEF;&#x3002;" />
+
+                            <Grid Grid.Row="1" Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Height="72"
+                                         AcceptsReturn="True"
+                                         VerticalContentAlignment="Top"
+                                         VerticalScrollBarVisibility="Auto"
+                                         TextWrapping="Wrap"
+                                         Text="{Binding SplitRoutingHostsText, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="1"
+                                        MinWidth="128"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding RunSplitRoutingCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="&#x5F00;&#x59CB;&#x68C0;&#x6D4B;" />
+                            </Grid>
+
+                            <Border Grid.Row="3" Style="{StaticResource ReviewPaneBorderStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x51FA;&#x53E3;&#x4E0E;&#x5206;&#x6D41;&#x603B;&#x89C8;" />
+                                    <TextBox Grid.Row="1"
+                                             Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                             MinHeight="92"
+                                             Text="{Binding SplitRoutingSummary, Mode=OneWay}" />
+                                </Grid>
+                            </Border>
+
+                            <TabControl Grid.Row="5"
+                                        ItemContainerStyle="{StaticResource ReviewFlatTabItemStyle}"
+                                        Style="{StaticResource ReviewFlatTabControlStyle}">
+                                <TabItem Header="&#x51FA;&#x53E3;&#x5BF9;&#x6BD4;">
+                                    <TextBox Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                             MinHeight="300"
+                                             Text="{Binding SplitRoutingExitSummary, Mode=OneWay}" />
+                                </TabItem>
+                                <TabItem Header="DNS">
+                                    <TextBox Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                             MinHeight="300"
+                                             Text="{Binding SplitRoutingDnsSummary, Mode=OneWay}" />
+                                </TabItem>
+                                <TabItem Header="&#x7F51;&#x5361;">
+                                    <TextBox Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                             MinHeight="300"
+                                             Text="{Binding SplitRoutingAdapterSummary, Mode=OneWay}" />
+                                </TabItem>
+                                <TabItem Header="IP &#x6D1E;&#x5BDF;">
+                                    <TextBox Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                             MinHeight="300"
+                                             Text="{Binding SplitRoutingIpInsightSummary, Mode=OneWay}" />
+                                </TabItem>
+                                <TabItem Header="&#x53EF;&#x8FBE;&#x6027;">
+                                    <TextBox Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                             MinHeight="300"
+                                             Text="{Binding SplitRoutingReachabilitySummary, Mode=OneWay}" />
+                                </TabItem>
+                            </TabControl>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsNetworkReviewStunSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                       Text="&#x9002;&#x5408;&#x7EE7;&#x7EED;&#x786E;&#x8BA4; NAT &#x7C7B;&#x578B;&#x3001;&#x6620;&#x5C04;&#x884C;&#x4E3A;&#x548C;&#x662F;&#x5426;&#x5177;&#x5907;&#x6253;&#x6D1E;&#x6761;&#x4EF6;&#x3002;" />
+
+                            <Grid Grid.Row="1" Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="240" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="STUN &#x670D;&#x52A1;&#x5668;" />
+                                <TextBox Grid.Column="1"
+                                         Margin="8,0,0,0"
+                                         Style="{StaticResource CompactInputTextBoxStyle}"
+                                         Text="{Binding StunServer, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="3"
+                                        MinWidth="128"
+                                        Command="{Binding RunStunCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="&#x5F00;&#x59CB;&#x68C0;&#x6D4B;" />
+                            </Grid>
+
+                            <Border Grid.Row="3" Style="{StaticResource ReviewPaneBorderStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="NAT / STUN &#x603B;&#x89C8;" />
+                                    <TextBox Grid.Row="1"
+                                             Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                             MinHeight="96"
+                                             Text="{Binding StunSummary, Mode=OneWay}" />
+                                </Grid>
+                            </Border>
+
+                            <TabControl Grid.Row="5"
+                                        ItemContainerStyle="{StaticResource ReviewFlatTabItemStyle}"
+                                        Style="{StaticResource ReviewFlatTabControlStyle}">
+                                <TabItem Header="&#x8986;&#x76D6;&#x5224;&#x5B9A;">
+                                    <TextBox Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                             MinHeight="300"
+                                             Text="{Binding StunCoverageSummary, Mode=OneWay}" />
+                                </TabItem>
+                                <TabItem Header="&#x6D4B;&#x8BD5;&#x8FC7;&#x7A0B;">
+                                    <TextBox Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                             MinHeight="300"
+                                             Text="{Binding StunTestSummary, Mode=OneWay}" />
+                                </TabItem>
+                                <TabItem Header="&#x5C5E;&#x6027;&#x8BE6;&#x60C5;">
+                                    <TextBox Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                             MinHeight="300"
+                                             Text="{Binding StunAttributeSummary, Mode=OneWay}" />
+                                </TabItem>
+                            </TabControl>
+                        </Grid>
+
+                        <Grid Visibility="{Binding IsNetworkReviewPortScanSelected, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="180" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="210" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="&#x76EE;&#x6807;" />
+                                <TextBox Grid.Column="1"
+                                         Margin="8,0,0,0"
+                                         Style="{StaticResource CompactInputTextBoxStyle}"
+                                         Text="{Binding PortScanTarget, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="3"
+                                           VerticalAlignment="Center"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="&#x6A21;&#x677F;" />
+                                <ComboBox Grid.Column="4"
+                                          Margin="8,0,0,0"
+                                          ItemsSource="{Binding PortScanProfiles}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValuePath="Key"
+                                          SelectedValue="{Binding SelectedPortScanProfileKey, Mode=TwoWay}"
+                                          Style="{StaticResource CompactComboBoxStyle}" />
+                                <Button Grid.Column="6"
+                                        MinWidth="110"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding RunPortScanCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="&#x5F00;&#x59CB;&#x626B;&#x63CF;" />
+                            </Grid>
+
+                            <Grid Grid.Row="1" Margin="0,6,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="&#x81EA;&#x5B9A;&#x4E49;&#x7AEF;&#x53E3;" />
+                                <TextBox Grid.Column="1"
+                                         Style="{StaticResource CompactInputTextBoxStyle}"
+                                         Text="{Binding PortScanCustomPortsText, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="3"
+                                           VerticalAlignment="Center"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="&#x641C;&#x7D22;" />
+                                <TextBox Grid.Column="4"
+                                         Style="{StaticResource CompactInputTextBoxStyle}"
+                                         Text="{Binding PortScanSearchText, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="6"
+                                           VerticalAlignment="Center"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="&#x534F;&#x8BAE;" />
+                                <ComboBox Grid.Column="7"
+                                          ItemsSource="{Binding PortScanProtocolFilterOptions}"
+                                          DisplayMemberPath="DisplayName"
+                                          SelectedValuePath="Key"
+                                          SelectedValue="{Binding SelectedPortScanProtocolFilterKey, Mode=TwoWay}"
+                                          Style="{StaticResource CompactComboBoxStyle}" />
+                            </Grid>
+
+                            <TextBlock Grid.Row="2"
+                                       Margin="0,6,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding SelectedPortScanProfileDescription}" />
+
+                            <Grid Grid.Row="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="0.95*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="1.05*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Style="{StaticResource ReviewPaneBorderStyle}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x626B;&#x63CF;&#x603B;&#x89C8;" />
+                                        <TextBlock Grid.Row="1"
+                                                   Margin="0,6,0,0"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   Text="{Binding PortScanProgressSummary, Mode=OneWay}" />
+                                        <TextBox Grid.Row="2"
+                                                 Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                                 MinHeight="210"
+                                                 Text="{Binding PortScanSummary, Mode=OneWay}" />
+                                    </Grid>
+                                </Border>
+
+                                <Border Grid.Column="2" Style="{StaticResource ReviewPaneBorderStyle}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5F00;&#x653E;&#x7AEF;&#x70B9;&#x5217;&#x8868;" />
+                                        <TextBlock Grid.Row="1"
+                                                   Margin="0,6,0,0"
+                                                   Style="{StaticResource SectionHintTextStyle}"
+                                                   Text="{Binding PortScanFilterSummary, Mode=OneWay}" />
+                                        <ListBox Grid.Row="2"
+                                                 ItemsSource="{Binding FilteredPortScanFindings}"
+                                                 ItemContainerStyle="{StaticResource ReviewResultListBoxItemStyle}"
+                                                 Style="{StaticResource ReviewResultListBoxStyle}">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel>
+                                                        <DockPanel LastChildFill="False">
+                                                            <TextBlock FontWeight="SemiBold"
+                                                                       Text="{Binding Endpoint}" />
+                                                            <TextBlock DockPanel.Dock="Right"
+                                                                       Foreground="{StaticResource AccentBrush}"
+                                                                       Text="{Binding LatencyText}" />
+                                                        </DockPanel>
+                                                        <TextBlock Margin="0,2,0,0"
+                                                                   Style="{StaticResource SectionHintTextStyle}"
+                                                                   Text="{Binding ServiceHint}" />
+                                                        <TextBlock Margin="0,1,0,0"
+                                                                   Style="{StaticResource SectionHintTextStyle}"
+                                                                   TextWrapping="Wrap"
+                                                                   Text="{Binding ApplicationSummary}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <TabControl Grid.Row="6"
+                                        ItemContainerStyle="{StaticResource ReviewFlatTabItemStyle}"
+                                        Style="{StaticResource ReviewFlatTabControlStyle}">
+                                <TabItem Header="&#x8BE6;&#x7EC6;&#x6458;&#x8981;">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Foreground="{StaticResource AccentBrush}"
+                                                   Text="{Binding PortScanExportSummary, Mode=OneWay}" />
+                                        <TextBox Grid.Row="1"
+                                                 Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                                 MinHeight="190"
+                                                 Text="{Binding PortScanDetail, Mode=OneWay}" />
+                                    </Grid>
+                                </TabItem>
+                                <TabItem Header="&#x539F;&#x59CB;&#x65E5;&#x5FD7;">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <WrapPanel>
+                                            <Button MinWidth="116"
+                                                    Command="{Binding ExportPortScanCsvCommand}"
+                                                    Content="&#x5BFC;&#x51FA; CSV" />
+                                            <Button MinWidth="124"
+                                                    Command="{Binding ExportPortScanExcelCommand}"
+                                                    Content="&#x5BFC;&#x51FA; Excel" />
+                                        </WrapPanel>
+                                        <TextBox Grid.Row="1"
+                                                 Style="{StaticResource ReviewPaneRawTextBoxStyle}"
+                                                 MinHeight="190"
+                                                 Text="{Binding PortScanRawOutput, Mode=OneWay}" />
+                                    </Grid>
+                                </TabItem>
+                            </TabControl>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,56 @@
+﻿using System.Text;
+using NetTest.App.Infrastructure;
+using NetTest.Core.Models;
+
+namespace NetTest.App.ViewModels;
+
+public sealed partial class MainWindowViewModel
+{
+    private enum ProxyBatchKeySource
+    {
+        Default,
+        SiteGroup,
+        Entry
+    }
+
+    private enum ProxyBatchEditorMode
+    {
+        SharedKeyGroup,
+        MultiKey
+    }
+
+    private sealed record ProxyBatchSiteGroupContext(
+        string Name,
+        string? ApiKey,
+        string? Model);
+
+    private sealed record ProxyBatchSourceEntry(
+        string Name,
+        string BaseUrl,
+        string? ApiKey,
+        string? Model,
+        string? SiteGroupName,
+        string? SiteGroupApiKey,
+        string? SiteGroupModel);
+
+    private sealed record ProxyBatchPlan(
+        IReadOnlyList<ProxyBatchSourceEntry> SourceEntries,
+        IReadOnlyList<ProxyBatchTargetEntry> Targets,
+        bool UsesFallbackDefaultEntry);
+
+    private sealed record ProxyBatchTargetEntry(
+        string Name,
+        string BaseUrl,
+        string ApiKey,
+        string ApiKeyAlias,
+        string Model,
+        string SourceEntryName,
+        string? SiteGroupName,
+        ProxyBatchKeySource KeySource);
+
+    private sealed record ProxyBatchProbeRow(
+        ProxyBatchTargetEntry Entry,
+        ProxyDiagnosticsResult Result,
+        int Score);
+
+}

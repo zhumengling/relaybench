@@ -1,0 +1,349 @@
+<UserControl x:Class="NetTest.App.Views.Pages.BatchComparisonPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="ChartPreviewOverlayTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource SectionHintTextStyle}">
+            <Setter Property="Foreground" Value="#344054" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="1.05*" />
+            <RowDefinition Height="1.15*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource SectionPanelBorderStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="第 1 步：入口组与快速对比" />
+                    <TextBlock Margin="0,3,0,0"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               Text="先维护入口组，再执行一次快速对比；图表区只读，候选站点只在排行榜列表里手动勾选，不会自动代你选择。" />
+                </StackPanel>
+
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <Button Command="{Binding OpenProxyBatchEditorCommand}" Content="管理入口组" />
+                    <Button Command="{Binding RunProxyBatchCommand}"
+                            Style="{StaticResource PrimaryActionButtonStyle}"
+                            Content="开始快速对比" />
+                    <Button Command="{Binding OpenBatchComparisonChartCommand}" Content="放大图表" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="0,4,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.08*" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="0.92*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="第 2 步：排行榜图表（只读）" />
+                        <TextBlock Margin="0,2,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="{Binding BatchComparisonChartStatusSummary, Mode=OneWay}" />
+                    </StackPanel>
+
+                    <Border Grid.Row="1"
+                            Margin="0,6,0,0"
+                            Style="{StaticResource InsetPanelBorderStyle}">
+                        <Grid x:Name="BatchComparisonChartPreviewHost"
+                              Background="Transparent"
+                              ClipToBounds="True"
+                              SizeChanged="BatchComparisonChartPreviewHost_OnSizeChanged">
+                            <Border Cursor="Hand"
+                                    Visibility="{Binding HasBatchComparisonChart, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Border.InputBindings>
+                                    <MouseBinding Gesture="LeftClick"
+                                                  Command="{Binding OpenBatchComparisonChartCommand}" />
+                                </Border.InputBindings>
+                                <Grid>
+                                    <Image Margin="4"
+                                           HorizontalAlignment="Stretch"
+                                           VerticalAlignment="Stretch"
+                                           Stretch="Uniform"
+                                           Source="{Binding BatchComparisonChartImage, Mode=OneWay}" />
+                                    <Border HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"
+                                            Margin="0,0,10,10"
+                                            Padding="8,3"
+                                            Background="#F9FAFBEA"
+                                            BorderBrush="{StaticResource PanelBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                        <TextBlock Style="{StaticResource ChartPreviewOverlayTextStyle}"
+                                                   Text="点击放大" />
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Text="完成快速对比后，这里会显示排行榜预览图；点击预览可放大。">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasBatchComparisonChart}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="第 3 步：排行榜列表（在这里勾选候选项）" />
+                        <TextBlock Margin="0,2,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="快速对比后默认不会自动勾选任何站点；请只在这里勾选候选项，再继续做深度测试。" />
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1"
+                                  Margin="0,6,0,0"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  CanContentScroll="False">
+                        <ItemsControl ItemsSource="{Binding ProxyBatchRankingRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,4"
+                                            Padding="7,5"
+                                            Background="{StaticResource InputBrush}"
+                                            BorderBrush="{StaticResource PanelBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <CheckBox Grid.Column="0"
+                                                      Margin="0,1,8,0"
+                                                      VerticalAlignment="Top"
+                                                      IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+
+                                            <Border Grid.Column="1"
+                                                    Width="34"
+                                                    Height="20"
+                                                    Margin="0,1,8,0"
+                                                    VerticalAlignment="Top"
+                                                    Background="Transparent"
+                                                    BorderBrush="{StaticResource AccentBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="10">
+                                                <TextBlock HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{StaticResource AccentBrush}"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding Rank}" />
+                                            </Border>
+
+                                            <StackPanel Grid.Column="2">
+                                                <DockPanel LastChildFill="False">
+                                                    <TextBlock FontWeight="SemiBold" Text="{Binding EntryName}" />
+                                                    <TextBlock DockPanel.Dock="Right"
+                                                               Style="{StaticResource SectionHintTextStyle}"
+                                                               Text="{Binding Model, StringFormat=模型：{0}}" />
+                                                </DockPanel>
+                                                <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="{Binding BaseUrl}" />
+                                                <WrapPanel Margin="0,2,0,0">
+                                                    <Border Margin="0,0,6,0"
+                                                            Padding="6,1"
+                                                            Background="{StaticResource InputBrush}"
+                                                            BorderBrush="{StaticResource PanelBorderBrush}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="8">
+                                                        <TextBlock FontWeight="SemiBold"
+                                                                   Text="{Binding QuickVerdict}" />
+                                                    </Border>
+                                                    <Border Padding="6,1"
+                                                            Background="{StaticResource InputBrush}"
+                                                            BorderBrush="{StaticResource AccentBrush}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="8">
+                                                        <TextBlock Foreground="{StaticResource AccentBrush}"
+                                                                   FontWeight="SemiBold"
+                                                                   Text="{Binding DeepStatus}" />
+                                                    </Border>
+                                                </WrapPanel>
+                                                <TextBlock Margin="0,1,0,0"
+                                                           Style="{StaticResource SectionHintTextStyle}"
+                                                           Text="{Binding QuickMetrics}" />
+                                                <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="{Binding CapabilitySummary}" />
+                                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                           Text="{Binding DeepSummary}"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2" Margin="0,4,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="1*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="快速对比摘要" />
+                        <TextBlock Margin="0,2,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="这里保留本轮快速对比的结构化摘要，方便和排行榜图表、排行榜列表互相对照。" />
+                    </StackPanel>
+
+                    <TextBox Grid.Row="1"
+                             Margin="0,6,0,0"
+                             Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
+                             Text="{Binding ProxyBatchSummary, Mode=OneWay}" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="1.18*" />
+                        <RowDefinition Height="0.82*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="第 4 步：勾选候选项并做深度测试" />
+                            <TextBlock Margin="0,2,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding BatchSelectionSummary, Mode=OneWay}" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Command="{Binding RunSelectedBatchDeepTestsCommand}"
+                                Style="{StaticResource PrimaryActionButtonStyle}"
+                                IsEnabled="{Binding CanRunSelectedBatchDeepTests, Mode=OneWay}"
+                                Content="对勾选项做深度测试" />
+                    </Grid>
+
+                    <TextBlock Grid.Row="1"
+                               Margin="0,6,0,0"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               Text="深度测试只复用已勾选候选站点的 BaseUrl / Key / Model，不会改写单站页当前配置，也不会替你新增候选项。" />
+
+                    <TextBlock Grid.Row="2"
+                               Margin="0,4,0,0"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               Text="{Binding BatchDeepComparisonChartStatusSummary, Mode=OneWay}" />
+
+                    <Border Grid.Row="3"
+                            Margin="0,6,0,0"
+                            Style="{StaticResource InsetPanelBorderStyle}">
+                        <Grid>
+                            <TextBlock HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Text="勾选排行榜列表项并开始深度测试后，这里会实时显示候选站点深度测试总览图。">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasBatchDeepComparisonChart}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <Border x:Name="BatchDeepComparisonChartPreviewHost"
+                                    Background="Transparent"
+                                    ClipToBounds="True"
+                                    Cursor="Hand"
+                                    SizeChanged="BatchDeepComparisonChartPreviewHost_OnSizeChanged"
+                                    Visibility="{Binding HasBatchDeepComparisonChart, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Border.InputBindings>
+                                    <MouseBinding Gesture="LeftClick"
+                                                  Command="{Binding OpenBatchDeepComparisonChartCommand}" />
+                                </Border.InputBindings>
+                                <Grid>
+                                    <Image Margin="4"
+                                           HorizontalAlignment="Stretch"
+                                           VerticalAlignment="Stretch"
+                                           Stretch="Uniform"
+                                           Source="{Binding BatchDeepComparisonChartImage, Mode=OneWay}" />
+                                    <Border HorizontalAlignment="Right"
+                                            VerticalAlignment="Bottom"
+                                            Margin="0,0,10,10"
+                                            Padding="8,3"
+                                            Background="#F9FAFBEA"
+                                            BorderBrush="{StaticResource PanelBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                        <TextBlock Style="{StaticResource ChartPreviewOverlayTextStyle}"
+                                                   Text="点击放大" />
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <TextBox Grid.Row="4"
+                             Margin="0,6,0,0"
+                             Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
+                             Text="{Binding BatchDeepTestSummary, Mode=OneWay}" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

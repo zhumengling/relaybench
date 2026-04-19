@@ -1,0 +1,920 @@
+﻿<Window x:Class="NetTest.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:pages="clr-namespace:NetTest.App.Views.Pages"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="NetTest 网络诊断套件"
+        Width="1440"
+        Height="860"
+        MinWidth="1120"
+        MinHeight="700"
+        Background="#F5F7FA"
+        FontFamily="Microsoft YaHei UI"
+        FontSize="11"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextHintingMode="Fixed"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid Margin="3">
+        <Border Grid.Column="0"
+                Visibility="Collapsed"
+                Padding="22"
+                Background="{StaticResource PanelBrushStrong}"
+                BorderBrush="{StaticResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="22">
+            <StackPanel>
+                <TextBlock FontSize="24" FontWeight="Bold" Text="NetTest 网络诊断套件" />
+                <TextBlock Margin="0,8,0,0"
+                           Foreground="{StaticResource MutedBrush}"
+                           TextWrapping="Wrap"
+                           Text="菜单入口集中放在左上角，导出和各项检测放在一起；左侧不再显示卡片式摘要。" />
+
+                <WrapPanel Margin="0,18,0,10">
+                    <Button Width="144" Command="{Binding ExportCurrentReportCommand}" Content="导出报告" />
+                    <Button Width="160" Command="{Binding RunNetworkCommand}" Content="运行网络检测" />
+                    <Button Width="200" Command="{Binding RunChatGptTraceCommand}" Content="运行官方 API 检测" />
+                    <Button Width="160" Command="{Binding RunStunCommand}" Content="运行 STUN" />
+                    <Button Width="180" Command="{Binding RunProxyCommand}" Content="运行基础中转站检测" />
+                    <Button Width="210" Command="{Binding RunProxyBatchCommand}" Content="运行中转站组检测" />
+                    <Button Width="140" Command="{Binding RunSpeedTestCommand}" Content="运行测速" />
+                    <Button Width="170" Command="{Binding RunRouteCommand}" Content="运行路由 / MTR" />
+                    <Button Width="190" Command="{Binding RunSplitRoutingCommand}" Content="运行 IP / 分流检测" />
+                    <Button Width="160" Command="{Binding DetectPortScanEngineCommand}" Content="检测端口引擎" />
+                </WrapPanel>
+
+                <Border Margin="0,4,0,18"
+                        BorderBrush="{StaticResource PanelBorderBrush}"
+                        BorderThickness="0,0,0,1" />
+
+                <TextBlock FontSize="14" FontWeight="SemiBold" Text="当前状态" />
+                <TextBox Margin="0,12,0,0"
+                         Height="260"
+                         IsReadOnly="True"
+                         Text="{Binding StatusMessage, Mode=OneWay}" />
+                <TextBlock Margin="0,4,0,0"
+                           Foreground="{StaticResource AccentBrush}"
+                           Text="{Binding LastRunAt, StringFormat=上次运行：{0}}" />
+                <TextBlock Margin="0,14,0,0"
+                           Foreground="{StaticResource MutedBrush}"
+                           TextWrapping="Wrap"
+                           Text="详细运行状态和关键返回数据会在右侧顶部实时追加显示；更细的诊断结果仍然保留在右侧各标签页中。" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.ColumnSpan="3"
+                Padding="7"
+                Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="14">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        Visibility="Collapsed"
+                        Margin="0,0,0,18"
+                        Padding="18"
+                        Background="{StaticResource InputBrush}"
+                        CornerRadius="18">
+                    <StackPanel>
+                        <TextBlock FontSize="24" FontWeight="Bold" Text="NetTest 网络诊断套件" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="菜单入口已并排收进左上角主区域，左侧独立栏不再显示，当前状态和实时输出集中在右侧工作区查看。" />
+                        <TextBlock Margin="0,10,0,0"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   Text="{Binding LastRunAt, StringFormat=上次运行：{0}}" />
+                        <TextBox Margin="0,12,0,0"
+                                 Height="96"
+                                 IsReadOnly="True"
+                                 Text="{Binding StatusMessage, Mode=OneWay}" />
+                    </StackPanel>
+                </Border>
+
+                <Border DockPanel.Dock="Top"
+                        Visibility="Collapsed"
+                        Margin="0,0,0,18"
+                        Padding="18"
+                        Background="{StaticResource InputBrush}"
+                        CornerRadius="18">
+                    <StackPanel>
+                        <TextBlock FontSize="19" FontWeight="Bold" Text="诊断控制台" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="左侧现在只承担标题、菜单和状态展示；右侧继续负责实时输出与各模块详细结果。" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1"
+                        Margin="0,0,0,4"
+                        Padding="7,4"
+                        Background="{StaticResource InputBrush}"
+                        CornerRadius="10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   Text="{Binding StatusMessage, Mode=OneWay}" />
+                        <TextBlock Grid.Column="1"
+                                   Margin="10,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   Text="{Binding LastRunAt, StringFormat=上次运行：{0}}" />
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="0"
+                      Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="210" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Style="{StaticResource NavigationRailBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                       Text="工作台导航" />
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,3,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="按任务切换页面：先单站，再批量，再复核与报告。" />
+
+                            <ListBox Grid.Row="2"
+                                     Margin="0,8,0,0"
+                                     ItemContainerStyle="{StaticResource NavigationListBoxItemStyle}"
+                                     ItemsSource="{Binding WorkbenchPageOptions}"
+                                     SelectedValuePath="Key"
+                                     SelectedValue="{Binding SelectedWorkbenchPageKey, Mode=TwoWay}"
+                                     Style="{StaticResource NavigationListBoxStyle}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock FontSize="11.2"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding DisplayName}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                Style="{StaticResource SectionPanelBorderStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                               Text="{Binding CurrentPageTitle}" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               Text="{Binding CurrentPageSubtitle}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1"
+                                            HorizontalAlignment="Right">
+                                    <TextBlock HorizontalAlignment="Right"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               Text="{Binding StatusMessage, Mode=OneWay}" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               Text="{Binding LastRunAt, StringFormat=上次运行：{0}}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Grid Grid.Row="1"
+                              Margin="0,4,0,0">
+                            <pages:SingleStationPage Visibility="{Binding IsSingleStationPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <pages:BatchComparisonPage Visibility="{Binding IsBatchComparisonPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <pages:NetworkReviewPage Visibility="{Binding IsNetworkReviewPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <pages:HistoryReportsPage Visibility="{Binding IsHistoryReportsPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Grid Panel.ZIndex="21"
+              Background="#660F172A"
+              Visibility="{Binding IsProxyTrendChartOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Margin="18"
+                    Padding="12"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="8" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource DialogTitleTextStyle}"
+                                       Text="{Binding ProxyChartDialogTitle, Mode=OneWay}" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Text="{Binding ProxyChartDialogIntro, Mode=OneWay}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsProxyChartImageOnlyMode}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right">
+                            <Button MinWidth="120"
+                                    Margin="12,0,0,0"
+                                    Command="{Binding ToggleProxyChartImageOnlyModeCommand}"
+                                    Content="{Binding ProxyChartImageOnlyModeButtonText, Mode=OneWay}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanToggleProxyChartImageOnlyMode}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button MinWidth="112"
+                                    Margin="12,0,0,0"
+                                    Command="{Binding RetryProxyChartCommand}"
+                                    Content="{Binding ProxyChartRetryButtonText, Mode=OneWay}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasProxyChartRetryAction}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button MinWidth="112"
+                                    Margin="12,0,0,0"
+                                    Command="{Binding CloseProxyTrendChartCommand}"
+                                    Content="关闭弹窗" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProxyChartImageOnlyMode}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.25*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="1.15*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Style="{StaticResource DialogSectionBorderStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="图表摘要" />
+                                    <TextBox Grid.Row="1"
+                                             Margin="0,8,0,0"
+                                             Height="72"
+                                             Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                             Text="{Binding ProxyChartDialogSummary, Mode=OneWay}" />
+                                </Grid>
+                            </Border>
+                            <Border Grid.Column="2" Style="{StaticResource DialogSectionBorderStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="检测摘要" />
+                                    <TextBox Grid.Row="1"
+                                             Margin="0,8,0,0"
+                                             Height="88"
+                                             Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
+                                             Text="{Binding ProxyChartDialogCapabilitySummary, Mode=OneWay}" />
+                                </Grid>
+                            </Border>
+                            <Border Grid.Column="4" Style="{StaticResource DialogSectionBorderStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="读图说明" />
+                                    <TextBlock Grid.Row="1"
+                                               Margin="0,8,0,0"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               Text="{Binding ProxyChartDialogGuideSummary, Mode=OneWay}" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+
+                    <Border Grid.Row="4">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource DialogSectionBorderStyle}">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProxyChartImageOnlyMode}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="检测明细" />
+                                <Button Grid.Column="1"
+                                        MinWidth="128"
+                                        Margin="12,0,0,0"
+                                        Command="{Binding ToggleProxyChartViewCommand}"
+                                        Content="{Binding ProxyChartToggleButtonText, Mode=OneWay}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CanToggleProxyChartView}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </Grid>
+                            <TextBox Grid.Row="1"
+                                     Margin="0,8,0,0"
+                                     MinHeight="88"
+                                     MaxHeight="108"
+                                     Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
+                                     Text="{Binding ProxyChartDialogCapabilityDetail, Mode=OneWay}" />
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="6"
+                          Margin="0"
+                          Background="Transparent"
+                          ClipToBounds="True">
+                        <Grid.InputBindings>
+                            <MouseBinding Gesture="LeftDoubleClick"
+                                          Command="{Binding ToggleProxyChartImageOnlyModeCommand}" />
+                        </Grid.InputBindings>
+                        <TextBlock HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap"
+                                   FontSize="14"
+                                   Text="{Binding ProxyChartDialogEmptyStateText, Mode=OneWay}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasProxyChartDialogImage}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <ScrollViewer x:Name="ProxyChartImageScrollViewer"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto"
+                                      SizeChanged="ProxyChartImageScrollViewer_OnSizeChanged"
+                                      CanContentScroll="False"
+                                      Visibility="{Binding HasProxyChartDialogImage, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ScrollViewer.InputBindings>
+                                <MouseBinding Gesture="LeftDoubleClick"
+                                              Command="{Binding ToggleProxyChartImageOnlyModeCommand}" />
+                            </ScrollViewer.InputBindings>
+                            <Image HorizontalAlignment="Left"
+                                   VerticalAlignment="Top"
+                                   Stretch="None"
+                                   Source="{Binding ProxyChartDialogImage, Mode=OneWay}" />
+                        </ScrollViewer>
+                    </Grid>
+
+                    <Border Grid.Row="7"
+                            Margin="0,10,0,0"
+                            Padding="10,8"
+                            Background="{StaticResource InputBrush}"
+                            BorderBrush="{StaticResource PanelBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProxyChartImageOnlyMode}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Foreground="{StaticResource AccentBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ProxyChartDialogStatusSummary, Mode=OneWay}" />
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Panel.ZIndex="20"
+              Background="#660F172A"
+              Visibility="{Binding IsProxyModelPickerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Width="920"
+                    MaxHeight="660"
+                    Padding="14"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="300" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="3">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource DialogTitleTextStyle}" Text="选择模型" />
+                            <TextBlock Margin="14,5,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyModelPickerInstruction, Mode=OneWay}" />
+                        </StackPanel>
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   Text="{Binding ProxyModelPickerTargetSummary, Mode=OneWay}" />
+                    </StackPanel>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="0"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="模型列表" />
+                            <TextBox Grid.Row="1"
+                                     Margin="0,6,0,6"
+                                     Style="{StaticResource CompactInputTextBoxStyle}"
+                                     Text="{Binding ProxyModelCatalogFilterText, UpdateSourceTrigger=PropertyChanged}" />
+                            <ListBox Grid.Row="2"
+                                     Margin="0,8,0,0"
+                                     ItemsSource="{Binding VisibleProxyCatalogModels}"
+                                     SelectedItem="{Binding SelectedProxyCatalogModel, Mode=TwoWay}" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="2"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="130" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="拉取摘要" />
+                            <TextBox Grid.Row="1"
+                                     Margin="0,8,0,0"
+                                     Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                     Text="{Binding ProxyModelCatalogSummary, Mode=OneWay}" />
+                            <TextBlock Grid.Row="3"
+                                       Style="{StaticResource SectionTitleTextStyle}"
+                                       Text="拉取明细 / 原始返回" />
+                            <TextBox Grid.Row="4"
+                                     Margin="0,8,0,0"
+                                     Style="{StaticResource ReadOnlyRawLogTextBoxStyle}"
+                                     Text="{Binding ProxyModelCatalogDetail, Mode=OneWay}" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            Grid.ColumnSpan="3"
+                            Margin="0,12,0,0"
+                            Padding="10,8"
+                            Background="{StaticResource InputBrush}"
+                            BorderBrush="{StaticResource PanelBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="筛选后直接点击模型条目即可回填到当前模型输入框。" />
+                            <Button Grid.Column="1"
+                                    MinWidth="112"
+                                    Margin="8,0,0,0"
+                                    Command="{Binding CloseProxyModelPickerCommand}"
+                                    Content="关闭弹窗" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Panel.ZIndex="20"
+              Background="#660F172A"
+              Visibility="{Binding IsOfficialApiTraceDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Width="980"
+                    MaxHeight="720"
+                    Padding="14"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="10" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{StaticResource DialogTitleTextStyle}"
+                               Text="{Binding OfficialApiTraceDialogTitle, Mode=OneWay}" />
+
+                    <Border Grid.Row="2"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x539F;&#x59CB;&#x8FD4;&#x56DE; / Trace" />
+                            <TextBox Grid.Row="1"
+                                     Margin="0,8,0,0"
+                                     Style="{StaticResource ReadOnlyRawLogTextBoxStyle}"
+                                     Text="{Binding OfficialApiTraceDialogContent, Mode=OneWay}" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            Margin="0,10,0,0"
+                            Padding="10,8"
+                            Background="{StaticResource InputBrush}"
+                            BorderBrush="{StaticResource PanelBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="&#x8FD9;&#x91CC;&#x5C55;&#x793A;&#x63A5;&#x53E3;&#x72B6;&#x6001;&#x3001;&#x8BED;&#x4E49;&#x5224;&#x65AD;&#x548C;&#x5F53;&#x524D;&#x6355;&#x83B7;&#x5230;&#x7684;&#x539F;&#x59CB;&#x8FD4;&#x56DE;&#x7247;&#x6BB5;&#xFF0C;&#x65B9;&#x4FBF;&#x786E;&#x8BA4;&#x662F;&#x771F;&#x9650;&#x5236;&#x3001;&#x771F;&#x62A5;&#x9519;&#xFF0C;&#x8FD8;&#x662F;&#x63A2;&#x6D4B;&#x65B9;&#x5F0F;&#x95EE;&#x9898;&#x3002;" />
+                            <Button Grid.Column="1"
+                                    MinWidth="112"
+                                    Margin="12,0,0,0"
+                                    Command="{Binding CloseOfficialApiTraceDialogCommand}"
+                                    Content="&#x5173;&#x95ED;&#x5F39;&#x7A97;" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Panel.ZIndex="19"
+              Background="#660F172A"
+              Visibility="{Binding IsProxyBatchEditorOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Width="1020"
+                    MaxHeight="700"
+                    Padding="14"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="10" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="270" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="3">
+                        <TextBlock Style="{StaticResource DialogTitleTextStyle}" Text="第 1 步：维护入口组" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="这里只维护入口组本身。左侧看已录入列表，右侧逐项填写；快速对比、排行榜勾选和候选深度测试仍在批量对比页执行。" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   Text="{Binding ProxyBatchTargetDigestSummary, Mode=OneWay}" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ProxyBatchExecutionPlanSummary, Mode=OneWay}" />
+                    </StackPanel>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="0"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="已录入入口组" />
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,6,0,6"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyBatchEditorListSummaryDisplay, Mode=OneWay}" />
+                            <ListBox Grid.Row="2"
+                                     Margin="0,4,0,0"
+                                     ItemsSource="{Binding ProxyBatchEditorItems}"
+                                     SelectedItem="{Binding SelectedProxyBatchEditorItem, Mode=TwoWay}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <TextBlock FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding DisplayTitle}" />
+                                                <TextBlock DockPanel.Dock="Right"
+                                                           Foreground="{StaticResource AccentBrush}"
+                                                           Text="{Binding SiteGroupDisplay}" />
+                                            </DockPanel>
+                                            <TextBlock Margin="0,2,0,0"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding BaseUrl}" />
+                                            <TextBlock Margin="0,1,0,0"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding KeyDisplay}" />
+                                            <TextBlock Margin="0,1,0,0"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding ModelDisplay}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="2"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="入口组录入" />
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Foreground="{StaticResource AccentBrush}"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ProxyBatchEditorFormModeSummary, Mode=OneWay}" />
+                                <TextBlock Margin="0,2,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           Text="{Binding ProxyBatchEditorSelectionSummary, Mode=OneWay}" />
+                            </StackPanel>
+                            <TabControl Grid.Row="2"
+                                        Margin="0,8,0,0"
+                                        Style="{StaticResource ProxyBatchTabControlStyle}"
+                                        SelectedIndex="{Binding ProxyBatchEditorModeIndex, Mode=TwoWay}">
+                                <TabItem Header="同站共用 Key">
+                                    <ScrollViewer Background="Transparent"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <Grid Margin="0,2,0,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="124" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="112" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Row="0"
+                                                       Grid.ColumnSpan="3"
+                                                       Margin="0,0,0,6"
+                                                       Style="{StaticResource SectionHintTextStyle}"
+                                                       Text="先写同站组和共用 Key，再连续补入口地址，最适合同一个站点的多个入口共用一把 Key。" />
+
+                                            <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="同站组名称" />
+                                            <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormSiteGroupName, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="同站共用 Key" />
+                                            <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormSiteGroupApiKey, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="同站共用模型" />
+                                            <TextBox Grid.Row="3" Grid.Column="1" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormSiteGroupModel, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Row="3" Grid.Column="2" Width="112" Margin="6,0,0,0" Command="{Binding FetchProxyBatchSharedModelsCommand}" Content="拉取模型" />
+
+                                            <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="入口名称" />
+                                            <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormEntryName, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="入口地址" />
+                                            <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
+                                        </Grid>
+                                    </ScrollViewer>
+                                </TabItem>
+
+                                <TabItem Header="独立 Key / 模型">
+                                    <ScrollViewer Background="Transparent"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <Grid Margin="0,2,0,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="124" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="112" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Row="0"
+                                                       Grid.ColumnSpan="3"
+                                                       Margin="0,0,0,6"
+                                                       Style="{StaticResource SectionHintTextStyle}"
+                                                       Text="每条入口都可以带自己的 Key；如果只是为了左侧好区分，可以顺手填一个站点归类。" />
+
+                                            <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="站点归类" />
+                                            <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormSiteGroupName, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="入口名称" />
+                                            <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormEntryName, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="入口地址" />
+                                            <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="本条目 Key" />
+                                            <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormApiKey, UpdateSourceTrigger=PropertyChanged}" />
+
+                                            <TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource FieldLabelTextStyle}" Text="模型" />
+                                            <TextBox Grid.Row="5" Grid.Column="1" Margin="0" Style="{StaticResource CompactInputTextBoxStyle}" Text="{Binding ProxyBatchFormModel, UpdateSourceTrigger=PropertyChanged}" />
+                                            <Button Grid.Row="5" Grid.Column="2" Width="112" Margin="6,0,0,0" Command="{Binding FetchProxyBatchEntryModelsCommand}" Content="拉取模型" />
+                                        </Grid>
+                                    </ScrollViewer>
+                                </TabItem>
+                            </TabControl>
+                            <Border Grid.Row="3"
+                                    Margin="0,8,0,0"
+                                    Padding="10,8"
+                                    Background="#F5F7FA"
+                                    BorderBrush="{StaticResource PanelBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10">
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                           Text="{Binding ProxyBatchGuideSummary, Mode=OneWay}" />
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            Grid.ColumnSpan="3"
+                            Margin="0,10,0,0"
+                            Padding="10,8"
+                            Background="{StaticResource InputBrush}"
+                            BorderBrush="{StaticResource PanelBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="建议先在这里维护好入口组；关闭弹窗后回到批量页，按“快速对比 → 勾选候选项 → 深度测试”的顺序继续。" />
+                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
+                                <Button MinWidth="144" Command="{Binding AddCurrentProxyBaseUrlToBatchCommand}" Content="带入主页网址 / Key" />
+                                <Button MinWidth="120"
+                                        Command="{Binding CommitProxyBatchEditorItemCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="{Binding ProxyBatchPrimaryActionText}" />
+                                <Button MinWidth="104"
+                                        Command="{Binding DeleteProxyBatchEditorItemCommand}"
+                                        Content="删除选中"
+                                        IsEnabled="{Binding IsProxyBatchEditorItemSelected}" />
+                                <Button MinWidth="104" Command="{Binding ResetProxyBatchEditorFormCommand}" Content="新建下一条" />
+                                <Button MinWidth="128"
+                                        Command="{Binding RunProxyBatchCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="开始快速对比" />
+                                <Button MinWidth="104" Margin="0" Command="{Binding CloseProxyBatchEditorCommand}" Content="关闭弹窗" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
+
+
+
+
+

@@ -1,0 +1,24 @@
+namespace NetTest.Core.Models;
+
+public sealed record StunProbeResult(
+    DateTimeOffset CheckedAt,
+    string ServerHost,
+    int ServerPort,
+    IReadOnlyList<string> ResolvedAddresses,
+    bool Success,
+    string? LocalEndpoint,
+    string? RespondingServer,
+    string? ResponseOrigin,
+    string? MappedAddress,
+    string? OtherAddress,
+    string? ChangedAddress,
+    string? MappingBehaviorHint,
+    string? NatType,
+    string? NatTypeSummary,
+    string ClassificationConfidence,
+    string CoverageSummary,
+    string ReviewRecommendation,
+    TimeSpan? RoundTrip,
+    IReadOnlyDictionary<string, string> Attributes,
+    IReadOnlyList<StunNatBindingTestResult> Tests,
+    string? Error);
