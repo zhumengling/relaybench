@@ -1,154 +1,167 @@
-﻿# NetTest Suite
+﻿# RelayBench
 
-NetTest Suite is a Windows desktop diagnostics workbench for:
+RelayBench 是一个面向 Windows 桌面的中转站测试工作台，用来测试、对比和筛选一个或多个中转站，并在结果异常时辅助判断问题究竟来自本地网络还是中转站本身。
 
-- OpenAI-compatible proxy stability checks
-- ChatGPT trace and region checks
-- NAT and STUN observation
-- Route map, MTR, speed-test, split-routing, and local port-scan modules
+## 项目定位
 
-## Implemented in the current build
+RelayBench 的核心任务不是“检测”，而是“测试与对比”：
 
-- WPF desktop shell with tabbed diagnostics pages
-- One-click structured report bundle export into `data/reports`
-  - exports `report.txt`, `sections.json`, `report.json`, and `manifest.json`
-  - bundles raw outputs and route-map screenshots into a `.zip`
-  - shows recent report archives directly in the History page
-- Baseline network check
-  - host name
-  - active adapters and addresses
-  - DNS summary
-  - baseline ping against `1.1.1.1`, `8.8.8.8`, and `chatgpt.com`
-  - public IP capture through `cloudflare.com/cdn-cgi/trace`
-- ChatGPT trace check
-  - requests `https://chatgpt.com/cdn-cgi/trace`
-  - parses `ip`, `loc`, and `colo`
-  - compares `loc` against the embedded supported-region snapshot
-  - runs an extended unlock catalog across OpenAI and other common AI-service endpoints
-- STUN baseline probe
-  - defaults to `stun.cloudflare.com`
-  - parses `MAPPED-ADDRESS`, `XOR-MAPPED-ADDRESS`, and `OTHER-ADDRESS`
-  - performs classic follow-up tests with `CHANGE-REQUEST` and alternate addresses when available
-  - provides best-effort NAT classification such as open internet, full cone, restricted cone, port-restricted cone, and symmetric NAT
-- Proxy diagnostic MVP
-  - tests `GET /models`
-  - sends one tiny non-stream chat request
-  - sends one stream chat request to capture a first-token timing signal
-- Proxy stability series
-  - repeats the proxy probe for multiple rounds
-  - computes success rates, average latency, average TTFT, and max consecutive failures
-  - outputs a simple health score and label
-- Proxy batch comparison
-  - accepts a small batch list of relay endpoints
-  - reuses the current relay settings or per-line overrides
-  - ranks candidates with a simple score based on models, chat, stream, latency, and TTFT
-  - outputs a recommended relay plus per-entry details in the GUI
-- Proxy timeline and history view
-  - stores recent single-run, stability, and batch-comparison results locally
-  - summarizes success rate, average latency, TTFT, health score, batch score, and volatility per relay
-- Cloudflare-style speed test
-  - uses `https://speed.cloudflare.com/__down` and `https://speed.cloudflare.com/__up`
-  - supports `Quick`, `Balanced`, and `Extended` profiles
-  - measures idle latency, idle jitter, download, upload, download loaded latency, and upload loaded latency
-  - adds an ICMP-based packet-loss estimator against `speed.cloudflare.com`
-  - computes a desktop-oriented GPT impact score and label
-- Route and MTR baseline
-  - runs `tracert` against a target host or IP
-  - parses each hop into a route table
-  - performs MTR-like ICMP sampling per responsive hop
-  - reports per-hop packet loss plus best, average, and worst latency
-  - geolocates public hops and renders them on real OpenStreetMap tiles
-- IP and split-routing diagnostics
-  - shows active adapters, local IPs, and configured DNS servers
-  - compares public exit views from `https://chatgpt.com/cdn-cgi/trace`
-  - compares public exit views from `https://www.cloudflare.com/cdn-cgi/trace`
-  - compares public exit hints from `https://speed.cloudflare.com/__down?bytes=0`
-  - contrasts system DNS answers with Cloudflare DoH and Google DoH
-  - checks HTTPS reachability for a small host list inspired by `ip.skk.moe`
-  - adds public IP ownership insight with ASN, ISP, organization, and a simple network-role hint
-- Local port-scan baseline
-  - ships with a built-in scan engine and does not rely on any external scanner
-  - uses asynchronous TCP connect scanning with bounded concurrency
-  - applies lightweight banner, TLS, and HTTP probes for common services
-  - provides safe scan templates for relay and HTTPS-oriented hosts
-  - shows structured findings plus raw scan logs in the GUI
-## Next expansion ideas
+- 对单个中转站做快速测试、稳定性测试和深度测试。
+- 对多个中转站做批量快速对比、排行榜排序和候选深测。
+- 在中转站不可用、延迟异常或解锁异常时，借助网络复核能力区分是本地网络问题还是中转站问题。
 
-- Batch stability series across multiple relays in the same time window
-- ASN and CDN labeling for more route and host views
-- Richer business-level unlock checks beyond HTTP reachability and status codes
+## 主要功能
 
-## Third-party online data used by the current map view
+### 1. 单站测试
 
-- OpenStreetMap tile server for background map tiles
-- ipwho.is for IP geolocation lookups of public route hops
-- Cloudflare speed-test endpoints for download and upload measurements
+用于测试单个中转站当前是否可用、是否稳定，以及是否适合继续接入。
 
-The app caches tiles locally for repeat viewing and caches geolocation responses to reduce repeated external requests.
-Speed-test packet loss currently uses an ICMP fallback estimator because Cloudflare's public TURN-based packet-loss path is deprecated in the open-source engine notes.
+当前支持：
 
-Local runtime state such as relay configuration, app-state snapshots, reports, exports, and tile caches is generated under `config/` and `data/` on demand and should not be committed to Git.
+- 快速测试
+- 稳定性测试
+- 深度测试
+- 模型拉取与基础兼容性验证
+- 流式首字延迟（TTFT）与流式响应表现观察
 
-## Run
+### 2. 批量对比
 
-Preferred startup path:
+用于对多个中转站进行快速筛选、排序和选优。
 
-```powershell
-.\start.ps1
-```
+当前支持：
 
-or
+- 入口组导入与编辑
+- 批量快速对比
+- 排行榜图表与列表展示
+- 手动勾选候选站点
+- 对勾选站点继续发起批量深度测试
 
-```powershell
-.\start.cmd
-```
+### 3. 网络复核
 
-`start.ps1` now uses a framework-dependent launcher in `dist\win-x64\NetTest.App.exe`.
-Before launch, it checks whether `.NET Desktop Runtime 10` is installed.
-If the runtime is missing, it opens the official .NET 10 download page and asks the user to install it manually.
-If startup fails at the launcher level, details are written to `start.log`.
-If the desktop app itself fails during window initialization, details are written to `dist\win-x64\app-startup.log`.
+用于在测试结果异常时辅助排查问题来源。
 
-If the published files are missing but a local .NET SDK is available, `start.ps1` will publish the framework-dependent build once and then start it.
+当前支持：
 
-For end users who only receive the published folder, the publish output also includes:
+- 基础网络检查
+- ChatGPT Trace 与地区信息观察
+- 官方 API 可访问性检查
+- NAT / STUN 观察
+- 路由与 MTR 风格链路检查
+- Cloudflare 风格测速
+- 分流与出口复核
+- 本地端口扫描
+
+### 4. 历史报告
+
+用于查看历史结果、归档诊断信息，并导出结构化报告。
+
+当前支持：
+
+- 最近测试历史回看
+- 报告归档浏览
+- 报告导出
+- 原始输出与结果摘要打包
+
+## 当前版本已实现能力
+
+### 中转站测试相关
+
+- OpenAI 兼容接口的基础可用性测试
+- `GET /models` 探测
+- 小体积非流式请求测试
+- 流式请求测试与 TTFT 采样
+- 多轮稳定性测试、成功率统计与连续失败统计
+- 批量候选站点对比与综合评分排序
+- 单站 / 稳定性 / 批量结果的本地历史记录
+
+### 网络复核相关
+
+- 本机网络基础信息采集
+- `chatgpt.com/cdn-cgi/trace` 解析
+- OpenAI 支持地区快照对照
+- 常见 AI 服务可访问性检查
+- STUN 映射地址与 NAT 类型的尽力判断
+- `tracert` 与逐跳延迟/丢包采样
+- OpenStreetMap 路由地图渲染
+- Cloudflare 风格下载/上传测速
+- 出口 IP、DNS 与分流路径复核
+- 内置异步 TCP 端口扫描引擎
+
+## 技术栈
+
+- .NET 10
+- WPF
+- C#
+- Windows 桌面应用
+
+## 环境要求
+
+### 从源码构建与运行
+
+- Windows 10 / 11
+- .NET SDK 10
+
+### 运行发布版
+
+- Windows 10 / 11
+- .NET Desktop Runtime 10
+
+## 从源码运行
+
+在仓库根目录执行：
 
 ```powershell
-.\dist\win-x64\start.cmd
+dotnet build .\NetTestSuite.slnx -c Debug -v minimal
+dotnet run --project .\NetTest.App\NetTest.App.csproj -c Debug
 ```
 
-That launcher performs the same runtime check before starting the app.
+## 构建发布版
 
-To publish the framework-dependent build explicitly:
+在仓库根目录执行：
 
 ```powershell
-.\publish.ps1
+dotnet publish .\NetTest.App\NetTest.App.csproj -c Release -r win-x64 --self-contained false --configfile .\NuGet.Config -p:UseAppHost=true -o .\release\relaybench-win-x64
 ```
 
-Manual development path:
+发布完成后，可执行文件位于：
 
-```powershell
-dotnet build .\NetTestSuite.slnx -p:UseSharedCompilation=false
-dotnet run --no-build --project .\NetTest.App\NetTest.App.csproj -p:UseSharedCompilation=false
+```text
+release\relaybench-win-x64\NetTest.App.exe
 ```
 
-## Files
+## 目录说明
 
-- `NetTest.App`
-  - WPF UI
-  - view models
-  - command and property-notification helpers
-  - local JSON state persistence for saved settings and recent history
-- `NetTest.Core`
-  - diagnostics models
-  - network, ChatGPT trace, STUN, and proxy services
-  - embedded OpenAI supported-region snapshot
+- `NetTest.App`：WPF UI、页面、ViewModel 与本地状态管理
+- `NetTest.Core`：网络诊断、测速、STUN、路由、端口扫描与中转站测试核心逻辑
+- `docs`：设计与实现计划文档
+- `release`：本地发布产物目录（已在 Git 中忽略）
 
-## Next suggested steps
+## 运行时数据说明
 
-1. Persist endpoint profiles and past results.
-2. Extend the proxy test with burst mode and cross-relay historical comparison.
-3. Add chart-based history views for relay health, latency, and TTFT.
-4. Decide whether to add a self-hosted TURN option for richer packet-loss measurement.
+以下目录是应用运行过程中按需生成的本地状态，不应提交到 Git：
 
+- `config/`
+- `data/`
 
+它们通常包含：
+
+- 本地保存的中转站配置
+- 应用状态快照
+- 历史报告与导出文件
+- 地图瓦片缓存
+- 其他运行时缓存数据
+
+## 当前依赖的在线数据源
+
+当前版本在部分功能中会访问以下在线服务：
+
+- OpenStreetMap：地图瓦片背景
+- ipwho.is：公网路由节点地理信息查询
+- Cloudflare Speed Test：下载、上传与延迟测量
+- `chatgpt.com/cdn-cgi/trace`：出口信息与地区观察
+
+应用会对部分结果进行本地缓存，以减少重复请求。
+
+## 仓库说明
+
+本仓库保留源码、文档与构建配置；日志、缓存、发布产物以及本地运行状态均不会提交到 GitHub。
