@@ -63,6 +63,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         new(NetworkReviewToolPortScan, "端口扫描")
     ];
 
+    public ObservableCollection<SelectionOption> OfficialApiModeOptions { get; } =
+    [
+        new("web-api", "网页 API"),
+        new("client-api", "客户端 API")
+    ];
+
     public AsyncRelayCommand RunQuickSuiteCommand { get; }
 
     public AsyncRelayCommand ExportCurrentReportCommand { get; }
@@ -70,6 +76,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand RunNetworkCommand { get; }
 
     public AsyncRelayCommand RunChatGptTraceCommand { get; }
+
+    public AsyncRelayCommand RunClientApiDiagnosticsCommand { get; }
 
     public AsyncRelayCommand RunStunCommand { get; }
 
@@ -142,6 +150,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand RunProxyBatchCommand { get; }
 
     public AsyncRelayCommand RunSelectedBatchDeepTestsCommand { get; }
+
+    public AsyncRelayCommand<ProxyBatchRankingRowViewModel?> ApplyRankingRowToCodexAppsCommand { get; }
 
     public AsyncRelayCommand RunSpeedTestCommand { get; }
 

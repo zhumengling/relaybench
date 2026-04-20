@@ -136,7 +136,7 @@ public sealed partial class MainWindowViewModel
             }
         }
 
-        return NormalizeNullable(ProxyApiKey);
+        return null;
     }
 
     private List<ProxyBatchEditorItemViewModel> BuildCommittedProxyBatchSiteItemsFromDraft()
@@ -160,7 +160,7 @@ public sealed partial class MainWindowViewModel
             var row = sourceRows[index];
             var entryName = FirstNonEmpty(NormalizeNullable(row.EntryName), previousEntryName);
             var baseUrl = FirstNonEmpty(NormalizeNullable(row.BaseUrl), previousBaseUrl);
-            var apiKey = FirstNonEmpty(NormalizeNullable(row.EntryApiKey), previousApiKey, NormalizeNullable(ProxyApiKey));
+            var apiKey = FirstNonEmpty(NormalizeNullable(row.EntryApiKey), previousApiKey);
             var model = FirstNonEmpty(NormalizeNullable(row.EntryModel), previousModel);
 
             if (string.IsNullOrWhiteSpace(baseUrl))

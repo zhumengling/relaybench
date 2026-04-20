@@ -8,8 +8,6 @@ namespace NetTest.Core.Services;
 public sealed partial class StunProbeService
 {
     private const string DefaultServerHost = "stun.cloudflare.com";
-    private const string SecondaryFallbackServerHost = "stun.l.google.com";
-    private const string LegacyDefaultServerHost = "stun.miwifi.com";
 
     public async Task<StunProbeResult> ProbeAsync(
         string serverHost,
@@ -201,7 +199,7 @@ public sealed partial class StunProbeService
             "TCP STUN 已完成基础 Binding；由于没有执行 UDP 的 CHANGE-REQUEST 与备用地址测试，NAT 细分类仅供参考。",
             "低：当前为 TCP STUN，仅提供基础映射参考。",
             "测试 I TCP 基础 Binding：完成；TCP 模式下未执行 CHANGE-REQUEST、备用地址与切换端口测试。",
-            "如果你需要判断打洞能力、受限锥形或端口受限锥形，请改用 UDP STUN 服务器复测。",
+            "如果你需要判断打洞能力、受限锥形或端口受限锥形，请改用 UDP STUN 服务复测。",
             primaryTest.RoundTrip,
             response.Attributes,
             tests,
@@ -271,17 +269,5 @@ public sealed partial class StunProbeService
     }
 
     private static IReadOnlyList<string> BuildCandidateHosts(string requestedHost)
-    {
-        if (string.Equals(requestedHost, LegacyDefaultServerHost, StringComparison.OrdinalIgnoreCase))
-        {
-            return
-            [
-                DefaultServerHost,
-                SecondaryFallbackServerHost,
-                LegacyDefaultServerHost
-            ];
-        }
-
-        return [requestedHost];
-    }
+        => [requestedHost];
 }

@@ -8,46 +8,26 @@ public sealed partial class MainWindowViewModel
 {
     private ProxyBatchPlan BuildProxyBatchPlan(bool requireRunnable)
     {
-        var defaultBaseUrl = ProxyBaseUrl.Trim();
-        var defaultApiKey = ProxyApiKey.Trim();
-        var batchDefaultApiKey = NormalizeNullable(ProxyBatchFormSiteGroupApiKey);
         var defaultModel = NormalizeNullable(ProxyModel);
         var sourceEntries = ParseProxyBatchSourceEntries(ProxyBatchTargetsText, allowEmpty: true);
-        var usesFallbackDefaultEntry = false;
 
         if (sourceEntries.Count == 0)
         {
-            if (string.IsNullOrWhiteSpace(defaultBaseUrl))
+            if (!requireRunnable)
             {
-                if (!requireRunnable)
-                {
-                    return new ProxyBatchPlan(Array.Empty<ProxyBatchSourceEntry>(), Array.Empty<ProxyBatchTargetEntry>(), false);
-                }
-
-                throw new InvalidOperationException("入口组至少需要一个网址。请填写主界面的默认网址，或先在入口组里新增条目。");
+                return new ProxyBatchPlan(Array.Empty<ProxyBatchSourceEntry>(), Array.Empty<ProxyBatchTargetEntry>(), false);
             }
 
-            sourceEntries =
-            [
-                new ProxyBatchSourceEntry(
-                    "默认入口",
-                    defaultBaseUrl,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null)
-            ];
-            usesFallbackDefaultEntry = true;
+            throw new InvalidOperationException("入口组至少需要一个网址。请先在右侧表格里填写并加入入口组。");
         }
 
         List<ProxyBatchTargetEntry> targets = [];
         foreach (var sourceEntry in sourceEntries)
         {
-            var effectiveApiKey = FirstNonEmpty(sourceEntry.ApiKey, sourceEntry.SiteGroupApiKey, batchDefaultApiKey, defaultApiKey);
+            var effectiveApiKey = FirstNonEmpty(sourceEntry.ApiKey, sourceEntry.SiteGroupApiKey);
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
             {
-                throw new InvalidOperationException($"条目“{sourceEntry.Name}”缺少可用密钥。请先在右侧表格里填写该行 key，或使用主页默认 key。");
+                throw new InvalidOperationException($"条目“{sourceEntry.Name}”缺少可用密钥。请先在右侧表格里填写该行 key，或让空白 key 沿用上一行后再加入入口组。");
             }
 
             var effectiveModel = FirstNonEmpty(sourceEntry.Model, sourceEntry.SiteGroupModel, defaultModel);
@@ -59,17 +39,12 @@ public sealed partial class MainWindowViewModel
 
             var keySource = !string.IsNullOrWhiteSpace(sourceEntry.ApiKey)
                 ? ProxyBatchKeySource.Entry
-                : !string.IsNullOrWhiteSpace(sourceEntry.SiteGroupApiKey)
-                    ? ProxyBatchKeySource.SiteGroup
-                    : !string.IsNullOrWhiteSpace(batchDefaultApiKey)
-                        ? ProxyBatchKeySource.BatchDefault
-                        : ProxyBatchKeySource.Default;
+                : ProxyBatchKeySource.SiteGroup;
             var apiKeyAlias = keySource switch
             {
                 ProxyBatchKeySource.Entry => "本行 key",
                 ProxyBatchKeySource.SiteGroup => $"站点内继承（{sourceEntry.SiteGroupName}）",
-                ProxyBatchKeySource.BatchDefault => "已带入的默认 key",
-                _ => "主页默认 key"
+                _ => "本行 key"
             };
 
             targets.Add(new ProxyBatchTargetEntry(
@@ -87,7 +62,7 @@ public sealed partial class MainWindowViewModel
         {
             if (!requireRunnable)
             {
-                return new ProxyBatchPlan(sourceEntries, Array.Empty<ProxyBatchTargetEntry>(), usesFallbackDefaultEntry);
+                return new ProxyBatchPlan(sourceEntries, Array.Empty<ProxyBatchTargetEntry>(), false);
             }
 
             throw new InvalidOperationException("入口组没有生成任何可测试条目。");
@@ -98,7 +73,7 @@ public sealed partial class MainWindowViewModel
             throw new InvalidOperationException($"入口组一次最多支持 {MaxProxyBatchProbeTargets} 个测试项，请先缩减清单。");
         }
 
-        return new ProxyBatchPlan(sourceEntries, targets, usesFallbackDefaultEntry);
+        return new ProxyBatchPlan(sourceEntries, targets, false);
     }
 
     private IReadOnlyList<ProxyBatchSourceEntry> ParseProxyBatchSourceEntries(string rawText, bool allowEmpty)

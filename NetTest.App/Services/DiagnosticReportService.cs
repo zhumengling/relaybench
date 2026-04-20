@@ -116,7 +116,7 @@ public sealed class DiagnosticReportService
     private static void WriteTextReport(string filePath, IReadOnlyList<DiagnosticReportSection> sections)
     {
         StringBuilder builder = new();
-        builder.AppendLine("RelayBench ???????");
+        builder.AppendLine("RelayBench 诊断报告");
         builder.AppendLine($"生成时间：{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}");
         builder.AppendLine();
 

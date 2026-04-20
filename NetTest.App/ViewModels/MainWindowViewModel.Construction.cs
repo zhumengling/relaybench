@@ -67,6 +67,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ExportCurrentReportCommand = new AsyncRelayCommand(ExportCurrentReportAsync, CanRun);
         RunNetworkCommand = new AsyncRelayCommand(RunNetworkAsync, CanRun);
         RunChatGptTraceCommand = new AsyncRelayCommand(RunChatGptTraceAsync, CanRun);
+        RunClientApiDiagnosticsCommand = new AsyncRelayCommand(RunClientApiDiagnosticsAsync, CanRun);
         RunStunCommand = new AsyncRelayCommand(RunStunAsync, CanRun);
         FetchProxyModelsCommand = new AsyncRelayCommand(FetchDefaultProxyModelsAsync, CanRun);
         FetchProxyBatchSharedModelsCommand = new AsyncRelayCommand(FetchProxyBatchSharedModelsAsync, CanRun);
@@ -104,6 +105,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RunSelectedSingleStationModeCommand = new AsyncRelayCommand(RunSelectedSingleStationModeAsync, CanRun);
         RunProxyBatchCommand = new AsyncRelayCommand(RunProxyBatchWithValidationAsync, CanRun);
         RunSelectedBatchDeepTestsCommand = new AsyncRelayCommand(RunSelectedBatchDeepTestsAsync, CanRunSelectedBatchDeepTestsAction);
+        ApplyRankingRowToCodexAppsCommand = new AsyncRelayCommand<ProxyBatchRankingRowViewModel?>(ApplyRankingRowToCodexAppsAsync, CanApplyRankingRowToCodexApps, onError: HandleNonFatalCommandException);
         RunSpeedTestCommand = new AsyncRelayCommand(RunSpeedTestAsync, CanRun);
         RunRouteCommand = new AsyncRelayCommand(RunRouteAsync, CanRun);
         RunRouteContinuousCommand = new AsyncRelayCommand(RunRouteContinuousAsync, CanRun);

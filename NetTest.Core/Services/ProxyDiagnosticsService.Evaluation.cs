@@ -55,6 +55,7 @@ public sealed partial class ProxyDiagnosticsService
                                            ProxyProbeScenarioKind.StreamingIntegrity or
                                            ProxyProbeScenarioKind.OfficialReferenceIntegrity or
                                            ProxyProbeScenarioKind.MultiModal or
+                                           ProxyProbeScenarioKind.CacheMechanism or
                                            ProxyProbeScenarioKind.CacheIsolation)
             .ToArray();
         var advancedExecuted = advancedScenarios.Length > 0;
@@ -118,6 +119,7 @@ public sealed partial class ProxyDiagnosticsService
                                            ProxyProbeScenarioKind.StreamingIntegrity or
                                            ProxyProbeScenarioKind.OfficialReferenceIntegrity or
                                            ProxyProbeScenarioKind.MultiModal or
+                                           ProxyProbeScenarioKind.CacheMechanism or
                                            ProxyProbeScenarioKind.CacheIsolation)
             .ToArray();
         var advancedExecuted = advancedScenarios.Length > 0;

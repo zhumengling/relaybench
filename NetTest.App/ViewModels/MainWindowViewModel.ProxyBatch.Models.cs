@@ -8,8 +8,6 @@ public sealed partial class MainWindowViewModel
 {
     private enum ProxyBatchKeySource
     {
-        Default,
-        BatchDefault,
         SiteGroup,
         Entry
     }

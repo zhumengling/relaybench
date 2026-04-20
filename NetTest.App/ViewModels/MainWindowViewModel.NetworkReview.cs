@@ -17,9 +17,12 @@ public sealed partial class MainWindowViewModel
     private const string NetworkReviewToolSplitRouting = "split-routing";
     private const string NetworkReviewToolStun = "nat-stun";
     private const string NetworkReviewToolPortScan = "port-scan";
+    private const string OfficialApiModeWeb = "web-api";
+    private const string OfficialApiModeClient = "client-api";
 
     private string _selectedNetworkReviewIssueKey = NetworkIssueRelayUnavailable;
     private string _selectedNetworkReviewToolKey = NetworkReviewToolNetwork;
+    private string _selectedOfficialApiModeKey = OfficialApiModeWeb;
 
     public string SelectedNetworkReviewIssueKey
     {
@@ -55,6 +58,20 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    public string SelectedOfficialApiModeKey
+    {
+        get => _selectedOfficialApiModeKey;
+        set
+        {
+            var normalized = NormalizeOfficialApiModeKey(value);
+            if (SetProperty(ref _selectedOfficialApiModeKey, normalized))
+            {
+                NotifyOfficialApiModeStateChanged();
+                OnPropertyChanged(nameof(CurrentPageSubtitle));
+            }
+        }
+    }
+
     public string SelectedNetworkReviewToolDisplayName
         => SelectedNetworkReviewToolKey switch
         {
@@ -65,6 +82,13 @@ public sealed partial class MainWindowViewModel
             NetworkReviewToolStun => "NAT / STUN",
             NetworkReviewToolPortScan => "端口扫描",
             _ => "基础网络"
+        };
+
+    public string SelectedOfficialApiModeDisplayName
+        => SelectedOfficialApiModeKey switch
+        {
+            OfficialApiModeClient => "客户端 API",
+            _ => "网页 API"
         };
 
     public string SelectedNetworkReviewToolGroupName
@@ -79,7 +103,11 @@ public sealed partial class MainWindowViewModel
     public string SelectedNetworkReviewToolDescription
         => SelectedNetworkReviewToolKey switch
         {
-            NetworkReviewToolOfficialApi => "确认官方链路是否可用，用来快速区分是你本地网络问题，还是中转站本身异常。",
+            NetworkReviewToolOfficialApi => SelectedOfficialApiModeKey switch
+            {
+                OfficialApiModeClient => "检测 Codex CLI / Desktop、VSCode Codex、Antigravity、Claude CLI 等客户端是否安装、是否发现配置，以及其底层 API 是否可达。",
+                _ => "确认网页入口与 API 目录是否可用，用来快速区分是你本地网络问题，还是中转站本身异常。"
+            },
             NetworkReviewToolSpeed => "查看延迟、抖动、带宽和丢包，用来判断体感卡顿和 TTFT 偏高是不是链路问题。",
             NetworkReviewToolRoute => "查看逐跳路径、丢包、绕路和地理路径，适合排查中间路由抖动与异常跳点。",
             NetworkReviewToolSplitRouting => "查看出口地区、DNS 对比、分流命中和 HTTPS 可达性，适合排查地区与解锁异常。",
@@ -93,6 +121,12 @@ public sealed partial class MainWindowViewModel
 
     public bool IsNetworkReviewOfficialApiSelected
         => string.Equals(SelectedNetworkReviewToolKey, NetworkReviewToolOfficialApi, StringComparison.Ordinal);
+
+    public bool IsOfficialApiWebModeSelected
+        => string.Equals(SelectedOfficialApiModeKey, OfficialApiModeWeb, StringComparison.Ordinal);
+
+    public bool IsOfficialApiClientModeSelected
+        => string.Equals(SelectedOfficialApiModeKey, OfficialApiModeClient, StringComparison.Ordinal);
 
     public bool IsNetworkReviewSpeedTestSelected
         => string.Equals(SelectedNetworkReviewToolKey, NetworkReviewToolSpeed, StringComparison.Ordinal);
@@ -184,6 +218,13 @@ public sealed partial class MainWindowViewModel
             _ => NetworkReviewToolNetwork
         };
 
+    private static string NormalizeOfficialApiModeKey(string? value)
+        => value switch
+        {
+            OfficialApiModeClient => OfficialApiModeClient,
+            _ => OfficialApiModeWeb
+        };
+
     private static string GetPreferredNetworkReviewToolKey(string issueKey)
         => issueKey switch
         {
@@ -206,8 +247,18 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(IsNetworkReviewPortScanSelected));
     }
 
+    private void NotifyOfficialApiModeStateChanged()
+    {
+        OnPropertyChanged(nameof(SelectedOfficialApiModeDisplayName));
+        OnPropertyChanged(nameof(SelectedNetworkReviewToolDescription));
+        OnPropertyChanged(nameof(IsOfficialApiWebModeSelected));
+        OnPropertyChanged(nameof(IsOfficialApiClientModeSelected));
+    }
+
     private string BuildNetworkReviewSubtitle()
-        => $"{SelectedNetworkReviewToolGroupName} · 当前功能：{SelectedNetworkReviewToolDisplayName}。{SelectedNetworkReviewToolDescription}";
+        => SelectedNetworkReviewToolKey == NetworkReviewToolOfficialApi
+            ? $"{SelectedNetworkReviewToolGroupName} · 当前功能：{SelectedNetworkReviewToolDisplayName} / {SelectedOfficialApiModeDisplayName}。{SelectedNetworkReviewToolDescription}"
+            : $"{SelectedNetworkReviewToolGroupName} · 当前功能：{SelectedNetworkReviewToolDisplayName}。{SelectedNetworkReviewToolDescription}";
 
     private static string GetNetworkReviewIssueDisplayName(string key)
         => key switch

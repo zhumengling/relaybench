@@ -73,7 +73,7 @@ public sealed partial class StunProbeService
             parts.Add($"测试 III：{(changePortOnlyTest.Success ? "成功" : "失败")}。");
         }
 
-        parts.Add("说明：该结果基于经典 STUN 探测路径做最佳努力推测；若服务器不支持 CHANGE-REQUEST 或备用地址，细分类型可能偏保守。");
+        parts.Add("说明：该结果基于经典 STUN 探测路径做最佳努力推测；若服务器不支持 CHANGE-REQUEST 或备用地址，细分类可能偏保守。");
         return string.Join(" ", parts);
     }
 

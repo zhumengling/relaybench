@@ -93,8 +93,6 @@ public sealed partial class MainWindowViewModel
             .Count();
         var inlineKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.Entry);
         var siteGroupKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.SiteGroup);
-        var batchDefaultKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.BatchDefault);
-        var defaultKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.Default);
 
         ProxyBatchSummary =
             $"检测时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss}\n" +
@@ -103,7 +101,7 @@ public sealed partial class MainWindowViewModel
             $"独立条目：{standaloneCount}\n" +
             $"站点组子入口：{groupedCount}\n" +
             $"站点组数量：{siteGroupCount}\n" +
-            $"密钥来源：条目内 {inlineKeyCount} 项 / 站点组继承 {siteGroupKeyCount} 项 / 批量默认 key 回退 {batchDefaultKeyCount} 项 / 主页默认 key 回退 {defaultKeyCount} 项\n" +
+            $"密钥来源：条目内 {inlineKeyCount} 项 / 站点组继承 {siteGroupKeyCount} 项\n" +
             $"累计采样：{allRows.Length} 条\n" +
             $"/models 通过：{modelsSuccessCount}/{allRows.Length}\n" +
             $"普通对话通过：{chatSuccessCount}/{allRows.Length}\n" +

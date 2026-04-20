@@ -641,11 +641,11 @@ public sealed partial class MainWindowViewModel
         }
 
         var status = scenario.CapabilityStatus ?? string.Empty;
-        if (status.Contains("??", StringComparison.Ordinal) ||
-            status.Contains("???", StringComparison.Ordinal) ||
-            status.Contains("???", StringComparison.Ordinal) ||
-            status.Contains("??", StringComparison.Ordinal) ||
-            status.Contains("??", StringComparison.Ordinal))
+        if (status.Contains("待复核", StringComparison.Ordinal) ||
+            status.Contains("未执行", StringComparison.Ordinal) ||
+            status.Contains("前置不足", StringComparison.Ordinal) ||
+            status.Contains("参数", StringComparison.Ordinal) ||
+            status.Contains("配置", StringComparison.Ordinal))
         {
             return ProxyBatchDeepComparisonBadgeState.Warn;
         }
@@ -666,23 +666,23 @@ public sealed partial class MainWindowViewModel
         }
 
         var status = scenario.CapabilityStatus ?? string.Empty;
-        if (status.Contains("??", StringComparison.Ordinal))
+        if (status.Contains("未执行", StringComparison.Ordinal))
         {
             return "SK";
         }
 
-        if (status.Contains("???", StringComparison.Ordinal))
+        if (status.Contains("待复核", StringComparison.Ordinal))
         {
             return "RV";
         }
 
-        if (status.Contains("???", StringComparison.Ordinal))
+        if (status.Contains("前置不足", StringComparison.Ordinal))
         {
             return "--";
         }
 
-        if (status.Contains("??", StringComparison.Ordinal) ||
-            status.Contains("??", StringComparison.Ordinal))
+        if (status.Contains("参数", StringComparison.Ordinal) ||
+            status.Contains("配置", StringComparison.Ordinal))
         {
             return "CFG";
         }

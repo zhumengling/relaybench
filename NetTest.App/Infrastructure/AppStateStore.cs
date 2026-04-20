@@ -1,4 +1,5 @@
-﻿using System.IO;
+using System.IO;
+using System.Text;
 using System.Text.Json;
 
 namespace NetTest.App.Infrastructure;
@@ -39,13 +40,14 @@ public sealed class AppStateStore
             }
             else
             {
-                var json = File.ReadAllText(_filePath);
+                var json = File.ReadAllText(_filePath, Encoding.UTF8);
                 snapshot = JsonSerializer.Deserialize<AppStateSnapshot>(json, SerializerOptions) ?? new AppStateSnapshot();
                 ApplyLegacyPortScanState(snapshot, json);
             }
         }
-        catch
+        catch (Exception ex)
         {
+            AppDiagnosticLog.Write("AppStateStore.Load", ex);
             snapshot = new AppStateSnapshot();
         }
 
@@ -58,7 +60,7 @@ public sealed class AppStateStore
     {
         EnsureDirectories();
         var json = JsonSerializer.Serialize(snapshot, SerializerOptions);
-        File.WriteAllText(_filePath, json);
+        File.WriteAllText(_filePath, json, Encoding.UTF8);
         SaveProxyRelayDirectoryConfig(snapshot);
     }
 
@@ -71,7 +73,7 @@ public sealed class AppStateStore
                 return;
             }
 
-            var json = File.ReadAllText(_proxyRelayConfigPath);
+            var json = File.ReadAllText(_proxyRelayConfigPath, Encoding.UTF8);
             var config = JsonSerializer.Deserialize<ProxyRelayDirectoryConfig>(json, SerializerOptions);
             if (config is null)
             {
@@ -119,8 +121,9 @@ public sealed class AppStateStore
                 ? snapshot.ProxyBatchDraft
                 : CreateProxyBatchDraftSnapshot(config.ProxyBatchDraft);
         }
-        catch
+        catch (Exception ex)
         {
+            AppDiagnosticLog.Write("AppStateStore.ApplyProxyRelayDirectoryConfig", ex);
         }
     }
 
@@ -158,10 +161,11 @@ public sealed class AppStateStore
             };
 
             var json = JsonSerializer.Serialize(config, SerializerOptions);
-            File.WriteAllText(_proxyRelayConfigPath, json);
+            File.WriteAllText(_proxyRelayConfigPath, json, Encoding.UTF8);
         }
-        catch
+        catch (Exception ex)
         {
+            AppDiagnosticLog.Write("AppStateStore.SaveProxyRelayDirectoryConfig", ex);
         }
     }
 
@@ -217,8 +221,9 @@ public sealed class AppStateStore
                 snapshot.PortScanCustomPortsText = legacyCustomPorts.GetString() ?? string.Empty;
             }
         }
-        catch
+        catch (Exception ex)
         {
+            AppDiagnosticLog.Write("AppStateStore.ApplyLegacyPortScanState", ex);
         }
     }
 

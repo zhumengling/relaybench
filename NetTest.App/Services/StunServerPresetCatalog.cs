@@ -3,10 +3,13 @@ using NetTest.Core.Models;
 
 namespace NetTest.App.Services;
 
-public sealed record StunServerPreset(string Host, StunTransportProtocol TransportProtocol);
+public sealed record StunServerPreset(string Host, StunTransportProtocol TransportProtocol, string? DisplayName = null);
 
 public static class StunServerPresetCatalog
 {
+    public const string RecommendedUdpNatReviewHost = "stun.hot-chilli.net";
+    public const string BasicUdpMappingHost = "stun.cloudflare.com";
+
     private const string UdpKey = "udp";
     private const string TcpKey = "tcp";
 
@@ -23,9 +26,12 @@ public static class StunServerPresetCatalog
         new("stun.sonetel.com", StunTransportProtocol.Tcp),
         new("stun.voipgate.com", StunTransportProtocol.Tcp),
         new("turn.cloudflare.com", StunTransportProtocol.Tcp),
-        new("stun.miwifi.com", StunTransportProtocol.Udp),
-        new("stun.chat.bilibili.com", StunTransportProtocol.Udp),
-        new("stun.cloudflare.com", StunTransportProtocol.Udp)
+        new(RecommendedUdpNatReviewHost, StunTransportProtocol.Udp, $"{RecommendedUdpNatReviewHost}（推荐：NAT 复核）"),
+        new("stun.fitauto.ru", StunTransportProtocol.Udp, "stun.fitauto.ru（备选：NAT 复核）"),
+        new("stun.voipbuster.com", StunTransportProtocol.Udp, "stun.voipbuster.com（备选：NAT 复核）"),
+        new("stun.miwifi.com", StunTransportProtocol.Udp, "stun.miwifi.com（基础映射）"),
+        new("stun.chat.bilibili.com", StunTransportProtocol.Udp, "stun.chat.bilibili.com（基础映射）"),
+        new(BasicUdpMappingHost, StunTransportProtocol.Udp, $"{BasicUdpMappingHost}（基础映射）")
     ];
 
     public static IReadOnlyList<SelectionOption> BuildTransportOptions()
@@ -38,7 +44,7 @@ public static class StunServerPresetCatalog
     public static IReadOnlyList<SelectionOption> BuildServerOptions(StunTransportProtocol transportProtocol)
         => Presets
             .Where(item => item.TransportProtocol == transportProtocol)
-            .Select(item => new SelectionOption(item.Host, item.Host))
+            .Select(item => new SelectionOption(item.Host, item.DisplayName ?? item.Host))
             .ToArray();
 
     public static string ResolveTransportKey(string? transportKey, string? host)
@@ -64,7 +70,7 @@ public static class StunServerPresetCatalog
     public static string ResolveDefaultHost(StunTransportProtocol transportProtocol)
         => transportProtocol == StunTransportProtocol.Tcp
             ? "turn.cloudflare.com"
-            : "stun.cloudflare.com";
+            : RecommendedUdpNatReviewHost;
 
     private static string? NormalizeNullable(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

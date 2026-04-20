@@ -1,0 +1,26 @@
+namespace NetTest.Core.Models;
+
+public sealed record ClientApiCheck(
+    string Name,
+    string Provider,
+    string Kind,
+    string ProbeUrl,
+    string ProbeMethod,
+    bool Installed,
+    bool ConfigDetected,
+    string InstallEvidence,
+    string ConfigSource,
+    string ProxySource,
+    string AccessPathLabel,
+    string ConfigOriginLabel,
+    string EndpointLabel,
+    string RoutingNote,
+    bool RestoreSupported,
+    string RestoreHint,
+    bool Reachable,
+    int? StatusCode,
+    TimeSpan? Latency,
+    string Verdict,
+    string Summary,
+    string? Evidence,
+    string? Error);

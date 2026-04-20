@@ -3,7 +3,7 @@ namespace NetTest.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private const int MaxLiveOutputCharacters = 60_000;
-    private string _liveOutput = "等待运行，右侧会持续输出运行状态和关键返回数据。";
+    private string _liveOutput = string.Empty;
     private string? _lastLiveStatusMessage;
 
     public string LiveOutput
@@ -55,7 +55,7 @@ public sealed partial class MainWindowViewModel
         }
 
         var block = $"[{DateTime.Now:HH:mm:ss}] {title}\n{normalized}";
-        var existing = string.Equals(_liveOutput, "等待运行，右侧会持续输出运行状态和关键返回数据。", StringComparison.Ordinal)
+        var existing = string.IsNullOrWhiteSpace(_liveOutput)
             ? string.Empty
             : _liveOutput;
 

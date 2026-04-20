@@ -77,51 +77,77 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         _lastStunResult = result;
         var transportLabel = result.TransportProtocol == StunTransportProtocol.Tcp ? "TCP" : "UDP";
+        var serverCapabilitySummary = BuildStunServerCapabilitySummary(result);
 
         StunSummary =
-            $"?????{result.CheckedAt:yyyy-MM-dd HH:mm:ss}\n" +
-            $"?????{transportLabel}\n" +
-            $"????{result.ServerHost}:{result.ServerPort}\n" +
-            $"?????{string.Join(", ", result.ResolvedAddresses)}\n" +
-            $"?????{result.LocalEndpoint ?? "???"}\n" +
-            $"?????{result.RespondingServer ?? "???"}\n" +
-            $"?????{result.ResponseOrigin ?? "???"}\n" +
-            $"?????{result.MappedAddress ?? "???"}\n" +
-            $"OTHER-ADDRESS?{result.OtherAddress ?? "???"}\n" +
-            $"CHANGED-ADDRESS?{result.ChangedAddress ?? "???"}\n" +
-            $"RTT?{result.RoundTrip?.TotalMilliseconds.ToString("F0") ?? "--"} ms\n" +
-            $"?????{result.MappingBehaviorHint ?? "?"}\n" +
-            $"NAT ???{result.NatType ?? "???"}\n" +
-            $"??????{result.ClassificationConfidence}\n" +
-            $"?????{result.NatTypeSummary ?? "?"}\n" +
-            $"???{result.Error ?? "?"}";
+            $"检测时间：{result.CheckedAt:yyyy-MM-dd HH:mm:ss}\n" +
+            $"协议：{transportLabel}\n" +
+            $"服务器：{result.ServerHost}:{result.ServerPort}\n" +
+            $"解析地址：{string.Join(", ", result.ResolvedAddresses)}\n" +
+            $"本地端点：{result.LocalEndpoint ?? "---"}\n" +
+            $"响应服务器：{result.RespondingServer ?? "---"}\n" +
+            $"RESPONSE-ORIGIN：{result.ResponseOrigin ?? "---"}\n" +
+            $"映射地址：{result.MappedAddress ?? "---"}\n" +
+            $"OTHER-ADDRESS：{result.OtherAddress ?? "---"}\n" +
+            $"CHANGED-ADDRESS：{result.ChangedAddress ?? "---"}\n" +
+            $"RTT：{result.RoundTrip?.TotalMilliseconds.ToString("F0") ?? "--"} ms\n" +
+            $"服务器能力：{serverCapabilitySummary}\n" +
+            $"映射行为：{result.MappingBehaviorHint ?? "—"}\n" +
+            $"NAT 类型：{result.NatType ?? "---"}\n" +
+            $"置信度：{result.ClassificationConfidence}\n" +
+            $"结论说明：{result.NatTypeSummary ?? "—"}\n" +
+            $"错误：{result.Error ?? "无"}";
 
         StunCoverageSummary =
-            $"?????{result.CoverageSummary}\n" +
-            $"?????{result.ReviewRecommendation}";
+            $"覆盖说明：{result.CoverageSummary}\n" +
+            $"复核建议：{result.ReviewRecommendation}";
 
         StunAttributeSummary = result.Attributes.Count == 0
-            ? "?????? STUN ???"
+            ? "未返回可解析的 STUN 属性。"
             : string.Join("\n", result.Attributes.Select(pair => $"{pair.Key}: {pair.Value}"));
 
         StunTestSummary = result.Tests.Count == 0
-            ? "????? NAT ???????"
+            ? "没有可展示的 NAT 分类测试过程。"
             : string.Join(
                 "\n\n",
                 result.Tests.Select(test =>
                     $"{test.TestName}\n" +
-                    $"???{test.RequestTarget}\n" +
-                    $"?????{test.RequestMode}\n" +
-                    $"?????{(test.Success ? "?" : "?")}\n" +
-                    $"?????{test.LocalEndpoint ?? "--"}\n" +
-                    $"?????{test.MappedAddress ?? "--"}\n" +
-                    $"?????{test.ResponseOrigin ?? "--"}\n" +
-                    $"?????{test.AlternateAddress ?? "--"}\n" +
-                    $"RTT?{FormatMilliseconds(test.RoundTrip)}\n" +
-                    $"???{test.Summary}\n" +
-                    $"???{test.Error ?? "?"}"));
+                    $"请求目标：{test.RequestTarget}\n" +
+                    $"请求模式：{test.RequestMode}\n" +
+                    $"是否成功：{(test.Success ? "成功" : "失败")}\n" +
+                    $"本地端点：{test.LocalEndpoint ?? "--"}\n" +
+                    $"映射地址：{test.MappedAddress ?? "--"}\n" +
+                    $"响应来源：{test.ResponseOrigin ?? "--"}\n" +
+                    $"备用地址：{test.AlternateAddress ?? "--"}\n" +
+                    $"RTT：{FormatMilliseconds(test.RoundTrip)}\n" +
+                    $"摘要：{test.Summary}\n" +
+                    $"错误：{test.Error ?? "无"}"));
 
-        AppendModuleOutput("STUN ??", StunSummary, StunCoverageSummary, StunTestSummary);
+        AppendModuleOutput("STUN 结果", StunSummary, StunCoverageSummary, StunTestSummary);
+    }
+
+    internal static string BuildStunServerCapabilitySummary(StunProbeResult result)
+    {
+        if (result.TransportProtocol == StunTransportProtocol.Tcp)
+        {
+            return "当前是 TCP 基础映射模式，只适合看反射地址，不做 UDP NAT 行为细分。";
+        }
+
+        var hasOtherAddress = !string.IsNullOrWhiteSpace(result.OtherAddress);
+        var hasChangedAddress = !string.IsNullOrWhiteSpace(result.ChangedAddress);
+        var hasResponseOrigin = !string.IsNullOrWhiteSpace(result.ResponseOrigin);
+
+        if (hasOtherAddress && hasResponseOrigin)
+        {
+            return "服务器已返回 RFC 5780 关键属性，可继续做 NAT 行为复核。";
+        }
+
+        if (hasOtherAddress || hasChangedAddress || hasResponseOrigin)
+        {
+            return "服务器只部分支持 NAT 行为测试，结果可参考，但细分结论要保守看待。";
+        }
+
+        return "服务器更像普通 STUN，只能确认公网映射，不能可靠细分 NAT 类型。";
     }
 
     private void ApplyProxyResult(ProxyDiagnosticsResult result)

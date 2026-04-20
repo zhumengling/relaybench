@@ -12,7 +12,8 @@ public sealed class OfficialApiStatusRowViewModel
         string endpointMetaText,
         string statusBackground,
         string statusForeground,
-        Func<Task> openRawTraceAsync)
+        Func<Task> openRawTraceAsync,
+        Func<Task>? restoreDefaultConfigAsync = null)
     {
         Provider = provider;
         Name = name;
@@ -22,6 +23,9 @@ public sealed class OfficialApiStatusRowViewModel
         StatusBackground = statusBackground;
         StatusForeground = statusForeground;
         OpenRawTraceCommand = new AsyncRelayCommand(openRawTraceAsync);
+        RestoreDefaultConfigCommand = restoreDefaultConfigAsync is null
+            ? null
+            : new AsyncRelayCommand(restoreDefaultConfigAsync);
     }
 
     public string Provider { get; }
@@ -39,4 +43,8 @@ public sealed class OfficialApiStatusRowViewModel
     public string StatusForeground { get; }
 
     public AsyncRelayCommand OpenRawTraceCommand { get; }
+
+    public AsyncRelayCommand? RestoreDefaultConfigCommand { get; }
+
+    public bool HasRestoreDefaultConfigAction => RestoreDefaultConfigCommand is not null;
 }

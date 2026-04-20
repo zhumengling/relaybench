@@ -8,8 +8,7 @@ namespace NetTest.App.ViewModels;
 
 public sealed partial class MainWindowViewModel : ObservableObject
 {
-    private const string DefaultStunServerHost = "stun.cloudflare.com";
-    private const string LegacyStunServerHost = "stun.miwifi.com";
+    private const string DefaultStunServerHost = StunServerPresetCatalog.RecommendedUdpNatReviewHost;
 
     private readonly BasicNetworkDiagnosticsService _networkDiagnosticsService = new();
     private readonly ChatGptTraceService _chatGptTraceService = new();
@@ -37,6 +36,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private bool _isBusy;
     private string _statusMessage = "准备就绪，随时可以开始诊断。";
+    private bool _isBatchRankingApplyToastVisible;
+    private string _batchRankingApplyToastMessage = string.Empty;
+    private CancellationTokenSource? _batchRankingApplyToastCancellationSource;
     private string _lastRunAt = "从未运行";
     private string _networkSummary = "运行网络检测后，这里会显示公网 IP、活动网卡和 Ping 摘要。";
     private string _adapterSummary = "尚未采集网卡快照。";
@@ -104,8 +106,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return DefaultStunServerHost;
         }
 
-        return string.Equals(normalized, LegacyStunServerHost, StringComparison.OrdinalIgnoreCase)
-            ? DefaultStunServerHost
-            : normalized;
+        return normalized;
     }
 }

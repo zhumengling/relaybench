@@ -15,6 +15,7 @@ public sealed partial class MainWindowViewModel
             new("网络检测", $"{NetworkSummary}\n\n{AdapterSummary}\n\n{PingSummary}"),
             new("官方 API 可用性", $"{ChatGptSummary}\n\n扩展可用性目录：\n{UnlockCatalogSummary}\n\n原始 Trace：\n{ChatGptRawTrace}"),
             new("扩展可用性目录", $"{UnlockCatalogSummary}\n\n{UnlockCatalogDetail}"),
+            new("客户端 API 联通鉴定", $"{ClientApiSummary}\n\n{ClientApiDetail}"),
             new("STUN NAT 分类测试", $"{StunSummary}\n\n覆盖与复核：\n{StunCoverageSummary}\n\n分类测试过程：\n{StunTestSummary}\n\n属性详情：\n{StunAttributeSummary}"),
             new("中转站模型列表", $"{ProxyModelCatalogSummary}\n\n{ProxyModelCatalogDetail}"),
             new("单站测试", $"{ProxyVerdictSummary}\n\n{ProxyCapabilityMatrixSummary}\n\n{ProxyKeyMetricsSummary}\n\n已管理入口参照：\n{ProxyManagedEntryAssessmentSummary}\n\n{ProxyIssueSummary}\n\n关键响应头：\n{ProxyHeadersSummary}\n\n原始摘要：\n{ProxySummary}\n\n原始明细：\n{ProxyDetail}"),
@@ -35,6 +36,7 @@ public sealed partial class MainWindowViewModel
         [
             new("raw/conclusions.txt", NormalizeArtifactContent(conclusionSummary), "结论摘要"),
             new("raw/chatgpt-trace.txt", NormalizeArtifactContent(ChatGptRawTrace), "网络复核 / 官方 API Trace 原始输出"),
+            new("raw/client-api.txt", NormalizeArtifactContent($"{ClientApiSummary}\n\n{ClientApiDetail}"), "网络复核 / 客户端 API 联通鉴定原始结果"),
             new("raw/unlock-catalog.txt", NormalizeArtifactContent($"{UnlockCatalogSummary}\n\n{UnlockCatalogDetail}"), "扩展可用性目录原始摘要"),
             new("raw/stun-tests.txt", NormalizeArtifactContent($"{StunSummary}\n\n{StunCoverageSummary}\n\n{StunTestSummary}\n\n{StunAttributeSummary}"), "网络复核 / STUN 与 NAT 分类原始结果"),
             new("raw/proxy-model-catalog.txt", NormalizeArtifactContent($"{ProxyModelCatalogSummary}\n\n{ProxyModelCatalogDetail}"), "中转站模型列表原始结果"),
@@ -138,6 +140,41 @@ public sealed partial class MainWindowViewModel
                     unlockSnapshot.ReviewRequiredCount,
                     unlockSnapshot.TotalCount
                 }
+            },
+            clientApi = new
+            {
+                summary = ClientApiSummary,
+                detail = ClientApiDetail,
+                checkedAt = _lastClientApiDiagnosticsResult?.CheckedAt,
+                installedCount = _lastClientApiDiagnosticsResult?.InstalledCount,
+                configuredCount = _lastClientApiDiagnosticsResult?.ConfiguredCount,
+                reachableCount = _lastClientApiDiagnosticsResult?.ReachableCount,
+                checks = _lastClientApiDiagnosticsResult?.Checks.Select(check => new
+                {
+                    check.Name,
+                    check.Provider,
+                    check.Kind,
+                    check.ProbeUrl,
+                    check.ProbeMethod,
+                    check.Installed,
+                    check.ConfigDetected,
+                    check.InstallEvidence,
+                    check.ConfigSource,
+                    check.ProxySource,
+                    check.AccessPathLabel,
+                    check.ConfigOriginLabel,
+                    check.EndpointLabel,
+                    check.RoutingNote,
+                    check.RestoreSupported,
+                    check.RestoreHint,
+                    check.Reachable,
+                    check.StatusCode,
+                    latencyMs = check.Latency?.TotalMilliseconds,
+                    check.Verdict,
+                    check.Summary,
+                    check.Evidence,
+                    check.Error
+                }).ToArray()
             },
             stun = new
             {

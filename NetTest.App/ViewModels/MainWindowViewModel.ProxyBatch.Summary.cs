@@ -13,22 +13,20 @@ public sealed partial class MainWindowViewModel
             var entries = ParseProxyBatchSourceEntries(ProxyBatchTargetsText, allowEmpty: true);
             if (entries.Count == 0)
             {
-                return string.IsNullOrWhiteSpace(ProxyBaseUrl)
-                    ? "入口组：还没有录入站点。右侧先填一个站点，点“加入入口组”后会自动清空，继续下一个。"
-                    : $"入口组：还没有录入站点。若现在直接开始快速对比，会先使用主页默认网址 {ProxyBaseUrl.Trim()}。";
+                return "入口组：还没有录入站点。右侧先填一个站点，点“加入入口组”后会自动清空，继续下一个。";
             }
 
             var siteCount = entries
                 .Select(ResolveProxyBatchSourceSiteName)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count();
-            var urlsUsingEmbeddedKey = entries.Count(entry =>
+            var urlsWithAvailableKey = entries.Count(entry =>
                 !string.IsNullOrWhiteSpace(entry.ApiKey) ||
                 !string.IsNullOrWhiteSpace(entry.SiteGroupApiKey));
-            var urlsUsingDefaultKey = entries.Count - urlsUsingEmbeddedKey;
+            var urlsMissingKey = entries.Count - urlsWithAvailableKey;
 
-            return urlsUsingDefaultKey > 0
-                ? $"入口组：已录入 {siteCount} 个站点，共 {entries.Count} 个网址；其中 {urlsUsingDefaultKey} 个网址会回退主页默认 key。"
+            return urlsMissingKey > 0
+                ? $"入口组：已录入 {siteCount} 个站点，共 {entries.Count} 个网址；其中 {urlsMissingKey} 个网址仍缺 key。"
                 : $"入口组：已录入 {siteCount} 个站点，共 {entries.Count} 个网址；当前所有网址都已带入可用 key。";
         }
         catch (Exception ex)
@@ -87,20 +85,20 @@ public sealed partial class MainWindowViewModel
             var plan = BuildProxyBatchPlan(requireRunnable: false);
             if (plan.Targets.Count == 0)
             {
-                return "组检测计划：右侧先录入一个站点，或直接使用主页默认网址开始。";
+                return "组检测计划：右侧先录入一个站点，再开始快速对比。";
             }
 
             var siteCount = plan.Targets
                 .Select(ResolveProxyBatchTargetSiteName)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count();
-            var explicitKeyCount = plan.Targets.Count(entry => entry.KeySource != ProxyBatchKeySource.Default);
-            var defaultKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.Default);
+            var inlineKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.Entry);
+            var siteGroupKeyCount = plan.Targets.Count(entry => entry.KeySource == ProxyBatchKeySource.SiteGroup);
             var longStreamSummary = ProxyBatchEnableLongStreamingTest
                 ? $"另外会为每个网址追加 1 次长流稳定性简测（{GetProxyLongStreamSegmentCount()} 段）。"
                 : "当前不附带长流稳定性简测。";
 
-            return $"组检测计划：当前会运行 {plan.Targets.Count} 个网址测试，覆盖 {siteCount} 个站点；其中显式带入或站点内继承 key 的有 {explicitKeyCount} 项，回退主页默认 key 的有 {defaultKeyCount} 项。{longStreamSummary}";
+            return $"组检测计划：当前会运行 {plan.Targets.Count} 个网址测试，覆盖 {siteCount} 个站点；其中本行 key {inlineKeyCount} 项，站点内继承 key {siteGroupKeyCount} 项。{longStreamSummary}";
         }
         catch (Exception ex)
         {

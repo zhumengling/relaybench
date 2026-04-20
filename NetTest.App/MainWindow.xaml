@@ -884,7 +884,7 @@
                                                                     Command="{Binding DataContext.FetchProxyBatchTemplateRowModelsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                                     CommandParameter="{Binding}"
                                                                     Content="⟳"
-                                                                    ToolTip="按本行 URL + key 拉取模型；如果本行 key 为空，会自动沿用上一行或主页默认 key。" />
+                                                                    ToolTip="按本行 URL + key 拉取模型；如果本行 key 为空，会自动沿用上一行已填写 key。" />
                                                             <TextBlock VerticalAlignment="Center"
                                                                        Text="{Binding EntryModel}"
                                                                        TextTrimming="CharacterEllipsis" />
@@ -901,7 +901,7 @@
                                                                     Command="{Binding DataContext.FetchProxyBatchTemplateRowModelsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                                     CommandParameter="{Binding}"
                                                                     Content="⟳"
-                                                                    ToolTip="按本行 URL + key 拉取模型；如果本行 key 为空，会自动沿用上一行或主页默认 key。" />
+                                                                    ToolTip="按本行 URL + key 拉取模型；如果本行 key 为空，会自动沿用上一行已填写 key。" />
                                                             <TextBox Padding="0"
                                                                      BorderThickness="0"
                                                                      Background="Transparent"

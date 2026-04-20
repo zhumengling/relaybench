@@ -26,3 +26,4 @@ data/
 # Logs / temp files
 *.log
 tmp_utf8_test.txt
+_verify/

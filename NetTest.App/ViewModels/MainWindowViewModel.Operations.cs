@@ -63,6 +63,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private Task RunChatGptTraceAsync()
         => ExecuteBusyActionAsync("正在运行官方 API 可用性检测...", RunChatGptTraceCoreAsync);
 
+    private Task RunClientApiDiagnosticsAsync()
+        => ExecuteBusyActionAsync("正在运行客户端 API 联通鉴定...", RunClientApiDiagnosticsCoreAsync);
+
     private Task RunStunAsync()
         => ExecuteBusyActionAsync("正在运行 STUN 绑定检测...", RunStunCoreAsync);
 
@@ -153,6 +156,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (_currentProxyOperationCancellationSource is { IsCancellationRequested: false } cancellationSource)
         {
+            SuppressProxyTrendChartAutoOpen();
             _proxyCancellationRequestedByUser = true;
             cancellationSource.Cancel();
             StatusMessage = "已请求停止当前测试，将在当前请求步骤结束后停止。";
@@ -194,6 +198,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ? $"{result.LocationCode ?? "--"} / {result.CloudflareColo ?? "--"} / {(result.IsSupportedRegion ? "支持" : "需复核")} / 业务就绪 {unlockCatalogResult.SemanticReadyCount}/{unlockCatalogResult.Checks.Count}"
             : result.Error;
         AppendHistory("官方API", "官方 API 可用性检测", $"{ChatGptSummary}\n\n{UnlockCatalogSummary}");
+    }
+
+    private async Task RunClientApiDiagnosticsCoreAsync()
+    {
+        var progress = new Progress<string>(message => StatusMessage = message);
+        var result = await _clientApiDiagnosticsService.RunAsync(progress);
+        ApplyClientApiResult(result);
+        DashboardCards[1].Status = result.ReachableCount > 0 ? "完成" : "失败";
+        DashboardCards[1].Detail = result.Error is null
+            ? $"客户端就绪 {result.InstalledCount}/{result.Checks.Count} / 已配置 {result.ConfiguredCount}/{result.Checks.Count} / API 可达 {result.ReachableCount}/{result.Checks.Count}"
+            : result.Error;
+        AppendHistory("客户端API", "客户端 API 联通鉴定", $"{ClientApiSummary}\n\n{ClientApiDetail}");
     }
 
     private async Task RunStunCoreAsync()

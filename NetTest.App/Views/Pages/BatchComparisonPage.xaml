@@ -11,6 +11,73 @@
             <Setter Property="Foreground" Value="#344054" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+        <Style x:Key="BatchRankingApplyButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Background" Value="#F8FBFF" />
+            <Setter Property="BorderBrush" Value="#C7DAFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="17"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#EEF4FF" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#84ADFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#DBEAFE" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#528BFF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#98A2B3" />
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#F2F4F7" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#E4E7EC" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="BatchRankingApplyToastStyle"
+               TargetType="Border">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <TranslateTransform Y="-6" />
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsBatchRankingApplyToastVisible}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Setter Property="Opacity" Value="1" />
+                    <Setter Property="RenderTransform">
+                        <Setter.Value>
+                            <TranslateTransform Y="0" />
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -149,6 +216,7 @@
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
 
                                             <CheckBox Grid.Column="0"
@@ -172,7 +240,7 @@
                                                            Text="{Binding Rank}" />
                                             </Border>
 
-                                            <StackPanel Grid.Column="2">
+                                            <StackPanel Grid.Column="2" Margin="0,0,10,0">
                                                 <DockPanel LastChildFill="False">
                                                     <TextBlock FontWeight="SemiBold" Text="{Binding EntryName}" />
                                                     <TextBlock DockPanel.Dock="Right"
@@ -208,6 +276,17 @@
                                                            Text="{Binding DeepSummary}"
                                                            TextWrapping="Wrap" />
                                             </StackPanel>
+
+                                            <Button Grid.Column="3"
+                                                    VerticalAlignment="Center"
+                                                    Style="{StaticResource BatchRankingApplyButtonStyle}"
+                                                    Command="{Binding DataContext.ApplyRankingRowToCodexAppsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="&#x5E94;&#x7528;&#x5230; Codex &#x7CFB;&#x5217;&#x8F6F;&#x4EF6;">
+                                                <TextBlock FontSize="13.4"
+                                                           FontWeight="SemiBold"
+                                                           Text="&#x2726;" />
+                                            </Button>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -217,6 +296,31 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <Border Panel.ZIndex="9"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,10,10,0"
+                Padding="10,7"
+                MaxWidth="420"
+                Background="#ECFDF3"
+                BorderBrush="#ABEFC6"
+                BorderThickness="1"
+                CornerRadius="12"
+                Style="{StaticResource BatchRankingApplyToastStyle}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock VerticalAlignment="Center"
+                           FontSize="12.6"
+                           Foreground="#067647"
+                           Text="&#x2713;" />
+                <TextBlock Margin="6,0,0,0"
+                           VerticalAlignment="Center"
+                           Foreground="#067647"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap"
+                           Text="{Binding BatchRankingApplyToastMessage, Mode=OneWay}" />
+            </StackPanel>
+        </Border>
 
         <Grid Grid.Row="2" Margin="0,4,0,0">
             <Grid.ColumnDefinitions>

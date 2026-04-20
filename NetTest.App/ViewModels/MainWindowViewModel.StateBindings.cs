@@ -16,6 +16,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ExportCurrentReportCommand.RaiseCanExecuteChanged();
                 RunNetworkCommand.RaiseCanExecuteChanged();
                 RunChatGptTraceCommand.RaiseCanExecuteChanged();
+                RunClientApiDiagnosticsCommand.RaiseCanExecuteChanged();
                 RunStunCommand.RaiseCanExecuteChanged();
                 FetchProxyModelsCommand.RaiseCanExecuteChanged();
                 FetchProxyBatchSharedModelsCommand.RaiseCanExecuteChanged();
@@ -32,6 +33,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 RunSelectedSingleStationModeCommand.RaiseCanExecuteChanged();
                 RunProxyBatchCommand.RaiseCanExecuteChanged();
                 RunSelectedBatchDeepTestsCommand.RaiseCanExecuteChanged();
+                ApplyRankingRowToCodexAppsCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(CanRunSelectedBatchDeepTests));
                 StopCurrentProxyTestCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(CanStopCurrentProxyTest));
@@ -64,6 +66,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 AppendLiveStatus(value);
             }
         }
+    }
+
+    public bool IsBatchRankingApplyToastVisible
+    {
+        get => _isBatchRankingApplyToastVisible;
+        private set => SetProperty(ref _isBatchRankingApplyToastVisible, value);
+    }
+
+    public string BatchRankingApplyToastMessage
+    {
+        get => _batchRankingApplyToastMessage;
+        private set => SetProperty(ref _batchRankingApplyToastMessage, value);
     }
 
     public string LastRunAt
