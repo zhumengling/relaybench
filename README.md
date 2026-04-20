@@ -2,10 +2,27 @@
 
 用来给中转站跑分，对比一下速度，筛选出最快的那个入口。
 
-
 - 对单个中转站做快速测试、稳定性测试和深度测试。
 - 对多个中转站做批量快速对比、排行榜排序和候选深测。
 - 在中转站不可用、延迟异常或解锁异常时，借助网络复核能力区分是本地网络问题还是中转站问题。
+
+## 界面预览
+
+### 入口组批量录入
+
+![入口组批量录入](docs/images/batch-import-dialog.png)
+
+### 批量排行榜对比
+
+![批量排行榜对比](docs/images/batch-comparison-ranking.png)
+
+### 客户端 API 复核
+
+![客户端 API 复核](docs/images/network-review-client-api.png)
+
+### 单站深度测试
+
+![单站深度测试](docs/images/single-station-deep-test.png)
 
 ## 主要功能
 
@@ -101,7 +118,8 @@
 ### 运行发布版
 
 - Windows 10 / 11
-- .NET Desktop Runtime 10
+- `framework-dependent` 包：需要预先安装 .NET Desktop Runtime 10，体积最小
+- `self-contained` 包：无需预装运行时，下载后可直接运行，但体积更大
 
 ## 从源码运行
 
@@ -116,22 +134,33 @@ dotnet run --project .\NetTest.App\NetTest.App.csproj -c Debug
 
 在仓库根目录执行：
 
-```powershell
-dotnet publish .\NetTest.App\NetTest.App.csproj -c Release -r win-x64 --self-contained false --configfile .\NuGet.Config -p:UseAppHost=true -o .\release\relaybench-win-x64
+```cmd
+publish.cmd
 ```
 
-发布完成后，可执行文件位于：
+脚本会自动读取 `Directory.Build.props` 中的版本号，并在 `release\` 目录下同时生成两套发布产物：
+
+- `relaybench-v<版本号>-win-x64-framework-dependent.zip`
+- `relaybench-v<版本号>-win-x64-framework-dependent.sha256.txt`
+- `relaybench-v<版本号>-win-x64-self-contained.zip`
+- `relaybench-v<版本号>-win-x64-self-contained.sha256.txt`
+
+命名说明：
+
+- `framework-dependent`：依赖本机 .NET Desktop Runtime 10，适合追求小体积的场景
+- `self-contained`：内置运行时，适合直接分发给未安装运行时的机器
+
+例如当前版本会生成：
 
 ```text
-release\relaybench-win-x64\NetTest.App.exe
+release\relaybench-v0.1.4-win-x64-framework-dependent.zip
+release\relaybench-v0.1.4-win-x64-self-contained.zip
 ```
 
 ## 目录说明
 
 - `NetTest.App`：WPF UI、页面、ViewModel 与本地状态管理
 - `NetTest.Core`：网络诊断、测速、STUN、路由、端口扫描与中转站测试核心逻辑
-
-
 
 ## 当前依赖的在线数据源
 
