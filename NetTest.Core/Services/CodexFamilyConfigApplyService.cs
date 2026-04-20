@@ -21,6 +21,7 @@ public sealed class CodexFamilyConfigApplyService
         string baseUrl,
         string apiKey,
         string model,
+        string? displayName = null,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -28,6 +29,7 @@ public sealed class CodexFamilyConfigApplyService
         var normalizedBaseUrl = NormalizeCodexBaseUrl(baseUrl);
         var normalizedApiKey = apiKey?.Trim() ?? string.Empty;
         var normalizedModel = model?.Trim() ?? string.Empty;
+        var normalizedDisplayName = NormalizeCodexProviderName(displayName);
 
         if (string.IsNullOrWhiteSpace(normalizedBaseUrl))
         {
@@ -75,7 +77,7 @@ public sealed class CodexFamilyConfigApplyService
 
         ApplyFile(
             configPath,
-            existing => UpsertCodexConfig(existing, normalizedBaseUrl, normalizedModel),
+            existing => UpsertCodexConfig(existing, normalizedBaseUrl, normalizedModel, normalizedApiKey, normalizedDisplayName),
             changedFiles,
             backupFiles);
         ApplyFile(
@@ -140,15 +142,21 @@ public sealed class CodexFamilyConfigApplyService
         return ClientApiConfigPatterns.SerializeJson(root);
     }
 
-    private static string UpsertCodexConfig(string existingContent, string baseUrl, string model)
+    private static string UpsertCodexConfig(
+        string existingContent,
+        string baseUrl,
+        string model,
+        string apiKey,
+        string displayName)
     {
         List<string> lines = SplitLines(existingContent);
 
         UpsertTopLevelString(lines, "model_provider", CodexProviderKey);
         UpsertTopLevelString(lines, "model", model);
-        UpsertSectionString(lines, "model_providers.custom", "name", CodexProviderName);
+        UpsertSectionString(lines, "model_providers.custom", "name", displayName);
         UpsertSectionString(lines, "model_providers.custom", "base_url", baseUrl);
         UpsertSectionString(lines, "model_providers.custom", "wire_api", CodexWireApi);
+        UpsertSectionString(lines, "model_providers.custom", "experimental_bearer_token", apiKey);
 
         return JoinLines(lines);
     }
@@ -291,5 +299,16 @@ public sealed class CodexFamilyConfigApplyService
 
         builder.Path = path;
         return builder.Uri.ToString().TrimEnd('/');
+    }
+
+    private static string NormalizeCodexProviderName(string? value)
+    {
+        var normalized = new string((value ?? string.Empty)
+            .Where(ch => !char.IsControl(ch))
+            .ToArray()).Trim();
+
+        return string.IsNullOrWhiteSpace(normalized)
+            ? CodexProviderName
+            : normalized;
     }
 }

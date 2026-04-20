@@ -45,7 +45,7 @@ public sealed partial class MainWindowViewModel
             $"正在将 {row.EntryName} 应用到 Codex 软件...",
             async () =>
             {
-                var result = await _codexFamilyConfigApplyService.ApplyAsync(row.BaseUrl, row.ApiKey, row.Model);
+                var result = await _codexFamilyConfigApplyService.ApplyAsync(row.BaseUrl, row.ApiKey, row.Model, row.EntryName);
                 StatusMessage = result.Succeeded
                     ? result.Summary
                     : $"应用失败：{result.Error ?? result.Summary}";
