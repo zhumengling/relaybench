@@ -218,7 +218,7 @@ public sealed class ClientApiDiagnosticsService
             envVars,
             hasOfficialOAuth: configFiles.Any(file => file.Path.EndsWith("auth.json", StringComparison.OrdinalIgnoreCase) &&
                                                      !file.Content.Contains("PROXY_MANAGED", StringComparison.OrdinalIgnoreCase)),
-            restoreHint: "支持还原 .codex/config.toml 与 .codex/settings.json 中的代理接管或自定义入口。");
+            restoreHint: "支持还原 .codex/config.toml、.codex/auth.json 与 .codex/settings.json 中的代理接管或自定义入口。");
 
         return BuildState(
             installed: commandPaths.Count > 0 || environment.DirectoryExists(codexRoot),
@@ -270,7 +270,7 @@ public sealed class ClientApiDiagnosticsService
             envVars,
             hasOfficialOAuth: configFiles.Any(file => file.Path.EndsWith("auth.json", StringComparison.OrdinalIgnoreCase) &&
                                                      !file.Content.Contains("PROXY_MANAGED", StringComparison.OrdinalIgnoreCase)),
-            restoreHint: "支持还原 .codex/config.toml 与 .codex/settings.json 中的代理接管或自定义入口。");
+            restoreHint: "支持还原 .codex/config.toml、.codex/auth.json 与 .codex/settings.json 中的代理接管或自定义入口。");
 
         return BuildState(
             installed: appCandidates.Count > 0 || processHits.Length > 0,

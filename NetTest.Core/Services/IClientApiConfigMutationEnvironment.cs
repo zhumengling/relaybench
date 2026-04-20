@@ -15,4 +15,8 @@ public interface IClientApiConfigMutationEnvironment
     string? ReadFileText(string path);
 
     void WriteFileText(string path, string content);
+
+    void DeleteFile(string path);
+
+    IReadOnlyList<string> EnumerateFiles(string directoryPath, string searchPattern);
 }

@@ -64,6 +64,35 @@ public sealed class ClientApiDiagnosticEnvironment : IClientApiDiagnosticEnviron
         File.WriteAllText(path, content);
     }
 
+    public void DeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
+    public IReadOnlyList<string> EnumerateFiles(string directoryPath, string searchPattern)
+    {
+        try
+        {
+            return Directory.Exists(directoryPath)
+                ? Directory.GetFiles(directoryPath, searchPattern)
+                : Array.Empty<string>();
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+    }
+
     public IReadOnlyList<string> ResolveCommandPaths(string commandName)
     {
         try

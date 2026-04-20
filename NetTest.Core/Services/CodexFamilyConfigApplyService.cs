@@ -65,8 +65,10 @@ public sealed class CodexFamilyConfigApplyService
         var codexRoot = Path.Combine(_environment.UserProfilePath, ".codex");
         var configPath = Path.Combine(codexRoot, "config.toml");
         var authPath = Path.Combine(codexRoot, "auth.json");
+        var settingsPath = Path.Combine(codexRoot, "settings.json");
 
         _environment.EnsureDirectoryExists(codexRoot);
+        CodexRestoreStateStorage.EnsureOriginalStateCaptured(_environment, configPath, authPath, settingsPath);
 
         List<string> changedFiles = [];
         List<string> backupFiles = [];
