@@ -172,3 +172,7 @@ release\relaybench-v0.1.4-win-x64-self-contained.zip
 - `chatgpt.com/cdn-cgi/trace`：出口信息与地区观察
 
 应用会对部分结果进行本地缓存，以减少重复请求。
+
+## License
+
+本项目基于 [MIT License](LICENSE) 开源发布。
