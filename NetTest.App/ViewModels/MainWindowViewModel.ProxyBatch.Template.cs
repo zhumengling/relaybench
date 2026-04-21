@@ -19,11 +19,38 @@ public sealed partial class MainWindowViewModel
             null,
             null,
             null,
-            null);
+            null,
+            true);
         AttachProxyBatchTemplateDraftItem(item);
         ProxyBatchTemplateDraftItems.Add(item);
         RefreshProxyBatchTemplateDraftState();
         StatusMessage = "已新增一行空白入口。";
+        return Task.CompletedTask;
+    }
+
+    private Task DeleteProxyBatchTemplateRowAsync(ProxyBatchEditorItemViewModel? row)
+    {
+        if (row is null)
+        {
+            StatusMessage = "\u8bf7\u5148\u9009\u4e2d\u8981\u5220\u9664\u7684\u884c\u3002";
+            return Task.CompletedTask;
+        }
+
+        var keptRows = ProxyBatchTemplateDraftItems
+            .Where(item => !ReferenceEquals(item, row))
+            .Select(CloneProxyBatchTemplateDraftItem)
+            .ToArray();
+
+        if (keptRows.Length == ProxyBatchTemplateDraftItems.Count)
+        {
+            StatusMessage = "\u6ca1\u6709\u627e\u5230\u8981\u5220\u9664\u7684\u884c\u3002";
+            return Task.CompletedTask;
+        }
+
+        ReplaceProxyBatchTemplateDraftItems(keptRows);
+        StatusMessage = keptRows.Length == 0
+            ? "\u5df2\u5220\u9664\u6700\u540e\u4e00\u884c\uff0c\u4ecd\u4fdd\u7559 1 \u4e2a\u7a7a\u767d\u884c\u4f9b\u7ee7\u7eed\u8f93\u5165\u3002"
+            : $"\u5df2\u5220\u9664 1 \u884c\uff0c\u5f53\u524d\u5269\u4f59 {keptRows.Length} \u884c\u3002";
         return Task.CompletedTask;
     }
 
@@ -48,7 +75,8 @@ public sealed partial class MainWindowViewModel
                 item.EntryName,
                 item.BaseUrl,
                 item.EntryApiKey,
-                item.EntryModel))
+                item.EntryModel,
+                item.IncludeInBatchTest))
             .ToArray();
         var mergedRows = ProxyBatchTemplateClipboardParser.MergeDraftRows(existingRows, pastedRows);
         if (mergedRows.Count > MaxProxyBatchSourceEntries)
@@ -64,7 +92,8 @@ public sealed partial class MainWindowViewModel
                 row.EntryModel,
                 null,
                 null,
-                null)));
+                null,
+                row.IncludeInBatchTest)));
 
         StatusMessage = $"已从剪贴板带入 {pastedRows.Count} 行，空白项已按上一行自动补齐。";
         return Task.CompletedTask;
@@ -110,13 +139,15 @@ public sealed partial class MainWindowViewModel
         var blankRows = ProxyBatchTemplateDraftItems.Count - meaningfulRows.Length;
         var missingUrlRows = meaningfulRows.Count(item => string.IsNullOrWhiteSpace(item.BaseUrl));
         var invalidUrlRows = meaningfulRows.Count(item => !string.IsNullOrWhiteSpace(item.BaseUrl) && !IsValidHttpUrl(item.BaseUrl));
+        var enabledRows = meaningfulRows.Count(item => item.IncludeInBatchTest);
+        var disabledRows = meaningfulRows.Length - enabledRows;
         var duplicateUrlCount = meaningfulRows
             .Where(item => IsValidHttpUrl(item.BaseUrl))
             .GroupBy(item => item.BaseUrl.Trim(), StringComparer.OrdinalIgnoreCase)
             .Sum(group => Math.Max(0, group.Count() - 1));
         var siteNamePreview = BuildProxyBatchTemplateSiteNamePreview(meaningfulRows);
 
-        return $"当前站点：{siteNamePreview}。表格共 {ProxyBatchTemplateDraftItems.Count} 行，已填写 {meaningfulRows.Length} 行，空白 {blankRows} 行；缺 URL {missingUrlRows} 行，URL 无效 {invalidUrlRows} 行，重复 URL {duplicateUrlCount} 行。点击“加入入口组”后，会把当前所有行作为同一个站点保存，然后自动清空为下一站点保留第一行空白。";
+        return $"当前站点：{siteNamePreview}。表格共 {ProxyBatchTemplateDraftItems.Count} 行，已填写 {meaningfulRows.Length} 行，空白 {blankRows} 行；加入测试 {enabledRows} 行，跳过测试 {disabledRows} 行；缺 URL {missingUrlRows} 行，URL 无效 {invalidUrlRows} 行，重复 URL {duplicateUrlCount} 行。点击“加入入口组”后，会把当前所有行作为同一个站点保存，然后自动清空为下一个站点保留第一行空白。";
     }
 
     private string? ResolveProxyBatchTemplateRowApiKey(ProxyBatchEditorItemViewModel? row)
@@ -180,7 +211,8 @@ public sealed partial class MainWindowViewModel
                 model,
                 null,
                 null,
-                null));
+                null,
+                row.IncludeInBatchTest));
 
             previousEntryName = entryName;
             previousBaseUrl = baseUrl;
@@ -200,7 +232,8 @@ public sealed partial class MainWindowViewModel
                 row.EntryModel,
                 siteName,
                 null,
-                null);
+                null,
+                row.IncludeInBatchTest);
         }
 
         return normalizedRows;
@@ -234,7 +267,8 @@ public sealed partial class MainWindowViewModel
             item.EntryModel,
             null,
             null,
-            null);
+            null,
+            item.IncludeInBatchTest);
 
     private static bool IsEmptyProxyBatchTemplateDraftRow(ProxyBatchEditorItemViewModel item)
         => string.IsNullOrWhiteSpace(item.EntryName) &&

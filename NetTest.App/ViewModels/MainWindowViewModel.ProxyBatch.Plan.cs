@@ -21,8 +21,21 @@ public sealed partial class MainWindowViewModel
             throw new InvalidOperationException("入口组至少需要一个网址。请先在右侧表格里填写并加入入口组。");
         }
 
+        var runnableEntries = sourceEntries
+            .Where(entry => entry.IncludeInBatchTest)
+            .ToArray();
+        if (runnableEntries.Length == 0)
+        {
+            if (!requireRunnable)
+            {
+                return new ProxyBatchPlan(sourceEntries, Array.Empty<ProxyBatchTargetEntry>(), false);
+            }
+
+            throw new InvalidOperationException("当前入口组里没有开启“加入测试”的网址，请先在右侧表格里打开至少一项。");
+        }
+
         List<ProxyBatchTargetEntry> targets = [];
-        foreach (var sourceEntry in sourceEntries)
+        foreach (var sourceEntry in runnableEntries)
         {
             var effectiveApiKey = FirstNonEmpty(sourceEntry.ApiKey, sourceEntry.SiteGroupApiKey);
             if (string.IsNullOrWhiteSpace(effectiveApiKey))
@@ -137,11 +150,14 @@ public sealed partial class MainWindowViewModel
                 throw new InvalidOperationException($"入口组第 {entries.Count + 1} 条的地址不是有效的绝对 URI：{baseUrl}");
             }
 
+            var includeInBatchTest = ParseProxyBatchIncludeInTest(parts);
+
             entries.Add(new ProxyBatchSourceEntry(
                 name.Trim(),
                 baseUrl.Trim(),
                 apiKey,
                 model,
+                includeInBatchTest,
                 isGroupChild ? currentSiteGroup?.Name : null,
                 isGroupChild ? currentSiteGroup?.ApiKey : null,
                 isGroupChild ? currentSiteGroup?.Model : null));
@@ -219,24 +235,62 @@ public sealed partial class MainWindowViewModel
         => string.IsNullOrWhiteSpace(siteGroupName) ? entryName : $"{siteGroupName} / {entryName}";
 
     private static string BuildStandaloneEntryLine(ProxyBatchEditorItemViewModel item)
-        => BuildDelimitedLine(item.EntryName, item.BaseUrl, item.EntryApiKey, item.EntryModel);
+        => BuildDelimitedLine(
+            item.EntryName,
+            item.BaseUrl,
+            item.EntryApiKey,
+            item.EntryModel,
+            item.IncludeInBatchTest ? null : "off");
 
     private static string BuildSiteGroupHeaderLine(ProxyBatchEditorItemViewModel item)
         => BuildDelimitedLine("站点", item.SiteGroupName, item.SiteGroupApiKey, item.SiteGroupModel);
 
     private static string BuildSiteGroupChildLine(ProxyBatchEditorItemViewModel item)
-        => "- " + BuildDelimitedLine(item.EntryName, item.BaseUrl, item.EntryApiKey, item.EntryModel);
+        => "- " + BuildDelimitedLine(
+            item.EntryName,
+            item.BaseUrl,
+            item.EntryApiKey,
+            item.EntryModel,
+            item.IncludeInBatchTest ? null : "off");
+
+    private static bool ParseProxyBatchIncludeInTest(IReadOnlyList<string> parts)
+    {
+        if (parts.Count < 5)
+        {
+            return true;
+        }
+
+        var raw = NormalizeNullable(parts[4]);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return true;
+        }
+
+        return raw.ToLowerInvariant() switch
+        {
+            "1" or "true" or "on" or "yes" => true,
+            "0" or "false" or "off" or "no" or "skip" or "disabled" or "disable" => false,
+            _ => throw new InvalidOperationException($"入口组里的测试开关只支持 on/off、true/false、1/0 等写法，当前值为：{raw}")
+        };
+    }
 
     private static string BuildDelimitedLine(
         string? first,
         string? second,
         string? third,
-        string? fourth)
+        string? fourth,
+        string? fifth = null)
     {
         var value1 = first?.Trim() ?? string.Empty;
         var value2 = second?.Trim() ?? string.Empty;
         var value3 = third?.Trim() ?? string.Empty;
         var value4 = fourth?.Trim() ?? string.Empty;
+        var value5 = fifth?.Trim() ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(value5))
+        {
+            return $"{value1} | {value2} | {value3} | {value4} | {value5}";
+        }
 
         if (!string.IsNullOrWhiteSpace(value4))
         {

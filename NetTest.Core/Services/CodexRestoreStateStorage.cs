@@ -27,11 +27,15 @@ internal static class CodexRestoreStateStorage
         {
             Files = filePaths
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Select(path => new CodexRestoreStateFile
+                .Select(path =>
                 {
-                    Path = path,
-                    Existed = environment.FileExists(path),
-                    Content = environment.ReadFileText(path)
+                    var snapshot = CodexOfficialConfigTools.CreateBaselineSnapshot(environment, path);
+                    return new CodexRestoreStateFile
+                    {
+                        Path = path,
+                        Existed = snapshot.Existed,
+                        Content = snapshot.Content
+                    };
                 })
                 .ToList()
         };

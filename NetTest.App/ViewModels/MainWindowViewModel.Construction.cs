@@ -85,6 +85,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         PreviewProxyBatchIndependentImportCommand = new AsyncRelayCommand(PreviewProxyBatchIndependentImportAsync, onError: HandleNonFatalCommandException);
         ImportProxyBatchIndependentEntriesCommand = new AsyncRelayCommand(ImportProxyBatchIndependentEntriesAsync, onError: HandleNonFatalCommandException);
         AddProxyBatchTemplateRowCommand = new AsyncRelayCommand(AddProxyBatchTemplateRowAsync, CanRun, onError: HandleNonFatalCommandException);
+        DeleteProxyBatchTemplateRowCommand = new AsyncRelayCommand<ProxyBatchEditorItemViewModel?>(DeleteProxyBatchTemplateRowAsync, item => CanRun() && item is not null, onError: HandleNonFatalCommandException);
         PasteProxyBatchTemplateRowsCommand = new AsyncRelayCommand(PasteProxyBatchTemplateRowsAsync, CanRun, onError: HandleNonFatalCommandException);
         ApplyProxyBatchTemplateDefaultsCommand = new AsyncRelayCommand(ApplyProxyBatchTemplateDefaultsAsync, CanRun, onError: HandleNonFatalCommandException);
         ClearProxyBatchTemplateEmptyRowsCommand = new AsyncRelayCommand(ClearProxyBatchTemplateEmptyRowsAsync, CanRun, onError: HandleNonFatalCommandException);

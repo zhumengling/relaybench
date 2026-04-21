@@ -524,7 +524,7 @@ public sealed partial class MainWindowViewModel
                 $"总判定：{result.Verdict ?? "待复核"}\n" +
                 $"建议用途：{result.Recommendation ?? "请结合稳定性结果继续判断。"}\n" +
                 $"已展示检测项：{completedCount}/{totalCount}\n" +
-                $"普通对话：{FormatMilliseconds(result.ChatLatency)} / 每秒生成 token 数：{FormatTokensPerSecond(FindScenario(GetScenarioResults(result), ProxyProbeScenarioKind.ChatCompletionsStream)?.OutputTokensPerSecond, FindScenario(GetScenarioResults(result), ProxyProbeScenarioKind.ChatCompletionsStream)?.OutputTokenCountEstimated == true, FindScenario(GetScenarioResults(result), ProxyProbeScenarioKind.ChatCompletionsStream)?.OutputTokensPerSecondSampleCount ?? 1)} / TTFT：{FormatMilliseconds(result.StreamFirstTokenLatency)}",
+                $"普通对话：{FormatMilliseconds(result.ChatLatency)} / 独立吞吐：{FormatTokensPerSecond(result.ThroughputBenchmarkResult?.MedianOutputTokensPerSecond, result.ThroughputBenchmarkResult?.OutputTokenCountEstimated == true, result.ThroughputBenchmarkResult?.CompletedSampleCount ?? 1)} / TTFT：{FormatMilliseconds(result.StreamFirstTokenLatency)}",
                 BuildDialogCapabilityMatrix(result),
                 BuildDialogCapabilityDetail(result),
                 "基础能力用于看核心 API 通断；增强测试用于看长流与内容完整性；深度测试用于看协议兼容、错误透传、缓存与官方对照。",
@@ -655,7 +655,9 @@ public sealed partial class MainWindowViewModel
                 "等待首个 URL 返回",
                 placeholderBaseUrl,
                 0,
-                ProxyBatchEnableLongStreamingTest ? "0/6" : "0/5",
+                "等待数据",
+                0,
+                "进行中",
                 null,
                 null,
                 null,
@@ -684,7 +686,7 @@ public sealed partial class MainWindowViewModel
                 existingAggregateRows.Length == 0
                     ? "等待首个 URL 返回后，这里会显示多个入口的累计明细。"
                     : BuildProxyBatchCapabilityDetailText(existingAggregateRows, "历史累计明细（本轮开始前）"),
-                "实时图适合看：当前推荐项有没有切换、平均延迟、每秒生成 token 数和 TTFT 会不会被新一轮结果拉偏、基础能力与长流增强项是否同步变差。",
+                "实时图适合看：当前推荐项有没有切换、平均延迟、独立吞吐和 TTFT 会不会被新一轮结果拉偏、基础能力与长流增强项是否同步变差。",
                 $"入口组检测已启动，当前第 {currentRunNumber} 轮整组，共 {entries.Count} 个 URL。",
                 "正在等待入口组首个结果...",
                 chartResult.ChartImage),
@@ -719,7 +721,7 @@ public sealed partial class MainWindowViewModel
                 $"本轮已完成：{rows.Count}/{totalTargets}\n" +
                 $"当前推荐：{best.Entry.Name}\n" +
                 $"推荐地址：{best.Entry.BaseUrl}\n" +
-                $"推荐原因：平均普通对话 {FormatMillisecondsValue(best.AverageChatLatencyMs)}，每秒生成 token 数 {FormatTokensPerSecond(best.AverageStreamTokensPerSecond)}，平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)}，综合能力 {FormatBatchDisplayedCapabilityAverage(best)}，基础/增强拆分见右侧摘要。",
+                $"推荐原因：平均普通对话 {FormatMillisecondsValue(best.AverageChatLatencyMs)}，独立吞吐 {FormatTokensPerSecond(best.AverageBenchmarkTokensPerSecond)}，平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)}，综合分 {best.CompositeScore:F1}，基础/增强拆分见右侧摘要。",
                 BuildProxyBatchCapabilitySummaryText(aggregateRows, "多入口实时累计摘要"),
                 BuildProxyBatchCapabilityDetailText(aggregateRows, "多入口实时累计明细"),
                 "如果排行榜前几名频繁互换，通常说明入口组存在波动，或者基础能力与增强长流在不同轮次表现不一致。",

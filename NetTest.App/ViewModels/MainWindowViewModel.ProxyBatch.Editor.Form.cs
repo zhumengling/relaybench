@@ -116,7 +116,8 @@ public sealed partial class MainWindowViewModel
             entryModel,
             siteGroupName,
             siteGroupApiKey,
-            siteGroupModel);
+            siteGroupModel,
+            true);
     }
 
     private void LoadProxyBatchEditorForm(ProxyBatchEditorItemViewModel item)

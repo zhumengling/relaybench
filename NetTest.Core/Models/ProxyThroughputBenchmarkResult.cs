@@ -1,0 +1,22 @@
+namespace NetTest.Core.Models;
+
+public sealed record ProxyThroughputBenchmarkResult(
+    DateTimeOffset CheckedAt,
+    string BaseUrl,
+    string Model,
+    int RequestedSampleCount,
+    int CompletedSampleCount,
+    int SuccessfulSampleCount,
+    int SegmentCount,
+    double? MedianOutputTokensPerSecond,
+    double? AverageOutputTokensPerSecond,
+    double? MinimumOutputTokensPerSecond,
+    double? MaximumOutputTokensPerSecond,
+    double? MedianEndToEndTokensPerSecond,
+    int? AverageOutputTokenCount,
+    bool OutputTokenCountEstimated,
+    string Summary,
+    string? Error,
+    IReadOnlyList<ProxyStreamingStabilityResult> Samples,
+    string? RequestId = null,
+    string? TraceId = null);

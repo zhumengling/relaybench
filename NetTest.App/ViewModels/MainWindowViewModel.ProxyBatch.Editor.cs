@@ -17,7 +17,8 @@ public sealed partial class MainWindowViewModel
                 entry.Model,
                 entry.SiteGroupName,
                 entry.SiteGroupApiKey,
-                entry.SiteGroupModel)));
+                entry.SiteGroupModel,
+                entry.IncludeInBatchTest)));
     }
 
     private void LoadProxyBatchState(AppStateSnapshot snapshot)
@@ -57,7 +58,8 @@ public sealed partial class MainWindowViewModel
                 NormalizeNullable(item.EntryModel),
                 NormalizeNullable(item.SiteGroupName),
                 NormalizeNullable(item.SiteGroupApiKey),
-                NormalizeNullable(item.SiteGroupModel))));
+                NormalizeNullable(item.SiteGroupModel),
+                item.IncludeInBatchTest)));
 
     private void ReplaceProxyBatchEditorItems(IEnumerable<ProxyBatchEditorItemViewModel> items)
     {
@@ -225,6 +227,7 @@ public sealed partial class MainWindowViewModel
             ProxyBatchSiteGroups.Add(new ProxyBatchSiteGroupViewModel(
                 group.Key,
                 items.Length,
+                items.Count(item => item.IncludeInBatchTest),
                 urlPreview,
                 BuildProxyBatchSiteKeySummary(keyValues),
                 BuildProxyBatchSiteModelSummary(modelValues)));
@@ -235,8 +238,11 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        SelectedProxyBatchSiteGroup = ProxyBatchSiteGroups
-            .FirstOrDefault(item => string.Equals(item.GroupName, selectedGroupName, StringComparison.OrdinalIgnoreCase));
+        ExecuteWithoutProxyBatchSiteGroupSelectionHandling(() =>
+        {
+            SelectedProxyBatchSiteGroup = ProxyBatchSiteGroups
+                .FirstOrDefault(item => string.Equals(item.GroupName, selectedGroupName, StringComparison.OrdinalIgnoreCase));
+        });
     }
 
     private void LoadProxyBatchDraft(ProxyBatchDraftSnapshot? draft)
@@ -246,7 +252,7 @@ public sealed partial class MainWindowViewModel
         try
         {
             SelectedProxyBatchEditorItem = null;
-            SelectedProxyBatchSiteGroup = null;
+            ExecuteWithoutProxyBatchSiteGroupSelectionHandling(() => SelectedProxyBatchSiteGroup = null);
             SetProxyBatchEditorMode(ProxyBatchEditorMode.BulkImport);
             ProxyBatchFormSiteGroupName = draft.SiteGroupName;
             ProxyBatchFormSiteGroupApiKey = draft.SiteGroupApiKey;
@@ -284,7 +290,8 @@ public sealed partial class MainWindowViewModel
             EntryModel = item.EntryModel?.Trim() ?? string.Empty,
             SiteGroupName = item.SiteGroupName?.Trim() ?? string.Empty,
             SiteGroupApiKey = item.SiteGroupApiKey?.Trim() ?? string.Empty,
-            SiteGroupModel = item.SiteGroupModel?.Trim() ?? string.Empty
+            SiteGroupModel = item.SiteGroupModel?.Trim() ?? string.Empty,
+            IncludeInBatchTest = item.IncludeInBatchTest
         };
 
     private void ResetProxyBatchTemplateDraft(bool clearSelection)
@@ -293,7 +300,7 @@ public sealed partial class MainWindowViewModel
 
         if (clearSelection)
         {
-            SelectedProxyBatchSiteGroup = null;
+            ExecuteWithoutProxyBatchSiteGroupSelectionHandling(() => SelectedProxyBatchSiteGroup = null);
         }
 
         SetProxyBatchEditorMode(ProxyBatchEditorMode.BulkImport);
@@ -306,7 +313,8 @@ public sealed partial class MainWindowViewModel
                 null,
                 null,
                 null,
-                null)
+                null,
+                true)
         ]);
     }
 
@@ -314,7 +322,7 @@ public sealed partial class MainWindowViewModel
     {
         if (ProxyBatchTemplateDraftItems.Count == 0)
         {
-            var item = new ProxyBatchEditorItemViewModel(string.Empty, string.Empty, null, null, null, null, null);
+            var item = new ProxyBatchEditorItemViewModel(string.Empty, string.Empty, null, null, null, null, null, true);
             AttachProxyBatchTemplateDraftItem(item);
             ProxyBatchTemplateDraftItems.Add(item);
         }
@@ -331,7 +339,8 @@ public sealed partial class MainWindowViewModel
                 item.EntryModel,
                 null,
                 null,
-                null))
+                null,
+                item.IncludeInBatchTest))
             .ToArray();
 
         ReplaceProxyBatchTemplateDraftItems(items);

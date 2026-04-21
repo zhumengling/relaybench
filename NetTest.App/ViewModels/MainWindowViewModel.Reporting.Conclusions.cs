@@ -20,21 +20,17 @@ public sealed partial class MainWindowViewModel
 
     private RelayRecommendationSnapshot BuildRelayRecommendationSnapshot()
     {
-        if (_lastProxyBatchRows.Count > 0)
+        if (_proxyBatchChartRuns.Count > 0)
         {
-            var bestRow = _lastProxyBatchRows
-                .OrderByDescending(row => row.Score)
-                .ThenByDescending(row => IsFullSuccess(row.Result))
-                .ThenBy(row => row.Result.StreamFirstTokenLatency ?? TimeSpan.MaxValue)
-                .ThenBy(row => row.Result.ChatLatency ?? TimeSpan.MaxValue)
+            var bestRow = OrderBatchAggregateRows(BuildProxyBatchAggregateRows(_proxyBatchChartRuns))
                 .First();
 
             return new RelayRecommendationSnapshot(
                 "入口组对比",
                 bestRow.Entry.Name,
-                bestRow.Result.BaseUrl,
-                bestRow.Score,
-                $"本次推荐中转站：{bestRow.Entry.Name}（{bestRow.Result.BaseUrl}），稳定性 {BuildBatchStabilityLabel(bestRow)}，能力通过 {ResolveBatchPassedCapabilityCount(bestRow)}/5，普通对话 {FormatMilliseconds(bestRow.Result.ChatLatency)}，TTFT {FormatMilliseconds(bestRow.Result.StreamFirstTokenLatency)}。");
+                bestRow.Entry.BaseUrl,
+                bestRow.CompositeScore,
+                $"本次推荐中转站：{bestRow.Entry.Name}（{bestRow.Entry.BaseUrl}），综合分 {bestRow.CompositeScore:F1}，平均普通对话 {FormatMillisecondsValue(bestRow.AverageChatLatencyMs)}，平均 TTFT {FormatMillisecondsValue(bestRow.AverageTtftMs)}，独立吞吐 {FormatTokensPerSecond(bestRow.AverageBenchmarkTokensPerSecond)}。");
         }
 
         if (_lastProxyStabilityResult is not null)

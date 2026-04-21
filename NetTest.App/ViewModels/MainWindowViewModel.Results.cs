@@ -216,7 +216,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             summaryBuilder.AppendLine($"缓存隔离：{FormatScenarioStatus(cacheIsolation)}");
         }
 
-        summaryBuilder.AppendLine($"流式输出速率：{FormatTokensPerSecond(stream?.OutputTokensPerSecond, stream?.OutputTokenCountEstimated == true, stream?.OutputTokensPerSecondSampleCount ?? 1)}");
+        summaryBuilder.AppendLine($"独立吞吐：{BuildThroughputBenchmarkDigest(result.ThroughputBenchmarkResult)}");
+        summaryBuilder.AppendLine($"流式探针速率：{FormatTokensPerSecond(stream?.OutputTokensPerSecond, stream?.OutputTokenCountEstimated == true, stream?.OutputTokensPerSecondSampleCount ?? 1)}");
         summaryBuilder.AppendLine($"流式输出量：{FormatOutputCount(stream)}");
         summaryBuilder.AppendLine($"长流稳定简测：{BuildLongStreamingDigest(result.LongStreamingResult)}");
         summaryBuilder.AppendLine($"可追溯性：{result.TraceabilitySummary ?? "未识别"}");
@@ -287,6 +288,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
             detailBuilder.AppendLine($"摘要：{longStreamingResult.Summary}");
             detailBuilder.AppendLine($"预览：{longStreamingResult.Preview ?? "（无）"}");
             detailBuilder.AppendLine($"错误：{longStreamingResult.Error ?? "无"}");
+        }
+
+        if (result.ThroughputBenchmarkResult is { } throughputBenchmarkResult)
+        {
+            detailBuilder.AppendLine();
+            detailBuilder.AppendLine("[独立吞吐测试]");
+            detailBuilder.AppendLine($"结果：{(throughputBenchmarkResult.SuccessfulSampleCount > 0 ? "通过" : "异常")}");
+            detailBuilder.AppendLine($"样本：{throughputBenchmarkResult.SuccessfulSampleCount}/{throughputBenchmarkResult.CompletedSampleCount}");
+            detailBuilder.AppendLine($"中位数：{FormatTokensPerSecond(throughputBenchmarkResult.MedianOutputTokensPerSecond, throughputBenchmarkResult.OutputTokenCountEstimated, throughputBenchmarkResult.CompletedSampleCount)}");
+            detailBuilder.AppendLine($"均值：{FormatTokensPerSecond(throughputBenchmarkResult.AverageOutputTokensPerSecond, throughputBenchmarkResult.OutputTokenCountEstimated)}");
+            detailBuilder.AppendLine($"区间：{FormatThroughputBenchmarkRange(throughputBenchmarkResult)}");
+            detailBuilder.AppendLine($"端到端中位数：{FormatTokensPerSecond(throughputBenchmarkResult.MedianEndToEndTokensPerSecond, throughputBenchmarkResult.OutputTokenCountEstimated)}");
+            detailBuilder.AppendLine($"平均输出量：{(throughputBenchmarkResult.AverageOutputTokenCount?.ToString() ?? "--")} token");
+            detailBuilder.AppendLine($"Request-ID：{throughputBenchmarkResult.RequestId ?? "--"}");
+            detailBuilder.AppendLine($"Trace-ID：{throughputBenchmarkResult.TraceId ?? "--"}");
+            detailBuilder.AppendLine($"摘要：{throughputBenchmarkResult.Summary}");
+            detailBuilder.AppendLine($"错误：{throughputBenchmarkResult.Error ?? "无"}");
         }
 
         ProxyDetail = detailBuilder.ToString().TrimEnd();

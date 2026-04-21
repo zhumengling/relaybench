@@ -20,14 +20,22 @@ public sealed partial class MainWindowViewModel
                 .Select(ResolveProxyBatchSourceSiteName)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count();
-            var urlsWithAvailableKey = entries.Count(entry =>
-                !string.IsNullOrWhiteSpace(entry.ApiKey) ||
-                !string.IsNullOrWhiteSpace(entry.SiteGroupApiKey));
-            var urlsMissingKey = entries.Count - urlsWithAvailableKey;
+            var enabledEntries = entries.Count(entry => entry.IncludeInBatchTest);
+            var disabledEntries = entries.Count - enabledEntries;
+            var enabledEntriesWithAvailableKey = entries.Count(entry =>
+                entry.IncludeInBatchTest &&
+                (!string.IsNullOrWhiteSpace(entry.ApiKey) ||
+                 !string.IsNullOrWhiteSpace(entry.SiteGroupApiKey)));
+            var enabledEntriesMissingKey = Math.Max(0, enabledEntries - enabledEntriesWithAvailableKey);
 
-            return urlsMissingKey > 0
-                ? $"入口组：已录入 {siteCount} 个站点，共 {entries.Count} 个网址；其中 {urlsMissingKey} 个网址仍缺 key。"
-                : $"入口组：已录入 {siteCount} 个站点，共 {entries.Count} 个网址；当前所有网址都已带入可用 key。";
+            if (enabledEntries == 0)
+            {
+                return $"入口组：已录入 {siteCount} 个站点，共 {entries.Count} 个网址；但当前 {disabledEntries} 个网址已全部关闭测试。";
+            }
+
+            return enabledEntriesMissingKey > 0
+                ? $"入口组：已录入 {siteCount} 个站点，共 {entries.Count} 个网址；加入测试 {enabledEntries} / 共 {entries.Count}，跳过 {disabledEntries}；其中 {enabledEntriesMissingKey} 个已开启的网址仍缺 key。"
+                : $"入口组：已录入 {siteCount} 个站点，共 {entries.Count} 个网址；加入测试 {enabledEntries} / 共 {entries.Count}，跳过 {disabledEntries}；当前所有已开启的网址都已带入可用 key。";
         }
         catch (Exception ex)
         {
@@ -83,9 +91,14 @@ public sealed partial class MainWindowViewModel
         try
         {
             var plan = BuildProxyBatchPlan(requireRunnable: false);
-            if (plan.Targets.Count == 0)
+            if (plan.SourceEntries.Count == 0)
             {
                 return "组检测计划：右侧先录入一个站点，再开始快速对比。";
+            }
+
+            if (plan.Targets.Count == 0)
+            {
+                return "组检测计划：当前入口组里的所有网址都已关闭“加入测试”，快速对比和深度测试都会跳过。";
             }
 
             var siteCount = plan.Targets
@@ -113,7 +126,8 @@ public sealed partial class MainWindowViewModel
             return "左侧还没有已录入站点。右侧填完一个站点后点“加入入口组”，表格会自动清空，直接继续下一站。";
         }
 
-        return $"已录入 {ProxyBatchSiteGroups.Count} 个站点，共 {ProxyBatchEditorItems.Count} 个网址。点左侧任一站点，可回填到右侧继续修改或删除。";
+        var enabledEntries = ProxyBatchEditorItems.Count(item => item.IncludeInBatchTest);
+        return $"已录入 {ProxyBatchSiteGroups.Count} 个站点，共 {ProxyBatchEditorItems.Count} 个网址；其中加入测试 {enabledEntries} 个，跳过 {ProxyBatchEditorItems.Count - enabledEntries} 个。点左侧任一站点，可回填到右侧继续修改或删除。";
     }
 
     private string BuildProxyBatchGuideSummaryByMode()

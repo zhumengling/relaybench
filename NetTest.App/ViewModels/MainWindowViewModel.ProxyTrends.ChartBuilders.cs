@@ -175,6 +175,11 @@ public sealed partial class MainWindowViewModel
                 previewText));
         }
 
+        if (result.ThroughputBenchmarkResult is not null)
+        {
+            items.Add(CreateThroughputBenchmarkChartItem(order++, result.ThroughputBenchmarkResult));
+        }
+
         if (result.LongStreamingResult is not null)
         {
             items.Add(CreateLongStreamingChartItem(order++, result.LongStreamingResult));
@@ -406,6 +411,38 @@ public sealed partial class MainWindowViewModel
             result.ReceivedDone,
             string.Join(" / ", detailParts),
             result.Preview ?? result.Summary);
+    }
+
+    private static ProxySingleCapabilityChartItem CreateThroughputBenchmarkChartItem(int order, ProxyThroughputBenchmarkResult result)
+    {
+        var detailParts = new List<string>
+        {
+            $"样本 {result.SuccessfulSampleCount}/{result.CompletedSampleCount}",
+            $"区间 {FormatThroughputBenchmarkRange(result)}"
+        };
+
+        if (result.AverageOutputTokenCount is > 0)
+        {
+            detailParts.Add($"平均输出 {result.AverageOutputTokenCount} token");
+        }
+
+        return new ProxySingleCapabilityChartItem(
+            order,
+            "增强测试",
+            "长流保持、独立吞吐与内容完整性",
+            "独立吞吐",
+            result.SuccessfulSampleCount > 0 ? "通过" : "异常",
+            true,
+            result.SuccessfulSampleCount > 0,
+            null,
+            null,
+            FormatTokensPerSecond(
+                result.MedianOutputTokensPerSecond,
+                result.OutputTokenCountEstimated,
+                result.CompletedSampleCount),
+            false,
+            string.Join(" / ", detailParts),
+            result.Summary);
     }
 
     private static void AddScenarioChartItemIfPresent(

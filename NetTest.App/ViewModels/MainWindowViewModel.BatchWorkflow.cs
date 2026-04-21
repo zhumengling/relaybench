@@ -24,7 +24,7 @@ public sealed partial class MainWindowViewModel
     public bool CanRunSelectedBatchDeepTests
         => ProxyBatchQuickCompareCompleted &&
            !IsBusy &&
-           ProxyBatchRankingRows.Any(row => row.IsSelected);
+           GetSelectedBatchRankingRows().Length > 0;
 
     public string BatchSelectionSummary
     {
@@ -36,9 +36,12 @@ public sealed partial class MainWindowViewModel
             }
 
             var selectedRows = GetSelectedBatchRankingRows();
+            var checkedRows = ProxyBatchRankingRows.Count(row => row.IsSelected);
             if (selectedRows.Length == 0)
             {
-                return $"快速对比已完成，共 {ProxyBatchRankingRows.Count} 个排行榜列表项；当前未勾选候选站点。";
+                return checkedRows > 0
+                    ? $"当前已勾选 {checkedRows} 个排行榜列表项，但它们现在都不能继续深度测试：{GetBatchSelectionBlockingReason() ?? "请先重新快速对比或重新勾选。"}"
+                    : $"快速对比已完成，共 {ProxyBatchRankingRows.Count} 个排行榜列表项；当前未勾选候选站点。";
             }
 
             var preview = string.Join("、", selectedRows.Take(3).Select(row => $"#{row.Rank} {row.EntryName}"));
@@ -47,7 +50,9 @@ public sealed partial class MainWindowViewModel
                 preview += " 等";
             }
 
-            return $"已勾选 {selectedRows.Length}/{ProxyBatchRankingRows.Count} 个排行榜列表项：{preview}。";
+            return checkedRows == selectedRows.Length
+                ? $"已勾选 {selectedRows.Length}/{ProxyBatchRankingRows.Count} 个排行榜列表项：{preview}。"
+                : $"已勾选 {checkedRows} 个排行榜列表项，其中 {selectedRows.Length} 个当前仍处于“加入测试”范围内：{preview}。";
         }
     }
 
@@ -112,7 +117,10 @@ public sealed partial class MainWindowViewModel
         var selectedRows = GetSelectedBatchRankingRows();
         if (selectedRows.Length == 0)
         {
-            StatusMessage = "请先在排行榜列表里勾选要继续深度测试的候选站点。";
+            var checkedRows = ProxyBatchRankingRows.Count(row => row.IsSelected);
+            StatusMessage = checkedRows > 0
+                ? GetBatchSelectionBlockingReason() ?? "当前勾选项里没有可继续深度测试的网址，请先重新快速对比或重新勾选。"
+                : "请先在排行榜列表里勾选要继续深度测试的候选站点。";
             return;
         }
 
@@ -240,10 +248,49 @@ public sealed partial class MainWindowViewModel
     }
 
     private ProxyBatchRankingRowViewModel[] GetSelectedBatchRankingRows()
-        => ProxyBatchRankingRows
-            .Where(row => row.IsSelected)
+    {
+        var runnableKeys = GetCurrentRunnableBatchTargetKeys();
+        return ProxyBatchRankingRows
+            .Where(row => row.IsSelected && runnableKeys.Contains(BuildBatchRankingRowKey(row)))
             .OrderBy(row => row.Rank)
             .ToArray();
+    }
+
+    private string? GetBatchSelectionBlockingReason()
+    {
+        try
+        {
+            var plan = BuildProxyBatchPlan(requireRunnable: false);
+            return plan.SourceEntries.Count > 0 && plan.Targets.Count == 0
+                ? "当前入口组里的所有网址都已关闭“加入测试”。"
+                : null;
+        }
+        catch (Exception ex)
+        {
+            return ex.Message;
+        }
+    }
+
+    private HashSet<string> GetCurrentRunnableBatchTargetKeys()
+    {
+        try
+        {
+            return BuildProxyBatchPlan(requireRunnable: false)
+                .Targets
+                .Select(BuildBatchTargetKey)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private static string BuildBatchRankingRowKey(ProxyBatchRankingRowViewModel row)
+        => string.Join("|", row.EntryName, row.BaseUrl, row.Model, row.ApiKey);
+
+    private static string BuildBatchTargetKey(ProxyBatchTargetEntry entry)
+        => string.Join("|", entry.Name, entry.BaseUrl, entry.Model, entry.ApiKey);
 
     private void OnProxyBatchRankingRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -261,8 +308,8 @@ public sealed partial class MainWindowViewModel
     }
 
     private static string BuildBatchRankingQuickMetrics(ProxyBatchAggregateRow row)
-        => $"平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)} | 平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)} | 平均速率（三次均值） {FormatTokensPerSecond(row.AverageStreamTokensPerSecond)}";
+        => $"平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)} | 平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)} | 独立吞吐（3 轮中位数） {FormatTokensPerSecond(row.AverageBenchmarkTokensPerSecond)}";
 
     private static string BuildBatchRankingCapabilitySummary(ProxyBatchAggregateRow row)
-        => $"{BuildBatchStabilityLabel(row)} | 综合能力 {FormatBatchDisplayedCapabilityAverage(row)} | {BuildBatchCapabilityBreakdown(row, includeDeepHint: false)}";
+        => $"{BuildBatchStabilityLabel(row)} | 综合分 {row.CompositeScore:F1} | 能力均值 {FormatBatchDisplayedCapabilityAverage(row)} | {BuildBatchCapabilityBreakdown(row, includeDeepHint: false)}";
 }

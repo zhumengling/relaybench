@@ -1,16 +1,22 @@
 # Build outputs
 **/bin/
 **/obj/
+**/Debug/
+**/Release/
 dist/
 release/
+.verify_build/
 
 # Local development artifacts
 .artifacts/
 .codex/
 .dotnet-cli/
 .superpowers/
+.superpowers/
+docs/superpowers/
 .tmp/
 .tmp_stunprobe/
+*.nettest-backup-*
 
 # IDE / OS
 .vs/
@@ -22,6 +28,7 @@ Thumbs.db
 # Runtime-generated local state
 config/
 data/
+app-state.json
 
 # Logs / temp files
 *.log

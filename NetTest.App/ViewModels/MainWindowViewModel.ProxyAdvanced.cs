@@ -27,7 +27,7 @@ public sealed partial class MainWindowViewModel
     private string _proxyTraceabilitySummary = "可追溯信息会在诊断后显示。";
     private string _proxyOverviewVerdict = "等待诊断";
     private string _proxyOverviewLatency = "普通 -- / TTFT --";
-    private string _proxyOverviewThroughput = "速率 --";
+private string _proxyOverviewThroughput = "独立吞吐 --";
     private string _proxyOverviewLongStream = "未启用";
     private string _proxyOverviewTraceability = "等待诊断";
     private string _proxyOverviewBatch = "暂无推荐";
@@ -526,6 +526,12 @@ public sealed partial class MainWindowViewModel
             $"Request-ID：{(string.IsNullOrWhiteSpace(result.RequestId) ? "--" : result.RequestId)}\n" +
             $"Trace-ID：{(string.IsNullOrWhiteSpace(result.TraceId) ? "--" : result.TraceId)}";
 
+        if (result.ThroughputBenchmarkResult is { } throughputBenchmark)
+        {
+            ProxyLongStreamingSummary +=
+                $"\n\n独立吞吐测试：{BuildThroughputBenchmarkDigest(throughputBenchmark)}";
+        }
+
         RefreshProxyOverviewSummary();
     }
 
@@ -547,12 +553,15 @@ public sealed partial class MainWindowViewModel
             ? "普通 -- / TTFT --"
             : $"普通 {FormatMilliseconds(referenceResult.ChatLatency)} / TTFT {FormatMilliseconds(referenceResult.StreamFirstTokenLatency)}";
 
+        var throughputBenchmark = referenceResult?.ThroughputBenchmarkResult;
         var streamScenario = referenceResult is null
             ? null
             : FindScenario(GetScenarioResults(referenceResult), ProxyProbeScenarioKind.ChatCompletionsStream);
-        ProxyOverviewThroughput = streamScenario is null
-            ? "速率 --"
-            : $"{FormatTokensPerSecond(streamScenario.OutputTokensPerSecond, streamScenario.OutputTokenCountEstimated, streamScenario.OutputTokensPerSecondSampleCount)} / 输出 {streamScenario.OutputTokenCount?.ToString() ?? "--"}";
+        ProxyOverviewThroughput = throughputBenchmark is not null
+            ? $"独立吞吐 {FormatTokensPerSecond(throughputBenchmark.MedianOutputTokensPerSecond, throughputBenchmark.OutputTokenCountEstimated, throughputBenchmark.CompletedSampleCount)} / 区间 {FormatThroughputBenchmarkRange(throughputBenchmark)}"
+            : streamScenario is null
+                ? "独立吞吐 --"
+                : $"流式探针 {FormatTokensPerSecond(streamScenario.OutputTokensPerSecond, streamScenario.OutputTokenCountEstimated, streamScenario.OutputTokensPerSecondSampleCount)} / 输出 {streamScenario.OutputTokenCount?.ToString() ?? "--"}";
 
         var longStreamingResult = preferredSingleResult?.LongStreamingResult ?? preferredBatchResult?.LongStreamingResult;
         ProxyOverviewLongStream = longStreamingResult is null
@@ -571,7 +580,7 @@ public sealed partial class MainWindowViewModel
         var best = batchRows[0];
         ProxyOverviewBatch =
             $"推荐 {best.Entry.Name}\n" +
-            $"{FormatMillisecondsDoubleValue(best.AverageChatLatencyMs)} / {FormatTokensPerSecond(best.AverageStreamTokensPerSecond)}";
+            $"{FormatMillisecondsDoubleValue(best.AverageChatLatencyMs)} / {FormatTokensPerSecond(best.AverageBenchmarkTokensPerSecond)} / 综合分 {best.CompositeScore:F1}";
     }
 
     private static string FormatTokensPerSecond(double? value, bool estimated = false, int sampleCount = 1)
@@ -589,6 +598,27 @@ public sealed partial class MainWindowViewModel
                 ? "（估算）"
                 : string.Empty;
         return $"{value.Value:F1} tok/s{suffix}";
+    }
+
+    private static string BuildThroughputBenchmarkDigest(ProxyThroughputBenchmarkResult? result)
+    {
+        if (result is null)
+        {
+            return "未运行";
+        }
+
+        return $"{result.SuccessfulSampleCount}/{result.CompletedSampleCount} 轮成功 / 中位数 {FormatTokensPerSecond(result.MedianOutputTokensPerSecond, result.OutputTokenCountEstimated, result.CompletedSampleCount)} / 区间 {FormatThroughputBenchmarkRange(result)}";
+    }
+
+    private static string FormatThroughputBenchmarkRange(ProxyThroughputBenchmarkResult? result)
+    {
+        if (result?.MinimumOutputTokensPerSecond is not double minimum ||
+            result.MaximumOutputTokensPerSecond is not double maximum)
+        {
+            return "--";
+        }
+
+        return $"{minimum:F1}-{maximum:F1} tok/s";
     }
 
     private static string FormatMillisecondsDoubleValue(double? value)

@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Windows;
 using NetTest.App.Infrastructure;
 using NetTest.Core.Models;
 
@@ -6,8 +7,30 @@ namespace NetTest.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    private Task RunProxyBatchAsync()
-        => ExecuteProxyBusyActionAsync("正在运行入口组检测...", RunProxyBatchCoreAsync);
+    private async Task RunProxyBatchAsync()
+    {
+        if (!TryAutoSaveSelectedProxyBatchSiteGroupDraft(out _))
+        {
+            return;
+        }
+
+        try
+        {
+            _ = BuildProxyBatchPlan(requireRunnable: true);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"当前无法开始快速对比：{ex.Message}";
+            MessageBox.Show(
+                $"当前无法开始快速对比。\n\n{ex.Message}",
+                "无法开始快速对比",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        await ExecuteProxyBusyActionAsync("正在运行入口组检测...", RunProxyBatchCoreAsync);
+    }
 
     private Task OpenProxyBatchEditorAsync()
     {
@@ -24,6 +47,13 @@ public sealed partial class MainWindowViewModel
 
     private Task CloseProxyBatchEditorAsync()
     {
+        if (!TryAutoSaveSelectedProxyBatchSiteGroupDraft(out _))
+        {
+            return Task.CompletedTask;
+        }
+
+        ExecuteWithoutProxyBatchSiteGroupSelectionHandling(() => SelectedProxyBatchSiteGroup = null);
+        SelectedProxyBatchEditorItem = null;
         IsProxyBatchEditorOpen = false;
         SaveState();
         return Task.CompletedTask;
@@ -53,44 +83,13 @@ public sealed partial class MainWindowViewModel
 
     private Task CommitProxyBatchEditorItemAsync()
     {
-        var siteItems = BuildCommittedProxyBatchSiteItemsFromDraft();
-        var siteName = siteItems[0].SiteGroupName ?? BuildProxyBatchTemplateSiteName(siteItems);
-        var selectedGroupName = SelectedProxyBatchSiteGroup?.GroupName;
-        var mergedItems = ProxyBatchEditorItems
-            .Select(CloneProxyBatchEditorItem)
-            .ToList();
+        var commitResult = CommitProxyBatchDraftCore(
+            resetDraftAfterSave: true,
+            clearSelectionAfterSave: true);
 
-        var replacedSelectedSite = false;
-        var replacedSameNameSite = false;
-
-        if (!string.IsNullOrWhiteSpace(selectedGroupName))
-        {
-            replacedSelectedSite = RemoveProxyBatchSiteGroup(mergedItems, selectedGroupName);
-        }
-
-        if (RemoveProxyBatchSiteGroup(mergedItems, siteName))
-        {
-            replacedSameNameSite = true;
-        }
-
-        mergedItems.AddRange(siteItems.Select(CloneProxyBatchEditorItem));
-        if (mergedItems.Count > MaxProxyBatchSourceEntries)
-        {
-            throw new InvalidOperationException($"保存后会超过 {MaxProxyBatchSourceEntries} 个网址，请先删除不用的站点或缩减当前表格行数。");
-        }
-
-        ApplyProxyBatchEditorItems(mergedItems
-            .Select(CreateProxyBatchConfigItemSnapshot)
-            .ToArray());
-        RebuildProxyBatchTargetsTextFromEditorItems(persistState: false);
-
-        SelectedProxyBatchEditorItem = null;
-        ResetProxyBatchTemplateDraft(clearSelection: true);
-
-        StatusMessage = replacedSelectedSite || replacedSameNameSite
-            ? $"已保存站点：{siteName}。右侧已清空，可继续录入下一个站点。"
-            : $"已加入站点：{siteName}。右侧已清空，可继续录入下一个站点。";
-        SaveState();
+        StatusMessage = commitResult.ReplacedExistingSite
+            ? $"\u5df2\u4fdd\u5b58\u7ad9\u70b9\uff1a{commitResult.SiteName}\u3002\u53f3\u4fa7\u5df2\u6e05\u7a7a\uff0c\u53ef\u7ee7\u7eed\u5f55\u5165\u4e0b\u4e00\u4e2a\u7ad9\u70b9\u3002"
+            : $"\u5df2\u52a0\u5165\u7ad9\u70b9\uff1a{commitResult.SiteName}\u3002\u53f3\u4fa7\u5df2\u6e05\u7a7a\uff0c\u53ef\u7ee7\u7eed\u5f55\u5165\u4e0b\u4e00\u4e2a\u7ad9\u70b9\u3002";
         return Task.CompletedTask;
     }
 

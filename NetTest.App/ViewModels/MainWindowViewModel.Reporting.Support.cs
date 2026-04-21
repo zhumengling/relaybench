@@ -22,7 +22,7 @@ public sealed partial class MainWindowViewModel
         string Source,
         string? Name,
         string? BaseUrl,
-        int? Score,
+        double? Score,
         string Summary);
 
     private sealed record TrendSummarySnapshot(

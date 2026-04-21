@@ -173,6 +173,7 @@ public sealed partial class ProxyDiagnosticsService
             edgeObservation.EdgeSignature,
             edgeObservation.CdnSummary,
             null,
+            null,
             traceability.RequestId,
             traceability.TraceId,
             traceability.Summary);

@@ -39,6 +39,14 @@ public sealed partial class MainWindowViewModel
                     settings,
                     cancellationToken: cancellationToken,
                     streamThroughputSampleCount: 3);
+                progress?.Report($"正在探测 {entry.Name}：独立吞吐测试（3 轮）...");
+                var throughputSettings = string.IsNullOrWhiteSpace(result.EffectiveModel)
+                    ? settings
+                    : settings with { Model = result.EffectiveModel };
+                var throughputBenchmark = await _proxyDiagnosticsService.RunThroughputBenchmarkAsync(
+                    throughputSettings,
+                    cancellationToken: cancellationToken);
+                result = result with { ThroughputBenchmarkResult = throughputBenchmark };
                 if (enableLongStreamingTest)
                 {
                     progress?.Report($"正在探测 {entry.Name}：长流稳定简测（{longStreamSegmentCount} 段）...");

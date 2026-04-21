@@ -22,6 +22,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 FetchProxyBatchSharedModelsCommand.RaiseCanExecuteChanged();
                 FetchProxyBatchEntryModelsCommand.RaiseCanExecuteChanged();
                 AddProxyBatchTemplateRowCommand.RaiseCanExecuteChanged();
+                DeleteProxyBatchTemplateRowCommand.RaiseCanExecuteChanged();
                 PasteProxyBatchTemplateRowsCommand.RaiseCanExecuteChanged();
                 ApplyProxyBatchTemplateDefaultsCommand.RaiseCanExecuteChanged();
                 ClearProxyBatchTemplateEmptyRowsCommand.RaiseCanExecuteChanged();

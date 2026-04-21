@@ -113,6 +113,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand AddProxyBatchTemplateRowCommand { get; }
 
+    public AsyncRelayCommand<ProxyBatchEditorItemViewModel?> DeleteProxyBatchTemplateRowCommand { get; }
+
     public AsyncRelayCommand PasteProxyBatchTemplateRowsCommand { get; }
 
     public AsyncRelayCommand ApplyProxyBatchTemplateDefaultsCommand { get; }

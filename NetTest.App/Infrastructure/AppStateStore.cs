@@ -283,7 +283,8 @@ public sealed class AppStateStore
             EntryModel = source?.EntryModel ?? string.Empty,
             SiteGroupName = source?.SiteGroupName ?? string.Empty,
             SiteGroupApiKey = source?.SiteGroupApiKey ?? string.Empty,
-            SiteGroupModel = source?.SiteGroupModel ?? string.Empty
+            SiteGroupModel = source?.SiteGroupModel ?? string.Empty,
+            IncludeInBatchTest = source?.IncludeInBatchTest ?? true
         };
 
     private static ProxyBatchDraftSnapshot CreateProxyBatchDraftSnapshot(ProxyBatchDraftSnapshot? source)

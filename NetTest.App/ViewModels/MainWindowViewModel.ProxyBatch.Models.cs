@@ -29,6 +29,7 @@ public sealed partial class MainWindowViewModel
         string BaseUrl,
         string? ApiKey,
         string? Model,
+        bool IncludeInBatchTest,
         string? SiteGroupName,
         string? SiteGroupApiKey,
         string? SiteGroupModel);

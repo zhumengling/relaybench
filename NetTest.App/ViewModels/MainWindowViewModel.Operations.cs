@@ -257,12 +257,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
         bool updateSingleChartPhases = true,
         CancellationToken cancellationToken = default)
     {
-        var streamThroughputSampleCount = executionPlan.Mode == ProxySingleExecutionMode.Basic ? 3 : 1;
+        var streamThroughputSampleCount = 1;
         var result = await _proxyDiagnosticsService.RunAsync(
             settings,
             progress,
             cancellationToken,
             streamThroughputSampleCount: streamThroughputSampleCount);
+
+        StatusMessage = "正在运行独立吞吐测试（3 轮）...";
+        if (updateSingleChartPhases)
+        {
+            ShowSingleProxySupplementalChartPhase(result, "独立吞吐", StatusMessage);
+        }
+
+        var throughputSettings = string.IsNullOrWhiteSpace(result.EffectiveModel)
+            ? settings
+            : settings with { Model = result.EffectiveModel };
+        var throughputBenchmark = await _proxyDiagnosticsService.RunThroughputBenchmarkAsync(
+            throughputSettings,
+            cancellationToken: cancellationToken);
+        result = result with { ThroughputBenchmarkResult = throughputBenchmark };
 
         if (executionPlan.EnableProtocolCompatibilityTest ||
             executionPlan.EnableErrorTransparencyTest ||

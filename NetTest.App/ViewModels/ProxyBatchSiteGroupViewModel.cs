@@ -5,12 +5,14 @@ public sealed class ProxyBatchSiteGroupViewModel
     public ProxyBatchSiteGroupViewModel(
         string groupName,
         int entryCount,
+        int enabledEntryCount,
         string baseUrlPreview,
         string keySummary,
         string modelSummary)
     {
         GroupName = groupName;
         EntryCount = entryCount;
+        EnabledEntryCount = enabledEntryCount;
         BaseUrl = baseUrlPreview;
         KeyDisplay = keySummary;
         ModelDisplay = modelSummary;
@@ -20,9 +22,14 @@ public sealed class ProxyBatchSiteGroupViewModel
 
     public int EntryCount { get; }
 
+    public int EnabledEntryCount { get; }
+
     public string DisplayTitle => GroupName;
 
-    public string SiteGroupDisplay => $"{EntryCount} 个网址";
+    public string SiteGroupDisplay
+        => EnabledEntryCount >= EntryCount
+            ? $"{EntryCount} \u4e2a\u7f51\u5740"
+            : $"\u542f\u7528 {EnabledEntryCount} / \u5171 {EntryCount}";
 
     public string BaseUrl { get; }
 

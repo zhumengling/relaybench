@@ -68,6 +68,8 @@ public sealed partial class MainWindowViewModel
 
     private void RecordBatchProxyTrends(IReadOnlyList<ProxyBatchProbeRow> rows)
     {
+        var aggregateScoreByEntry = BuildProxyBatchAggregateRows(_proxyBatchChartRuns)
+            .ToDictionary(item => item.Entry, item => (int?)Math.Round(item.CompositeScore));
         var entries = rows.Select(row => new ProxyTrendEntry(
             row.Result.CheckedAt,
             row.Result.BaseUrl,
@@ -84,7 +86,7 @@ public sealed partial class MainWindowViewModel
             row.Result.ChatLatency?.TotalMilliseconds,
             row.Result.StreamFirstTokenLatency?.TotalMilliseconds,
             null,
-            row.Score,
+            aggregateScoreByEntry.GetValueOrDefault(row.Entry),
             row.Result.Summary,
             row.Result.Error));
 
@@ -160,7 +162,7 @@ public sealed partial class MainWindowViewModel
             builder.AppendLine($"普通对话延迟：{FormatMillisecondsValue(record.ChatLatencyMs)} / TTFT：{FormatMillisecondsValue(record.StreamFirstTokenLatencyMs)}");
             if (record.HealthScore.HasValue || record.BatchScore.HasValue)
             {
-                builder.AppendLine($"补充指标：健康度 {record.HealthScore?.ToString() ?? "--"} / 批量排序 {record.BatchScore?.ToString() ?? "--"}");
+                builder.AppendLine($"补充指标：健康度 {record.HealthScore?.ToString() ?? "--"} / 综合分 {record.BatchScore?.ToString() ?? "--"}");
             }
 
             builder.AppendLine($"摘要：{record.Summary}");
@@ -251,15 +253,15 @@ public sealed partial class MainWindowViewModel
             ProxyChartViewMode.BatchComparison,
             new ProxyChartDialogSnapshot(
                 "中转站入口组累计对比图",
-                "这里直接比较多个 URL 在多轮整组测试后的平均延迟、每秒生成 token 数、平均 TTFT 和综合能力。无论是单站点多入口，还是多站点多 Key，最终目标都是找出长期更稳的 URL。",
+                "这里直接比较多个 URL 在多轮整组测试后的平均延迟、独立吞吐、平均 TTFT 和综合分。无论是单站点多入口，还是多站点多 Key，最终目标都是找出长期更优的 URL。",
                 $"当前已累计 {runCount} 轮入口组测试，共 {aggregateRows.Length} 个 URL。\n" +
                 $"当前推荐：{best.Entry.Name}\n" +
                 $"推荐地址：{best.Entry.BaseUrl}\n" +
-                $"推荐原因：平均普通对话 {FormatMillisecondsValue(best.AverageChatLatencyMs)}，每秒生成 token 数 {FormatTokensPerSecond(best.AverageStreamTokensPerSecond)}，平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)}，综合能力 {FormatBatchDisplayedCapabilityAverage(best)}，基础/增强拆分见右侧摘要。\n\n" +
+                $"推荐原因：平均普通对话 {FormatMillisecondsValue(best.AverageChatLatencyMs)}，独立吞吐 {FormatTokensPerSecond(best.AverageBenchmarkTokensPerSecond)}，平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)}，综合分 {best.CompositeScore:F1}，基础/增强拆分见右侧摘要。\n\n" +
                 BuildProxyBatchTopSummary(aggregateRows),
                 BuildProxyBatchCapabilitySummaryText(aggregateRows, "多入口累计对比摘要"),
                 BuildProxyBatchCapabilityDetailText(aggregateRows, "多入口累计对比明细"),
-                "蓝条：平均普通对话延迟，越长代表越快。\n紫条：每秒生成 token 数，越长代表生成越快。\n橙条：平均 TTFT，越长代表首字响应越快。\n绿条：入口组综合能力。",
+                "蓝条：平均普通对话延迟，越长代表越快。\n紫条：独立吞吐 tok/s，越长代表生成越快。\n橙条：平均 TTFT，越长代表首字响应越快。\n绿条：综合分。",
                 chartResult.HasChart ? chartResult.Summary : chartResult.Error ?? chartResult.Summary,
                 "正在等待入口组累计图表生成。",
                 chartResult.ChartImage),
@@ -309,6 +311,11 @@ public sealed partial class MainWindowViewModel
             });
 
         var enhancedLines = new List<string>();
+        if (result.ThroughputBenchmarkResult is not null)
+        {
+            enhancedLines.Add($"独立吞吐：{BuildThroughputBenchmarkDigest(result.ThroughputBenchmarkResult)}");
+        }
+
         if (result.LongStreamingResult is not null)
         {
             enhancedLines.Add($"长流稳定：{BuildLongStreamingStatus(result.LongStreamingResult)}");
@@ -369,6 +376,11 @@ public sealed partial class MainWindowViewModel
             });
 
         var enhancedLines = new List<string>();
+        if (result.ThroughputBenchmarkResult is not null)
+        {
+            enhancedLines.Add($"独立吞吐：{BuildThroughputBenchmarkDigest(result.ThroughputBenchmarkResult)}");
+        }
+
         if (result.LongStreamingResult is not null)
         {
             enhancedLines.Add($"长流稳定：{BuildLongStreamingDetail(result.LongStreamingResult)}");

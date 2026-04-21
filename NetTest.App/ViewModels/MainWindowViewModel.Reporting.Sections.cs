@@ -307,34 +307,44 @@ public sealed partial class MainWindowViewModel
                     summary = ProxyBatchSummary,
                     detail = ProxyBatchDetail,
                     recommendationSummary = ProxyBatchRecommendationSummary,
-                    ranking = _lastProxyBatchRows.Select(row => new
+                    ranking = OrderBatchAggregateRows(BuildProxyBatchAggregateRows(_proxyBatchChartRuns)).Select(row => new
                     {
                         row.Entry.Name,
                         row.Entry.BaseUrl,
-                        row.Score,
-                        verdict = row.Result.Verdict,
-                        primaryIssue = row.Result.PrimaryIssue,
-                        primaryFailureKind = row.Result.PrimaryFailureKind?.ToString(),
-                        cdnSummary = row.Result.CdnSummary,
-                        edgeSignature = row.Result.EdgeSignature,
-                        chatLatencyMs = row.Result.ChatLatency?.TotalMilliseconds,
-                        ttftMs = row.Result.StreamFirstTokenLatency?.TotalMilliseconds,
-                        streamTokensPerSecond = row.Result.ScenarioResults?
-                            .FirstOrDefault(result => result.Scenario == ProxyProbeScenarioKind.ChatCompletionsStream)?
-                            .OutputTokensPerSecond,
-                        traceability = row.Result.TraceabilitySummary,
-                        requestId = row.Result.RequestId,
-                        traceId = row.Result.TraceId,
-                        longStreaming = row.Result.LongStreamingResult is null
+                        score = row.CompositeScore,
+                        verdict = row.LatestResult.Verdict,
+                        primaryIssue = row.LatestResult.PrimaryIssue,
+                        primaryFailureKind = row.LatestResult.PrimaryFailureKind?.ToString(),
+                        cdnSummary = row.LatestResult.CdnSummary,
+                        edgeSignature = row.LatestResult.EdgeSignature,
+                        chatLatencyMs = row.AverageChatLatencyMs,
+                        ttftMs = row.AverageTtftMs,
+                        throughputTokensPerSecond = row.AverageBenchmarkTokensPerSecond,
+                        traceability = row.LatestResult.TraceabilitySummary,
+                        requestId = row.LatestResult.RequestId,
+                        traceId = row.LatestResult.TraceId,
+                        longStreaming = row.LatestResult.LongStreamingResult is null
                             ? null
                             : new
                             {
-                                row.Result.LongStreamingResult.Success,
-                                row.Result.LongStreamingResult.ActualSegmentCount,
-                                row.Result.LongStreamingResult.ExpectedSegmentCount,
-                                row.Result.LongStreamingResult.OutputTokensPerSecond,
-                                row.Result.LongStreamingResult.RequestId,
-                                row.Result.LongStreamingResult.TraceId
+                                row.LatestResult.LongStreamingResult.Success,
+                                row.LatestResult.LongStreamingResult.ActualSegmentCount,
+                                row.LatestResult.LongStreamingResult.ExpectedSegmentCount,
+                                row.LatestResult.LongStreamingResult.OutputTokensPerSecond,
+                                row.LatestResult.LongStreamingResult.RequestId,
+                                row.LatestResult.LongStreamingResult.TraceId
+                            },
+                        throughputBenchmark = row.LatestResult.ThroughputBenchmarkResult is null
+                            ? null
+                            : new
+                            {
+                                row.LatestResult.ThroughputBenchmarkResult.SuccessfulSampleCount,
+                                row.LatestResult.ThroughputBenchmarkResult.CompletedSampleCount,
+                                row.LatestResult.ThroughputBenchmarkResult.MedianOutputTokensPerSecond,
+                                row.LatestResult.ThroughputBenchmarkResult.MinimumOutputTokensPerSecond,
+                                row.LatestResult.ThroughputBenchmarkResult.MaximumOutputTokensPerSecond,
+                                row.LatestResult.ThroughputBenchmarkResult.RequestId,
+                                row.LatestResult.ThroughputBenchmarkResult.TraceId
                             }
                     }).ToArray()
                 },

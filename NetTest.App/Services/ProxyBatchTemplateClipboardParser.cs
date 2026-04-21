@@ -20,7 +20,8 @@ public sealed record ProxyBatchTemplateDraftRowData(
     string? EntryName,
     string? BaseUrl,
     string? EntryApiKey,
-    string? EntryModel);
+    string? EntryModel,
+    bool IncludeInBatchTest);
 
 public static class ProxyBatchTemplateClipboardParser
 {
@@ -68,7 +69,7 @@ public static class ProxyBatchTemplateClipboardParser
         List<ProxyBatchTemplateDraftRowData> result = existingRows.ToList();
         if (result.Count == 0)
         {
-            result.Add(new ProxyBatchTemplateDraftRowData(null, null, null, null));
+            result.Add(new ProxyBatchTemplateDraftRowData(null, null, null, null, true));
         }
 
         var insertionIndex = FindInsertionIndex(result);
@@ -80,7 +81,8 @@ public static class ProxyBatchTemplateClipboardParser
                 pastedRow.HasEntryName ? NormalizeNullable(pastedRow.EntryName) : previous.EntryName,
                 pastedRow.HasBaseUrl ? NormalizeNullable(pastedRow.BaseUrl) : previous.BaseUrl,
                 pastedRow.HasEntryApiKey ? NormalizeNullable(pastedRow.EntryApiKey) : previous.EntryApiKey,
-                pastedRow.HasEntryModel ? NormalizeNullable(pastedRow.EntryModel) : previous.EntryModel);
+                pastedRow.HasEntryModel ? NormalizeNullable(pastedRow.EntryModel) : previous.EntryModel,
+                previous.IncludeInBatchTest);
 
             if (insertionIndex < result.Count && IsEmpty(result[insertionIndex]))
             {
@@ -237,7 +239,7 @@ public static class ProxyBatchTemplateClipboardParser
             }
         }
 
-        return new ProxyBatchTemplateDraftRowData(null, null, null, null);
+        return new ProxyBatchTemplateDraftRowData(null, null, null, null, true);
     }
 
     private static bool IsEmpty(ProxyBatchTemplateDraftRowData row)

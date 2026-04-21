@@ -33,6 +33,7 @@ public sealed record ProxyDiagnosticsResult(
     string? EdgeSignature = null,
     string? CdnSummary = null,
     ProxyStreamingStabilityResult? LongStreamingResult = null,
+    ProxyThroughputBenchmarkResult? ThroughputBenchmarkResult = null,
     string? RequestId = null,
     string? TraceId = null,
     string? TraceabilitySummary = null);

@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using NetTest.App.Services;
 using NetTest.Core.Models;
+using NetTest.Core.Support;
 
 namespace NetTest.App.ViewModels;
 
@@ -13,9 +14,10 @@ public sealed partial class MainWindowViewModel
         double AveragePassedCapabilityCount,
         double? AverageChatLatencyMs,
         double? AverageTtftMs,
-        double? AverageStreamTokensPerSecond,
+        double? AverageBenchmarkTokensPerSecond,
         int LongStreamingExecutedRounds,
         int LongStreamingPassRounds,
+        double CompositeScore,
         ProxyDiagnosticsResult LatestResult);
 
     private static IReadOnlyList<ProxyBatchAggregateRow> BuildProxyBatchAggregateRows(
@@ -28,7 +30,7 @@ public sealed partial class MainWindowViewModel
             allRows = allRows.Concat(currentRunRows);
         }
 
-        return allRows
+        var materialized = allRows
             .GroupBy(row => row.Entry)
             .Select(group =>
             {
@@ -39,34 +41,59 @@ public sealed partial class MainWindowViewModel
                 var averagePassed = ordered.Average(row => ResolveBatchPassedCapabilityCount(row.Result));
                 var averageChatLatency = Average(ordered.Select(row => row.Result.ChatLatency?.TotalMilliseconds));
                 var averageTtft = Average(ordered.Select(row => row.Result.StreamFirstTokenLatency?.TotalMilliseconds));
-                var averageStreamTokensPerSecond = Average(ordered.Select(row =>
-                    FindScenario(GetScenarioResults(row.Result), ProxyProbeScenarioKind.ChatCompletionsStream)?.OutputTokensPerSecond));
+                var averageBenchmarkTokensPerSecond = Average(ordered.Select(row =>
+                    row.Result.ThroughputBenchmarkResult?.MedianOutputTokensPerSecond));
                 var fullPassRounds = ordered.Count(row => ResolveBatchPassedCapabilityCount(row.Result) == 5);
                 var longStreamingExecutedRounds = ordered.Count(row => row.Result.LongStreamingResult is not null);
                 var longStreamingPassRounds = ordered.Count(row => row.Result.LongStreamingResult?.Success == true);
-                return new ProxyBatchAggregateRow(
-                    group.Key,
-                    ordered.Length,
-                    fullPassRounds,
-                    averagePassed,
-                    averageChatLatency,
-                    averageTtft,
-                    averageStreamTokensPerSecond,
-                    longStreamingExecutedRounds,
-                    longStreamingPassRounds,
-                    latest);
+                return new
+                {
+                    Entry = group.Key,
+                    RunCount = ordered.Length,
+                    FullPassRounds = fullPassRounds,
+                    AveragePassedCapabilityCount = averagePassed,
+                    AverageChatLatencyMs = averageChatLatency,
+                    AverageTtftMs = averageTtft,
+                    AverageBenchmarkTokensPerSecond = averageBenchmarkTokensPerSecond,
+                    LongStreamingExecutedRounds = longStreamingExecutedRounds,
+                    LongStreamingPassRounds = longStreamingPassRounds,
+                    LatestResult = latest
+                };
             })
+            .ToArray();
+
+        var chatLatencyRange = ResolveMetricRange(materialized.Select(static row => row.AverageChatLatencyMs));
+        var ttftRange = ResolveMetricRange(materialized.Select(static row => row.AverageTtftMs));
+        var throughputRange = ResolveMetricRange(materialized.Select(static row => row.AverageBenchmarkTokensPerSecond));
+
+        return materialized
+            .Select(row => new ProxyBatchAggregateRow(
+                row.Entry,
+                row.RunCount,
+                row.FullPassRounds,
+                row.AveragePassedCapabilityCount,
+                row.AverageChatLatencyMs,
+                row.AverageTtftMs,
+                row.AverageBenchmarkTokensPerSecond,
+                row.LongStreamingExecutedRounds,
+                row.LongStreamingPassRounds,
+                ProxyCompositeMetricScoreCalculator.CalculateCompositeScore(
+                    row.AverageChatLatencyMs,
+                    row.AverageTtftMs,
+                    row.AverageBenchmarkTokensPerSecond,
+                    chatLatencyRange,
+                    ttftRange,
+                    throughputRange),
+                row.LatestResult))
             .ToArray();
     }
 
     private static IOrderedEnumerable<ProxyBatchAggregateRow> OrderBatchAggregateRows(IEnumerable<ProxyBatchAggregateRow> rows)
         => rows
-            .OrderByDescending(ResolveBatchDisplayedCapabilityAverage)
-            .ThenByDescending(row => row.FullPassRounds)
-            .ThenByDescending(row => ResolveBatchLongStreamingPassRatio(row) ?? double.MinValue)
+            .OrderByDescending(row => row.CompositeScore)
             .ThenBy(row => row.AverageChatLatencyMs ?? double.MaxValue)
             .ThenBy(row => row.AverageTtftMs ?? double.MaxValue)
-            .ThenByDescending(row => row.AverageStreamTokensPerSecond ?? double.MinValue)
+            .ThenByDescending(row => row.AverageBenchmarkTokensPerSecond ?? double.MinValue)
             .ThenBy(row => row.Entry.Name, StringComparer.OrdinalIgnoreCase);
 
     private static int ResolveBatchPassedCapabilityCount(ProxyDiagnosticsResult result)
@@ -152,7 +179,7 @@ public sealed partial class MainWindowViewModel
     }
 
     private static string BuildProxyBatchAggregateSecondaryText(ProxyBatchAggregateRow row)
-        => BuildBatchCapabilityBreakdown(row, includeDeepHint: true);
+        => $"{BuildBatchStabilityLabel(row)} | {BuildBatchCapabilityBreakdown(row, includeDeepHint: true)}";
 
     private static ProxyBatchComparisonChartItem[] CreateProxyBatchComparisonChartItems(IReadOnlyList<ProxyBatchAggregateRow> rows)
         => rows
@@ -160,11 +187,13 @@ public sealed partial class MainWindowViewModel
                 index + 1,
                 row.Entry.Name,
                 row.Entry.BaseUrl,
+                row.CompositeScore,
+                $"{row.CompositeScore:F1} 分",
                 ResolveBatchAggregateStabilityRatio(row),
-                FormatBatchDisplayedCapabilityAverage(row),
+                BuildBatchStabilityLabel(row),
                 row.AverageTtftMs,
                 row.AverageChatLatencyMs,
-                row.AverageStreamTokensPerSecond,
+                row.AverageBenchmarkTokensPerSecond,
                 row.LatestResult.Verdict ?? "待复核",
                 BuildProxyBatchAggregateSecondaryText(row),
                 row.RunCount))
@@ -176,7 +205,7 @@ public sealed partial class MainWindowViewModel
             rows
                 .Take(maxCount)
                 .Select((row, index) =>
-                    $"TOP {index + 1}  {row.Entry.Name}  |  平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)}  |  平均速率 {FormatTokensPerSecond(row.AverageStreamTokensPerSecond)}  |  平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)}  |  综合能力 {FormatBatchDisplayedCapabilityAverage(row)}  |  {BuildBatchCapabilityBreakdown(row, includeDeepHint: false)}"));
+                    $"TOP {index + 1}  {row.Entry.Name}  |  平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)}  |  独立吞吐 {FormatTokensPerSecond(row.AverageBenchmarkTokensPerSecond)}  |  平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)}  |  综合分 {row.CompositeScore:F1}  |  {BuildBatchCapabilityBreakdown(row, includeDeepHint: false)}"));
 
     private static string BuildProxyBatchCapabilitySummaryText(IReadOnlyList<ProxyBatchAggregateRow> rows, string heading)
     {
@@ -187,7 +216,7 @@ public sealed partial class MainWindowViewModel
         {
             builder.AppendLine($"TOP {item.index + 1}  {item.value.Entry.Name}");
             builder.AppendLine(
-                $"综合能力：{FormatBatchDisplayedCapabilityAverage(item.value)}；{BuildBatchCapabilityBreakdown(item.value, includeDeepHint: true)}；满 5 项 {item.value.FullPassRounds}/{item.value.RunCount} 轮；平均普通 {FormatMillisecondsValue(item.value.AverageChatLatencyMs)}；平均 TTFT {FormatMillisecondsValue(item.value.AverageTtftMs)}；平均速率 {FormatTokensPerSecond(item.value.AverageStreamTokensPerSecond)}");
+                $"综合分：{item.value.CompositeScore:F1}；{BuildBatchStabilityLabel(item.value)}；{BuildBatchCapabilityBreakdown(item.value, includeDeepHint: true)}；满 5 项 {item.value.FullPassRounds}/{item.value.RunCount} 轮；平均普通 {FormatMillisecondsValue(item.value.AverageChatLatencyMs)}；平均 TTFT {FormatMillisecondsValue(item.value.AverageTtftMs)}；独立吞吐 {FormatTokensPerSecond(item.value.AverageBenchmarkTokensPerSecond)}");
             builder.AppendLine($"最近一轮五项：{BuildBatchCapabilityMatrix(item.value.LatestResult)}");
             if (item.value.LongStreamingExecutedRounds > 0)
             {
@@ -214,12 +243,13 @@ public sealed partial class MainWindowViewModel
             builder.AppendLine($"地址：{item.value.Entry.BaseUrl}");
             builder.AppendLine($"累计轮次：{item.value.RunCount}");
             builder.AppendLine($"稳定性结论：{BuildBatchStabilityLabel(item.value)}");
-            builder.AppendLine($"综合能力：{FormatBatchDisplayedCapabilityAverage(item.value)}");
+            builder.AppendLine($"综合分：{item.value.CompositeScore:F1}");
+            builder.AppendLine($"能力均值：{FormatBatchDisplayedCapabilityAverage(item.value)}");
             builder.AppendLine($"基础均值：{FormatCapabilityAverage(item.value.AveragePassedCapabilityCount)}/5");
             builder.AppendLine($"满 5 项轮次：{item.value.FullPassRounds}/{item.value.RunCount}");
             builder.AppendLine($"平均普通对话：{FormatMillisecondsValue(item.value.AverageChatLatencyMs)}");
             builder.AppendLine($"平均 TTFT：{FormatMillisecondsValue(item.value.AverageTtftMs)}");
-            builder.AppendLine($"平均流式速率：{FormatTokensPerSecond(item.value.AverageStreamTokensPerSecond)}");
+            builder.AppendLine($"平均独立吞吐：{FormatTokensPerSecond(item.value.AverageBenchmarkTokensPerSecond)}");
             builder.AppendLine(item.value.LongStreamingExecutedRounds > 0
                 ? $"增强长流：{item.value.LongStreamingPassRounds}/{item.value.LongStreamingExecutedRounds} 轮通过"
                 : "增强长流：未执行");
@@ -238,5 +268,20 @@ public sealed partial class MainWindowViewModel
         }
 
         return builder.ToString().TrimEnd();
+    }
+
+    private static (double Min, double Max) ResolveMetricRange(IEnumerable<double?> values)
+    {
+        var materialized = values
+            .Where(static value => value.HasValue)
+            .Select(static value => value!.Value)
+            .ToArray();
+
+        if (materialized.Length == 0)
+        {
+            return (0d, 0d);
+        }
+
+        return (materialized.Min(), materialized.Max());
     }
 }

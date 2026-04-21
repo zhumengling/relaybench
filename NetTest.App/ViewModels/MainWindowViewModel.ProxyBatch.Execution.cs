@@ -8,6 +8,8 @@ public sealed partial class MainWindowViewModel
 {
     private async Task RunProxyBatchCoreAsync(CancellationToken cancellationToken)
     {
+        ExecuteWithoutProxyBatchSiteGroupSelectionHandling(() => SelectedProxyBatchSiteGroup = null);
+        SelectedProxyBatchEditorItem = null;
         IsProxyBatchEditorOpen = false;
 
         var plan = BuildProxyBatchPlan(requireRunnable: true);
@@ -49,7 +51,7 @@ public sealed partial class MainWindowViewModel
 
         DashboardCards[3].Status = BuildProxyBatchCardStatus(aggregateRows);
         DashboardCards[3].Detail =
-            $"入口组累计 {_proxyBatchChartRuns.Count} 轮，推荐 {bestRow.Entry.Name}（平均普通延迟 {FormatMillisecondsValue(bestRow.AverageChatLatencyMs)} / 平均 TTFT {FormatMillisecondsValue(bestRow.AverageTtftMs)} / 平均速率 {FormatTokensPerSecond(bestRow.AverageStreamTokensPerSecond)} / 综合能力 {FormatBatchDisplayedCapabilityAverage(bestRow)}）。";
+            $"入口组累计 {_proxyBatchChartRuns.Count} 轮，推荐 {bestRow.Entry.Name}（平均普通延迟 {FormatMillisecondsValue(bestRow.AverageChatLatencyMs)} / 平均 TTFT {FormatMillisecondsValue(bestRow.AverageTtftMs)} / 独立吞吐 {FormatTokensPerSecond(bestRow.AverageBenchmarkTokensPerSecond)} / 综合分 {bestRow.CompositeScore:F1}）。";
         StatusMessage = $"入口组检测完成，当前累计 {_proxyBatchChartRuns.Count} 轮整组，推荐 {bestRow.Entry.Name}。";
         AppendHistory("中转站", "中转站入口组对比", ProxyBatchSummary);
     }
@@ -82,7 +84,7 @@ public sealed partial class MainWindowViewModel
             aggregateRows
                 .Take(3)
                 .Select((row, index) =>
-                    $"TOP {index + 1}：{row.Entry.Name}（平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)} / 平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)} / 平均速率 {FormatTokensPerSecond(row.AverageStreamTokensPerSecond)} / 综合能力 {FormatBatchDisplayedCapabilityAverage(row)} / {BuildBatchCapabilityBreakdown(row, includeDeepHint: false)}）"));
+                    $"TOP {index + 1}：{row.Entry.Name}（平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)} / 平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)} / 独立吞吐 {FormatTokensPerSecond(row.AverageBenchmarkTokensPerSecond)} / 综合分 {row.CompositeScore:F1} / {BuildBatchCapabilityBreakdown(row, includeDeepHint: false)}）"));
 
         var standaloneCount = plan.SourceEntries.Count(entry => string.IsNullOrWhiteSpace(entry.SiteGroupName));
         var groupedCount = plan.SourceEntries.Count - standaloneCount;
@@ -113,8 +115,9 @@ public sealed partial class MainWindowViewModel
             $"推荐地址：{bestRow.Entry.BaseUrl}\n" +
             $"推荐密钥：{bestRow.Entry.ApiKeyAlias} / {MaskApiKey(bestRow.Entry.ApiKey)}\n" +
             $"推荐模型：{bestRow.Entry.Model}\n" +
-            $"推荐理由：平均普通对话 {FormatMillisecondsValue(bestRow.AverageChatLatencyMs)}，平均 TTFT {FormatMillisecondsValue(bestRow.AverageTtftMs)}，平均流式速率 {FormatTokensPerSecond(bestRow.AverageStreamTokensPerSecond)}，综合能力 {FormatBatchDisplayedCapabilityAverage(bestRow)}，{BuildBatchCapabilityBreakdown(bestRow, includeDeepHint: true)}，最新结论 {bestRow.LatestResult.Verdict ?? "待复核"}\n" +
+            $"推荐理由：平均普通对话 {FormatMillisecondsValue(bestRow.AverageChatLatencyMs)}，平均 TTFT {FormatMillisecondsValue(bestRow.AverageTtftMs)}，平均独立吞吐 {FormatTokensPerSecond(bestRow.AverageBenchmarkTokensPerSecond)}，综合分 {bestRow.CompositeScore:F1}，{BuildBatchCapabilityBreakdown(bestRow, includeDeepHint: true)}，最新结论 {bestRow.LatestResult.Verdict ?? "待复核"}\n" +
             $"最近一轮五项：{BuildBatchCapabilityMatrix(bestRow.LatestResult)}\n" +
+            $"最近一轮独立吞吐：{BuildThroughputBenchmarkDigest(bestRow.LatestResult.ThroughputBenchmarkResult)}\n" +
             (bestRow.LatestResult.LongStreamingResult is { } bestLongStream
                 ? $"最近一轮长流：{(bestLongStream.Success ? "通过" : "异常")} / {bestLongStream.ActualSegmentCount}/{bestLongStream.ExpectedSegmentCount} / {FormatTokensPerSecond(bestLongStream.OutputTokensPerSecond, bestLongStream.OutputTokenCountEstimated)}\n"
                 : string.Empty) +
@@ -137,12 +140,13 @@ public sealed partial class MainWindowViewModel
             builder.AppendLine($"请求模型：{row.value.Entry.Model}");
             builder.AppendLine($"累计轮次：{row.value.RunCount}");
             builder.AppendLine($"稳定性：{BuildBatchStabilityLabel(row.value)}");
-            builder.AppendLine($"综合能力：{FormatBatchDisplayedCapabilityAverage(row.value)}");
+            builder.AppendLine($"综合分：{row.value.CompositeScore:F1}");
+            builder.AppendLine($"能力均值：{FormatBatchDisplayedCapabilityAverage(row.value)}");
             builder.AppendLine($"基础均值：{FormatCapabilityAverage(row.value.AveragePassedCapabilityCount)}/5");
             builder.AppendLine($"满 5 项轮次：{row.value.FullPassRounds}/{row.value.RunCount}");
             builder.AppendLine($"平均普通对话：{FormatMillisecondsValue(row.value.AverageChatLatencyMs)}");
             builder.AppendLine($"平均 TTFT：{FormatMillisecondsValue(row.value.AverageTtftMs)}");
-            builder.AppendLine($"平均流式速率：{FormatTokensPerSecond(row.value.AverageStreamTokensPerSecond)}");
+            builder.AppendLine($"平均独立吞吐：{FormatTokensPerSecond(row.value.AverageBenchmarkTokensPerSecond)}");
             if (ProxyBatchEnableLongStreamingTest)
             {
                 builder.AppendLine(row.value.LongStreamingExecutedRounds > 0
@@ -156,6 +160,7 @@ public sealed partial class MainWindowViewModel
             builder.AppendLine($"最近一轮流式对话：{(row.value.LatestResult.StreamRequestSucceeded ? "成功" : "失败")} / 首 Token {FormatMilliseconds(row.value.LatestResult.StreamFirstTokenLatency)}");
             var latestStreamScenario = FindScenario(GetScenarioResults(row.value.LatestResult), ProxyProbeScenarioKind.ChatCompletionsStream);
             builder.AppendLine($"最近一轮输出速率：{FormatTokensPerSecond(latestStreamScenario?.OutputTokensPerSecond, latestStreamScenario?.OutputTokenCountEstimated == true, latestStreamScenario?.OutputTokensPerSecondSampleCount ?? 1)} / 输出 {latestStreamScenario?.OutputTokenCount?.ToString() ?? "--"} token");
+            builder.AppendLine($"最近一轮独立吞吐：{BuildThroughputBenchmarkDigest(row.value.LatestResult.ThroughputBenchmarkResult)}");
             builder.AppendLine($"最近一轮 Responses：{FormatScenarioStatus(FindScenario(GetScenarioResults(row.value.LatestResult), ProxyProbeScenarioKind.Responses))}");
             builder.AppendLine($"最近一轮结构化输出：{FormatScenarioStatus(FindScenario(GetScenarioResults(row.value.LatestResult), ProxyProbeScenarioKind.StructuredOutput))}");
             if (row.value.LatestResult.LongStreamingResult is { } longStreamingResult)

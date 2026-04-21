@@ -17,6 +17,7 @@ public sealed partial class MainWindowViewModel
     private ProxyBatchSiteGroupViewModel? _selectedProxyBatchSiteGroup;
     private ProxyBatchEditorMode _proxyBatchEditorMode = ProxyBatchEditorMode.BulkImport;
     private bool _suppressProxyBatchDraftAutoSave;
+    private bool _suppressProxyBatchSiteGroupSelectionHandling;
     private bool _suppressProxyBatchEditorItemChangeHandling;
     private bool _suppressProxyBatchTemplateDraftChangeHandling;
     private string _proxyBatchFormSiteGroupName = string.Empty;
@@ -43,6 +44,9 @@ public sealed partial class MainWindowViewModel
                 OnPropertyChanged(nameof(ProxyBatchEditorListSummary));
                 OnPropertyChanged(nameof(ProxyBatchEditorListSummaryDisplay));
                 OnPropertyChanged(nameof(ProxyBatchTemplateSummary));
+                OnPropertyChanged(nameof(BatchSelectionSummary));
+                OnPropertyChanged(nameof(CanRunSelectedBatchDeepTests));
+                RunSelectedBatchDeepTestsCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -76,17 +80,44 @@ public sealed partial class MainWindowViewModel
         get => _selectedProxyBatchSiteGroup;
         set
         {
+            if (_suppressProxyBatchSiteGroupSelectionHandling)
+            {
+                if (!SetProperty(ref _selectedProxyBatchSiteGroup, value))
+                {
+                    return;
+                }
+
+                NotifySelectedProxyBatchSiteGroupChanged();
+                return;
+            }
+
+            if (ReferenceEquals(_selectedProxyBatchSiteGroup, value))
+            {
+                return;
+            }
+
+            string? autoSavedSiteName = null;
+            if (_selectedProxyBatchSiteGroup is not null &&
+                !TryAutoSaveSelectedProxyBatchSiteGroupDraft(out autoSavedSiteName))
+            {
+                OnPropertyChanged(nameof(SelectedProxyBatchSiteGroup));
+                return;
+            }
+
             if (!SetProperty(ref _selectedProxyBatchSiteGroup, value))
             {
                 return;
             }
 
-            OnPropertyChanged(nameof(IsProxyBatchEditorItemSelected));
-            OnPropertyChanged(nameof(ProxyBatchPrimaryActionText));
-            OnPropertyChanged(nameof(ProxyBatchEditorSelectionSummary));
+            NotifySelectedProxyBatchSiteGroupChanged();
 
             if (value is null)
             {
+                if (!string.IsNullOrWhiteSpace(autoSavedSiteName))
+                {
+                    StatusMessage = $"\u5df2\u81ea\u52a8\u4fdd\u5b58\u7ad9\u70b9\uff1a{autoSavedSiteName}";
+                }
+
                 return;
             }
 
@@ -256,4 +287,11 @@ public sealed partial class MainWindowViewModel
 
     public string ProxyBatchEditorFormModeSummary
         => BuildProxyBatchEditorFormModeSummaryByMode();
+
+    private void NotifySelectedProxyBatchSiteGroupChanged()
+    {
+        OnPropertyChanged(nameof(IsProxyBatchEditorItemSelected));
+        OnPropertyChanged(nameof(ProxyBatchPrimaryActionText));
+        OnPropertyChanged(nameof(ProxyBatchEditorSelectionSummary));
+    }
 }

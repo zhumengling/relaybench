@@ -182,9 +182,9 @@ public sealed partial class MainWindowViewModel
             var aggregateRows = OrderBatchAggregateRows(BuildProxyBatchAggregateRows(_proxyBatchChartRuns)).ToArray();
             var best = aggregateRows[0];
 
-            DashboardCards[3].Status = BuildProxyBatchCardStatus(aggregateRows);
-            DashboardCards[3].Detail =
-                $"入口组累计 {_proxyBatchChartRuns.Count} 轮，推荐 {best.Entry.Name}（平均普通延迟 {FormatMillisecondsValue(best.AverageChatLatencyMs)} / 平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)} / 平均速率 {FormatTokensPerSecond(best.AverageStreamTokensPerSecond)} / 综合能力 {FormatBatchDisplayedCapabilityAverage(best)}）。";
+        DashboardCards[3].Status = BuildProxyBatchCardStatus(aggregateRows);
+        DashboardCards[3].Detail =
+            $"入口组累计 {_proxyBatchChartRuns.Count} 轮，推荐 {best.Entry.Name}（平均普通延迟 {FormatMillisecondsValue(best.AverageChatLatencyMs)} / 平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)} / 独立吞吐 {FormatTokensPerSecond(best.AverageBenchmarkTokensPerSecond)} / 综合分 {best.CompositeScore:F1}）。";
             StatusMessage = $"入口组已追加 5 轮整组重试，当前累计 {_proxyBatchChartRuns.Count} 轮，推荐 {best.Entry.Name}。";
             AppendHistory("中转站", "中转站入口组追加重试", ProxyBatchSummary);
         });

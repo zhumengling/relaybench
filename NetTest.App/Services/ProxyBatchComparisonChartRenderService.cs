@@ -71,7 +71,7 @@ public sealed class ProxyBatchComparisonChartRenderService
         var best = ordered[0];
         var summary =
             $"入口组对比图已生成：共 {ordered.Length} 个 URL，已累计 {ordered.Max(item => item.RunCount)} 轮整组，当前推荐 {best.Name}，" +
-            $"平均普通延迟 {FormatMilliseconds(best.ChatLatencyMs)}，每秒生成 token 数 {FormatTokensPerSecond(best.TokensPerSecond)}，平均 TTFT {FormatMilliseconds(best.TtftMs)}，综合能力 {best.StabilityText}，稳定性 {BuildStabilityLabel(best)}。";
+            $"平均普通延迟 {FormatMilliseconds(best.ChatLatencyMs)}，独立吞吐 {FormatTokensPerSecond(best.TokensPerSecond)}，平均 TTFT {FormatMilliseconds(best.TtftMs)}，综合分 {best.CompositeText}，稳定性 {BuildStabilityLabel(best)}。";
 
         return new ProxyTrendChartRenderResult(true, summary, bitmap, null);
     }
@@ -86,7 +86,7 @@ public sealed class ProxyBatchComparisonChartRenderService
         var best = items[0];
         var roundCount = items.Max(item => item.RunCount);
         var subtitle =
-            $"累计 {roundCount} 轮整组测试，共 {items.Count} 个 URL；TOP 1：{TrimText(best.Name, 26)}  |  平均普通 {FormatMilliseconds(best.ChatLatencyMs)}  |  tok/s {FormatTokensPerSecond(best.TokensPerSecond)}  |  平均 TTFT {FormatMilliseconds(best.TtftMs)}  |  {BuildStabilityLabel(best)}";
+            $"累计 {roundCount} 轮整组测试，共 {items.Count} 个 URL；TOP 1：{TrimText(best.Name, 26)}  |  平均普通 {FormatMilliseconds(best.ChatLatencyMs)}  |  tok/s {FormatTokensPerSecond(best.TokensPerSecond)}  |  平均 TTFT {FormatMilliseconds(best.TtftMs)}  |  综合分 {best.CompositeText}";
         DrawText(context, subtitle, new Point(ScaleX(30), 48), 11.5, FontWeights.Normal, CreateBrush(102, 112, 133));
     }
 
@@ -98,9 +98,9 @@ public sealed class ProxyBatchComparisonChartRenderService
         DrawText(context, "排名", new Point(ScaleX(RankColumnX), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
         DrawText(context, "入口 / URL", new Point(ScaleX(EntryColumnX), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
         DrawText(context, "平均普通延迟", new Point(ScaleX(ChatBarX + 4), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
-        DrawText(context, "每秒生成 token 数", new Point(ScaleX(TokensBarX + 4), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "独立吞吐 tok/s", new Point(ScaleX(TokensBarX + 4), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
         DrawText(context, "平均 TTFT", new Point(ScaleX(TtftBarX + 4), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
-        DrawText(context, "稳定性", new Point(ScaleX(StabilityBarX + 4), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "综合分", new Point(ScaleX(StabilityBarX + 4), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
         DrawText(context, "结论", new Point(ScaleX(VerdictColumnX + 8), top + 6), 11.5, FontWeights.SemiBold, CreateBrush(16, 24, 40));
     }
 
@@ -148,9 +148,9 @@ public sealed class ProxyBatchComparisonChartRenderService
         DrawBarCell(
             context,
             new Rect(ScaleX(StabilityBarX), top + 12, ScaleWidth(StabilityBarWidth), 16),
-            item.StabilityRatio,
+            item.CompositeScore,
             100,
-            item.StabilityText,
+            item.CompositeText,
             Color.FromRgb(22, 163, 74));
 
         DrawStatusBadge(context, item, top + 11);
@@ -235,7 +235,7 @@ public sealed class ProxyBatchComparisonChartRenderService
     {
         DrawText(
             context,
-            "读图说明：蓝条比较平均普通对话延迟，越长代表越快；紫条比较每秒生成 token 数，越长代表生成越快（快速测试默认按 3 次采样均值）；橙条比较平均 TTFT，越长代表首字响应越快；绿条显示入口组综合能力。",
+            "读图说明：蓝条比较平均普通对话延迟，越长代表越快；紫条比较独立吞吐 tok/s，越长代表生成越快；橙条比较平均 TTFT，越长代表首字响应越快；绿条显示综合分。",
             new Point(20, chartHeight - 22),
             10.4,
             FontWeights.Normal,

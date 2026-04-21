@@ -8,7 +8,7 @@ public sealed partial class MainWindowViewModel
     private string _proxyVerdictSummary = "填写默认入口、默认密钥和默认模型后，这里会先给出一句话结论。";
     private string _proxyCapabilityMatrixSummary = "单次探测完成后，这里会显示基础五项能力，以及按需追加的 System Prompt / Function Calling / 错误透传 / 流式完整性 / 官方对照完整性 / 多模态 / 缓存机制 / 缓存隔离状态。";
     private string _proxySingleCapabilityDetailSummary = "运行基础或深度单次诊断后，这里会逐项显示 /models、普通对话、流式对话、Responses、结构化输出及对应探针的状态码、耗时与预览。";
-    private string _proxyKeyMetricsSummary = "这里会显示普通延迟、TTFT、tok/s、输出量、长流简测、可追溯性和高级探针状态码。";
+private string _proxyKeyMetricsSummary = "这里会显示普通延迟、TTFT、独立吞吐、探针速率参考、输出量、长流简测、可追溯性和高级探针状态码。";
     private string _proxyIssueSummary = "这里会显示当前中转站最主要的问题定位。";
     private string _proxyHeadersSummary = "这里会显示各探测步骤采集到的关键响应头。";
     private string _proxyStabilityInsightSummary = "运行稳定性序列后，这里会给出适合与否、波动来源和失败分布。";
@@ -199,8 +199,9 @@ public sealed partial class MainWindowViewModel
         keyMetricsBuilder.AppendLine($"普通对话延迟：{FormatMilliseconds(result.ChatLatency)}");
         keyMetricsBuilder.AppendLine($"流式 TTFT：{FormatMilliseconds(result.StreamFirstTokenLatency)}");
         keyMetricsBuilder.AppendLine($"流式总耗时：{FormatMilliseconds(result.StreamDuration)}");
-        keyMetricsBuilder.AppendLine($"流式输出速率：{FormatTokensPerSecond(stream?.OutputTokensPerSecond, stream?.OutputTokenCountEstimated == true, stream?.OutputTokensPerSecondSampleCount ?? 1)}");
-        keyMetricsBuilder.AppendLine($"流式端到端速率：{FormatTokensPerSecond(stream?.EndToEndTokensPerSecond, stream?.OutputTokenCountEstimated == true, stream?.OutputTokensPerSecondSampleCount ?? 1)}");
+        keyMetricsBuilder.AppendLine($"独立吞吐：{BuildThroughputBenchmarkDigest(result.ThroughputBenchmarkResult)}");
+        keyMetricsBuilder.AppendLine($"流式探针输出速率：{FormatTokensPerSecond(stream?.OutputTokensPerSecond, stream?.OutputTokenCountEstimated == true, stream?.OutputTokensPerSecondSampleCount ?? 1)}");
+        keyMetricsBuilder.AppendLine($"流式探针端到端速率：{FormatTokensPerSecond(stream?.EndToEndTokensPerSecond, stream?.OutputTokenCountEstimated == true, stream?.OutputTokensPerSecondSampleCount ?? 1)}");
         keyMetricsBuilder.AppendLine($"流式输出量：{FormatOutputCount(stream)}");
         keyMetricsBuilder.AppendLine($"流式最大 chunk 间隔：{FormatMillisecondsDoubleValue(stream?.MaxChunkGapMilliseconds)}");
         keyMetricsBuilder.AppendLine($"Responses 延迟：{FormatMilliseconds(responses?.Latency)}");
@@ -453,17 +454,19 @@ public sealed partial class MainWindowViewModel
             $"密钥：{best.Entry.ApiKeyAlias} / {MaskApiKey(best.Entry.ApiKey)}\n" +
             $"累计整组轮次：{best.RunCount}\n" +
             $"稳定性：{BuildBatchStabilityLabel(best)}\n" +
-            $"综合能力：{FormatBatchDisplayedCapabilityAverage(best)}\n" +
+            $"综合分：{best.CompositeScore:F1}\n" +
+            $"能力均值：{FormatBatchDisplayedCapabilityAverage(best)}\n" +
             $"基础均值：{FormatCapabilityAverage(best.AveragePassedCapabilityCount)}/5\n" +
             $"满 5 项轮次：{best.FullPassRounds}/{best.RunCount}\n" +
             $"平均普通延迟：{FormatMillisecondsValue(best.AverageChatLatencyMs)}\n" +
             $"平均 TTFT：{FormatMillisecondsValue(best.AverageTtftMs)}\n" +
-            $"平均流式速率：{FormatTokensPerSecond(best.AverageStreamTokensPerSecond)}\n" +
+            $"平均独立吞吐：{FormatTokensPerSecond(best.AverageBenchmarkTokensPerSecond)}\n" +
             (ProxyBatchEnableLongStreamingTest
                 ? $"增强长流：{(best.LongStreamingExecutedRounds > 0 ? $"{best.LongStreamingPassRounds}/{best.LongStreamingExecutedRounds} 轮通过" : "未执行")}\n"
                 : string.Empty) +
             "深度测试：入口组模式不聚合，需查看单次诊断图表。\n" +
             $"最近一轮结构化输出：{FormatScenarioStatus(structuredOutput)}\n" +
+            $"最近一轮独立吞吐：{BuildThroughputBenchmarkDigest(best.LatestResult.ThroughputBenchmarkResult)}\n" +
             (ProxyBatchEnableLongStreamingTest ? $"最近一轮长流：{BuildLongStreamingDigest(best.LatestResult.LongStreamingResult)}\n" : string.Empty) +
             $"可追溯性：{best.LatestResult.TraceabilitySummary ?? "未识别"}\n" +
             $"最近一轮五项：{BuildBatchCapabilityMatrix(best.LatestResult)}\n" +

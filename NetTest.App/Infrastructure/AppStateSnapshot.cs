@@ -108,6 +108,8 @@ public sealed class ProxyBatchConfigItemSnapshot
     public string SiteGroupApiKey { get; set; } = string.Empty;
 
     public string SiteGroupModel { get; set; } = string.Empty;
+
+    public bool IncludeInBatchTest { get; set; } = true;
 }
 
 public sealed class ProxyBatchDraftSnapshot

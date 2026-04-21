@@ -872,6 +872,20 @@
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="1.05*"
+                                                                    Header="测试">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"
+                                                                  MinWidth="58"
+                                                                  Focusable="False"
+                                                                  Content="{Binding BatchTestShortDisplay}"
+                                                                  IsChecked="{Binding IncludeInBatchTest, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                  ToolTip="打开后才会参与批量快速测试和深度测试。" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
                                             <DataGridTemplateColumn Width="1.9*"
                                                                     Header="模型">
                                                 <DataGridTemplateColumn.CellTemplate>
@@ -909,6 +923,21 @@
                                                         </DockPanel>
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellEditingTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="0.9*"
+                                                                    Header="操作"
+                                                                    IsReadOnly="True">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <Button MinWidth="54"
+                                                                Padding="8,2"
+                                                                HorizontalAlignment="Center"
+                                                                Command="{Binding DataContext.DeleteProxyBatchTemplateRowCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                CommandParameter="{Binding}"
+                                                                Content="删行"
+                                                                ToolTip="删除当前这一行；如果删到只剩最后一行，会自动保留 1 个空白行。" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
                                         </DataGrid.Columns>
                                     </DataGrid>

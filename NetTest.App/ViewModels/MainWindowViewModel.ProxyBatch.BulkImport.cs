@@ -178,7 +178,8 @@ public sealed partial class MainWindowViewModel
             item.EntryModel,
             item.SiteGroupName,
             item.SiteGroupApiKey,
-            item.SiteGroupModel);
+            item.SiteGroupModel,
+            item.IncludeInBatchTest);
 
     private static ProxyBatchEditorItemViewModel CreateProxyBatchEditorItem(ProxyBatchBulkImportEntry entry)
         => new(
