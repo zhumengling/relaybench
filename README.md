@@ -12,9 +12,6 @@
 
 ![入口组批量录入](docs/images/batch-import-dialog.png)
 
-### 批量排行榜对比
-
-![批量排行榜对比](docs/images/batch-comparison-ranking.png)
 
 ### 客户端 API 复核
 
