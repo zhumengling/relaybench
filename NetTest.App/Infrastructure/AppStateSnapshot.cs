@@ -40,11 +40,11 @@ public sealed class AppStateSnapshot
 
     public bool ProxyEnableCacheMechanismTest { get; set; } = true;
 
-    public bool ProxyEnableCacheIsolationTest { get; set; } = true;
+    public bool ProxyEnableCacheIsolationTest { get; set; }
 
     public string ProxyCacheIsolationAlternateApiKey { get; set; } = string.Empty;
 
-    public bool ProxyEnableOfficialReferenceIntegrityTest { get; set; } = true;
+    public bool ProxyEnableOfficialReferenceIntegrityTest { get; set; }
 
     public string ProxyOfficialReferenceBaseUrl { get; set; } = string.Empty;
 

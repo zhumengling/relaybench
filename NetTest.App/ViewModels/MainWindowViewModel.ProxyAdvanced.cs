@@ -313,7 +313,8 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
             _selectedProxyDiagnosticPresetKey = ResolveProxyDiagnosticPresetKey(snapshot.ProxyDiagnosticPresetKey);
             _proxyEnableLongStreamingTest = snapshot.ProxyEnableLongStreamingTest;
 
-            if (hasKnownPreset)
+            if (hasKnownPreset &&
+                string.Equals(_selectedProxyDiagnosticPresetKey, "custom", StringComparison.OrdinalIgnoreCase))
             {
                 _proxyEnableProtocolCompatibilityTest = snapshot.ProxyEnableProtocolCompatibilityTest;
                 _proxyEnableErrorTransparencyTest = snapshot.ProxyEnableErrorTransparencyTest;
@@ -330,8 +331,8 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
                 _proxyEnableStreamingIntegrityTest = true;
                 _proxyEnableMultiModalTest = true;
                 _proxyEnableCacheMechanismTest = true;
-                _proxyEnableCacheIsolationTest = true;
-                _proxyEnableOfficialReferenceIntegrityTest = true;
+                _proxyEnableCacheIsolationTest = false;
+                _proxyEnableOfficialReferenceIntegrityTest = false;
             }
 
             _proxyCacheIsolationAlternateApiKey = snapshot.ProxyCacheIsolationAlternateApiKey ?? string.Empty;
@@ -405,8 +406,8 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
                 ProxyEnableStreamingIntegrityTest = true;
                 ProxyEnableMultiModalTest = true;
                 ProxyEnableCacheMechanismTest = true;
-                ProxyEnableCacheIsolationTest = true;
-                ProxyEnableOfficialReferenceIntegrityTest = true;
+                ProxyEnableCacheIsolationTest = false;
+                ProxyEnableOfficialReferenceIntegrityTest = false;
             }
         }
         finally
@@ -430,8 +431,8 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
             ProxyEnableStreamingIntegrityTest &&
             ProxyEnableMultiModalTest &&
             ProxyEnableCacheMechanismTest &&
-            ProxyEnableCacheIsolationTest &&
-            ProxyEnableOfficialReferenceIntegrityTest
+            !ProxyEnableCacheIsolationTest &&
+            !ProxyEnableOfficialReferenceIntegrityTest
                 ? "deep"
                 : "custom";
 

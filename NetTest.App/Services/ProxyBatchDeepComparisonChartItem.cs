@@ -14,7 +14,8 @@ public sealed record ProxyBatchDeepComparisonBadge(
     string Value,
     ProxyBatchDeepComparisonBadgeState State,
     string Title,
-    string Description);
+    string Description,
+    string? DetailText = null);
 
 public sealed record ProxyBatchDeepComparisonChartItem(
     int Rank,

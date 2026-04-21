@@ -431,7 +431,7 @@ public partial class MainWindow : Window
     {
         var panel = new StackPanel
         {
-            MaxWidth = 320
+            MaxWidth = 420
         };
 
         panel.Children.Add(new TextBlock

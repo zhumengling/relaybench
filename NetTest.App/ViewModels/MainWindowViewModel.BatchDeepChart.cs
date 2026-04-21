@@ -358,7 +358,16 @@ public sealed partial class MainWindowViewModel
 
         if (!enabled)
         {
-            return new ProxyBatchDeepComparisonBadge(label, "Off", ProxyBatchDeepComparisonBadgeState.Pending, title, description);
+            return new ProxyBatchDeepComparisonBadge(
+                label,
+                "Off",
+                ProxyBatchDeepComparisonBadgeState.Pending,
+                title,
+                description,
+                BuildBatchDeepScenarioPlaceholderDetail(
+                    kind,
+                    "\u7ed3\u679c\uff1a\u672a\u542f\u7528",
+                    "\u5f53\u524d\u6279\u91cf\u6df1\u6d4b\u8ba1\u5212\u672a\u52fe\u9009\u8be5\u9879\u76ee\u3002"));
         }
 
         if (state.ScenarioResults.TryGetValue(kind, out var scenario))
@@ -368,20 +377,48 @@ public sealed partial class MainWindowViewModel
                 ResolveBatchDeepScenarioBadgeValue(scenario),
                 ResolveBatchDeepScenarioBadgeState(scenario),
                 title,
-                description);
+                description,
+                BuildBatchDeepScenarioTooltipDetail(kind, scenario));
         }
 
         if (state.IsCompleted)
         {
-            return new ProxyBatchDeepComparisonBadge(label, "SK", ProxyBatchDeepComparisonBadgeState.Warn, title, description);
+            return new ProxyBatchDeepComparisonBadge(
+                label,
+                "SK",
+                ProxyBatchDeepComparisonBadgeState.Warn,
+                title,
+                description,
+                BuildBatchDeepScenarioPlaceholderDetail(
+                    kind,
+                    "\u7ed3\u679c\uff1a\u5df2\u8df3\u8fc7",
+                    "\u672c\u8f6e\u6df1\u6d4b\u5df2\u7ed3\u675f\uff0c\u4f46\u8be5\u9879\u76ee\u6ca1\u6709\u8fd4\u56de\u7ed3\u679c\uff0c\u901a\u5e38\u8868\u793a\u88ab\u8df3\u8fc7\u6216\u63d0\u524d\u7ec8\u6b62\u3002"));
         }
 
         if (state.IsRunning && state.CompletedCount > 0)
         {
-            return new ProxyBatchDeepComparisonBadge(label, "--", ProxyBatchDeepComparisonBadgeState.Running, title, description);
+            return new ProxyBatchDeepComparisonBadge(
+                label,
+                "--",
+                ProxyBatchDeepComparisonBadgeState.Running,
+                title,
+                description,
+                BuildBatchDeepScenarioPlaceholderDetail(
+                    kind,
+                    "\u7ed3\u679c\uff1a\u8fdb\u884c\u4e2d",
+                    "\u8be5\u9879\u76ee\u5c1a\u672a\u8fd4\u56de\u6700\u7ec8\u7ed3\u679c\uff0c\u8bf7\u7b49\u5f85\u5f53\u524d\u7ad9\u70b9\u8dd1\u5b8c\u8fd9\u4e00\u9879\u3002"));
         }
 
-        return new ProxyBatchDeepComparisonBadge(label, "--", ProxyBatchDeepComparisonBadgeState.Pending, title, description);
+        return new ProxyBatchDeepComparisonBadge(
+            label,
+            "--",
+            ProxyBatchDeepComparisonBadgeState.Pending,
+            title,
+            description,
+            BuildBatchDeepScenarioPlaceholderDetail(
+                kind,
+                "\u7ed3\u679c\uff1a\u672a\u5f00\u59cb",
+                "\u8be5\u9879\u76ee\u5c1a\u672a\u5f00\u59cb\u6267\u884c\u3002"));
     }
 
     private static (string Title, string Description) GetBatchDeepBadgeDefinition(string label)
@@ -652,6 +689,105 @@ public sealed partial class MainWindowViewModel
 
         return ProxyBatchDeepComparisonBadgeState.Fail;
     }
+
+    private static string BuildBatchDeepScenarioTooltipDetail(ProxyProbeScenarioKind kind, ProxyProbeScenarioResult scenario)
+    {
+        var preview = NormalizeInlineText(scenario.Preview);
+        var summary = NormalizeInlineText(scenario.Summary);
+        var capabilityStatus = NormalizeInlineText(scenario.CapabilityStatus);
+        List<string> actualParts = [];
+
+        if (!string.IsNullOrWhiteSpace(capabilityStatus))
+        {
+            actualParts.Add($"\u72b6\u6001\uff1a{TrimInline(capabilityStatus, 120)}");
+        }
+
+        if (scenario.StatusCode.HasValue)
+        {
+            actualParts.Add($"HTTP {scenario.StatusCode.Value}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(preview))
+        {
+            actualParts.Add($"\u8fd4\u56de\u7247\u6bb5\uff1a{TrimInline(preview, 180)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(summary) &&
+            !string.Equals(summary, preview, StringComparison.Ordinal))
+        {
+            actualParts.Add($"\u89c2\u6d4b\uff1a{TrimInline(summary, 180)}");
+        }
+
+        var actual = actualParts.Count == 0
+            ? "\u672a\u63d0\u4f9b\u53ef\u7528\u8fd4\u56de\u7247\u6bb5\u3002"
+            : string.Join("\uff1b", actualParts);
+
+        var reason = FirstNonEmpty(
+                NormalizeInlineText(scenario.Error),
+                summary,
+                capabilityStatus)
+            ?? (scenario.Success
+                ? "\u8fd4\u56de\u7ed3\u679c\u4e0e\u9884\u671f\u4e00\u81f4\u3002"
+                : "\u672a\u63d0\u4f9b\u989d\u5916\u539f\u56e0\u3002");
+
+        var reasonLabel = scenario.Success ? "\u8bf4\u660e\uff1a" : "\u539f\u56e0\uff1a";
+
+        return string.Join(
+            Environment.NewLine,
+            ResolveBatchDeepScenarioResultText(scenario),
+            $"\u9884\u671f\uff1a{GetBatchDeepScenarioExpectedText(kind)}",
+            $"\u5b9e\u9645\uff1a{actual}",
+            $"{reasonLabel}{TrimInline(reason, 220)}");
+    }
+
+    private static string BuildBatchDeepScenarioPlaceholderDetail(
+        ProxyProbeScenarioKind kind,
+        string resultText,
+        string actualText)
+        => string.Join(
+            Environment.NewLine,
+            resultText,
+            $"\u9884\u671f\uff1a{GetBatchDeepScenarioExpectedText(kind)}",
+            $"\u5b9e\u9645\uff1a{actualText}");
+
+    private static string ResolveBatchDeepScenarioResultText(ProxyProbeScenarioResult scenario)
+        => ResolveBatchDeepScenarioBadgeValue(scenario) switch
+        {
+            "OK" => "\u7ed3\u679c\uff1a\u901a\u8fc7",
+            "RV" => "\u7ed3\u679c\uff1a\u5f85\u590d\u6838",
+            "CFG" => "\u7ed3\u679c\uff1a\u914d\u7f6e\u4e0d\u8db3",
+            "SK" => "\u7ed3\u679c\uff1a\u5df2\u8df3\u8fc7",
+            "--" => "\u7ed3\u679c\uff1a\u672a\u5f00\u59cb",
+            _ => "\u7ed3\u679c\uff1a\u672a\u901a\u8fc7"
+        };
+
+    private static string GetBatchDeepScenarioExpectedText(ProxyProbeScenarioKind kind)
+        => kind switch
+        {
+            ProxyProbeScenarioKind.Models or
+            ProxyProbeScenarioKind.ChatCompletions or
+            ProxyProbeScenarioKind.ChatCompletionsStream or
+            ProxyProbeScenarioKind.Responses or
+            ProxyProbeScenarioKind.StructuredOutput
+                => "\u5e94\u4fdd\u6301\u57fa\u7840 5 \u9879\u8fde\u901a\u6027\uff1a/models\u3001\u666e\u901a\u5bf9\u8bdd\u3001\u6d41\u5f0f\u5bf9\u8bdd\u3001Responses\u3001\u7ed3\u6784\u5316\u8f93\u51fa\u90fd\u5e94\u8fd4\u56de\u6709\u6548\u7ed3\u679c\u3002",
+            ProxyProbeScenarioKind.SystemPromptMapping
+                => "\u6a21\u578b\u5e94\u7a33\u5b9a\u9075\u5faa system \u6307\u4ee4\uff0c\u4e0d\u5e94\u88ab\u7528\u6237\u8986\u76d6\u63d0\u793a\u5e26\u504f\u3002",
+            ProxyProbeScenarioKind.FunctionCalling
+                => "\u5e94\u8fd4\u56de\u5408\u6cd5\u7684 tool_calls / function calling \u7ed3\u6784\uff0c\u53c2\u6570\u4e0e\u6700\u7ec8\u7b54\u6848\u90fd\u5e94\u7b26\u5408\u9884\u671f\u3002",
+            ProxyProbeScenarioKind.ErrorTransparency
+                => "\u6784\u9020 bad request \u540e\uff0c\u5e94\u8fd4\u56de 4xx\uff0c\u5e76\u4fdd\u7559\u53ef\u8bfb\u3001\u53ef\u5b9a\u4f4d\u7684\u539f\u59cb\u9519\u8bef\u4fe1\u606f\u3002",
+            ProxyProbeScenarioKind.StreamingIntegrity
+                => "\u6d41\u5f0f\u8f93\u51fa\u5e94\u5b8c\u6574\u6536\u5c3e\uff0c\u975e\u6d41\u5f0f\u4e0e\u6d41\u5f0f\u6838\u5fc3\u5185\u5bb9\u5e94\u4e00\u81f4\uff0c\u4e0d\u5e94\u622a\u65ad\u3001\u4e71\u5e8f\u6216\u5f02\u5e38\u7ed3\u675f\u3002",
+            ProxyProbeScenarioKind.OfficialReferenceIntegrity
+                => "\u4e2d\u8f6c\u7ad9\u4e0e\u5b98\u65b9\u63a5\u53e3\u5bf9\u540c\u4e00\u63d0\u793a\u5e94\u8868\u73b0\u4e00\u81f4\uff0c\u5173\u952e\u8f93\u51fa\u4e0d\u5e94\u660e\u663e\u504f\u79bb\u3002",
+            ProxyProbeScenarioKind.MultiModal
+                => "\u53cc\u56fe\u591a\u6a21\u6001\u8bf7\u6c42\u5e94\u88ab\u6b63\u786e\u8bc6\u522b\uff0c\u8fd4\u56de\u5185\u5bb9\u9700\u660e\u786e\u533a\u5206\u7ea2\u56fe\u4e0e\u84dd\u56fe\u3002",
+            ProxyProbeScenarioKind.CacheMechanism
+                => "\u91cd\u590d\u8bf7\u6c42\u5e94\u8fd4\u56de\u9884\u671f\u5185\u5bb9\uff0c\u5e76\u6839\u636e TTFT \u53d8\u5316\u4f53\u73b0\u51fa\u5408\u7406\u7f13\u5b58\u8ff9\u8c61\uff0c\u6216\u660e\u786e\u8bf4\u660e\u672a\u547d\u4e2d\u3002",
+            ProxyProbeScenarioKind.CacheIsolation
+                => "A/B Key \u7684\u7f13\u5b58\u5e94\u5f7c\u6b64\u9694\u79bb\uff0cB \u4e0d\u5e94\u8bfb\u5230 A \u7684 secret\uff0c\u4e14\u4e24\u6b21\u8f93\u51fa\u90fd\u5e94\u7b26\u5408\u5404\u81ea\u9884\u671f\u3002",
+            _ => "\u5e94\u8fd4\u56de\u4e0e\u8be5\u4e13\u9879\u80fd\u529b\u4e00\u81f4\u7684\u9884\u671f\u7ed3\u679c\u3002"
+        };
 
     private static string ResolveBatchDeepScenarioBadgeValue(ProxyProbeScenarioResult scenario)
     {

@@ -290,7 +290,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         hitRegions.Add(new ProxyChartHitRegion(
             rect,
             $"{badge.Title} ({badge.Label} {badge.Value})",
-            BuildBadgeTooltipDescription(badge)));
+            BuildBadgeTooltipDescriptionWithDetail(badge)));
     }
 
     private void DrawVerdictBlock(DrawingContext context, ProxyBatchDeepComparisonChartItem item, double top)
@@ -457,6 +457,16 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
             "--" => "未开始，表示该专项探针还没跑到这一项。",
             _ => $"当前显示 {badge.Value}。"
         };
+    }
+
+    private static string BuildBadgeTooltipDescriptionWithDetail(ProxyBatchDeepComparisonBadge badge)
+    {
+        if (!string.IsNullOrWhiteSpace(badge.DetailText))
+        {
+            return $"{badge.Description}{Environment.NewLine}\u72b6\u6001\u8bf4\u660e\uff1a{Environment.NewLine}{badge.DetailText}";
+        }
+
+        return BuildBadgeTooltipDescription(badge);
     }
 
     private static bool IsHealthyVerdict(string verdict)
