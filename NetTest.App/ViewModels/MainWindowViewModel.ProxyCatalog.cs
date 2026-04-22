@@ -16,6 +16,7 @@ public sealed partial class MainWindowViewModel
 
         ProxyModelCatalogFilterText = string.Empty;
         RefreshVisibleProxyCatalogModels();
+        RefreshVisibleProxyMultiModelCatalogItems(trimToCatalog: result.Success);
 
         ProxyModelCatalogSummary =
             $"检测时间：{result.CheckedAt:yyyy-MM-dd HH:mm:ss}\n" +
@@ -68,7 +69,7 @@ public sealed partial class MainWindowViewModel
 
         SyncSelectedProxyCatalogModel(GetCurrentProxyModelPickerValue());
 
-        AppendModuleOutput("中转站模型列表返回", ProxyModelCatalogSummary, ProxyModelCatalogDetail);
+        AppendModuleOutput("接口模型列表返回", ProxyModelCatalogSummary, ProxyModelCatalogDetail);
         SaveState();
     }
 }

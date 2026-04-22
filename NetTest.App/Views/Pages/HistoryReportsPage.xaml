@@ -1,62 +1,260 @@
-﻿<UserControl x:Class="NetTest.App.Views.Pages.HistoryReportsPage"
+<UserControl x:Class="NetTest.App.Views.Pages.HistoryReportsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="HistoryRunListBoxStyle"
+               TargetType="ListBox"
+               BasedOn="{StaticResource {x:Type ListBox}}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        </Style>
+
+        <Style x:Key="HistoryRunListBoxItemStyle"
+               TargetType="ListBoxItem"
+               BasedOn="{StaticResource ListBoxItemStyle}">
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="Padding" Value="9,8" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource TabHoverBrush}" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#84ADFF" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#EEF4FF" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*" />
+            <ColumnDefinition Width="1.05*" />
             <ColumnDefinition Width="6" />
-            <ColumnDefinition Width="1*" />
+            <ColumnDefinition Width="1.2*" />
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Style="{StaticResource SectionPanelBorderStyle}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="运行历史" />
-                    <TextBlock Margin="0,2,0,0"
-                               Style="{StaticResource SectionHintTextStyle}"
-                               Text="这里集中回看最近执行过的测试记录，帮助你快速定位上一次做过什么。" />
-                </StackPanel>
-
-                <TextBox Grid.Row="1"
-                         Margin="0,6,0,0"
-                         Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
-                         Text="{Binding HistorySummary, Mode=OneWay}" />
-            </Grid>
-        </Border>
-
-        <Border Grid.Column="2" Style="{StaticResource SectionPanelBorderStyle}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="报告归档" />
-                    <TextBlock Margin="0,2,0,0"
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x8FD0;&#x884C;&#x5386;&#x53F2;" />
+                    <TextBlock Margin="0,3,0,0"
                                Style="{StaticResource SectionHintTextStyle}"
-                               Text="导出后的结构化报告会集中显示在这里，便于回看和归档管理。" />
+                               Text="&#x6309;&#x6700;&#x8FD1;&#x8FD0;&#x884C;&#x6B21;&#x5E8F;&#x5012;&#x5E8F;&#x5C55;&#x793A;&#x5386;&#x53F2;&#xFF0C;&#x70B9;&#x51FB;&#x5DE6;&#x4FA7;&#x5217;&#x8868;&#x5373;&#x53EF;&#x5728;&#x53F3;&#x4FA7;&#x6253;&#x5F00;&#x8FD9;&#x6B21;&#x8FD0;&#x884C;&#x7684;&#x5B8C;&#x6574;&#x4FE1;&#x606F;&#x3002;" />
                 </StackPanel>
 
-                <Button Grid.Row="1"
+                <TextBlock Grid.Row="1"
+                           Margin="0,6,0,0"
+                           Style="{StaticResource SectionHintTextStyle}"
+                           Text="&#x5DE6;&#x4FA7;&#x5217;&#x8868;&#x53EA;&#x663E;&#x793A;&#x9884;&#x89C8;&#x6458;&#x8981;&#xFF0C;&#x53F3;&#x4FA7;&#x663E;&#x793A;&#x9009;&#x4E2D;&#x8BB0;&#x5F55;&#x7684;&#x5168;&#x6587;&#x3002;" />
+
+                <Border Grid.Row="2"
                         Margin="0,6,0,0"
-                        HorizontalAlignment="Left"
-                        Command="{Binding ExportCurrentReportCommand}"
-                        Content="导出当前报告" />
-                <TextBox Grid.Row="2"
-                         Margin="0,6,0,0"
-                         Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
-                         Text="{Binding ReportArchiveSummary, Mode=OneWay}" />
+                        Style="{StaticResource InsetPanelBorderStyle}">
+                    <Grid>
+                        <ListBox ItemsSource="{Binding HistoryRunItems}"
+                                 SelectedItem="{Binding SelectedHistoryRunItem, Mode=TwoWay}"
+                                 ItemContainerStyle="{StaticResource HistoryRunListBoxItemStyle}"
+                                 Style="{StaticResource HistoryRunListBoxStyle}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Width="34"
+                                                Height="20"
+                                                Margin="0,0,10,0"
+                                                VerticalAlignment="Top"
+                                                Background="Transparent"
+                                                BorderBrush="{StaticResource AccentBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="10">
+                                            <TextBlock HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{StaticResource AccentBrush}"
+                                                       FontWeight="SemiBold"
+                                                       Text="{Binding Rank}" />
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock FontWeight="SemiBold"
+                                                           Text="{Binding DisplayTitle}"
+                                                           TextWrapping="Wrap" />
+                                                <TextBlock Grid.Column="1"
+                                                           Margin="8,0,0,0"
+                                                           VerticalAlignment="Top"
+                                                           Style="{StaticResource SectionHintTextStyle}"
+                                                           Text="{Binding TimestampText}" />
+                                            </Grid>
+
+                                            <WrapPanel Margin="0,4,0,0">
+                                                <Border Margin="0,0,6,0"
+                                                        Padding="6,1"
+                                                        Background="#F8FAFC"
+                                                        BorderBrush="{StaticResource PanelBorderBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="8">
+                                                    <TextBlock FontWeight="SemiBold"
+                                                               Text="{Binding ScopeTag}" />
+                                                </Border>
+                                                <Border Padding="6,1"
+                                                        Background="#EEF4FF"
+                                                        BorderBrush="#C7DAFF"
+                                                        BorderThickness="1"
+                                                        CornerRadius="8">
+                                                    <TextBlock Foreground="{StaticResource AccentBrush}"
+                                                               FontWeight="SemiBold"
+                                                               Text="{Binding CategoryTag}" />
+                                                </Border>
+                                            </WrapPanel>
+
+                                            <TextBlock Margin="0,4,0,0"
+                                                       Style="{StaticResource SectionHintTextStyle}"
+                                                       Text="{Binding PreviewText}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Text="&#x8FD8;&#x6CA1;&#x6709;&#x53EF;&#x56DE;&#x770B;&#x7684;&#x8FD0;&#x884C;&#x5386;&#x53F2;&#x3002;">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasHistoryRunItems}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Border>
             </Grid>
         </Border>
+
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="1.14*" />
+                <RowDefinition Height="6" />
+                <RowDefinition Height="0.86*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x672C;&#x6B21;&#x8FD0;&#x884C;&#x8BE6;&#x60C5;" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="&#x9ED8;&#x8BA4;&#x4F1A;&#x9009;&#x4E2D;&#x6700;&#x65B0;&#x4E00;&#x6B21;&#x8FD0;&#x884C;&#xFF1B;&#x4F60;&#x4E5F;&#x53EF;&#x4EE5;&#x5728;&#x5DE6;&#x4FA7;&#x5207;&#x6362;&#x5230;&#x66F4;&#x65E9;&#x7684;&#x8BB0;&#x5F55;&#x3002;" />
+                    </StackPanel>
+
+                    <Border Grid.Row="1"
+                            Margin="0,6,0,0"
+                            Style="{StaticResource InsetPanelBorderStyle}">
+                        <StackPanel>
+                            <TextBlock FontSize="11.8"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding SelectedHistoryRunTitle, Mode=OneWay}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding SelectedHistoryRunMeta, Mode=OneWay}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding SelectedHistoryRunOriginalTitle, Mode=OneWay}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Margin="0,4,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding SelectedHistoryRunPreviewText, Mode=OneWay}"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBox Grid.Row="2"
+                             Margin="0,6,0,0"
+                             Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                             Text="{Binding SelectedHistoryRunDetailText, Mode=OneWay}" />
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x62A5;&#x544A;&#x5F52;&#x6863;" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="&#x5BFC;&#x51FA;&#x540E;&#x7684;&#x7ED3;&#x6784;&#x5316;&#x62A5;&#x544A;&#x4F1A;&#x96C6;&#x4E2D;&#x663E;&#x793A;&#x5728;&#x8FD9;&#x91CC;&#xFF0C;&#x65B9;&#x4FBF;&#x56DE;&#x770B;&#x548C;&#x5F52;&#x6863;&#x7BA1;&#x7406;&#x3002;" />
+                    </StackPanel>
+
+                    <Button Grid.Row="1"
+                            Margin="0,6,0,0"
+                            HorizontalAlignment="Left"
+                            Command="{Binding ExportCurrentReportCommand}"
+                            Content="&#x5BFC;&#x51FA;&#x5F53;&#x524D;&#x62A5;&#x544A;" />
+                    <TextBox Grid.Row="2"
+                             Margin="0,6,0,0"
+                             Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                             Text="{Binding ReportArchiveSummary, Mode=OneWay}" />
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

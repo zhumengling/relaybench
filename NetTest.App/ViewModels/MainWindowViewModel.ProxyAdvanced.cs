@@ -250,7 +250,8 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
                 $"官方对照：{DescribeOfficialReferenceExecutionState()}；" +
                 $"多模态：{(ProxyEnableMultiModalTest ? "开启" : "关闭")}；" +
                 $"缓存机制：{(ProxyEnableCacheMechanismTest ? "开启" : "关闭")}；" +
-                $"缓存隔离：{DescribeCacheIsolationExecutionState()}。";
+                $"缓存隔离：{DescribeCacheIsolationExecutionState()}；" +
+                $"\u591A\u6A21\u578B tok/s\uff1A{DescribeProxyMultiModelExecutionState()}\u3002";
         }
     }
 
@@ -339,6 +340,7 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
             _proxyOfficialReferenceBaseUrl = snapshot.ProxyOfficialReferenceBaseUrl ?? string.Empty;
             _proxyOfficialReferenceApiKey = snapshot.ProxyOfficialReferenceApiKey ?? string.Empty;
             _proxyOfficialReferenceModel = snapshot.ProxyOfficialReferenceModel ?? string.Empty;
+            ReplaceProxyMultiModelSelections(snapshot.ProxyMultiModelBenchmarkModels);
             _proxyBatchEnableLongStreamingTest = snapshot.ProxyBatchEnableLongStreamingTest;
             _proxyLongStreamSegmentsText = string.IsNullOrWhiteSpace(snapshot.ProxyLongStreamSegmentsText)
                 ? "72"
@@ -365,6 +367,8 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
         OnPropertyChanged(nameof(ProxyOfficialReferenceBaseUrl));
         OnPropertyChanged(nameof(ProxyOfficialReferenceApiKey));
         OnPropertyChanged(nameof(ProxyOfficialReferenceModel));
+        RefreshVisibleProxyMultiModelCatalogItems();
+        NotifyProxyMultiModelSelectionStateChanged();
         OnPropertyChanged(nameof(ProxyBatchEnableLongStreamingTest));
         OnPropertyChanged(nameof(ProxyLongStreamSegmentsText));
         RefreshProxyOverviewSummary();
@@ -385,6 +389,7 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
         snapshot.ProxyOfficialReferenceBaseUrl = ProxyOfficialReferenceBaseUrl;
         snapshot.ProxyOfficialReferenceApiKey = ProxyOfficialReferenceApiKey;
         snapshot.ProxyOfficialReferenceModel = ProxyOfficialReferenceModel;
+        snapshot.ProxyMultiModelBenchmarkModels = GetSelectedProxyMultiModelNames().ToList();
         snapshot.ProxyBatchEnableLongStreamingTest = ProxyBatchEnableLongStreamingTest;
         snapshot.ProxyLongStreamSegmentsText = ProxyLongStreamSegmentsText;
     }

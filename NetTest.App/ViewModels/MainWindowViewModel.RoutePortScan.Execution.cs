@@ -10,6 +10,7 @@ public sealed partial class MainWindowViewModel
     {
         var routePlan = BuildRouteRunPlan();
         var outcome = await ExecuteRouteRoundAsync(routePlan);
+        UpdateGlobalTaskProgress("\u6536\u5C3E\u4E2D", 96d);
 
         DashboardCards[5].Status = outcome.Result.Error is null ? "完成" : "需复核";
         DashboardCards[5].Detail = outcome.MapResult.HasMap ? outcome.MapResult.Summary : outcome.Result.Summary;
@@ -37,6 +38,7 @@ public sealed partial class MainWindowViewModel
                 completedRounds++;
                 var remainingSeconds = Math.Max(0, (int)Math.Ceiling((endsAt - DateTimeOffset.Now).TotalSeconds));
                 StatusMessage = $"持续运行第 {completedRounds} 轮，剩余约 {remainingSeconds} 秒...";
+                UpdateGlobalTaskProgressForContinuousRouteWindow(startedAt, endsAt, $"\u7B2C {completedRounds} \u8F6E");
 
                 lastOutcome = await ExecuteRouteRoundAsync(
                     routePlan,
@@ -49,6 +51,7 @@ public sealed partial class MainWindowViewModel
 
                 DashboardCards[5].Status = "持续运行中";
                 DashboardCards[5].Detail = $"已完成 {completedRounds} 轮，剩余约 {Math.Max(0, (int)Math.Ceiling((endsAt - DateTimeOffset.Now).TotalSeconds))} 秒";
+                UpdateGlobalTaskProgressForContinuousRouteWindow(startedAt, endsAt, $"\u7B2C {completedRounds} \u8F6E");
 
                 if (DateTimeOffset.Now >= endsAt || _routeContinuousCancellationSource.IsCancellationRequested)
                 {
@@ -57,6 +60,7 @@ public sealed partial class MainWindowViewModel
 
                 StatusMessage = $"第 {completedRounds} 轮已完成，等待 {intervalMilliseconds} ms 后开始下一轮...";
                 DashboardCards[5].Detail = $"已完成 {completedRounds} 轮，{intervalMilliseconds} ms 后开始下一轮";
+                UpdateGlobalTaskProgressForContinuousRouteWindow(startedAt, endsAt, "\u7B49\u5F85\u4E2D");
                 await Task.Delay(intervalMilliseconds, _routeContinuousCancellationSource.Token);
             }
 
@@ -71,6 +75,7 @@ public sealed partial class MainWindowViewModel
                 return;
             }
 
+            UpdateGlobalTaskProgress("\u6536\u5C3E\u4E2D", 96d);
             RouteSummary = continuousSummary + "\n" + RouteSummary;
             RouteMapSummary = continuousSummary + "\n" + RouteMapSummary;
             DashboardCards[5].Status = lastOutcome.Result.Error is null ? "完成" : "需复核";
@@ -104,7 +109,9 @@ public sealed partial class MainWindowViewModel
 
     private async Task DetectPortScanEngineCoreAsync()
     {
+        UpdateGlobalTaskProgress("\u68C0\u6D4B\u4E2D", 68d);
         var result = await _portScanDiagnosticsService.DetectAsync();
+        UpdateGlobalTaskProgress("\u6574\u7406\u4E2D", 92d);
         ApplyPortScanResult(result);
         DashboardCards[6].Status = result.IsEngineAvailable ? "就绪" : "缺失";
         DashboardCards[6].Detail = result.Summary;
@@ -122,6 +129,7 @@ public sealed partial class MainWindowViewModel
             PortScanCustomPortsText,
             progress);
 
+        UpdateGlobalTaskProgress("\u6536\u5C3E\u4E2D", 96d);
         ApplyPortScanResult(result);
         DashboardCards[6].Status = result.ScanSucceeded ? "完成" : result.IsEngineAvailable ? "需复核" : "缺失";
         DashboardCards[6].Detail = result.Summary;
@@ -153,6 +161,7 @@ public sealed partial class MainWindowViewModel
         var maxParallelism = GetPortScanBatchConcurrency();
         DashboardCards[6].Status = "批量扫描中";
         DashboardCards[6].Detail = $"准备扫描 {targets.Count} 个目标，批量并发 {maxParallelism}";
+        UpdateGlobalTaskProgress("\u51C6\u5907\u4E2D", 10d);
 
         List<PortScanBatchRowViewModel> rows = [];
         for (var index = 0; index < targets.Count; index++)
@@ -217,6 +226,7 @@ public sealed partial class MainWindowViewModel
             }
 
             DashboardCards[6].Detail = $"批量进度 {completedCount}/{targets.Count}：{outcome.Row.Target}";
+            UpdateGlobalTaskProgressForBatchPortScan(completedCount, targets.Count);
             RefreshPortScanBatchSummary();
             RefreshPortScanExportSummary();
             RefreshPortScanExportCommands();
@@ -224,6 +234,7 @@ public sealed partial class MainWindowViewModel
 
         var failureCount = PortScanBatchRows.Count(row => row.Status is "失败" or "需复核" or "异常");
         var summary = $"批量端口扫描完成：{PortScanBatchRows.Count} 个目标，异常/复核 {failureCount} 个，开放端点 {PortScanBatchRows.Sum(row => row.OpenEndpointCount)} 个。";
+        UpdateGlobalTaskProgress("\u6536\u5C3E\u4E2D", 96d);
         DashboardCards[6].Status = failureCount == 0 ? "完成" : "需复核";
         DashboardCards[6].Detail = summary;
         StatusMessage = summary;
@@ -401,7 +412,9 @@ public sealed partial class MainWindowViewModel
                 ApplyRouteResult(result);
             }
 
+            UpdateGlobalTaskProgress("\u7ED8\u56FE\u4E2D", 88d);
             var mapResult = await _routeMapRenderService.RenderAsync(result, progress, cancellationToken);
+            UpdateGlobalTaskProgress("\u6536\u5C3E\u4E2D", 94d);
             if (isContinuousMode)
             {
                 DisplayRouteMapResult(mapResult, persistState: false, appendModuleOutput: false);

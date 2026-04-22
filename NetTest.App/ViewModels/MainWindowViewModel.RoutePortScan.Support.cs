@@ -80,6 +80,9 @@ public sealed partial class MainWindowViewModel
         _routeContinuousEndsAt = isContinuousMode ? continuousEndsAt : null;
         RefreshRouteContinuousCommandStates();
         RefreshRouteLiveSummary();
+        UpdateGlobalTaskProgress(
+            isContinuousMode ? $"\u7B2C {Math.Max(1, currentRound)} \u8F6E" : "\u51C6\u5907\u4E2D",
+            isContinuousMode ? 10d : 8d);
         if (!isContinuousMode)
         {
             RouteHopSummary = "正在等待逐跳反馈...";
@@ -113,6 +116,8 @@ public sealed partial class MainWindowViewModel
         {
             return;
         }
+
+        UpdateGlobalTaskProgressForRouteMessage(message);
 
         if (!_isRouteLiveExecutionActive)
         {
@@ -178,6 +183,8 @@ public sealed partial class MainWindowViewModel
         {
             return;
         }
+
+        UpdateGlobalTaskProgressForRouteHopPreview(preview);
 
         var hopNumber = TryParseRouteLiveHopNumber(preview);
         if (hopNumber.HasValue)
@@ -591,6 +598,7 @@ public sealed partial class MainWindowViewModel
         RefreshPortScanExportCommands();
         DashboardCards[6].Status = "扫描中";
         DashboardCards[6].Detail = $"{GetCurrentPortScanExecutionTarget()} / {GetSelectedPortScanProfile()?.DisplayName ?? SelectedPortScanProfileKey}";
+        UpdateGlobalTaskProgress("\u51C6\u5907\u4E2D", 10d);
     }
 
     private void HandlePortScanProgressUpdate(PortScanProgressUpdate update)
@@ -601,6 +609,7 @@ public sealed partial class MainWindowViewModel
         PortScanProgressMaximum = total;
         PortScanProgressValue = Math.Min(update.CompletedEndpointCount, total);
         PortScanProgressSummary = $"进度 {update.CompletedEndpointCount}/{total}，开放 {update.OpenEndpointCount}，当前 {currentEndpoint}";
+        UpdateGlobalTaskProgressForPortScanUpdate(update);
         PortScanSummary =
             "执行状态：运行中\n" +
             $"目标：{GetCurrentPortScanExecutionTarget()}\n" +

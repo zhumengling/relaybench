@@ -4,7 +4,7 @@ namespace NetTest.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    private const string NetworkIssueRelayUnavailable = "relay-unavailable";
+    private const string NetworkIssueRelayUnavailable = "interface-unavailable";
     private const string NetworkIssueHighTtft = "high-ttft";
     private const string NetworkIssueHighJitter = "high-jitter";
     private const string NetworkIssueGeoUnlock = "geo-unlock";
@@ -106,14 +106,14 @@ public sealed partial class MainWindowViewModel
             NetworkReviewToolOfficialApi => SelectedOfficialApiModeKey switch
             {
                 OfficialApiModeClient => "检测 Codex CLI / Desktop、VSCode Codex、Antigravity、Claude CLI 等客户端是否安装、是否发现配置，以及其底层 API 是否可达。",
-                _ => "确认网页入口与 API 目录是否可用，用来快速区分是你本地网络问题，还是中转站本身异常。"
+                _ => "确认网页入口与 API 目录是否可用，用来快速区分是你本地网络问题，还是接口本身异常。"
             },
             NetworkReviewToolSpeed => "查看延迟、抖动、带宽和丢包，用来判断体感卡顿和 TTFT 偏高是不是链路问题。",
-            NetworkReviewToolRoute => "查看逐跳路径、丢包、绕路和地理路径，适合排查中间路由抖动与异常跳点。",
-            NetworkReviewToolSplitRouting => "查看出口地区、DNS 对比、分流命中和 HTTPS 可达性，适合排查地区与解锁异常。",
+            NetworkReviewToolRoute => "查看逐跳路径、丢包、绕路和地理路径，适合排查中间链路抖动与异常跳点。",
+            NetworkReviewToolSplitRouting => "查看出口地区、DNS 对比、分流命中和 HTTPS 可达性，适合排查地区与访问异常。",
             NetworkReviewToolStun => "查看 NAT 类型、映射行为和打洞条件，适合继续确认边界网络限制。",
             NetworkReviewToolPortScan => "查看目标端口可达性、服务指纹和边界封锁，适合进一步做连通性复核。",
-            _ => "先确认本机联网、DNS 与公网出口是否正常，再决定是不是中转站自身不可用。"
+            _ => "先确认本机联网、DNS 与公网出口是否正常，再决定是不是接口自身不可用。"
         };
 
     public bool IsNetworkReviewBasicNetworkSelected
@@ -150,17 +150,17 @@ public sealed partial class MainWindowViewModel
             NetworkIssueHighJitter => "优先做性能复核：关注波动、抖动与链路不稳定。",
             NetworkIssueGeoUnlock => "优先做出口复核：看出口 IP、DNS 与分流路径。",
             NetworkIssueDnsRouting => "优先做出口复核，其次做基础复核确认本机网络状态。",
-            _ => "优先做基础复核：先确认本机网络与官方链路，再判断是不是中转站本身不可用。"
+            _ => "优先做基础复核：先确认本机网络与官方链路，再判断是不是接口本身不可用。"
         };
 
     public string NetworkReviewNextActionSummary
         => SelectedNetworkReviewIssueKey switch
         {
-            NetworkIssueHighTtft => "如果测速和路由都正常，但 TTFT 仍然偏高，更像是中转站上游排队、模型拥塞或转发策略问题。",
-            NetworkIssueHighJitter => "如果本地测速抖动、路由抖动都明显，优先按链路问题处理；如果本地稳定，则继续怀疑中转站波动。",
-            NetworkIssueGeoUnlock => "如果出口 IP、DNS 和分流结果不符合预期，更像是本地出口或分流策略问题，而不是中转站能力问题。",
-            NetworkIssueDnsRouting => "如果 DNS 解析结果与实际出口不一致，优先排查本地分流、DNS 劫持或策略路由；确认后再回看中转站。",
-            _ => "如果基础网络和官方链路都正常，但中转站仍失败，那么更像是中转站自身不可用或授权异常。"
+            NetworkIssueHighTtft => "如果测速和路由都正常，但 TTFT 仍然偏高，更像是接口上游排队、模型拥塞或转发策略问题。",
+            NetworkIssueHighJitter => "如果本地测速抖动、路由抖动都明显，优先按链路问题处理；如果本地稳定，则继续怀疑接口波动。",
+            NetworkIssueGeoUnlock => "如果出口 IP、DNS 和分流结果不符合预期，更像是本地出口或分流策略问题，而不是接口能力问题。",
+            NetworkIssueDnsRouting => "如果 DNS 解析结果与实际出口不一致，优先排查本地分流、DNS 劫持或策略路由；确认后再回看接口表现。",
+            _ => "如果基础网络和官方链路都正常，但接口仍失败，那么更像是接口自身不可用或授权异常。"
         };
 
     public bool ShowBasicReview
@@ -267,6 +267,6 @@ public sealed partial class MainWindowViewModel
             NetworkIssueHighJitter => "波动很大",
             NetworkIssueGeoUnlock => "地区 / 解锁异常",
             NetworkIssueDnsRouting => "DNS / 分流怀疑",
-            _ => "中转站不可用"
+            _ => "接口不可用"
         };
 }

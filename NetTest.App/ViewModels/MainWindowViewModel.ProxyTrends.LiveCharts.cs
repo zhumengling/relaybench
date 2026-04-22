@@ -355,6 +355,96 @@ public sealed partial class MainWindowViewModel
 
             detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u8de8\u8d26\u6237\u9694\u79bb\u6821\u9a8c"));
 
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.Embeddings,
+
+            "\u975E\u804A\u5929 API",
+
+            "embeddings / images / audio / moderation",
+
+            "Embeddings",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u5411\u91cf\u5316\u80FD\u529B"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.Images,
+
+            "\u975E\u804A\u5929 API",
+
+            "embeddings / images / audio / moderation",
+
+            "Images",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u751F\u56FE\u80FD\u529B"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.AudioTranscription,
+
+            "\u975E\u804A\u5929 API",
+
+            "embeddings / images / audio / moderation",
+
+            "Audio Transcription",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u97F3\u9891\u8F6C\u5199\u80FD\u529B"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.AudioSpeech,
+
+            "\u975E\u804A\u5929 API",
+
+            "embeddings / images / audio / moderation",
+
+            "Audio Speech / TTS",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u6587\u672C\u8F6C\u8BED\u97F3\u80FD\u529B"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.Moderation,
+
+            "\u975E\u804A\u5929 API",
+
+            "embeddings / images / audio / moderation",
+
+            "Moderation",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "\u5185\u5BB9\u5BA1\u6838\u80FD\u529B"));
+
     }
 
 
@@ -404,6 +494,13 @@ public sealed partial class MainWindowViewModel
                 detailText,
                 previewText));
         }
+
+        AddPending(
+            "增强测试",
+            "长流保持、独立吞吐与内容完整性",
+            "独立吞吐",
+            "等待开始独立吞吐测试",
+            "将进行 3 轮 tok/s 独立测速");
 
         if (executionPlan.EnableLongStreamingTest)
         {
@@ -489,6 +586,32 @@ public sealed partial class MainWindowViewModel
                 "缓存隔离",
                 "等待补充探针",
                 "将检查跨账户缓存隔离");
+        }
+
+        if (executionPlan.Mode == ProxySingleExecutionMode.Deep)
+        {
+            foreach (var definition in GetConfiguredCapabilityMatrixDefinitions())
+            {
+                AddPending(
+                    "\u975E\u804A\u5929 API",
+                    "embeddings / images / audio / moderation",
+                    definition.Name,
+                    "\u7B49\u5F85\u975E\u804A\u5929 API \u80FD\u529B\u77E9\u9635",
+                    $"\u5C06\u68C0\u67E5 {definition.Path}");
+            }
+        }
+
+        if (executionPlan.MultiModelBenchmarkModels.Count > 0)
+        {
+            foreach (var model in executionPlan.MultiModelBenchmarkModels)
+            {
+                AddPending(
+                    "多模型测速",
+                    "串行单流 tok/s 对比",
+                    model,
+                    "等待开始多模型串行测速",
+                    "将比较该模型的单流输出 tok/s");
+            }
         }
 
         nextOrder = order;
@@ -643,52 +766,32 @@ public sealed partial class MainWindowViewModel
     {
         ResetProxyTrendChartAutoOpenSuppression();
         SetProxyChartRetryMode(ProxyChartRetryMode.Batch, "追加整组重试 5 轮");
-        _currentProxyBatchLiveRows = Array.Empty<ProxyBatchProbeRow>();
+        var placeholderRows = MaterializeLiveBatchRows(
+            new Dictionary<string, ProxyBatchProbeRow>(StringComparer.OrdinalIgnoreCase),
+            entries);
+        _currentProxyBatchLiveRows = placeholderRows.ToArray();
         _currentProxyBatchLiveTargetCount = entries.Count;
         var completedRuns = _proxyBatchChartRuns.Count;
         var currentRunNumber = completedRuns + 1;
-        var placeholderBaseUrl = entries.FirstOrDefault()?.BaseUrl ?? "（未填写）";
-        var placeholderItems = new[]
-        {
-            new ProxyBatchComparisonChartItem(
-                1,
-                "等待首个 URL 返回",
-                placeholderBaseUrl,
-                0,
-                "等待数据",
-                0,
-                "进行中",
-                null,
-                null,
-                null,
-                "进行中",
-                ProxyBatchEnableLongStreamingTest
-                    ? "基 0/5 | 增 -- | 深度看单次"
-                    : "基 0/5 | 深度看单次",
-                Math.Max(currentRunNumber, 1))
-        };
+        var aggregateRows = OrderBatchAggregateRows(BuildProxyBatchAggregateRows(_proxyBatchChartRuns, placeholderRows)).ToArray();
+        var chartItems = CreateProxyBatchComparisonChartItems(aggregateRows);
         var chartResult = _proxyBatchComparisonChartRenderService.Render(
-            placeholderItems,
+            chartItems,
             ResolvePreferredBatchChartWidth());
-        var existingAggregateRows = OrderBatchAggregateRows(BuildProxyBatchAggregateRows(_proxyBatchChartRuns)).ToArray();
 
         SetProxyChartSnapshot(
             ProxyChartViewMode.BatchComparison,
             new ProxyChartDialogSnapshot(
                 "入口组检测实时图表",
-                "弹窗会把历史轮次和当前轮次一起累计展示；每完成一个 URL，排行榜和推荐结果都会即时刷新。",
+                "弹窗会先把全部入口占位显示出来；同站点组里尚未轮到的入口会标记“等待同组其他入口测试中”。",
                 completedRuns == 0
                     ? $"计划测试：{entries.Count} 个 URL\n当前状态：准备开始第 1 轮整组。\n目的：实时比较哪个入口更稳、更快。"
                     : $"历史已完成：{completedRuns} 轮整组\n当前状态：准备开始第 {currentRunNumber} 轮整组\n本轮计划：{entries.Count} 个 URL。",
-                existingAggregateRows.Length == 0
-                    ? "当前还没有历史结果；首个 URL 返回后，这里会切换成累计对比摘要。"
-                    : BuildProxyBatchCapabilitySummaryText(existingAggregateRows, "历史累计摘要（本轮开始前）"),
-                existingAggregateRows.Length == 0
-                    ? "等待首个 URL 返回后，这里会显示多个入口的累计明细。"
-                    : BuildProxyBatchCapabilityDetailText(existingAggregateRows, "历史累计明细（本轮开始前）"),
+                BuildProxyBatchCapabilitySummaryText(aggregateRows, completedRuns == 0 ? "预占位摘要" : "历史 + 当前预占位摘要"),
+                BuildProxyBatchCapabilityDetailText(aggregateRows, completedRuns == 0 ? "预占位明细" : "历史 + 当前预占位明细"),
                 "实时图适合看：当前推荐项有没有切换、平均延迟、独立吞吐和 TTFT 会不会被新一轮结果拉偏、基础能力与长流增强项是否同步变差。",
-                $"入口组检测已启动，当前第 {currentRunNumber} 轮整组，共 {entries.Count} 个 URL。",
-                "正在等待入口组首个结果...",
+                $"入口组检测已启动，当前第 {currentRunNumber} 轮整组，共 {entries.Count} 个 URL；尚未轮到的同组入口会先显示等待占位。",
+                "正在等待入口组结果返回...",
                 chartResult.ChartImage),
             activate: true);
         AutoOpenProxyTrendChartIfAllowed();
@@ -711,6 +814,8 @@ public sealed partial class MainWindowViewModel
         var best = aggregateRows[0];
         var completedRuns = _proxyBatchChartRuns.Count;
         var currentRunNumber = completedRuns + 1;
+        var visibleTargets = rows.Count(row => !row.IsPlaceholder);
+        var completedTargets = CountCompletedLiveBatchRows(rows);
 
         SetProxyChartSnapshot(
             ProxyChartViewMode.BatchComparison,
@@ -718,14 +823,15 @@ public sealed partial class MainWindowViewModel
                 "入口组检测实时图表",
                 "弹窗正在把历史轮次和本轮已返回结果一起累计比较；当前推荐项会随着新结果即时变化。",
                 $"已完成整组：{completedRuns} 轮；当前第 {currentRunNumber} 轮进行中\n" +
-                $"本轮已完成：{rows.Count}/{totalTargets}\n" +
+                $"本轮已有阶段结果：{visibleTargets}/{totalTargets}\n" +
+                $"整条 URL 已完成：{completedTargets}/{totalTargets}\n" +
                 $"当前推荐：{best.Entry.Name}\n" +
                 $"推荐地址：{best.Entry.BaseUrl}\n" +
                 $"推荐原因：平均普通对话 {FormatMillisecondsValue(best.AverageChatLatencyMs)}，独立吞吐 {FormatTokensPerSecond(best.AverageBenchmarkTokensPerSecond)}，平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)}，综合分 {best.CompositeScore:F1}，基础/增强拆分见右侧摘要。",
                 BuildProxyBatchCapabilitySummaryText(aggregateRows, "多入口实时累计摘要"),
                 BuildProxyBatchCapabilityDetailText(aggregateRows, "多入口实时累计明细"),
                 "如果排行榜前几名频繁互换，通常说明入口组存在波动，或者基础能力与增强长流在不同轮次表现不一致。",
-                $"入口组检测进行中：第 {currentRunNumber} 轮已完成 {rows.Count}/{totalTargets}，当前推荐 {best.Entry.Name}。",
+                $"入口组检测进行中：第 {currentRunNumber} 轮已有 {visibleTargets}/{totalTargets} 个入口出现结果，整条完成 {completedTargets}/{totalTargets}，当前推荐 {best.Entry.Name}。",
                 "正在等待入口组累计图表数据...",
                 chartResult.ChartImage),
             activate: true);

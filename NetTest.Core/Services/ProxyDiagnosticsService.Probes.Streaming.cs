@@ -15,6 +15,7 @@ public sealed partial class ProxyDiagnosticsService
         HttpResponseMessage response,
         Stopwatch stopwatch,
         Func<string, string?> streamContentParser,
+        Action<StreamingReadLiveProgress>? liveReporter,
         CancellationToken cancellationToken)
     {
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -27,76 +28,179 @@ public sealed partial class ProxyDiagnosticsService
         var outputTokenCount = (int?)null;
         var lastChunkElapsed = (TimeSpan?)null;
         List<double> chunkGaps = [];
+        object syncRoot = new();
+        var reportingCompleted = 0;
 
-        while (true)
+        void ReportLiveSnapshot()
         {
-            var line = await reader.ReadLineAsync(cancellationToken);
-            if (line is null)
+            if (liveReporter is null)
             {
-                break;
+                return;
             }
 
-            if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            string previewText;
+            string fullText;
+            TimeSpan? currentFirstTokenLatency;
+            int currentChunkCount;
+            bool currentReceivedDone;
+            int? currentOutputTokenCount;
+
+            lock (syncRoot)
             {
-                continue;
+                previewText = previewBuilder.ToString();
+                fullText = fullTextBuilder.ToString();
+                currentFirstTokenLatency = firstTokenLatency;
+                currentChunkCount = chunkCount;
+                currentReceivedDone = receivedDone;
+                currentOutputTokenCount = outputTokenCount;
             }
 
-            var payload = line[5..].Trim();
-            if (payload == "[DONE]")
-            {
-                receivedDone = true;
-                break;
-            }
+            var elapsedNow = stopwatch.Elapsed;
+            var generationDuration = currentFirstTokenLatency.HasValue && elapsedNow > currentFirstTokenLatency.Value
+                ? elapsedNow - currentFirstTokenLatency.Value
+                : currentFirstTokenLatency.HasValue
+                    ? TimeSpan.Zero
+                    : (TimeSpan?)null;
+            var outputMetrics = BuildOutputMetrics(fullText, currentOutputTokenCount, elapsedNow, generationDuration);
 
-            chunkCount++;
-            var currentElapsed = stopwatch.Elapsed;
-            if (lastChunkElapsed.HasValue)
-            {
-                chunkGaps.Add((currentElapsed - lastChunkElapsed.Value).TotalMilliseconds);
-            }
+            liveReporter(new StreamingReadLiveProgress(
+                elapsedNow,
+                currentFirstTokenLatency,
+                previewText,
+                fullText,
+                currentChunkCount,
+                currentReceivedDone,
+                outputMetrics.OutputTokenCount,
+                outputMetrics.OutputTokenCountEstimated,
+                outputMetrics.OutputCharacterCount ?? 0,
+                outputMetrics.OutputTokensPerSecond,
+                outputMetrics.EndToEndTokensPerSecond));
+        }
 
-            lastChunkElapsed = currentElapsed;
-            outputTokenCount ??= TryExtractOutputTokenCount(payload);
-            string? deltaContent = null;
-            try
+        using var liveReportCancellation = liveReporter is null
+            ? null
+            : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task? liveReportTask = null;
+        if (liveReporter is not null)
+        {
+            ReportLiveSnapshot();
+            liveReportTask = Task.Run(async () =>
             {
-                deltaContent = streamContentParser(payload);
-            }
-            catch
-            {
-                deltaContent = null;
-            }
-
-            if (deltaContent is null)
-            {
-                continue;
-            }
-
-            if (firstTokenLatency is null)
-            {
-                firstTokenLatency = stopwatch.Elapsed;
-            }
-
-            if (previewBuilder.Length < 240)
-            {
-                previewBuilder.Append(deltaContent);
-            }
-
-            if (fullTextBuilder.Length < 64_000)
-            {
-                var remaining = 64_000 - fullTextBuilder.Length;
-                if (deltaContent.Length <= remaining)
+                using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(300));
+                try
                 {
-                    fullTextBuilder.Append(deltaContent);
+                    while (await timer.WaitForNextTickAsync(liveReportCancellation!.Token))
+                    {
+                        ReportLiveSnapshot();
+                        if (Volatile.Read(ref reportingCompleted) == 1)
+                        {
+                            break;
+                        }
+                    }
                 }
-                else
+                catch (OperationCanceledException) when (liveReportCancellation!.IsCancellationRequested)
                 {
-                    fullTextBuilder.Append(deltaContent[..remaining]);
+                }
+            }, CancellationToken.None);
+        }
+
+        try
+        {
+            while (true)
+            {
+                var line = await reader.ReadLineAsync(cancellationToken);
+                if (line is null)
+                {
+                    break;
+                }
+
+                if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var payload = line[5..].Trim();
+                if (payload == "[DONE]")
+                {
+                    lock (syncRoot)
+                    {
+                        receivedDone = true;
+                    }
+                    break;
+                }
+
+                var currentElapsed = stopwatch.Elapsed;
+                string? deltaContent = null;
+                try
+                {
+                    deltaContent = streamContentParser(payload);
+                }
+                catch
+                {
+                    deltaContent = null;
+                }
+
+                lock (syncRoot)
+                {
+                    chunkCount++;
+                    if (lastChunkElapsed.HasValue)
+                    {
+                        chunkGaps.Add((currentElapsed - lastChunkElapsed.Value).TotalMilliseconds);
+                    }
+
+                    lastChunkElapsed = currentElapsed;
+                    outputTokenCount ??= TryExtractOutputTokenCount(payload);
+
+                    if (deltaContent is not null)
+                    {
+                        if (firstTokenLatency is null)
+                        {
+                            firstTokenLatency = currentElapsed;
+                        }
+
+                        if (previewBuilder.Length < 240)
+                        {
+                            previewBuilder.Append(deltaContent);
+                        }
+
+                        if (fullTextBuilder.Length < 64_000)
+                        {
+                            var remaining = 64_000 - fullTextBuilder.Length;
+                            if (deltaContent.Length <= remaining)
+                            {
+                                fullTextBuilder.Append(deltaContent);
+                            }
+                            else
+                            {
+                                fullTextBuilder.Append(deltaContent[..remaining]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref reportingCompleted, 1);
+            if (liveReportCancellation is not null)
+            {
+                liveReportCancellation.Cancel();
+            }
+
+            if (liveReportTask is not null)
+            {
+                try
+                {
+                    await liveReportTask;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
                 }
             }
         }
 
         stopwatch.Stop();
+        ReportLiveSnapshot();
         var fullText = fullTextBuilder.ToString();
         var generationDuration = firstTokenLatency.HasValue && stopwatch.Elapsed > firstTokenLatency.Value
             ? stopwatch.Elapsed - firstTokenLatency.Value

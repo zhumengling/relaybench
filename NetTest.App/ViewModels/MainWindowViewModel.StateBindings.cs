@@ -17,10 +17,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 RunNetworkCommand.RaiseCanExecuteChanged();
                 RunChatGptTraceCommand.RaiseCanExecuteChanged();
                 RunClientApiDiagnosticsCommand.RaiseCanExecuteChanged();
+                ApplyCurrentInterfaceToCodexAppsCommand.RaiseCanExecuteChanged();
                 RunStunCommand.RaiseCanExecuteChanged();
                 FetchProxyModelsCommand.RaiseCanExecuteChanged();
                 FetchProxyBatchSharedModelsCommand.RaiseCanExecuteChanged();
                 FetchProxyBatchEntryModelsCommand.RaiseCanExecuteChanged();
+                FetchProxyCapabilityModelsCommand.RaiseCanExecuteChanged();
+                OpenProxyMultiModelPickerCommand.RaiseCanExecuteChanged();
+                ToggleProxyCapabilityConfigCommand.RaiseCanExecuteChanged();
                 AddProxyBatchTemplateRowCommand.RaiseCanExecuteChanged();
                 DeleteProxyBatchTemplateRowCommand.RaiseCanExecuteChanged();
                 PasteProxyBatchTemplateRowsCommand.RaiseCanExecuteChanged();
@@ -156,6 +160,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (SetProperty(ref _proxyBaseUrl, value))
             {
                 RefreshProxyTrendView(value);
+                NotifyApplicationCenterProxyContextChanged();
             }
         }
     }
@@ -163,7 +168,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string ProxyApiKey
     {
         get => _proxyApiKey;
-        set => SetProperty(ref _proxyApiKey, value);
+        set
+        {
+            if (SetProperty(ref _proxyApiKey, value))
+            {
+                NotifyApplicationCenterProxyContextChanged();
+            }
+        }
     }
 
     public string ProxyModel
@@ -173,6 +184,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             if (SetProperty(ref _proxyModel, value))
             {
+                NotifyApplicationCenterProxyContextChanged();
                 if (_proxyModelPickerTarget == ProxyModelPickerTarget.DefaultModel)
                 {
                     SyncSelectedProxyCatalogModel(value);
@@ -217,6 +229,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         private set => SetProperty(ref _isProxyModelPickerOpen, value);
     }
 
+    public bool IsProxyMultiModelPickerOpen
+    {
+        get => _isProxyMultiModelPickerOpen;
+        private set => SetProperty(ref _isProxyMultiModelPickerOpen, value);
+    }
+
     public bool IsProxyTrendChartOpen
     {
         get => _isProxyTrendChartOpen;
@@ -254,6 +272,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string ProxyModelPickerInstruction
         => $"点击左侧任一模型后，会自动回填到“{GetProxyModelPickerTargetDisplayName()}”并关闭弹窗。";
 
+    public string ProxyMultiModelPickerInstruction
+        => "\u52FE\u9009\u9700\u8981\u5BF9\u6BD4\u7684\u6A21\u578B\u540E\u70B9\u51FB\u786E\u8BA4\uff0c\u5355\u7AD9\u6DF1\u6D4B\u6700\u540E\u4F1A\u4E32\u884C\u8FFD\u52A0 tok/s \u5BF9\u6BD4\u3002";
+
     public string ProxyModelCatalogFilterText
     {
         get => _proxyModelCatalogFilterText;
@@ -263,6 +284,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             {
                 RefreshVisibleProxyCatalogModels();
                 SyncSelectedProxyCatalogModel(GetCurrentProxyModelPickerValue());
+            }
+        }
+    }
+
+    public string ProxyMultiModelCatalogFilterText
+    {
+        get => _proxyMultiModelCatalogFilterText;
+        set
+        {
+            if (SetProperty(ref _proxyMultiModelCatalogFilterText, value))
+            {
+                RefreshVisibleProxyMultiModelCatalogItems();
             }
         }
     }
@@ -293,6 +326,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             }
         }
     }
+
+    public string ProxyMultiModelSelectionSummary
+        => BuildProxyMultiModelSelectionSummary();
+
+    public string ProxyMultiModelSelectionDetail
+        => BuildProxyMultiModelSelectionDetail();
 
     public string ProxySummary
     {
@@ -349,5 +388,5 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     public string PlannedModulesSummary =>
-        "当前已实现：基础网络快照、官方 API 可用性检测、STUN 探测、兼容 OpenAI 的中转站模型列表拉取、单次诊断、稳定性序列、入口组对比与 CDN / 边缘观察、Cloudflare 风格测速、类 MTR 路由追踪、真实地图可视化、参考 ip.skk.moe 的 IP / 分流诊断、内置端口扫描引擎与安全模板、批量目标扫描、结果筛选、CSV / Excel 导出、本地结果持久化、结构化报告导出，以及一键启动与 .NET 运行时检查。下一阶段可继续增强更丰富的解锁目录、更完整的 NAT 类型归类，以及更强的结构化报告能力。";
+        "当前已实现：基础网络快照、官方 API 可用性检测、STUN 探测、兼容 OpenAI 协议的接口模型列表拉取、单次诊断、稳定性序列、入口组对比与 CDN / 边缘观察、Cloudflare 风格测速、类 MTR 路由追踪、真实地图可视化、参考 ip.skk.moe 的 IP / 分流诊断、内置端口扫描引擎与安全模板、批量目标扫描、结果筛选、CSV / Excel 导出、本地结果持久化、结构化报告导出，以及一键启动与 .NET 运行时检查。下一阶段可继续增强更丰富的解锁目录、更完整的 NAT 类型归类，以及更强的结构化报告能力。";
 }

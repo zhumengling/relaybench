@@ -33,9 +33,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             },
             new DashboardCardViewModel
             {
-                Title = "中转站",
+                Title = "\u63A5\u53E3",
                 Status = "未配置",
-                Detail = "兼容 OpenAI 的模型、聊天、流式、稳定性与入口组对比"
+                Detail = "\u517C\u5BB9 OpenAI \u534F\u8BAE\u7684\u6A21\u578B\u3001\u804A\u5929\u3001\u6D41\u5F0F\u3001\u7A33\u5B9A\u6027\u4E0E\u6279\u91CF\u7AD9\u70B9\u5BF9\u6BD4"
             },
             new DashboardCardViewModel
             {
@@ -68,10 +68,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RunNetworkCommand = new AsyncRelayCommand(RunNetworkAsync, CanRun);
         RunChatGptTraceCommand = new AsyncRelayCommand(RunChatGptTraceAsync, CanRun);
         RunClientApiDiagnosticsCommand = new AsyncRelayCommand(RunClientApiDiagnosticsAsync, CanRun);
+        ApplyCurrentInterfaceToCodexAppsCommand = new AsyncRelayCommand(ApplyCurrentInterfaceToCodexAppsAsync, CanApplyCurrentInterfaceToCodexApps, onError: HandleNonFatalCommandException);
         RunStunCommand = new AsyncRelayCommand(RunStunAsync, CanRun);
-        FetchProxyModelsCommand = new AsyncRelayCommand(FetchDefaultProxyModelsAsync, CanRun);
-        FetchProxyBatchSharedModelsCommand = new AsyncRelayCommand(FetchProxyBatchSharedModelsAsync, CanRun);
-        FetchProxyBatchEntryModelsCommand = new AsyncRelayCommand(FetchProxyBatchEntryModelsAsync, CanRun);
+        FetchProxyModelsCommand = new AsyncRelayCommand(FetchDefaultProxyModelsWithGlobalProgressAsync, CanRun);
+        FetchProxyBatchSharedModelsCommand = new AsyncRelayCommand(FetchProxyBatchSharedModelsWithGlobalProgressAsync, CanRun);
+        FetchProxyBatchEntryModelsCommand = new AsyncRelayCommand(FetchProxyBatchEntryModelsWithGlobalProgressAsync, CanRun);
+        FetchProxyCapabilityModelsCommand = new AsyncRelayCommand<string?>(FetchProxyCapabilityModelsWithGlobalProgressAsync, _ => CanRun(), onError: HandleNonFatalCommandException);
+        OpenProxyMultiModelPickerCommand = new AsyncRelayCommand(OpenProxyMultiModelPickerAsync, CanRun);
+        ToggleProxyCapabilityConfigCommand = new AsyncRelayCommand(ToggleProxyCapabilityConfigAsync, CanRun);
+        CloseProxyMultiModelPickerCommand = new AsyncRelayCommand(CloseProxyMultiModelPickerAsync);
+        ConfirmProxyMultiModelPickerCommand = new AsyncRelayCommand(ConfirmProxyMultiModelPickerAsync);
+        ClearProxyMultiModelSelectionCommand = new AsyncRelayCommand(ClearProxyMultiModelSelectionAsync);
         OpenProxyBatchEditorCommand = new AsyncRelayCommand(OpenProxyBatchEditorAsync, CanRun);
         CloseProxyBatchEditorCommand = new AsyncRelayCommand(CloseProxyBatchEditorAsync);
         AddCurrentProxyBaseUrlToBatchCommand = new AsyncRelayCommand(AddCurrentProxyBaseUrlToBatchAsync, onError: HandleNonFatalCommandException);
@@ -92,6 +99,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         FetchProxyBatchTemplateRowModelsCommand = new AsyncRelayCommand<ProxyBatchEditorItemViewModel?>(FetchProxyBatchTemplateRowModelsAsync, item => CanRun() && item is not null, onError: HandleNonFatalCommandException);
         CloseProxyModelPickerCommand = new AsyncRelayCommand(CloseProxyModelPickerAsync);
         OpenProxyTrendChartCommand = new AsyncRelayCommand(OpenProxyTrendChartAsync);
+        OpenProxyConcurrencyChartCommand = new AsyncRelayCommand(OpenProxyConcurrencyChartAsync);
         OpenBatchComparisonChartCommand = new AsyncRelayCommand(OpenBatchComparisonChartAsync);
         OpenBatchDeepComparisonChartCommand = new AsyncRelayCommand(OpenBatchDeepComparisonChartAsync);
         CloseProxyTrendChartCommand = new AsyncRelayCommand(CloseProxyTrendChartAsync);
@@ -107,16 +115,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RunProxyBatchCommand = new AsyncRelayCommand(RunProxyBatchWithValidationAsync, CanRun);
         RunSelectedBatchDeepTestsCommand = new AsyncRelayCommand(RunSelectedBatchDeepTestsAsync, CanRunSelectedBatchDeepTestsAction);
         ApplyRankingRowToCodexAppsCommand = new AsyncRelayCommand<ProxyBatchRankingRowViewModel?>(ApplyRankingRowToCodexAppsAsync, CanApplyRankingRowToCodexApps, onError: HandleNonFatalCommandException);
-        RunSpeedTestCommand = new AsyncRelayCommand(RunSpeedTestAsync, CanRun);
-        RunRouteCommand = new AsyncRelayCommand(RunRouteAsync, CanRun);
-        RunRouteContinuousCommand = new AsyncRelayCommand(RunRouteContinuousAsync, CanRun);
+        RunSpeedTestCommand = new AsyncRelayCommand(RunSpeedTestWithGlobalProgressAsync, CanRun);
+        RunRouteCommand = new AsyncRelayCommand(RunRouteWithGlobalProgressAsync, CanRun);
+        RunRouteContinuousCommand = new AsyncRelayCommand(RunRouteContinuousWithGlobalProgressAsync, CanRun);
         StopRouteContinuousCommand = new AsyncRelayCommand(StopRouteContinuousAsync, CanStopRouteContinuous);
-        DetectPortScanEngineCommand = new AsyncRelayCommand(DetectPortScanEngineAsync, CanRun);
-        RunPortScanCommand = new AsyncRelayCommand(RunPortScanAsync, CanRun);
-        RunPortScanBatchCommand = new AsyncRelayCommand(RunPortScanBatchAsync, CanRun);
+        DetectPortScanEngineCommand = new AsyncRelayCommand(DetectPortScanEngineWithGlobalProgressAsync, CanRun);
+        RunPortScanCommand = new AsyncRelayCommand(RunPortScanWithGlobalProgressAsync, CanRun);
+        RunPortScanBatchCommand = new AsyncRelayCommand(RunPortScanBatchWithGlobalProgressAsync, CanRun);
         ExportPortScanCsvCommand = new AsyncRelayCommand(ExportPortScanCsvAsync, CanExportPortScanResults);
         ExportPortScanExcelCommand = new AsyncRelayCommand(ExportPortScanExcelAsync, CanExportPortScanResults);
-        RunSplitRoutingCommand = new AsyncRelayCommand(RunSplitRoutingAsync, CanRun);
+        RunSplitRoutingCommand = new AsyncRelayCommand(RunSplitRoutingWithGlobalProgressAsync, CanRun);
 
         LoadState();
         RefreshFilteredPortScanFindings();

@@ -1,10 +1,10 @@
 # RelayBench
 
-用来给中转站跑分，对比一下速度，筛选出最快的那个入口。
+用来给 OpenAI 兼容接口跑分，对比速度与兼容性，筛选出最合适的入口。
 
-- 对单个中转站做快速测试、稳定性测试和深度测试。
-- 对多个中转站做批量快速对比、排行榜排序和候选深测。
-- 在中转站不可用、延迟异常或解锁异常时，借助网络复核能力区分是本地网络问题还是中转站问题。
+- 对单个接口做快速测试、稳定性测试和深度测试。
+- 对多个接口做批量快速对比、排行榜排序和候选深测。
+- 在接口不可用、延迟异常或能力异常时，借助网络复核能力区分是本地网络问题还是目标接口问题。
 
 ## 界面预览
 
@@ -21,11 +21,15 @@
 
 ![单站深度测试](docs/images/single-station-deep-test.png)
 
+### 入口组累计对比图
+
+![入口组累计对比图](docs/images/batch-comparison-chart.png)
+
 ## 主要功能
 
 ### 1. 单站测试
 
-用于测试单个中转站当前是否可用、是否稳定，以及是否适合继续接入。
+用于测试单个接口当前是否可用、是否稳定，以及是否适合继续接入。
 
 当前支持：
 
@@ -37,7 +41,7 @@
 
 ### 2. 批量对比
 
-用于对多个中转站进行快速筛选、排序和选优。
+用于对多个接口进行快速筛选、排序和选优。
 
 当前支持：
 
@@ -75,7 +79,7 @@
 
 ## 当前版本已实现能力
 
-### 中转站测试相关
+### 接口测试相关
 
 - OpenAI 兼容接口的基础可用性测试
 - `GET /models` 探测
@@ -150,14 +154,14 @@ publish.cmd
 例如当前版本会生成：
 
 ```text
-release\relaybench-v0.1.4-win-x64-framework-dependent.zip
-release\relaybench-v0.1.4-win-x64-self-contained.zip
+release\relaybench-v0.1.5-win-x64-framework-dependent.zip
+release\relaybench-v0.1.5-win-x64-self-contained.zip
 ```
 
 ## 目录说明
 
 - `NetTest.App`：WPF UI、页面、ViewModel 与本地状态管理
-- `NetTest.Core`：网络诊断、测速、STUN、路由、端口扫描与中转站测试核心逻辑
+- `NetTest.Core`：网络诊断、测速、STUN、路由、端口扫描与接口测试核心逻辑
 
 ## 当前依赖的在线数据源
 

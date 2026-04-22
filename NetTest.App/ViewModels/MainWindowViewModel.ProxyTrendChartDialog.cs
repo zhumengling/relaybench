@@ -31,6 +31,10 @@ public sealed partial class MainWindowViewModel
             {
                 ActivateProxyChartView(ProxyChartViewMode.StabilityTrend);
             }
+            else if (_proxyConcurrencyChartSnapshot?.Image is not null)
+            {
+                ActivateProxyChartView(ProxyChartViewMode.ConcurrencyPressure);
+            }
             else if (_proxyBatchDeepChartSnapshot?.Image is not null)
             {
                 ActivateProxyChartView(ProxyChartViewMode.BatchDeepComparison);
@@ -44,7 +48,7 @@ public sealed partial class MainWindowViewModel
         if (!HasProxyChartDialogImage)
         {
             StatusMessage = string.IsNullOrWhiteSpace(ProxyChartDialogStatusSummary)
-                ? "当前还没有可查看的图表。"
+                ? "\u5F53\u524D\u8FD8\u6CA1\u6709\u53EF\u67E5\u770B\u7684\u56FE\u8868\u3002"
                 : ProxyChartDialogStatusSummary;
             return Task.CompletedTask;
         }
@@ -54,11 +58,26 @@ public sealed partial class MainWindowViewModel
         return Task.CompletedTask;
     }
 
+    private Task OpenProxyConcurrencyChartAsync()
+    {
+        if (_proxyConcurrencyChartSnapshot?.Image is null)
+        {
+            StatusMessage = ProxyConcurrencyChartStatusSummary;
+            return Task.CompletedTask;
+        }
+
+        ActivateProxyChartView(ProxyChartViewMode.ConcurrencyPressure);
+        ResetProxyTrendChartAutoOpenSuppression();
+        IsProxyTrendChartOpen = true;
+        RefreshProxyChartsForViewportContextChange();
+        return Task.CompletedTask;
+    }
+
     private Task OpenBatchComparisonChartAsync()
     {
         if (_proxyBatchChartSnapshot?.Image is null)
         {
-            StatusMessage = "当前还没有可放大的快速对比图表。";
+            StatusMessage = "\u5F53\u524D\u8FD8\u6CA1\u6709\u53EF\u653E\u5927\u7684\u5FEB\u901F\u5BF9\u6BD4\u56FE\u8868\u3002";
             return Task.CompletedTask;
         }
 
@@ -73,7 +92,7 @@ public sealed partial class MainWindowViewModel
     {
         if (_proxyBatchDeepChartSnapshot?.Image is null)
         {
-            StatusMessage = "当前还没有可放大的候选深测总览图。";
+            StatusMessage = "\u5F53\u524D\u8FD8\u6CA1\u6709\u53EF\u653E\u5927\u7684\u5019\u9009\u6DF1\u6D4B\u603B\u89C8\u56FE\u3002";
             return Task.CompletedTask;
         }
 

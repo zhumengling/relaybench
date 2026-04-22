@@ -9,22 +9,14 @@ public sealed partial class MainWindowViewModel
     {
         if (ProxyBatchTemplateDraftItems.Count >= MaxProxyBatchSourceEntries)
         {
-            throw new InvalidOperationException($"当前站点最多先录入 {MaxProxyBatchSourceEntries} 行，请先删除不用的行。");
+            throw new InvalidOperationException($"\u5f53\u524d\u7ad9\u70b9\u6700\u591a\u5148\u5f55\u5165 {MaxProxyBatchSourceEntries} \u884c\uff0c\u8bf7\u5148\u5220\u9664\u4e0d\u7528\u7684\u884c\u3002");
         }
 
-        var item = new ProxyBatchEditorItemViewModel(
-            string.Empty,
-            string.Empty,
-            null,
-            null,
-            null,
-            null,
-            null,
-            true);
+        var item = CreateEmptyProxyBatchTemplateDraftItem();
         AttachProxyBatchTemplateDraftItem(item);
         ProxyBatchTemplateDraftItems.Add(item);
         RefreshProxyBatchTemplateDraftState();
-        StatusMessage = "已新增一行空白入口。";
+        StatusMessage = "\u5df2\u65b0\u589e\u4e00\u884c\u7a7a\u767d\u5165\u53e3\u3002";
         return Task.CompletedTask;
     }
 
@@ -59,14 +51,19 @@ public sealed partial class MainWindowViewModel
         var clipboardText = Clipboard.ContainsText() ? Clipboard.GetText() : string.Empty;
         if (string.IsNullOrWhiteSpace(clipboardText))
         {
-            StatusMessage = "剪贴板里没有可识别的文本。";
+            StatusMessage = "\u526a\u8d34\u677f\u91cc\u6ca1\u6709\u53ef\u8bc6\u522b\u7684\u6587\u672c\u3002";
+            return Task.CompletedTask;
+        }
+
+        if (TryApplySingleClipboardValueToProxyBatchTemplate(clipboardText))
+        {
             return Task.CompletedTask;
         }
 
         var pastedRows = ProxyBatchTemplateClipboardParser.ParseDraftRows(clipboardText);
         if (pastedRows.Count == 0)
         {
-            StatusMessage = "剪贴板内容里没有识别到可导入的行。";
+            StatusMessage = "\u526a\u8d34\u677f\u5185\u5bb9\u91cc\u6ca1\u6709\u8bc6\u522b\u5230\u53ef\u5bfc\u5165\u7684\u884c\u3002";
             return Task.CompletedTask;
         }
 
@@ -81,7 +78,7 @@ public sealed partial class MainWindowViewModel
         var mergedRows = ProxyBatchTemplateClipboardParser.MergeDraftRows(existingRows, pastedRows);
         if (mergedRows.Count > MaxProxyBatchSourceEntries)
         {
-            throw new InvalidOperationException($"粘贴后会超过 {MaxProxyBatchSourceEntries} 行，请先删除不用的行再继续。");
+            throw new InvalidOperationException($"\u7c98\u8d34\u540e\u4f1a\u8d85\u8fc7 {MaxProxyBatchSourceEntries} \u884c\uff0c\u8bf7\u5148\u5220\u9664\u4e0d\u7528\u7684\u884c\u518d\u7ee7\u7eed\u3002");
         }
 
         ReplaceProxyBatchTemplateDraftItems(mergedRows.Select(row =>
@@ -95,13 +92,80 @@ public sealed partial class MainWindowViewModel
                 null,
                 row.IncludeInBatchTest)));
 
-        StatusMessage = $"已从剪贴板带入 {pastedRows.Count} 行，空白项已按上一行自动补齐。";
+        StatusMessage = $"\u5df2\u4ece\u526a\u8d34\u677f\u5e26\u5165 {pastedRows.Count} \u884c\uff0c\u7a7a\u767d\u9879\u5df2\u6309\u4e0a\u4e00\u884c\u81ea\u52a8\u8865\u9f50\u3002";
         return Task.CompletedTask;
+    }
+
+    private bool TryApplySingleClipboardValueToProxyBatchTemplate(string clipboardText)
+    {
+        var singleValue = NormalizeSingleProxyBatchTemplateClipboardValue(clipboardText);
+        if (singleValue is null)
+        {
+            return false;
+        }
+
+        var isUrl = IsValidHttpUrl(singleValue);
+        var fieldDisplayName = isUrl ? "URL" : "key";
+        var draftRows = ProxyBatchTemplateDraftItems
+            .Select(CloneProxyBatchTemplateDraftItem)
+            .ToList();
+
+        if (draftRows.Count == 0)
+        {
+            draftRows.Add(CreateEmptyProxyBatchTemplateDraftItem());
+        }
+
+        var missingFieldRowIndex = FindFirstProxyBatchTemplateDraftRowIndex(
+            draftRows,
+            item => !IsEmptyProxyBatchTemplateDraftRow(item) &&
+                    string.IsNullOrWhiteSpace(isUrl ? item.BaseUrl : item.EntryApiKey));
+
+        if (missingFieldRowIndex >= 0)
+        {
+            draftRows[missingFieldRowIndex] = ApplySingleClipboardValueToProxyBatchTemplateDraftRow(
+                draftRows[missingFieldRowIndex],
+                singleValue,
+                isUrl);
+            ReplaceProxyBatchTemplateDraftItems(draftRows);
+            StatusMessage = $"\u5df2\u8bc6\u522b\u4e3a\u5355\u4e2a {fieldDisplayName}\uff0c\u5df2\u8865\u5230\u7b2c {missingFieldRowIndex + 1} \u884c\u3002";
+            return true;
+        }
+
+        var emptyRowIndex = FindFirstProxyBatchTemplateDraftRowIndex(draftRows, IsEmptyProxyBatchTemplateDraftRow);
+        var previousRow = FindPreviousProxyBatchTemplateMeaningfulRow(
+            draftRows,
+            emptyRowIndex >= 0 ? emptyRowIndex - 1 : draftRows.Count - 1);
+
+        if (emptyRowIndex >= 0)
+        {
+            draftRows[emptyRowIndex] = BuildNextProxyBatchTemplateDraftRow(
+                previousRow,
+                draftRows[emptyRowIndex],
+                singleValue,
+                isUrl);
+            ReplaceProxyBatchTemplateDraftItems(draftRows);
+            StatusMessage = previousRow is null
+                ? $"\u5df2\u8bc6\u522b\u4e3a\u5355\u4e2a {fieldDisplayName}\uff0c\u5df2\u5199\u5165\u7b2c {emptyRowIndex + 1} \u884c\u3002"
+                : $"\u5df2\u8bc6\u522b\u4e3a\u5355\u4e2a {fieldDisplayName}\uff0c\u7b2c {emptyRowIndex + 1} \u884c\u5df2\u6cbf\u7528\u4e0a\u4e00\u884c\u5176\u4ed6\u5185\u5bb9\u5e76\u5199\u5165\u65b0\u503c\u3002";
+            return true;
+        }
+
+        if (draftRows.Count >= MaxProxyBatchSourceEntries)
+        {
+            throw new InvalidOperationException($"\u7c98\u8d34\u540e\u4f1a\u8d85\u8fc7 {MaxProxyBatchSourceEntries} \u884c\uff0c\u8bf7\u5148\u5220\u9664\u4e0d\u7528\u7684\u884c\u518d\u7ee7\u7eed\u3002");
+        }
+
+        draftRows.Add(BuildNextProxyBatchTemplateDraftRow(previousRow, null, singleValue, isUrl));
+        ReplaceProxyBatchTemplateDraftItems(draftRows);
+        StatusMessage = previousRow is null
+            ? $"\u5df2\u8bc6\u522b\u4e3a\u5355\u4e2a {fieldDisplayName}\uff0c\u5df2\u65b0\u589e\u7b2c {draftRows.Count} \u884c\u3002"
+            : $"\u5df2\u8bc6\u522b\u4e3a\u5355\u4e2a {fieldDisplayName}\uff0c\u5df2\u65b0\u589e\u7b2c {draftRows.Count} \u884c\uff0c\u5e76\u6cbf\u7528\u4e0a\u4e00\u884c\u5176\u4ed6\u5185\u5bb9\u3002";
+        return true;
     }
 
     private Task ApplyProxyBatchTemplateDefaultsAsync()
     {
-        StatusMessage = "现在不再使用默认 Key / 默认分组；若只粘贴了 URL 或 Key，系统会按上一行自动补齐。";
+        StatusMessage = "\u73b0\u5728\u4e0d\u518d\u4f7f\u7528\u9ed8\u8ba4 Key / \u9ed8\u8ba4\u5206\u7ec4\uff1b\u82e5\u53ea\u7c98\u8d34\u4e86 URL \u6216 Key\uff0c\u7cfb\u7edf\u4f1a\u6309\u4e0a\u4e00\u884c\u81ea\u52a8\u8865\u9f50\u3002";
         return Task.CompletedTask;
     }
 
@@ -114,8 +178,8 @@ public sealed partial class MainWindowViewModel
 
         ReplaceProxyBatchTemplateDraftItems(keptRows);
         StatusMessage = keptRows.Length == 0
-            ? "已清空当前站点内容，并保留第一行空白等待继续输入。"
-            : $"已清理空白行，当前保留 {keptRows.Length} 行内容。";
+            ? "\u5df2\u6e05\u7a7a\u5f53\u524d\u7ad9\u70b9\u5185\u5bb9\uff0c\u5e76\u4fdd\u7559\u7b2c\u4e00\u884c\u7a7a\u767d\u7b49\u5f85\u7ee7\u7eed\u8f93\u5165\u3002"
+            : $"\u5df2\u6e05\u7406\u7a7a\u767d\u884c\uff0c\u5f53\u524d\u4fdd\u7559 {keptRows.Length} \u884c\u5185\u5bb9\u3002";
         return Task.CompletedTask;
     }
 
@@ -123,7 +187,7 @@ public sealed partial class MainWindowViewModel
     {
         if (row is null)
         {
-            StatusMessage = "请先点击要拉模型的那一行。";
+            StatusMessage = "\u8bf7\u5148\u70b9\u51fb\u8981\u62c9\u6a21\u578b\u7684\u90a3\u4e00\u884c\u3002";
             return Task.CompletedTask;
         }
 
@@ -147,7 +211,7 @@ public sealed partial class MainWindowViewModel
             .Sum(group => Math.Max(0, group.Count() - 1));
         var siteNamePreview = BuildProxyBatchTemplateSiteNamePreview(meaningfulRows);
 
-        return $"当前站点：{siteNamePreview}。表格共 {ProxyBatchTemplateDraftItems.Count} 行，已填写 {meaningfulRows.Length} 行，空白 {blankRows} 行；加入测试 {enabledRows} 行，跳过测试 {disabledRows} 行；缺 URL {missingUrlRows} 行，URL 无效 {invalidUrlRows} 行，重复 URL {duplicateUrlCount} 行。点击“加入入口组”后，会把当前所有行作为同一个站点保存，然后自动清空为下一个站点保留第一行空白。";
+        return $"\u5f53\u524d\u7ad9\u70b9\uff1a{siteNamePreview}\u3002\u8868\u683c\u5171 {ProxyBatchTemplateDraftItems.Count} \u884c\uff0c\u5df2\u586b\u5199 {meaningfulRows.Length} \u884c\uff0c\u7a7a\u767d {blankRows} \u884c\uff1b\u52a0\u5165\u6d4b\u8bd5 {enabledRows} \u884c\uff0c\u8df3\u8fc7\u6d4b\u8bd5 {disabledRows} \u884c\uff1b\u7f3a URL {missingUrlRows} \u884c\uff0cURL \u65e0\u6548 {invalidUrlRows} \u884c\uff0c\u91cd\u590d URL {duplicateUrlCount} \u884c\u3002\u70b9\u51fb\u201c\u52a0\u5165\u5165\u53e3\u7ec4\u201d\u540e\uff0c\u4f1a\u628a\u5f53\u524d\u6240\u6709\u884c\u4f5c\u4e3a\u540c\u4e00\u4e2a\u7ad9\u70b9\u4fdd\u5b58\uff0c\u7136\u540e\u81ea\u52a8\u6e05\u7a7a\u4e3a\u4e0b\u4e00\u4e2a\u7ad9\u70b9\u4fdd\u7559\u7b2c\u4e00\u884c\u7a7a\u767d\u3002";
     }
 
     private string? ResolveProxyBatchTemplateRowApiKey(ProxyBatchEditorItemViewModel? row)
@@ -177,7 +241,7 @@ public sealed partial class MainWindowViewModel
             .ToArray();
         if (sourceRows.Length == 0)
         {
-            throw new InvalidOperationException("请先在右侧表格里至少填写一行网址。");
+            throw new InvalidOperationException("\u8bf7\u5148\u5728\u53f3\u4fa7\u8868\u683c\u91cc\u81f3\u5c11\u586b\u5199\u4e00\u884c\u7f51\u5740\u3002");
         }
 
         List<ProxyBatchEditorItemViewModel> normalizedRows = [];
@@ -196,12 +260,12 @@ public sealed partial class MainWindowViewModel
 
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
-                throw new InvalidOperationException($"第 {index + 1} 行缺少网址。");
+                throw new InvalidOperationException($"\u7b2c {index + 1} \u884c\u7f3a\u5c11\u7f51\u5740\u3002");
             }
 
             if (!IsValidHttpUrl(baseUrl))
             {
-                throw new InvalidOperationException($"第 {index + 1} 行的网址格式不正确：{baseUrl}");
+                throw new InvalidOperationException($"\u7b2c {index + 1} \u884c\u7684\u7f51\u5740\u683c\u5f0f\u4e0d\u6b63\u786e\uff1a{baseUrl}");
             }
 
             normalizedRows.Add(new ProxyBatchEditorItemViewModel(
@@ -244,19 +308,19 @@ public sealed partial class MainWindowViewModel
         var firstRow = rows[0];
         return NormalizeNullable(firstRow.EntryName)
                ?? TryGetHost(firstRow.BaseUrl)
-               ?? $"站点 {ProxyBatchSiteGroups.Count + 1}";
+               ?? $"\u7ad9\u70b9 {ProxyBatchSiteGroups.Count + 1}";
     }
 
     private string BuildProxyBatchTemplateSiteNamePreview(IReadOnlyList<ProxyBatchEditorItemViewModel> rows)
     {
         if (rows.Count == 0)
         {
-            return "未命名站点";
+            return "\u672a\u547d\u540d\u7ad9\u70b9";
         }
 
         return NormalizeNullable(rows[0].EntryName)
                ?? TryGetHost(rows[0].BaseUrl)
-               ?? "未命名站点";
+               ?? "\u672a\u547d\u540d\u7ad9\u70b9";
     }
 
     private static ProxyBatchEditorItemViewModel CloneProxyBatchTemplateDraftItem(ProxyBatchEditorItemViewModel item)
@@ -269,6 +333,121 @@ public sealed partial class MainWindowViewModel
             null,
             null,
             item.IncludeInBatchTest);
+
+    private static ProxyBatchEditorItemViewModel CreateEmptyProxyBatchTemplateDraftItem()
+        => new(
+            string.Empty,
+            string.Empty,
+            null,
+            null,
+            null,
+            null,
+            null,
+            true);
+
+    private static string? NormalizeSingleProxyBatchTemplateClipboardValue(string? clipboardText)
+    {
+        var normalized = NormalizeNullable(
+            (clipboardText ?? string.Empty)
+                .Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Replace('\r', '\n'));
+
+        if (string.IsNullOrWhiteSpace(normalized) ||
+            normalized.Contains('\n') ||
+            normalized.Contains('\t') ||
+            normalized.Contains('|'))
+        {
+            return null;
+        }
+
+        return normalized;
+    }
+
+    private static int FindFirstProxyBatchTemplateDraftRowIndex(
+        IReadOnlyList<ProxyBatchEditorItemViewModel> rows,
+        Func<ProxyBatchEditorItemViewModel, bool> predicate)
+    {
+        for (var index = 0; index < rows.Count; index++)
+        {
+            if (predicate(rows[index]))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static ProxyBatchEditorItemViewModel? FindPreviousProxyBatchTemplateMeaningfulRow(
+        IReadOnlyList<ProxyBatchEditorItemViewModel> rows,
+        int startIndex)
+    {
+        for (var index = Math.Min(startIndex, rows.Count - 1); index >= 0; index--)
+        {
+            if (!IsEmptyProxyBatchTemplateDraftRow(rows[index]))
+            {
+                return rows[index];
+            }
+        }
+
+        return null;
+    }
+
+    private static ProxyBatchEditorItemViewModel ApplySingleClipboardValueToProxyBatchTemplateDraftRow(
+        ProxyBatchEditorItemViewModel row,
+        string clipboardValue,
+        bool isUrl)
+        => new(
+            NormalizeNullable(row.EntryName) ?? string.Empty,
+            isUrl ? clipboardValue : NormalizeNullable(row.BaseUrl) ?? string.Empty,
+            isUrl ? NormalizeNullable(row.EntryApiKey) : clipboardValue,
+            NormalizeNullable(row.EntryModel),
+            null,
+            null,
+            null,
+            row.IncludeInBatchTest);
+
+    private static ProxyBatchEditorItemViewModel BuildNextProxyBatchTemplateDraftRow(
+        ProxyBatchEditorItemViewModel? previousRow,
+        ProxyBatchEditorItemViewModel? targetRow,
+        string clipboardValue,
+        bool isUrl)
+    {
+        var entryName = FirstNonEmpty(
+                            NormalizeNullable(targetRow?.EntryName),
+                            NormalizeNullable(previousRow?.EntryName))
+                        ?? string.Empty;
+        var baseUrl = FirstNonEmpty(
+                          NormalizeNullable(targetRow?.BaseUrl),
+                          NormalizeNullable(previousRow?.BaseUrl))
+                      ?? string.Empty;
+        var entryApiKey = FirstNonEmpty(
+            NormalizeNullable(targetRow?.EntryApiKey),
+            NormalizeNullable(previousRow?.EntryApiKey));
+        var entryModel = FirstNonEmpty(
+            NormalizeNullable(targetRow?.EntryModel),
+            NormalizeNullable(previousRow?.EntryModel));
+        var includeInBatchTest = targetRow?.IncludeInBatchTest ?? previousRow?.IncludeInBatchTest ?? true;
+
+        if (isUrl)
+        {
+            baseUrl = clipboardValue;
+        }
+        else
+        {
+            entryApiKey = clipboardValue;
+        }
+
+        return new ProxyBatchEditorItemViewModel(
+            entryName,
+            baseUrl,
+            entryApiKey,
+            entryModel,
+            null,
+            null,
+            null,
+            includeInBatchTest);
+    }
 
     private static bool IsEmptyProxyBatchTemplateDraftRow(ProxyBatchEditorItemViewModel item)
         => string.IsNullOrWhiteSpace(item.EntryName) &&

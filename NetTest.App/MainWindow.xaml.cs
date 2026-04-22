@@ -29,6 +29,13 @@ public partial class MainWindow : Window
     private const double WindowStateRestoredTransitionScale = 1.018d;
     private const int WorkbenchPageTransitionDurationMs = 300;
     private const double WorkbenchPageTransitionOffsetX = 46d;
+    private const int GlobalTaskProgressOpenDurationMs = 320;
+    private const int GlobalTaskProgressCloseDurationMs = 250;
+    private const int GlobalTaskProgressFillDurationMs = 560;
+    private const double GlobalTaskProgressOpenInitialScale = 0.987d;
+    private const double GlobalTaskProgressOpenInitialOffsetY = -18d;
+    private const double GlobalTaskProgressCloseTargetScale = 0.994d;
+    private const double GlobalTaskProgressCloseTargetOffsetY = -14d;
     private const int WindowCloseDurationMs = 280;
     private const double WindowCloseTargetScale = 0.958d;
     private const double WindowCloseTargetOffsetY = 32d;
@@ -65,6 +72,7 @@ public partial class MainWindow : Window
     private bool _isWindowCloseAnimationRunning;
     private bool _hasPlayedWindowOpenAnimation;
     private string _lastWorkbenchPageKey = string.Empty;
+    private int _globalTaskProgressAnimationVersion;
 
     public MainWindow()
     {
@@ -88,6 +96,7 @@ public partial class MainWindow : Window
     private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
     {
         ApplyOverlayStates(immediate: true);
+        UpdateGlobalTaskProgressVisual(immediate: true);
         _lastWorkbenchPageKey = _viewModel?.SelectedWorkbenchPageKey ?? string.Empty;
         ScheduleProxyChartViewportWidthUpdate();
         PlayWindowOpenAnimation();
@@ -103,6 +112,18 @@ public partial class MainWindow : Window
         if (_overlayAnimations.ContainsKey(e.PropertyName))
         {
             Dispatcher.BeginInvoke(() => UpdateOverlayVisibility(e.PropertyName), DispatcherPriority.Loaded);
+            return;
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.IsGlobalTaskProgressVisible), StringComparison.Ordinal))
+        {
+            Dispatcher.BeginInvoke(() => UpdateGlobalTaskProgressVisual(immediate: false), DispatcherPriority.Loaded);
+            return;
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.GlobalTaskProgressFraction), StringComparison.Ordinal))
+        {
+            Dispatcher.BeginInvoke(AnimateGlobalTaskProgressFill, DispatcherPriority.Loaded);
             return;
         }
 
@@ -204,6 +225,54 @@ public partial class MainWindow : Window
         }, DispatcherPriority.Input);
     }
 
+    private void TitleBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left)
+        {
+            return;
+        }
+
+        if (e.ClickCount == 2)
+        {
+            ToggleWindowState();
+            return;
+        }
+
+        if (WindowState == WindowState.Maximized)
+        {
+            return;
+        }
+
+        try
+        {
+            DragMove();
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
+    private void MinimizeWindowButton_OnClick(object sender, RoutedEventArgs e)
+        => WindowState = WindowState.Minimized;
+
+    private void MaximizeRestoreWindowButton_OnClick(object sender, RoutedEventArgs e)
+        => ToggleWindowState();
+
+    private void CloseWindowButton_OnClick(object sender, RoutedEventArgs e)
+        => Close();
+
+    private void ToggleWindowState()
+    {
+        if (ResizeMode == ResizeMode.NoResize)
+        {
+            return;
+        }
+
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
+    }
+
     private void InitializeOverlayAnimations()
     {
         if (_viewModel is null)
@@ -215,6 +284,8 @@ public partial class MainWindow : Window
             new OverlayAnimationState(ProxyChartOverlay, ProxyChartOverlayPanel, static viewModel => viewModel.IsProxyTrendChartOpen);
         _overlayAnimations[nameof(MainWindowViewModel.IsProxyModelPickerOpen)] =
             new OverlayAnimationState(ProxyModelPickerOverlay, ProxyModelPickerOverlayPanel, static viewModel => viewModel.IsProxyModelPickerOpen);
+        _overlayAnimations[nameof(MainWindowViewModel.IsProxyMultiModelPickerOpen)] =
+            new OverlayAnimationState(ProxyMultiModelPickerOverlay, ProxyMultiModelPickerOverlayPanel, static viewModel => viewModel.IsProxyMultiModelPickerOpen);
         _overlayAnimations[nameof(MainWindowViewModel.IsOfficialApiTraceDialogOpen)] =
             new OverlayAnimationState(OfficialApiTraceOverlay, OfficialApiTraceOverlayPanel, static viewModel => viewModel.IsOfficialApiTraceDialogOpen);
         _overlayAnimations[nameof(MainWindowViewModel.IsProxyBatchEditorOpen)] =
@@ -385,6 +456,139 @@ public partial class MainWindow : Window
 
         AnimateDouble(WorkbenchPageHost, UIElement.OpacityProperty, 0d, 1d, WorkbenchPageTransitionDurationMs, CreateEaseOut());
         AnimateDouble(translate, TranslateTransform.XProperty, translate.X, 0d, WorkbenchPageTransitionDurationMs, CreateEaseOut());
+    }
+
+    private void UpdateGlobalTaskProgressVisual(bool immediate)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        if (immediate)
+        {
+            SetGlobalTaskProgressVisualState(_viewModel.IsGlobalTaskProgressVisible, _viewModel.GlobalTaskProgressFraction);
+            return;
+        }
+
+        AnimateGlobalTaskProgressVisibility(_viewModel.IsGlobalTaskProgressVisible);
+    }
+
+    private void SetGlobalTaskProgressVisualState(bool isVisible, double fraction)
+    {
+        _globalTaskProgressAnimationVersion++;
+        GlobalTaskProgressBorder.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        GlobalTaskProgressBorder.Opacity = isVisible ? 1d : 0d;
+
+        var (scale, translate) = EnsureElementTransforms(GlobalTaskProgressBorder);
+        scale.ScaleX = 1d;
+        scale.ScaleY = 1d;
+        translate.X = 0d;
+        translate.Y = 0d;
+
+        var fillScale = GetGlobalTaskProgressFillScale();
+        fillScale.ScaleX = Math.Clamp(fraction, 0d, 1d);
+        fillScale.ScaleY = 1d;
+    }
+
+    private void AnimateGlobalTaskProgressVisibility(bool isVisible)
+    {
+        _globalTaskProgressAnimationVersion++;
+        var version = _globalTaskProgressAnimationVersion;
+
+        StopAnimation(GlobalTaskProgressBorder, UIElement.OpacityProperty);
+        var (scale, translate) = EnsureElementTransforms(GlobalTaskProgressBorder);
+        StopAnimation(scale, ScaleTransform.ScaleXProperty);
+        StopAnimation(scale, ScaleTransform.ScaleYProperty);
+        StopAnimation(translate, TranslateTransform.YProperty);
+
+        if (isVisible)
+        {
+            GlobalTaskProgressBorder.Visibility = Visibility.Visible;
+            GlobalTaskProgressBorder.Opacity = 0d;
+            scale.ScaleX = GlobalTaskProgressOpenInitialScale;
+            scale.ScaleY = GlobalTaskProgressOpenInitialScale;
+            translate.Y = GlobalTaskProgressOpenInitialOffsetY;
+
+            AnimateDouble(GlobalTaskProgressBorder, UIElement.OpacityProperty, 0d, 1d, GlobalTaskProgressOpenDurationMs, CreateEaseOut());
+            AnimateDouble(scale, ScaleTransform.ScaleXProperty, scale.ScaleX, 1d, GlobalTaskProgressOpenDurationMs, CreateEaseOut());
+            AnimateDouble(scale, ScaleTransform.ScaleYProperty, scale.ScaleY, 1d, GlobalTaskProgressOpenDurationMs, CreateEaseOut());
+            AnimateDouble(translate, TranslateTransform.YProperty, translate.Y, 0d, GlobalTaskProgressOpenDurationMs, CreateEaseOut());
+            AnimateGlobalTaskProgressFill();
+            return;
+        }
+
+        if (GlobalTaskProgressBorder.Visibility != Visibility.Visible)
+        {
+            SetGlobalTaskProgressVisualState(false, 0d);
+            return;
+        }
+
+        AnimateDouble(
+            GlobalTaskProgressBorder,
+            UIElement.OpacityProperty,
+            GlobalTaskProgressBorder.Opacity,
+            0d,
+            GlobalTaskProgressCloseDurationMs,
+            CreateEaseIn());
+        AnimateDouble(
+            scale,
+            ScaleTransform.ScaleXProperty,
+            scale.ScaleX,
+            GlobalTaskProgressCloseTargetScale,
+            GlobalTaskProgressCloseDurationMs,
+            CreateEaseIn());
+        AnimateDouble(
+            scale,
+            ScaleTransform.ScaleYProperty,
+            scale.ScaleY,
+            GlobalTaskProgressCloseTargetScale,
+            GlobalTaskProgressCloseDurationMs,
+            CreateEaseIn());
+
+        var hideAnimation = CreateAnimation(
+            translate.Y,
+            GlobalTaskProgressCloseTargetOffsetY,
+            GlobalTaskProgressCloseDurationMs,
+            CreateEaseIn());
+        hideAnimation.Completed += (_, _) =>
+        {
+            if (_viewModel is null ||
+                version != _globalTaskProgressAnimationVersion ||
+                _viewModel.IsGlobalTaskProgressVisible)
+            {
+                return;
+            }
+
+            SetGlobalTaskProgressVisualState(false, 0d);
+        };
+        translate.BeginAnimation(TranslateTransform.YProperty, hideAnimation, HandoffBehavior.SnapshotAndReplace);
+    }
+
+    private void AnimateGlobalTaskProgressFill()
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        var fillScale = GetGlobalTaskProgressFillScale();
+        StopAnimation(fillScale, ScaleTransform.ScaleXProperty);
+        var target = Math.Clamp(_viewModel.GlobalTaskProgressFraction, 0d, 1d);
+        AnimateDouble(fillScale, ScaleTransform.ScaleXProperty, fillScale.ScaleX, target, GlobalTaskProgressFillDurationMs, CreateEaseOut());
+    }
+
+    private ScaleTransform GetGlobalTaskProgressFillScale()
+    {
+        if (GlobalTaskProgressFill.RenderTransform is ScaleTransform scaleTransform)
+        {
+            return scaleTransform;
+        }
+
+        scaleTransform = new ScaleTransform(0d, 1d);
+        GlobalTaskProgressFill.RenderTransform = scaleTransform;
+        GlobalTaskProgressFill.RenderTransformOrigin = new Point(0d, 0.5d);
+        return scaleTransform;
     }
 
     private void ScheduleProxyChartViewportWidthUpdate()

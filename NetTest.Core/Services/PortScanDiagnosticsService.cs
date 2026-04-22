@@ -81,8 +81,8 @@ public sealed class PortScanDiagnosticsService
     [
         new PortScanProfile(
             "relay-baseline",
-            "中转站基线扫描",
-            "面向代理与 HTTPS 节点的保守异步 TCP Connect 扫描，覆盖常见中转端口，并补充 TLS / HTTP 识别。",
+            "接口基线扫描",
+            "面向代理与 HTTPS 节点的保守异步 TCP Connect 扫描，覆盖常见兼容接口端口，并补充 TLS / HTTP 识别。",
             [80, 443, 8080, 8443, 2053, 2083, 2087, 2096],
             1200,
             48,

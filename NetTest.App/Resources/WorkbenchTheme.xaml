@@ -14,32 +14,32 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="FontSize" Value="10.2" />
+            <Setter Property="FontSize" Value="10.4" />
             <Setter Property="TextOptions.TextHintingMode" Value="Fixed" />
         </Style>
         <Style x:Key="FieldLabelTextStyle"
                TargetType="TextBlock"
                BasedOn="{StaticResource {x:Type TextBlock}}">
-            <Setter Property="FontSize" Value="10.1" />
+            <Setter Property="FontSize" Value="10.3" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
-            <Setter Property="Margin" Value="0,0,0,1" />
+            <Setter Property="Margin" Value="0,0,0,2" />
         </Style>
         <Style x:Key="SectionTitleTextStyle"
                TargetType="TextBlock"
                BasedOn="{StaticResource {x:Type TextBlock}}">
-            <Setter Property="FontSize" Value="12.4" />
+            <Setter Property="FontSize" Value="12.8" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
         <Style x:Key="SectionHintTextStyle"
                TargetType="TextBlock"
                BasedOn="{StaticResource {x:Type TextBlock}}">
-            <Setter Property="FontSize" Value="9.7" />
+            <Setter Property="FontSize" Value="10" />
             <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <Style x:Key="SectionPanelBorderStyle" TargetType="Border">
-            <Setter Property="Padding" Value="7" />
+            <Setter Property="Padding" Value="8" />
             <Setter Property="Background" Value="#FFFFFF" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -55,13 +55,13 @@
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="#FFFFFF" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
-            <Setter Property="Padding" Value="9,0" />
+            <Setter Property="Padding" Value="10,3" />
             <Setter Property="Margin" Value="0,0,4,0" />
-            <Setter Property="Height" Value="26" />
+            <Setter Property="Height" Value="30" />
             <Setter Property="MinWidth" Value="78" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="FontSize" Value="10.2" />
+            <Setter Property="FontSize" Value="10.4" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -101,10 +101,10 @@
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="#FFFFFF" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
-            <Setter Property="Padding" Value="7,2" />
+            <Setter Property="Padding" Value="8,3" />
             <Setter Property="Margin" Value="0,0,0,3" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontSize" Value="10.2" />
+            <Setter Property="FontSize" Value="10.3" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
             <Setter Property="AcceptsReturn" Value="True" />
@@ -112,17 +112,17 @@
                 <Trigger Property="IsReadOnly" Value="True">
                     <Setter Property="Background" Value="{StaticResource InputBrush}" />
                     <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
-                    <Setter Property="Padding" Value="7,2" />
-                    <Setter Property="FontSize" Value="9.8" />
+                    <Setter Property="Padding" Value="8,3" />
+                    <Setter Property="FontSize" Value="10" />
                 </Trigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="CompactInputTextBoxStyle"
                TargetType="TextBox"
                BasedOn="{StaticResource {x:Type TextBox}}">
-            <Setter Property="Height" Value="26" />
-            <Setter Property="FontSize" Value="10.2" />
-            <Setter Property="Padding" Value="7,2" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="FontSize" Value="10.3" />
+            <Setter Property="Padding" Value="8,3" />
             <Setter Property="AcceptsReturn" Value="False" />
             <Setter Property="TextWrapping" Value="NoWrap" />
             <Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
@@ -132,8 +132,8 @@
         <Style x:Key="CompactComboBoxStyle"
                TargetType="ComboBox"
                BasedOn="{StaticResource {x:Type ComboBox}}">
-            <Setter Property="Height" Value="26" />
-            <Setter Property="Padding" Value="7,2" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="8,3" />
             <Setter Property="FontSize" Value="11.1" />
         </Style>
         <Style x:Key="ReadOnlyOutputTextBoxStyle"
@@ -142,8 +142,8 @@
             <Setter Property="Background" Value="{StaticResource InputBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontSize" Value="9.8" />
-            <Setter Property="Padding" Value="7,2" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Padding" Value="8,3" />
             <Setter Property="IsReadOnly" Value="True" />
             <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
         </Style>
@@ -576,8 +576,8 @@
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="{StaticResource TabBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
-            <Setter Property="Padding" Value="10,4" />
-            <Setter Property="FontSize" Value="10.8" />
+            <Setter Property="Padding" Value="11,6" />
+            <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -614,7 +614,7 @@
         </Style>
 
 <Style x:Key="NavigationRailBorderStyle" TargetType="Border">
-        <Setter Property="Padding" Value="9" />
+        <Setter Property="Padding" Value="10" />
         <Setter Property="Background" Value="{StaticResource PanelBrushStrong}" />
         <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -629,7 +629,7 @@
 
     <Style x:Key="NavigationListBoxItemStyle" TargetType="ListBoxItem">
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="Padding" Value="11,8" />
         <Setter Property="Margin" Value="0,0,0,3" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Template">

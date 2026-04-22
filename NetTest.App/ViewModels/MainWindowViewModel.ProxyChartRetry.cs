@@ -72,7 +72,7 @@ public sealed partial class MainWindowViewModel
             DashboardCards[3].Detail = $"已累计 {_proxySingleChartRuns.Count} 次；最新 {result.PrimaryIssue ?? result.Summary}";
             StatusMessage = $"{GetSingleProxyExecutionDisplayName()}重试完成，已累计 {_proxySingleChartRuns.Count} 次结果。";
             AppendHistory(
-                "中转站",
+                "接口",
                 _lastProxySingleExecutionMode == ProxySingleExecutionMode.Deep ? "深度单次诊断重试" : "基础单次诊断重试",
                 ProxySummary);
         });
@@ -126,7 +126,7 @@ public sealed partial class MainWindowViewModel
             DashboardCards[3].Status = stabilityResult.HealthLabel;
             DashboardCards[3].Detail = $"已累计 {stabilityResult.CompletedRounds} 轮，健康度 {stabilityResult.HealthScore}/100。";
             StatusMessage = $"已追加 5 轮稳定性重试，当前累计 {stabilityResult.CompletedRounds} 轮，健康度 {stabilityResult.HealthScore}/100。";
-            AppendHistory("中转站", "稳定性巡检追加重试", ProxyStabilitySummary);
+            AppendHistory("接口", "稳定性巡检追加重试", ProxyStabilitySummary);
         });
     }
 
@@ -150,7 +150,7 @@ public sealed partial class MainWindowViewModel
             for (var retryIndex = 0; retryIndex < BatchRetryAppendRounds; retryIndex++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                List<ProxyBatchProbeRow> liveRows = [];
+                Dictionary<string, ProxyBatchProbeRow> liveRows = new(StringComparer.OrdinalIgnoreCase);
                 var currentRunNumber = _proxyBatchChartRuns.Count + 1;
                 ProxyChartDialogStatusSummary = $"正在追加整组重试 {retryIndex + 1}/{BatchRetryAppendRounds}（累计第 {currentRunNumber} 轮整组）...";
                 ProxyChartDialogEmptyStateText = "正在执行入口组追加重试...";
@@ -162,8 +162,8 @@ public sealed partial class MainWindowViewModel
                 });
                 var rowProgress = new Progress<ProxyBatchProbeRow>(row =>
                 {
-                    liveRows.Add(row);
-                    UpdateProxyBatchChartLive(liveRows, plan.Targets.Count);
+                    liveRows[BuildBatchTargetKey(row.Entry)] = row;
+                    UpdateProxyBatchChartLive(MaterializeLiveBatchRows(liveRows, plan.Targets), plan.Targets.Count);
                 });
 
                 var rows = await ProbeBatchEntriesAsync(
@@ -186,7 +186,7 @@ public sealed partial class MainWindowViewModel
         DashboardCards[3].Detail =
             $"入口组累计 {_proxyBatchChartRuns.Count} 轮，推荐 {best.Entry.Name}（平均普通延迟 {FormatMillisecondsValue(best.AverageChatLatencyMs)} / 平均 TTFT {FormatMillisecondsValue(best.AverageTtftMs)} / 独立吞吐 {FormatTokensPerSecond(best.AverageBenchmarkTokensPerSecond)} / 综合分 {best.CompositeScore:F1}）。";
             StatusMessage = $"入口组已追加 5 轮整组重试，当前累计 {_proxyBatchChartRuns.Count} 轮，推荐 {best.Entry.Name}。";
-            AppendHistory("中转站", "中转站入口组追加重试", ProxyBatchSummary);
+            AppendHistory("接口", "接口入口组追加重试", ProxyBatchSummary);
         });
     }
 }

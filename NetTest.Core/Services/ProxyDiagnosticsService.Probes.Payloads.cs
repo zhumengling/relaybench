@@ -519,7 +519,7 @@ public sealed partial class ProxyDiagnosticsService
                 "[04] math=1+1=2;2*3=6",
                 "[05] symbols=[]{}<>|/\\@#",
                 "[06] quote=\"preserve-this-line\"",
-                "[07] mix=Alpha-中转-123",
+                "[07] mix=Alpha-接口-123",
                 "[08] end=official-compare-ok"
             ]);
 

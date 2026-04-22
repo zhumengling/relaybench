@@ -8,6 +8,7 @@ internal enum ProxyChartViewMode
     None,
     SingleLatency,
     StabilityTrend,
+    ConcurrencyPressure,
     BatchComparison,
     BatchDeepComparison
 }
@@ -29,6 +30,7 @@ public sealed partial class MainWindowViewModel
     private ProxyChartViewMode _activeProxyChartViewMode;
     private ProxyChartDialogSnapshot? _proxySingleChartSnapshot;
     private ProxyChartDialogSnapshot? _proxyTrendChartSnapshot;
+    private ProxyChartDialogSnapshot? _proxyConcurrencyChartSnapshot;
     private ProxyChartDialogSnapshot? _proxyBatchChartSnapshot;
     private ProxyChartDialogSnapshot? _proxyBatchDeepChartSnapshot;
     private IReadOnlyList<ProxyChartHitRegion> _proxyChartDialogHitRegions = Array.Empty<ProxyChartHitRegion>();
@@ -41,8 +43,8 @@ public sealed partial class MainWindowViewModel
 
     public string ProxyChartToggleButtonText
         => _activeProxyChartViewMode == ProxyChartViewMode.StabilityTrend
-            ? "切换单次延迟图"
-            : "切换稳定趋势图";
+            ? "\u5207\u6362\u5355\u6B21\u5EF6\u8FDF\u56FE"
+            : "\u5207\u6362\u7A33\u5B9A\u8D8B\u52BF\u56FE";
 
     public BitmapSource? BatchComparisonChartImage
         => _proxyBatchChartSnapshot?.Image;
@@ -51,7 +53,16 @@ public sealed partial class MainWindowViewModel
         => BatchComparisonChartImage is not null;
 
     public string BatchComparisonChartStatusSummary
-        => _proxyBatchChartSnapshot?.StatusSummary ?? "完成快速对比后，这里显示排行榜图表。";
+        => _proxyBatchChartSnapshot?.StatusSummary ?? "\u5B8C\u6210\u5FEB\u901F\u5BF9\u6BD4\u540E\uFF0C\u8FD9\u91CC\u4F1A\u663E\u793A\u6392\u884C\u699C\u56FE\u8868\u3002";
+
+    public BitmapSource? ProxyConcurrencyChartImage
+        => _proxyConcurrencyChartSnapshot?.Image;
+
+    public bool HasProxyConcurrencyChart
+        => ProxyConcurrencyChartImage is not null;
+
+    public string ProxyConcurrencyChartStatusSummary
+        => _proxyConcurrencyChartSnapshot?.StatusSummary ?? "\u5B8C\u6210\u5E76\u53D1\u538B\u6D4B\u540E\uFF0C\u8FD9\u91CC\u4F1A\u663E\u793A\u5E76\u53D1\u6863\u4F4D\u56FE\u8868\u3002";
 
     public BitmapSource? BatchDeepComparisonChartImage
         => _proxyBatchDeepChartSnapshot?.Image;
@@ -60,7 +71,7 @@ public sealed partial class MainWindowViewModel
         => BatchDeepComparisonChartImage is not null;
 
     public string BatchDeepComparisonChartStatusSummary
-        => _proxyBatchDeepChartSnapshot?.StatusSummary ?? "勾选排行榜列表项并开始深度测试后，这里显示候选站点深度测试总览图。";
+        => _proxyBatchDeepChartSnapshot?.StatusSummary ?? "\u52FE\u9009\u5019\u9009\u9879\u5E76\u5F00\u59CB\u6DF1\u5EA6\u6D4B\u8BD5\u540E\uFF0C\u8FD9\u91CC\u4F1A\u663E\u793A\u5019\u9009\u7AD9\u70B9\u6DF1\u6D4B\u603B\u89C8\u56FE\u3002";
 
     internal IReadOnlyList<ProxyChartHitRegion> CurrentProxyChartHitRegions
         => _proxyChartDialogHitRegions;
@@ -105,6 +116,12 @@ public sealed partial class MainWindowViewModel
             case ProxyChartViewMode.StabilityTrend:
                 _proxyTrendChartSnapshot = snapshot;
                 break;
+            case ProxyChartViewMode.ConcurrencyPressure:
+                _proxyConcurrencyChartSnapshot = snapshot;
+                OnPropertyChanged(nameof(ProxyConcurrencyChartImage));
+                OnPropertyChanged(nameof(HasProxyConcurrencyChart));
+                OnPropertyChanged(nameof(ProxyConcurrencyChartStatusSummary));
+                break;
             case ProxyChartViewMode.BatchComparison:
                 _proxyBatchChartSnapshot = snapshot;
                 OnPropertyChanged(nameof(BatchComparisonChartImage));
@@ -141,7 +158,7 @@ public sealed partial class MainWindowViewModel
             return true;
         }
 
-        return mode is ProxyChartViewMode.BatchComparison or ProxyChartViewMode.BatchDeepComparison;
+        return mode is ProxyChartViewMode.ConcurrencyPressure or ProxyChartViewMode.BatchComparison or ProxyChartViewMode.BatchDeepComparison;
     }
 
     private void ActivateProxyChartView(ProxyChartViewMode mode)
@@ -160,6 +177,7 @@ public sealed partial class MainWindowViewModel
         {
             ProxyChartViewMode.SingleLatency => _proxySingleChartSnapshot,
             ProxyChartViewMode.StabilityTrend => _proxyTrendChartSnapshot,
+            ProxyChartViewMode.ConcurrencyPressure => _proxyConcurrencyChartSnapshot,
             ProxyChartViewMode.BatchComparison => _proxyBatchChartSnapshot,
             ProxyChartViewMode.BatchDeepComparison => _proxyBatchDeepChartSnapshot,
             _ => null

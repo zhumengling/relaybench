@@ -59,6 +59,13 @@ public sealed partial class MainWindowViewModel
                     }
 
                     break;
+                case ProxyChartViewMode.ConcurrencyPressure:
+                    if (_proxyConcurrencyChartSnapshot?.Image is not null)
+                    {
+                        RefreshProxyConcurrencyChartSnapshot(activate: true);
+                    }
+
+                    break;
                 case ProxyChartViewMode.BatchDeepComparison:
                     if (_proxyBatchDeepChartSnapshot?.Image is not null)
                     {
@@ -87,6 +94,11 @@ public sealed partial class MainWindowViewModel
             {
                 RefreshProxyBatchComparisonDialog();
             }
+        }
+
+        if (_proxyConcurrencyChartSnapshot?.Image is not null)
+        {
+            RefreshProxyConcurrencyChartSnapshot(activate: false);
         }
 
         if (_proxyBatchDeepChartSnapshot?.Image is not null)
@@ -143,6 +155,16 @@ public sealed partial class MainWindowViewModel
         }
 
         return (int)Math.Clamp(Math.Floor(preferredWidth - 6), 980, 3200);
+    }
+
+    private int ResolvePreferredConcurrencyChartWidth()
+    {
+        if (_proxyChartViewportWidth <= 0)
+        {
+            return 1320;
+        }
+
+        return (int)Math.Clamp(Math.Floor(_proxyChartViewportWidth - 6), 980, 3200);
     }
 
     private static double NormalizeViewportWidth(double width)

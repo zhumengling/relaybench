@@ -103,9 +103,9 @@ public sealed partial class MainWindowViewModel
             _lastProxyTrendRecords = Array.Empty<ProxyTrendEntry>();
             ProxyTrendChartImage = null;
             IsProxyTrendChartOpen = false;
-            ProxyTrendSummary = "填写中转站地址后，这里会显示同一中转站的历史趋势。";
-            ProxyTrendDetail = "尚无中转站趋势记录。";
-            ProxyTrendChartStatusSummary = "完成中转站诊断后，这里会显示稳定性图表。";
+            ProxyTrendSummary = "填写接口地址后，这里会显示同一接口的历史趋势。";
+            ProxyTrendDetail = "尚无接口趋势记录。";
+            ProxyTrendChartStatusSummary = "完成接口诊断后，这里会显示稳定性图表。";
             SyncProxyChartDialogWithTrendView();
             RefreshProxyUnifiedOutput();
             return;
@@ -120,8 +120,8 @@ public sealed partial class MainWindowViewModel
         {
             ProxyTrendChartImage = null;
             IsProxyTrendChartOpen = false;
-            ProxyTrendSummary = $"当前中转站还没有历史趋势数据：{target}";
-            ProxyTrendDetail = "尚无中转站趋势记录。";
+            ProxyTrendSummary = $"当前接口还没有历史趋势数据：{target}";
+            ProxyTrendDetail = "尚无接口趋势记录。";
             ProxyTrendChartStatusSummary = $"当前目标还没有可绘制的稳定性样本：{ProxyTrendStore.NormalizeBaseUrl(target)}";
             SyncProxyChartDialogWithTrendView();
             RefreshProxyUnifiedOutput();
@@ -182,7 +182,7 @@ public sealed partial class MainWindowViewModel
         SetProxyChartSnapshot(
             ProxyChartViewMode.StabilityTrend,
             new ProxyChartDialogSnapshot(
-                "中转站稳定性图表",
+                "接口稳定性图表",
                 "弹窗会显示同一个 URL 的历史趋势，适合看稳定性、普通延迟和 TTFT 是否长期波动。",
                 ProxyTrendSummary,
                 ProxyChartDialogCapabilitySummary,
@@ -252,7 +252,7 @@ public sealed partial class MainWindowViewModel
         SetProxyChartSnapshot(
             ProxyChartViewMode.BatchComparison,
             new ProxyChartDialogSnapshot(
-                "中转站入口组累计对比图",
+                "接口入口组累计对比图",
                 "这里直接比较多个 URL 在多轮整组测试后的平均延迟、独立吞吐、平均 TTFT 和综合分。无论是单站点多入口，还是多站点多 Key，最终目标都是找出长期更优的 URL。",
                 $"当前已累计 {runCount} 轮入口组测试，共 {aggregateRows.Length} 个 URL。\n" +
                 $"当前推荐：{best.Entry.Name}\n" +
@@ -288,6 +288,11 @@ public sealed partial class MainWindowViewModel
         var stream = FindScenario(scenarios, ProxyProbeScenarioKind.ChatCompletionsStream);
         var responses = FindScenario(scenarios, ProxyProbeScenarioKind.Responses);
         var structuredOutput = FindScenario(scenarios, ProxyProbeScenarioKind.StructuredOutput);
+        var embeddings = FindScenario(scenarios, ProxyProbeScenarioKind.Embeddings);
+        var images = FindScenario(scenarios, ProxyProbeScenarioKind.Images);
+        var audioTranscription = FindScenario(scenarios, ProxyProbeScenarioKind.AudioTranscription);
+        var audioSpeech = FindScenario(scenarios, ProxyProbeScenarioKind.AudioSpeech);
+        var moderation = FindScenario(scenarios, ProxyProbeScenarioKind.Moderation);
         var streamingIntegrity = FindScenario(scenarios, ProxyProbeScenarioKind.StreamingIntegrity);
         var systemPrompt = FindScenario(scenarios, ProxyProbeScenarioKind.SystemPromptMapping);
         var functionCalling = FindScenario(scenarios, ProxyProbeScenarioKind.FunctionCalling);
@@ -330,6 +335,18 @@ public sealed partial class MainWindowViewModel
 
         AppendDialogSection(
             builder,
+            "\u975E\u804A\u5929 API",
+            BuildAvailableLines(new[]
+            {
+                BuildScenarioStatusLine("Embeddings", embeddings),
+                BuildScenarioStatusLine("Images", images),
+                BuildScenarioStatusLine("Audio Transcription", audioTranscription),
+                BuildScenarioStatusLine("Audio Speech / TTS", audioSpeech),
+                BuildScenarioStatusLine("Moderation", moderation)
+            }));
+
+        AppendDialogSection(
+            builder,
             "深度测试",
             BuildAvailableLines(new[]
             {
@@ -353,6 +370,11 @@ public sealed partial class MainWindowViewModel
         var stream = FindScenario(scenarios, ProxyProbeScenarioKind.ChatCompletionsStream);
         var responses = FindScenario(scenarios, ProxyProbeScenarioKind.Responses);
         var structuredOutput = FindScenario(scenarios, ProxyProbeScenarioKind.StructuredOutput);
+        var embeddings = FindScenario(scenarios, ProxyProbeScenarioKind.Embeddings);
+        var images = FindScenario(scenarios, ProxyProbeScenarioKind.Images);
+        var audioTranscription = FindScenario(scenarios, ProxyProbeScenarioKind.AudioTranscription);
+        var audioSpeech = FindScenario(scenarios, ProxyProbeScenarioKind.AudioSpeech);
+        var moderation = FindScenario(scenarios, ProxyProbeScenarioKind.Moderation);
         var streamingIntegrity = FindScenario(scenarios, ProxyProbeScenarioKind.StreamingIntegrity);
         var systemPrompt = FindScenario(scenarios, ProxyProbeScenarioKind.SystemPromptMapping);
         var functionCalling = FindScenario(scenarios, ProxyProbeScenarioKind.FunctionCalling);
@@ -392,6 +414,18 @@ public sealed partial class MainWindowViewModel
         }
 
         AppendDialogSection(builder, "增强测试", enhancedLines);
+
+        AppendDialogSection(
+            builder,
+            "\u975E\u804A\u5929 API",
+            BuildAvailableLines(new[]
+            {
+                BuildScenarioDetailLine("Embeddings", embeddings),
+                BuildScenarioDetailLine("Images", images),
+                BuildScenarioDetailLine("Audio Transcription", audioTranscription),
+                BuildScenarioDetailLine("Audio Speech / TTS", audioSpeech),
+                BuildScenarioDetailLine("Moderation", moderation)
+            }));
 
         AppendDialogSection(
             builder,
@@ -436,13 +470,15 @@ public sealed partial class MainWindowViewModel
         => lines.Where(line => !string.IsNullOrWhiteSpace(line)).OfType<string>();
 
     private static string? BuildScenarioStatusLine(string label, ProxyProbeScenarioResult? scenario)
-        => scenario is null ? null : $"{label}：{FormatScenarioStatus(scenario)}";
+        => scenario is null || IsCapabilityScenarioUnconfigured(scenario)
+            ? null
+            : $"{label}：{FormatScenarioStatus(scenario)}";
 
     private static string? BuildScenarioDetailLine(
         string label,
         ProxyProbeScenarioResult? scenario,
         string? previewText = null)
-        => scenario is null
+        => scenario is null || IsCapabilityScenarioUnconfigured(scenario)
             ? null
             : $"{label}：{BuildSingleScenarioDigest(scenario, PreviewLabel(previewText ?? scenario.Preview), fallbackStatusCode: scenario.StatusCode, fallbackLatency: scenario.Latency, fallbackFirstTokenLatency: scenario.FirstTokenLatency)}";
 

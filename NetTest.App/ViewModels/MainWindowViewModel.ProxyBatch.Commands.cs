@@ -29,7 +29,12 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        await ExecuteProxyBusyActionAsync("正在运行入口组检测...", RunProxyBatchCoreAsync);
+        await ExecuteProxyBusyActionAsync(
+            "正在运行入口组检测...",
+            RunProxyBatchCoreAsync,
+            "\u6279\u91CF\u5FEB\u901F\u5BF9\u6BD4",
+            "\u51C6\u5907\u4E2D",
+            6d);
     }
 
     private Task OpenProxyBatchEditorAsync()

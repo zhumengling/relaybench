@@ -58,6 +58,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _proxySeriesDelayMsText = "1200";
     private bool _isProxyBatchEditorOpen;
     private bool _isProxyModelPickerOpen;
+    private bool _isProxyMultiModelPickerOpen;
     private bool _isProxyTrendChartOpen;
     private bool _isProxyTrendChartAutoOpenSuppressed;
     private bool _isProxyChartImageOnlyMode;
@@ -75,11 +76,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private ProxyModelPickerTarget _proxyModelPickerTarget = ProxyModelPickerTarget.DefaultModel;
     private ProxyBatchEditorItemViewModel? _proxyBatchTemplateModelTargetRow;
     private string _proxyModelCatalogFilterText = string.Empty;
+    private string _proxyMultiModelCatalogFilterText = string.Empty;
     private string? _selectedProxyCatalogModel;
+    private readonly List<string> _proxySelectedMultiModelNames = [];
     private string _proxyModelCatalogSummary = "点击拉取模型列表后，这里会显示可用模型数量、推荐模型和边缘观察。";
     private string _proxyModelCatalogDetail = "尚未拉取模型列表。";
-    private string _proxySummary = "填写默认入口、默认密钥和默认模型后，即可运行基础或深度中转站检测。";
-    private string _proxyDetail = "基础单次诊断会测试 /models、一次非流式请求、一次流式请求、Responses 和结构化输出；深度单次诊断会在此基础上追加复杂探针。";
+    private string _proxySummary = "\u586B\u5199 Base URL\u3001API Key \u548C\u6A21\u578B\u540E\uFF0C\u5373\u53EF\u8FD0\u884C\u57FA\u7840\u6216\u6DF1\u5EA6\u63A5\u53E3\u68C0\u6D4B\u3002";
+    private string _proxyDetail = "\u57FA\u7840\u5355\u6B21\u8BCA\u65AD\u4F1A\u6D4B\u8BD5 /models\u3001\u4E00\u6B21\u975E\u6D41\u5F0F\u8BF7\u6C42\u3001\u4E00\u6B21\u6D41\u5F0F\u8BF7\u6C42\u3001Responses \u548C\u7ED3\u6784\u5316\u8F93\u51FA\uFF1B\u6DF1\u5EA6\u5355\u6B21\u8BCA\u65AD\u4F1A\u5728\u6B64\u57FA\u7840\u4E0A\u8FFD\u52A0\u590D\u6742\u63A2\u9488\u3002";
     private string _proxyStabilitySummary = "运行稳定性序列后，这里会显示健康分与稳定性摘要。";
     private string _proxyStabilityDetail = "暂无稳定性序列结果。";
     private string _historySummary = "还没有保存的诊断历史。";
@@ -95,8 +98,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private string GetSingleProxyOutputTitle()
         => GetEffectiveSingleExecutionMode() == ProxySingleExecutionMode.Deep
-            ? "中转站深度单次返回"
-            : "中转站基础单次返回";
+            ? "\u63A5\u53E3\u6DF1\u5EA6\u5355\u6B21\u8FD4\u56DE"
+            : "\u63A5\u53E3\u57FA\u7840\u5355\u6B21\u8FD4\u56DE";
 
     private static string NormalizeStunServerHost(string? serverHost)
     {

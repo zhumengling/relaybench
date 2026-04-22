@@ -21,8 +21,9 @@ public sealed partial class MainWindowViewModel
         var timeoutSeconds = ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 120);
         var enableLongStreamingTest = ProxyBatchEnableLongStreamingTest;
         var longStreamSegmentCount = GetProxyLongStreamSegmentCount();
-        List<ProxyBatchProbeRow> liveRows = [];
+        Dictionary<string, ProxyBatchProbeRow> liveRows = new(StringComparer.OrdinalIgnoreCase);
         StartProxyBatchChartLiveSession(plan.Targets);
+        UpdateGlobalTaskProgress("\u51C6\u5907\u4E2D", 8d);
         var progress = new Progress<string>(message =>
         {
             StatusMessage = message;
@@ -30,8 +31,10 @@ public sealed partial class MainWindowViewModel
         });
         var rowProgress = new Progress<ProxyBatchProbeRow>(row =>
         {
-            liveRows.Add(row);
-            UpdateProxyBatchChartLive(liveRows, plan.Targets.Count);
+            liveRows[BuildBatchTargetKey(row.Entry)] = row;
+            var orderedRows = MaterializeLiveBatchRows(liveRows, plan.Targets);
+            UpdateProxyBatchChartLive(orderedRows, plan.Targets.Count);
+            UpdateGlobalTaskProgress(CountCompletedLiveBatchRows(orderedRows), plan.Targets.Count, "\u8BF7\u6C42\u4E2D");
         });
         var rows = await ProbeBatchEntriesAsync(
             plan.Targets,
@@ -53,7 +56,7 @@ public sealed partial class MainWindowViewModel
         DashboardCards[3].Detail =
             $"入口组累计 {_proxyBatchChartRuns.Count} 轮，推荐 {bestRow.Entry.Name}（平均普通延迟 {FormatMillisecondsValue(bestRow.AverageChatLatencyMs)} / 平均 TTFT {FormatMillisecondsValue(bestRow.AverageTtftMs)} / 独立吞吐 {FormatTokensPerSecond(bestRow.AverageBenchmarkTokensPerSecond)} / 综合分 {bestRow.CompositeScore:F1}）。";
         StatusMessage = $"入口组检测完成，当前累计 {_proxyBatchChartRuns.Count} 轮整组，推荐 {bestRow.Entry.Name}。";
-        AppendHistory("中转站", "中转站入口组对比", ProxyBatchSummary);
+        AppendHistory("接口", "接口入口组对比", ProxyBatchSummary);
     }
 
     private void ApplyProxyBatchResults(IReadOnlyList<IReadOnlyList<ProxyBatchProbeRow>> batchRuns, ProxyBatchPlan plan)
@@ -188,7 +191,49 @@ public sealed partial class MainWindowViewModel
 
         RefreshProxyOverviewSummary();
         RefreshProxyUnifiedOutput();
-        AppendModuleOutput("中转站入口组返回", ProxyBatchSummary, ProxyBatchDetail);
+        AppendModuleOutput("接口入口组返回", ProxyBatchSummary, ProxyBatchDetail);
+    }
+
+    private static IReadOnlyList<ProxyBatchProbeRow> MaterializeLiveBatchRows(
+        IReadOnlyDictionary<string, ProxyBatchProbeRow> liveRows,
+        IReadOnlyList<ProxyBatchTargetEntry> targets)
+    {
+        List<ProxyBatchProbeRow> orderedRows = [];
+        for (var index = 0; index < targets.Count; index++)
+        {
+            var target = targets[index];
+            if (liveRows.TryGetValue(BuildBatchTargetKey(target), out var row))
+            {
+                orderedRows.Add(row);
+                continue;
+            }
+
+            orderedRows.Add(CreatePendingProxyBatchProbeRow(target, ResolvePendingProxyBatchMessage(targets, index)));
+        }
+
+        return orderedRows;
+    }
+
+    private static int CountCompletedLiveBatchRows(IEnumerable<ProxyBatchProbeRow> rows)
+        => rows.Count(row => row.Stage == ProxyBatchProbeStage.Completed);
+
+    private static string ResolvePendingProxyBatchMessage(
+        IReadOnlyList<ProxyBatchTargetEntry> targets,
+        int targetIndex)
+    {
+        var target = targets[targetIndex];
+        if (!string.IsNullOrWhiteSpace(target.SiteGroupName))
+        {
+            for (var index = 0; index < targetIndex; index++)
+            {
+                if (string.Equals(targets[index].SiteGroupName, target.SiteGroupName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return "等待同组其他入口测试中";
+                }
+            }
+        }
+
+        return "等待开始";
     }
 }
 

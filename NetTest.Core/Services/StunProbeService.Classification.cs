@@ -162,7 +162,7 @@ public sealed partial class StunProbeService
         if (changePortOnlyTest is not null && !changePortOnlyTest.Success &&
             natType.Contains("端口受限", StringComparison.OrdinalIgnoreCase))
         {
-            return "当前结果更偏向端口受限锥形 NAT；如中转站仍出现偶发 UDP 失败，可换一个 STUN 服务器交叉验证过滤行为。";
+            return "当前结果更偏向端口受限锥形 NAT；如当前接口仍出现偶发 UDP 失败，可换一个 STUN 服务器交叉验证过滤行为。";
         }
 
         if (natType.Contains("待复核", StringComparison.OrdinalIgnoreCase) ||
@@ -171,7 +171,7 @@ public sealed partial class StunProbeService
             return "当前 NAT 已经确认存在，但细分依据不足；建议至少再换一个 STUN 服务器复测，并结合真实业务流量或语音/UDP 业务做交叉验证。";
         }
 
-        return "当前归类覆盖度较完整，可把它作为这条网络的 UDP 环境参考；若后续实际业务仍异常，再结合中转站实测与路由结果继续排查。";
+        return "当前归类覆盖度较完整，可把它作为这条网络的 UDP 环境参考；若后续实际业务仍异常，再结合接口实测与路由结果继续排查。";
     }
 
     private static string DescribeOptionalCoverage(BindingTestOutcome? outcome)

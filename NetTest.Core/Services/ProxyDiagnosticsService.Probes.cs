@@ -44,4 +44,17 @@ public sealed partial class ProxyDiagnosticsService
         double? MaxChunkGapMilliseconds,
         double? AverageChunkGapMilliseconds);
 
+    private sealed record StreamingReadLiveProgress(
+        TimeSpan Elapsed,
+        TimeSpan? FirstTokenLatency,
+        string Preview,
+        string FullText,
+        int ChunkCount,
+        bool ReceivedDone,
+        int? OutputTokenCount,
+        bool OutputTokenCountEstimated,
+        int OutputCharacterCount,
+        double? OutputTokensPerSecond,
+        double? EndToEndTokensPerSecond);
+
 }

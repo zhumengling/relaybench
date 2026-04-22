@@ -7,9 +7,36 @@ namespace NetTest.Core.Services;
 
 public sealed partial class ProxyDiagnosticsService
 {
+    private static bool IsAdvancedScenario(ProxyProbeScenarioKind scenario)
+        => scenario is ProxyProbeScenarioKind.Embeddings or
+                       ProxyProbeScenarioKind.Images or
+                       ProxyProbeScenarioKind.AudioTranscription or
+                       ProxyProbeScenarioKind.AudioSpeech or
+                       ProxyProbeScenarioKind.Moderation or
+                       ProxyProbeScenarioKind.SystemPromptMapping or
+                       ProxyProbeScenarioKind.FunctionCalling or
+                       ProxyProbeScenarioKind.ErrorTransparency or
+                       ProxyProbeScenarioKind.StreamingIntegrity or
+                       ProxyProbeScenarioKind.OfficialReferenceIntegrity or
+                       ProxyProbeScenarioKind.MultiModal or
+                       ProxyProbeScenarioKind.CacheMechanism or
+                       ProxyProbeScenarioKind.CacheIsolation;
+
+    private static bool IsNonChatCapabilityScenario(ProxyProbeScenarioKind scenario)
+        => scenario is ProxyProbeScenarioKind.Embeddings or
+                       ProxyProbeScenarioKind.Images or
+                       ProxyProbeScenarioKind.AudioTranscription or
+                       ProxyProbeScenarioKind.AudioSpeech or
+                       ProxyProbeScenarioKind.Moderation;
+
+    private static bool IsSkippedInformationalScenario(ProxyProbeScenarioResult result)
+        => string.Equals(result.CapabilityStatus, "\u672A\u914D\u7F6E", StringComparison.Ordinal) ||
+           string.Equals(result.CapabilityStatus, "\u672A\u6267\u884C", StringComparison.Ordinal) ||
+           string.Equals(result.CapabilityStatus, "\u524D\u7F6E\u4E0D\u8DB3", StringComparison.Ordinal);
+
     private static ProxyProbeScenarioResult? SelectPrimaryFailure(IReadOnlyList<ProxyProbeScenarioResult> scenarioResults)
         => scenarioResults
-            .Where(result => !result.Success)
+            .Where(result => !result.Success && !IsSkippedInformationalScenario(result))
             .OrderBy(result => GetFailurePriority(result.FailureKind))
             .FirstOrDefault();
 
@@ -49,17 +76,13 @@ public sealed partial class ProxyDiagnosticsService
             structuredOutput?.Success == true;
 
         var advancedScenarios = scenarioResults
-            .Where(result => result.Scenario is ProxyProbeScenarioKind.SystemPromptMapping or
-                                           ProxyProbeScenarioKind.FunctionCalling or
-                                           ProxyProbeScenarioKind.ErrorTransparency or
-                                           ProxyProbeScenarioKind.StreamingIntegrity or
-                                           ProxyProbeScenarioKind.OfficialReferenceIntegrity or
-                                           ProxyProbeScenarioKind.MultiModal or
-                                           ProxyProbeScenarioKind.CacheMechanism or
-                                           ProxyProbeScenarioKind.CacheIsolation)
+            .Where(result => IsAdvancedScenario(result.Scenario))
             .ToArray();
-        var advancedExecuted = advancedScenarios.Length > 0;
-        var advancedAllPassed = advancedExecuted && advancedScenarios.All(result => result.Success);
+        var executedAdvancedScenarios = advancedScenarios
+            .Where(result => !IsSkippedInformationalScenario(result))
+            .ToArray();
+        var advancedExecuted = executedAdvancedScenarios.Length > 0;
+        var advancedAllPassed = advancedExecuted && executedAdvancedScenarios.All(result => result.Success);
 
         if (baseFivePassed && (!advancedExecuted || advancedAllPassed))
         {
@@ -113,17 +136,13 @@ public sealed partial class ProxyDiagnosticsService
             structuredOutput?.Success == true;
 
         var advancedScenarios = scenarioResults
-            .Where(result => result.Scenario is ProxyProbeScenarioKind.SystemPromptMapping or
-                                           ProxyProbeScenarioKind.FunctionCalling or
-                                           ProxyProbeScenarioKind.ErrorTransparency or
-                                           ProxyProbeScenarioKind.StreamingIntegrity or
-                                           ProxyProbeScenarioKind.OfficialReferenceIntegrity or
-                                           ProxyProbeScenarioKind.MultiModal or
-                                           ProxyProbeScenarioKind.CacheMechanism or
-                                           ProxyProbeScenarioKind.CacheIsolation)
+            .Where(result => IsAdvancedScenario(result.Scenario))
             .ToArray();
-        var advancedExecuted = advancedScenarios.Length > 0;
-        var advancedPassed = !advancedExecuted || advancedScenarios.All(result => result.Success);
+        var executedAdvancedScenarios = advancedScenarios
+            .Where(result => !IsSkippedInformationalScenario(result))
+            .ToArray();
+        var advancedExecuted = executedAdvancedScenarios.Length > 0;
+        var advancedPassed = !advancedExecuted || executedAdvancedScenarios.All(result => result.Success);
 
         if (baseFivePassed && (!advancedExecuted || advancedPassed))
         {
@@ -155,7 +174,7 @@ public sealed partial class ProxyDiagnosticsService
             return "仅适合轻量非流式使用，正式接入前建议继续跑稳定性与协议兼容测试。";
         }
 
-        return "建议更换中转站，或先排查鉴权、TLS、线路与接口兼容问题。";
+        return "建议更换当前接口，或先排查鉴权、TLS、线路与接口兼容问题。";
     }
 
     private static string BuildPrimaryIssue(IReadOnlyList<ProxyProbeScenarioResult> scenarioResults)
@@ -232,6 +251,11 @@ public sealed partial class ProxyDiagnosticsService
         {
             return scenario is ProxyProbeScenarioKind.Responses or
                        ProxyProbeScenarioKind.StructuredOutput or
+                       ProxyProbeScenarioKind.Embeddings or
+                       ProxyProbeScenarioKind.Images or
+                       ProxyProbeScenarioKind.AudioTranscription or
+                       ProxyProbeScenarioKind.AudioSpeech or
+                       ProxyProbeScenarioKind.Moderation or
                        ProxyProbeScenarioKind.FunctionCalling or
                        ProxyProbeScenarioKind.MultiModal
                 ? ProxyFailureKind.UnsupportedEndpoint
@@ -240,6 +264,11 @@ public sealed partial class ProxyDiagnosticsService
 
         if ((scenario is ProxyProbeScenarioKind.Responses or
              ProxyProbeScenarioKind.StructuredOutput or
+             ProxyProbeScenarioKind.Embeddings or
+             ProxyProbeScenarioKind.Images or
+             ProxyProbeScenarioKind.AudioTranscription or
+             ProxyProbeScenarioKind.AudioSpeech or
+             ProxyProbeScenarioKind.Moderation or
              ProxyProbeScenarioKind.FunctionCalling or
              ProxyProbeScenarioKind.MultiModal) &&
             LooksLikeUnsupportedFeature(body))
@@ -281,6 +310,14 @@ public sealed partial class ProxyDiagnosticsService
 
         return body.Contains("unsupported", StringComparison.OrdinalIgnoreCase) ||
                body.Contains("not supported", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("embeddings", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("embedding", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("images", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("image generation", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("audio", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("speech", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("transcription", StringComparison.OrdinalIgnoreCase) ||
+               body.Contains("moderation", StringComparison.OrdinalIgnoreCase) ||
                body.Contains("json_schema", StringComparison.OrdinalIgnoreCase) ||
                body.Contains("structured output", StringComparison.OrdinalIgnoreCase) ||
                body.Contains("text.format", StringComparison.OrdinalIgnoreCase) ||

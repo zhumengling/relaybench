@@ -118,8 +118,23 @@ public sealed partial class MainWindowViewModel
             () => OpenOfficialApiTraceDialogAsync(traceTitle, traceContent),
             check.RestoreSupported
                 ? () => RestoreClientApiDefaultConfigAsync(check)
-                : null);
+                : null,
+            BuildClientApiStateText(check),
+            BuildClientApiAccessDetailText(check),
+            check.EndpointLabel,
+            check.ConfigSource,
+            check.RestoreSupported
+                ? check.RestoreHint
+                : "\u5F53\u524D\u5BA2\u6237\u7AEF\u6682\u4E0D\u652F\u6301\u81EA\u52A8\u8FD8\u539F\u3002");
     }
+
+    private static string BuildClientApiStateText(ClientApiCheck check)
+        => $"\u5B89\u88C5\uFF1A{(check.Installed ? "\u5DF2\u53D1\u73B0" : "\u672A\u53D1\u73B0")} \u00B7 " +
+           $"\u914D\u7F6E\uFF1A{(check.ConfigDetected ? "\u5DF2\u8BC6\u522B" : "\u672A\u8BC6\u522B")} \u00B7 " +
+           $"API\uFF1A{(check.Reachable ? "\u53EF\u8FBE" : "\u4E0D\u53EF\u8FBE")}";
+
+    private static string BuildClientApiAccessDetailText(ClientApiCheck check)
+        => $"{check.AccessPathLabel} \u00B7 {check.ConfigOriginLabel} \u00B7 {check.RoutingNote}";
 
     private static string BuildClientApiAvailabilityText(ClientApiCheck check)
         => check.AccessPathLabel switch

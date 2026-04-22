@@ -32,7 +32,7 @@ public sealed partial class ProxyTrendChartRenderService
         var headerRect = new Rect(14, 12, ChartWidth - 28, HeaderHeight - 14);
         context.DrawRoundedRectangle(CreateBrush(247, 249, 252), new Pen(CreateBrush(224, 231, 239), 1), headerRect, 14, 14);
 
-        DrawText(context, "中转站稳定性趋势图", new Point(28, 20), 21, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "接口稳定性趋势图", new Point(28, 20), 21, FontWeights.SemiBold, CreateBrush(16, 24, 40));
 
         var subtitle =
             $"{ProxyTrendStore.NormalizeBaseUrl(targetLabel)}  |  样本 {records.Count}  |  最新 {records.Last().Timestamp:yyyy-MM-dd HH:mm:ss}";

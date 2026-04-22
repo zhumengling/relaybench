@@ -24,7 +24,7 @@ public sealed class AppStateSnapshot
 
     public string SingleStationModeKey { get; set; } = "quick";
 
-    public string NetworkReviewIssueKey { get; set; } = "relay-unavailable";
+    public string NetworkReviewIssueKey { get; set; } = "interface-unavailable";
 
     public string ProxyDiagnosticPresetKey { get; set; } = "deep";
 
@@ -51,6 +51,18 @@ public sealed class AppStateSnapshot
     public string ProxyOfficialReferenceApiKey { get; set; } = string.Empty;
 
     public string ProxyOfficialReferenceModel { get; set; } = string.Empty;
+
+    public string ProxyEmbeddingsModel { get; set; } = string.Empty;
+
+    public string ProxyImagesModel { get; set; } = string.Empty;
+
+    public string ProxyAudioTranscriptionModel { get; set; } = string.Empty;
+
+    public string ProxyAudioSpeechModel { get; set; } = string.Empty;
+
+    public string ProxyModerationModel { get; set; } = string.Empty;
+
+    public List<string> ProxyMultiModelBenchmarkModels { get; set; } = [];
 
     public bool ProxyBatchEnableLongStreamingTest { get; set; }
 

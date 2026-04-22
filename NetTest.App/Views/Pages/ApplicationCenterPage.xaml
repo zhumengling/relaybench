@@ -1,0 +1,304 @@
+<UserControl x:Class="NetTest.App.Views.Pages.ApplicationCenterPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="ApplicationCenterActionButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="MinWidth" Value="104" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Margin" Value="0,8,8,0" />
+        </Style>
+
+        <Style x:Key="ApplicationCenterMetaTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource SectionHintTextStyle}">
+            <Setter Property="Margin" Value="0,3,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource SectionPanelBorderStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x5E94;&#x7528;&#x63A5;&#x5165;&#x4E2D;&#x5FC3;" />
+                    <TextBlock Margin="0,3,0,0"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               Text="&#x626B;&#x63CF;&#x672C;&#x673A;&#x5B89;&#x88C5;&#x7684; Codex / VSCode / Antigravity / Claude &#x7B49;&#x5BA2;&#x6237;&#x7AEF;&#xFF0C;&#x67E5;&#x770B;&#x5F53;&#x524D;&#x63A5;&#x5165;&#x72B6;&#x6001;&#x3001;&#x914D;&#x7F6E;&#x6765;&#x6E90;&#x4E0E;&#x5E95;&#x5C42; API &#x53EF;&#x8FBE;&#x6027;&#x3002;" />
+                </StackPanel>
+
+                <WrapPanel Grid.Column="1"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center">
+                    <Button Command="{Binding RunClientApiDiagnosticsCommand}"
+                            Style="{StaticResource PrimaryActionButtonStyle}"
+                            Content="&#x5F00;&#x59CB;&#x626B;&#x63CF;" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1"
+              Margin="0,4,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.08*" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="0.92*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x672C;&#x673A;&#x5E94;&#x7528;&#x5217;&#x8868;" />
+                        <TextBlock Margin="0,2,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="&#x5217;&#x51FA;&#x5DF2;&#x53D1;&#x73B0;&#x7684;&#x5E94;&#x7528;&#x3001;&#x5F53;&#x524D;&#x63A5;&#x5165;&#x65B9;&#x5F0F;&#x3001;&#x539F;&#x59CB; Trace &#x67E5;&#x770B;&#x548C;&#x8FD8;&#x539F;&#x5165;&#x53E3;&#x3002;" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="1"
+                          Margin="0,6,0,0">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding ClientApiStatusRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="0,8"
+                                                BorderBrush="#EAECF0"
+                                                BorderThickness="0,0,0,1">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0">
+                                                    <WrapPanel>
+                                                        <Border Margin="0,0,8,0"
+                                                                Padding="7,2"
+                                                                Background="#F5F7FA"
+                                                                BorderBrush="#D0D5DD"
+                                                                BorderThickness="1"
+                                                                CornerRadius="999">
+                                                            <TextBlock FontSize="10"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource MutedBrush}"
+                                                                       Text="{Binding Provider}" />
+                                                        </Border>
+                                                        <TextBlock VerticalAlignment="Center"
+                                                                   FontSize="12.2"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextBrush}"
+                                                                   Text="{Binding Name}" />
+                                                    </WrapPanel>
+                                                    <TextBlock Margin="0,4,0,0"
+                                                               TextWrapping="Wrap"
+                                                               Foreground="{StaticResource TextBrush}"
+                                                               Text="{Binding Summary}" />
+                                                    <TextBlock Margin="0,4,0,0"
+                                                               Style="{StaticResource ApplicationCenterMetaTextStyle}"
+                                                               Text="{Binding StateText}" />
+                                                    <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
+                                                               Text="{Binding AccessDetailText}" />
+                                                    <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
+                                                               Text="{Binding EndpointText, StringFormat=&#x5F53;&#x524D;&#x5165;&#x53E3;&#xFF1A;{0}}" />
+                                                    <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
+                                                               Text="{Binding ConfigSourceText, StringFormat=&#x914D;&#x7F6E;&#x6765;&#x6E90;&#xFF1A;{0}}" />
+                                                    <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
+                                                               Text="{Binding RestoreHintText, StringFormat=&#x8FD8;&#x539F;&#x8BF4;&#x660E;&#xFF1A;{0}}" />
+                                                    <TextBlock Margin="0,4,0,0"
+                                                               FontFamily="Consolas"
+                                                               FontSize="10.2"
+                                                               Foreground="#667085"
+                                                               Text="{Binding EndpointMetaText}" />
+                                                </StackPanel>
+
+                                                <Border Grid.Column="1"
+                                                        Margin="10,0,0,0"
+                                                        Padding="10,4"
+                                                        VerticalAlignment="Top"
+                                                        CornerRadius="10"
+                                                        Background="{Binding StatusBackground}">
+                                                    <TextBlock FontSize="10.6"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{Binding StatusForeground}"
+                                                               Text="{Binding AvailabilityText}" />
+                                                </Border>
+
+                                                <StackPanel Grid.Row="1"
+                                                            Grid.ColumnSpan="2"
+                                                            Orientation="Horizontal">
+                                                    <Button Command="{Binding OpenRawTraceCommand}"
+                                                            Style="{StaticResource ApplicationCenterActionButtonStyle}"
+                                                            Content="&#x539F;&#x59CB; Trace" />
+                                                    <Button Command="{Binding RestoreDefaultConfigCommand}"
+                                                            Style="{StaticResource ApplicationCenterActionButtonStyle}"
+                                                            Visibility="{Binding HasRestoreDefaultConfigAction, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                            Content="&#x8FD8;&#x539F;&#x9ED8;&#x8BA4;" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <TextBlock HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Text="&#x5C1A;&#x672A;&#x6267;&#x884C;&#x626B;&#x63CF;&#x3002;&#x70B9;&#x51FB;&#x53F3;&#x4E0A;&#x89D2;&#x201C;&#x5F00;&#x59CB;&#x626B;&#x63CF;&#x201D;&#x540E;&#xFF0C;&#x8FD9;&#x91CC;&#x4F1A;&#x663E;&#x793A;&#x652F;&#x6301;&#x7684;&#x5BA2;&#x6237;&#x7AEF;&#x5E94;&#x7528;&#x53CA;&#x5176;&#x63A5;&#x5165;&#x72B6;&#x6001;&#x3002;">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasClientApiStatusRows}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="8" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="8" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x5F53;&#x524D;&#x63A5;&#x53E3;&#x4E0A;&#x4E0B;&#x6587;" />
+                        <TextBlock Margin="0,2,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="&#x8FD9;&#x91CC;&#x663E;&#x793A;&#x5F53;&#x524D;&#x5728;&#x201C;&#x63A5;&#x53E3;&#x8BCA;&#x65AD;&#x201D;&#x9875;&#x9762;&#x586B;&#x5199;&#x7684;&#x63A5;&#x53E3;&#x4FE1;&#x606F;&#xFF0C;&#x540E;&#x7EED;&#x7684;&#x4E00;&#x952E;&#x5E94;&#x7528;&#x4F1A;&#x4EE5;&#x6B64;&#x4E3A;&#x57FA;&#x7840;&#x3002;" />
+                    </StackPanel>
+
+                    <Border Grid.Row="1"
+                            Margin="0,6,0,0"
+                            Style="{StaticResource InsetPanelBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0">
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5F53;&#x524D; Base URL" />
+                                <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                         IsReadOnly="True"
+                                         Text="{Binding ProxyBaseUrl, Mode=OneWay}" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1"
+                                        Margin="0,6,0,0">
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5F53;&#x524D;&#x6A21;&#x578B;" />
+                                <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                         IsReadOnly="True"
+                                         Text="{Binding ProxyModel, Mode=OneWay}" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2"
+                                        Margin="0,6,0,0">
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="API Key" />
+                                <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                         IsReadOnly="True"
+                                         Text="{Binding ProxyApiKey, Mode=OneWay}" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            Style="{StaticResource InsetPanelBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5E94;&#x7528;&#x5230; Codex &#x7CFB;&#x5217;" />
+                            <Button Grid.Column="1"
+                                    Command="{Binding ApplyCurrentInterfaceToCodexAppsCommand}"
+                                    Style="{StaticResource PrimaryActionButtonStyle}"
+                                    Content="&#x5E94;&#x7528;&#x5F53;&#x524D;&#x63A5;&#x53E3;" />
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.ColumnSpan="2"
+                                       Margin="0,6,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding ApplicationCenterApplyTargetSummary, Mode=OneWay}" />
+
+                            <TextBox Grid.Row="2"
+                                     Grid.ColumnSpan="2"
+                                     Margin="0,8,0,0"
+                                     MinHeight="146"
+                                     Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                     Text="{Binding ApplicationCenterApplyPreviewDetail, Mode=OneWay}" />
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="5"
+                          Margin="0,6,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x626B;&#x63CF;&#x6982;&#x89C8;&#x4E0E;&#x7EC6;&#x8282;" />
+
+                        <TabControl Grid.Row="1"
+                                    Margin="0,4,0,0">
+                            <TabItem Header="&#x6982;&#x89C8;">
+                                <TextBox Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                         Text="{Binding ClientApiSummary, Mode=OneWay}" />
+                            </TabItem>
+                            <TabItem Header="&#x7EC6;&#x8282;">
+                                <TextBox Style="{StaticResource ReadOnlyRawLogTextBoxStyle}"
+                                         Text="{Binding ClientApiDetail, Mode=OneWay}" />
+                            </TabItem>
+                        </TabControl>
+
+                        <TextBlock Grid.Row="2"
+                                   Margin="0,8,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="&#x76EE;&#x524D;&#x4F18;&#x5148;&#x652F;&#x6301; Codex CLI / Codex Desktop / VSCode Codex &#x7684;&#x5171;&#x7528; .codex &#x914D;&#x7F6E;&#x5199;&#x5165;&#x4E0E;&#x8FD8;&#x539F;&#x3002;Claude CLI / Antigravity &#x7B49;&#x5176;&#x4ED6;&#x5BA2;&#x6237;&#x7AEF;&#x4ECD;&#x4EE5;&#x68C0;&#x6D4B;&#x3001;Trace &#x548C;&#x8FD8;&#x539F;&#x80FD;&#x529B;&#x4E3A;&#x4E3B;&#x3002;" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

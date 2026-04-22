@@ -131,7 +131,7 @@ public sealed partial class ProxyDiagnosticsService
         List<ProxyDiagnosticsResult> rounds = new(clampedRounds);
         for (var index = 0; index < clampedRounds; index++)
         {
-            progress?.Report($"正在运行中转站稳定性第 {index + 1}/{clampedRounds} 轮...");
+            progress?.Report($"正在运行接口稳定性第 {index + 1}/{clampedRounds} 轮...");
             var roundResult = await RunSingleCoreAsync(normalizedSettings, baseUri, null, cancellationToken);
             rounds.Add(roundResult);
             roundProgress?.Report(roundResult);
@@ -194,7 +194,7 @@ public sealed partial class ProxyDiagnosticsService
 
         if (string.IsNullOrWhiteSpace(settings.BaseUrl))
         {
-            error = "必须填写中转站地址（Base URL）。";
+            error = "必须填写接口地址（Base URL）。";
             return false;
         }
 
@@ -206,7 +206,7 @@ public sealed partial class ProxyDiagnosticsService
 
         if (!Uri.TryCreate(settings.BaseUrl.Trim(), UriKind.Absolute, out var parsedBaseUri))
         {
-            error = "中转站地址（Base URL）不是有效的绝对 URI。";
+            error = "接口地址（Base URL）不是有效的绝对 URI。";
             return false;
         }
 
@@ -270,7 +270,7 @@ public sealed partial class ProxyDiagnosticsService
             ProxyFailureKind.ConfigurationInvalid,
             "参数校验",
             "不可用",
-            "请先补全中转站地址、接口密钥和模型配置，再重新测试。",
+            "请先补全接口地址、接口密钥和模型配置，再重新测试。",
             message,
             "本次未采集到响应头信息。");
     }

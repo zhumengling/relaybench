@@ -11,6 +11,13 @@ public sealed partial class ProxyDiagnosticsService
         ProxyEndpointSettings settings,
         int requestedSegmentCount,
         CancellationToken cancellationToken = default)
+        => await RunLongStreamingTestCoreAsync(settings, requestedSegmentCount, liveReporter: null, cancellationToken);
+
+    private async Task<ProxyStreamingStabilityResult> RunLongStreamingTestCoreAsync(
+        ProxyEndpointSettings settings,
+        int requestedSegmentCount,
+        Action<StreamingReadLiveProgress>? liveReporter,
+        CancellationToken cancellationToken = default)
     {
         if (!TryValidateSettings(settings, out var normalizedSettings, out var baseUri, out var error))
         {
@@ -84,7 +91,12 @@ public sealed partial class ProxyDiagnosticsService
                     traceId);
             }
 
-            var streamingOutcome = await ReadStreamingResponseAsync(response, System.Diagnostics.Stopwatch.StartNew(), TryParseChatStreamContent, cancellationToken);
+            var streamingOutcome = await ReadStreamingResponseAsync(
+                response,
+                System.Diagnostics.Stopwatch.StartNew(),
+                TryParseChatStreamContent,
+                liveReporter,
+                cancellationToken);
             var observedSegments = LongStreamSegmentRegex.Matches(streamingOutcome.FullText)
                 .Select(static match => int.TryParse(match.Groups["segment"].Value, out var parsed) ? parsed : -1)
                 .Where(static value => value > 0)

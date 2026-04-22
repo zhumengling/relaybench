@@ -263,6 +263,17 @@ public sealed partial class MainWindowViewModel
             previewOverride: BuildCacheIsolationDigest,
             detailOverride: scenario => BuildScenarioChartDetail(scenario, "跨账户隔离校验"));
 
+        if (result.MultiModelSpeedResults is { Count: > 0 } multiModelResults)
+        {
+            foreach (var multiModelResult in multiModelResults
+                         .OrderByDescending(item => item.Success)
+                         .ThenByDescending(item => item.OutputTokensPerSecond ?? double.MinValue)
+                         .ThenBy(item => item.Model, StringComparer.OrdinalIgnoreCase))
+            {
+                items.Add(CreateMultiModelSpeedChartItem(order++, multiModelResult));
+            }
+        }
+
         return items;
     }
 
@@ -415,6 +426,45 @@ public sealed partial class MainWindowViewModel
 
     private static ProxySingleCapabilityChartItem CreateThroughputBenchmarkChartItem(int order, ProxyThroughputBenchmarkResult result)
     {
+        if (result.IsLive)
+        {
+            List<string> liveDetailParts =
+            [
+                $"\u7B2C {Math.Max(result.CurrentSampleIndex, 1)}/{Math.Max(result.RequestedSampleCount, 1)} \u8F6E",
+                $"\u5DF2\u5B8C\u6210 {result.CompletedSampleCount}/{Math.Max(result.RequestedSampleCount, 1)}"
+            ];
+
+            if (result.CurrentSampleElapsed is { } currentElapsed)
+            {
+                liveDetailParts.Add($"\u5F53\u524D\u7528\u65F6 {currentElapsed.TotalSeconds:F1}s");
+            }
+
+            if (result.CurrentOutputTokenCount is > 0)
+            {
+                liveDetailParts.Add($"\u5DF2\u8F93\u51FA {result.CurrentOutputTokenCount} token");
+            }
+
+            var liveMetricText = FormatTokensPerSecond(
+                result.CurrentOutputTokensPerSecond ?? result.MedianOutputTokensPerSecond,
+                result.CurrentOutputTokenCountEstimated || result.OutputTokenCountEstimated,
+                Math.Max(result.CompletedSampleCount, 1));
+
+            return new ProxySingleCapabilityChartItem(
+                order,
+                "\u589E\u5F3A\u6D4B\u8BD5",
+                "\u957F\u6D41\u4FDD\u6301\u3001\u72EC\u7ACB\u541E\u5410\u4E0E\u5185\u5BB9\u5B8C\u6574\u6027",
+                "\u72EC\u7ACB\u541E\u5410",
+                "\u8FDB\u884C\u4E2D",
+                false,
+                false,
+                null,
+                null,
+                liveMetricText,
+                false,
+                string.Join(" / ", liveDetailParts),
+                result.Summary);
+        }
+
         var detailParts = new List<string>
         {
             $"样本 {result.SuccessfulSampleCount}/{result.CompletedSampleCount}",
@@ -445,6 +495,34 @@ public sealed partial class MainWindowViewModel
             result.Summary);
     }
 
+    private static ProxySingleCapabilityChartItem CreateMultiModelSpeedChartItem(int order, ProxyMultiModelSpeedTestResult result)
+    {
+        List<string> detailParts =
+        [
+            "\u4E32\u884C\u5355\u6D41\u901F\u5EA6\u5BF9\u6BD4"
+        ];
+
+        if (result.StatusCode.HasValue)
+        {
+            detailParts.Add($"\u72B6\u6001\u7801 {result.StatusCode.Value}");
+        }
+
+        return new ProxySingleCapabilityChartItem(
+            order,
+            "\u591A\u6A21\u578B\u6D4B\u901F",
+            "\u4E32\u884C\u5355\u6D41 tok/s \u5BF9\u6BD4",
+            result.Model,
+            result.Success ? "\u901A\u8FC7" : "\u5F02\u5E38",
+            true,
+            result.Success,
+            result.StatusCode,
+            null,
+            FormatTokensPerSecond(result.OutputTokensPerSecond, result.OutputTokenCountEstimated),
+            false,
+            string.Join(" / ", detailParts),
+            result.Preview ?? result.Error ?? result.Summary);
+    }
+
     private static void AddScenarioChartItemIfPresent(
         ICollection<ProxySingleCapabilityChartItem> items,
         ref int order,
@@ -457,7 +535,7 @@ public sealed partial class MainWindowViewModel
         Func<ProxyProbeScenarioResult?, string>? detailOverride = null)
     {
         var scenario = FindScenario(scenarios, kind);
-        if (scenario is null)
+        if (scenario is null || IsCapabilityScenarioUnconfigured(scenario))
         {
             return;
         }
@@ -621,41 +699,23 @@ public sealed partial class MainWindowViewModel
 
     private static double ResolveBatchRowCapabilityRatio(ProxyBatchProbeRow row)
         => Math.Round(
-            new[]
-            {
-                row.Result.ModelsRequestSucceeded ? 1d : 0d,
-                row.Result.ChatRequestSucceeded ? 1d : 0d,
-                row.Result.StreamRequestSucceeded ? 1d : 0d,
-                FindScenario(GetScenarioResults(row.Result), ProxyProbeScenarioKind.Responses)?.Success == true ? 1d : 0d,
-                FindScenario(GetScenarioResults(row.Result), ProxyProbeScenarioKind.StructuredOutput)?.Success == true ? 1d : 0d
-            }.Average() * 100d,
+            Math.Clamp(
+                (double)ResolveBatchPassedCapabilityCount(row.Result) /
+                Math.Max(1, row.TotalBaselineScenarioCount),
+                0d,
+                1d) * 100d,
             1);
 
     private static int ResolveBatchPassedCapabilityCount(ProxyBatchProbeRow row)
-        => new[]
-        {
-            row.Result.ModelsRequestSucceeded,
-            row.Result.ChatRequestSucceeded,
-            row.Result.StreamRequestSucceeded,
-            FindScenario(GetScenarioResults(row.Result), ProxyProbeScenarioKind.Responses)?.Success == true,
-            FindScenario(GetScenarioResults(row.Result), ProxyProbeScenarioKind.StructuredOutput)?.Success == true
-        }.Count(value => value);
+        => ResolveBatchPassedCapabilityCount(row.Result);
 
     private static string BuildBatchCapabilityMatrix(ProxyBatchProbeRow row)
-        => string.Join(
-            "，",
-            new[]
-            {
-                $"/models {(row.Result.ModelsRequestSucceeded ? "成功" : "失败")}",
-                $"普通对话 {(row.Result.ChatRequestSucceeded ? "成功" : "失败")}",
-                $"流式对话 {(row.Result.StreamRequestSucceeded ? "成功" : "失败")}",
-                $"Responses {(FindScenario(GetScenarioResults(row.Result), ProxyProbeScenarioKind.Responses)?.Success == true ? "成功" : "失败")}",
-                $"结构化输出 {(FindScenario(GetScenarioResults(row.Result), ProxyProbeScenarioKind.StructuredOutput)?.Success == true ? "成功" : "失败")}"
-            });
+        => BuildBatchCapabilityMatrix(row.Result);
 
     private static IOrderedEnumerable<ProxyBatchProbeRow> OrderBatchRowsForComparison(IEnumerable<ProxyBatchProbeRow> rows)
         => rows
-            .OrderByDescending(ResolveBatchPassedCapabilityCount)
+            .OrderByDescending(row => row.Stage == ProxyBatchProbeStage.Completed ? 1 : 0)
+            .ThenByDescending(row => row.CompletedBaselineScenarioCount)
             .ThenBy(row => row.Result.ChatLatency ?? TimeSpan.MaxValue)
             .ThenBy(row => row.Result.StreamFirstTokenLatency ?? TimeSpan.MaxValue)
             .ThenBy(row => row.Result.PrimaryFailureKind is null ? 0 : 1)
@@ -663,6 +723,11 @@ public sealed partial class MainWindowViewModel
 
     private static string BuildBatchStabilityLabel(ProxyBatchProbeRow row)
     {
+        if (row.Stage != ProxyBatchProbeStage.Completed)
+        {
+            return "进行中";
+        }
+
         var passedCount = ResolveBatchPassedCapabilityCount(row);
         var chatLatency = row.Result.ChatLatency?.TotalMilliseconds;
         var ttft = row.Result.StreamFirstTokenLatency?.TotalMilliseconds;

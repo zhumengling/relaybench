@@ -429,7 +429,7 @@ public sealed partial class MainWindowViewModel
                 "快速核对基础 5 项：/models、普通对话、流式对话、Responses、结构化输出。数值表示通过项数 / 5。"),
             "Sys" => (
                 "System Prompt 映射",
-                "检查中转站是否能正确传递 system 指令，避免系统提示词被吞掉、改写或错位。"),
+                "检查接口是否能正确传递 system 指令，避免系统提示词被吞掉、改写或错位。"),
             "Fn" => (
                 "Function Calling",
                 "检查工具调用 / function calling 的请求格式、参数回填和响应结构是否兼容。"),

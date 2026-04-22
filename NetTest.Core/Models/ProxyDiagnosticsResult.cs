@@ -36,4 +36,5 @@ public sealed record ProxyDiagnosticsResult(
     ProxyThroughputBenchmarkResult? ThroughputBenchmarkResult = null,
     string? RequestId = null,
     string? TraceId = null,
-    string? TraceabilitySummary = null);
+    string? TraceabilitySummary = null,
+    IReadOnlyList<ProxyMultiModelSpeedTestResult>? MultiModelSpeedResults = null);

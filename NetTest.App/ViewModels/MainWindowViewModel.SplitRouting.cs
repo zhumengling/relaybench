@@ -63,7 +63,12 @@ public sealed partial class MainWindowViewModel
 
     private async Task RunSplitRoutingCoreAsync()
     {
-        IProgress<string> progress = new Progress<string>(message => StatusMessage = message);
+        UpdateGlobalTaskProgress("\u51C6\u5907\u4E2D", 10d);
+        IProgress<string> progress = new Progress<string>(message =>
+        {
+            StatusMessage = message;
+            UpdateGlobalTaskProgressForSplitRoutingMessage(message);
+        });
         var result = await _splitRoutingDiagnosticsService.RunAsync([SplitRoutingHostsText], progress);
         var publicIpCandidates = result.ExitChecks
             .Select(check => check.PublicIp)
@@ -76,6 +81,7 @@ public sealed partial class MainWindowViewModel
 
         progress.Report("正在补充公网 IP 归属、ASN 和网络角色信息...");
         var ipInsights = await _geoIpLookupService.LookupAddressesAsync(publicIpCandidates, progress);
+        UpdateGlobalTaskProgress("\u6C47\u603B\u4E2D", 94d);
         ApplySplitRoutingResult(result, ipInsights);
 
         DashboardCards[7].Status = result.Error is not null

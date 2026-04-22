@@ -463,7 +463,7 @@ public sealed partial class ProxyDiagnosticsService
             StreamingProbeOutcome streamOutcome;
             try
             {
-                streamOutcome = await ReadStreamingResponseAsync(response, stopwatch, streamContentParser, cancellationToken);
+                streamOutcome = await ReadStreamingResponseAsync(response, stopwatch, streamContentParser, liveReporter: null, cancellationToken);
             }
             catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
             {

@@ -19,4 +19,11 @@ public sealed record ProxyThroughputBenchmarkResult(
     string? Error,
     IReadOnlyList<ProxyStreamingStabilityResult> Samples,
     string? RequestId = null,
-    string? TraceId = null);
+    string? TraceId = null,
+    bool IsLive = false,
+    int CurrentSampleIndex = 0,
+    TimeSpan? CurrentSampleElapsed = null,
+    int? CurrentOutputTokenCount = null,
+    bool CurrentOutputTokenCountEstimated = false,
+    double? CurrentOutputTokensPerSecond = null,
+    double? CurrentEndToEndTokensPerSecond = null);

@@ -12,12 +12,13 @@ public sealed partial class MainWindowViewModel
     private readonly ProxyTrendChartRenderService _proxyTrendChartRenderService = new();
     private readonly ProxyBatchComparisonChartRenderService _proxyBatchComparisonChartRenderService = new();
     private readonly ProxyBatchDeepComparisonChartRenderService _proxyBatchDeepComparisonChartRenderService = new();
+    private readonly ProxyConcurrencyChartRenderService _proxyConcurrencyChartRenderService = new();
     private readonly ProxySingleCapabilityChartRenderService _proxySingleCapabilityChartRenderService = new();
-    private string _proxyTrendSummary = "填写中转站地址后，这里会显示同一中转站的历史趋势。";
-    private string _proxyTrendDetail = "尚无中转站趋势记录。";
+    private string _proxyTrendSummary = "填写接口地址后，这里会显示同一接口的历史趋势。";
+    private string _proxyTrendDetail = "尚无接口趋势记录。";
     private string _proxyTrendChartStatusSummary = "完成基础/深度单次诊断、稳定性巡检或入口组检测后，这里会显示对应图表。";
     private BitmapSource? _proxyTrendChartImage;
-    private string _proxyChartDialogTitle = "中转站稳定性图表";
+    private string _proxyChartDialogTitle = "接口稳定性图表";
     private string _proxyChartDialogIntro = "弹窗会显示同一个 URL 的稳定性、普通延迟和 TTFT 曲线；诊断完成后会自动弹出，也可以点“查看稳定性图表”重新打开。";
     private string _proxyChartDialogSummary = "完成基础/深度单次诊断、稳定性巡检或入口组检测后，这里会显示对应图表摘要。";
     private string _proxyChartDialogCapabilitySummary = "完成基础或深度单次诊断后，这里会按基础能力、增强测试、深度测试分区显示检测摘要。";

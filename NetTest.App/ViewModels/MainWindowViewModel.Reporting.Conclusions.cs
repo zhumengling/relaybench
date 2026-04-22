@@ -30,7 +30,7 @@ public sealed partial class MainWindowViewModel
                 bestRow.Entry.Name,
                 bestRow.Entry.BaseUrl,
                 bestRow.CompositeScore,
-                $"本次推荐中转站：{bestRow.Entry.Name}（{bestRow.Entry.BaseUrl}），综合分 {bestRow.CompositeScore:F1}，平均普通对话 {FormatMillisecondsValue(bestRow.AverageChatLatencyMs)}，平均 TTFT {FormatMillisecondsValue(bestRow.AverageTtftMs)}，独立吞吐 {FormatTokensPerSecond(bestRow.AverageBenchmarkTokensPerSecond)}。");
+                $"本次推荐接口：{bestRow.Entry.Name}（{bestRow.Entry.BaseUrl}），综合分 {bestRow.CompositeScore:F1}，平均普通对话 {FormatMillisecondsValue(bestRow.AverageChatLatencyMs)}，平均 TTFT {FormatMillisecondsValue(bestRow.AverageTtftMs)}，独立吞吐 {FormatTokensPerSecond(bestRow.AverageBenchmarkTokensPerSecond)}。");
         }
 
         if (_lastProxyStabilityResult is not null)
@@ -40,7 +40,7 @@ public sealed partial class MainWindowViewModel
                 TryBuildRelayDisplayName(_lastProxyStabilityResult.BaseUrl),
                 _lastProxyStabilityResult.BaseUrl,
                 _lastProxyStabilityResult.HealthScore,
-                $"当前可参考中转站：{_lastProxyStabilityResult.BaseUrl}，完整成功率 {_lastProxyStabilityResult.FullSuccessRate:F1}%，平均普通对话 {FormatMilliseconds(_lastProxyStabilityResult.AverageChatLatency)}，平均 TTFT {FormatMilliseconds(_lastProxyStabilityResult.AverageStreamFirstTokenLatency)}。");
+                $"当前可参考接口：{_lastProxyStabilityResult.BaseUrl}，完整成功率 {_lastProxyStabilityResult.FullSuccessRate:F1}%，平均普通对话 {FormatMilliseconds(_lastProxyStabilityResult.AverageChatLatency)}，平均 TTFT {FormatMilliseconds(_lastProxyStabilityResult.AverageStreamFirstTokenLatency)}。");
         }
 
         if (_lastProxySingleResult is not null)
@@ -59,7 +59,7 @@ public sealed partial class MainWindowViewModel
             null,
             null,
             null,
-            "本次还没有可用于推荐的中转站样本。");
+            "本次还没有可用于推荐的接口样本。");
     }
 
     private TrendSummarySnapshot BuildTrendSummarySnapshot()

@@ -14,6 +14,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (_historyEntries.Count == 0)
         {
             HistorySummary = "还没有保存的诊断历史。";
+            RefreshHistoryRunItems();
             return;
         }
 
@@ -26,6 +27,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         HistorySummary = builder.ToString().TrimEnd();
+        RefreshHistoryRunItems();
     }
 
     private void ApplyNetworkSnapshot(NetworkSnapshot snapshot)
@@ -169,7 +171,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         StringBuilder summaryBuilder = new();
         summaryBuilder.AppendLine($"检测时间：{result.CheckedAt:yyyy-MM-dd HH:mm:ss}");
-        summaryBuilder.AppendLine($"中转站地址：{result.BaseUrl}");
+        summaryBuilder.AppendLine($"接口地址：{result.BaseUrl}");
         summaryBuilder.AppendLine($"请求模型：{result.RequestedModel}");
         summaryBuilder.AppendLine($"实际模型：{result.EffectiveModel ?? "未解析"}");
         summaryBuilder.AppendLine($"总判定：{result.Verdict ?? "待复核"}");
@@ -309,6 +311,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         ProxyDetail = detailBuilder.ToString().TrimEnd();
         RefreshProxyRelayInsights(result);
+        ApplyProxyCapabilityMatrixResult(result, appendToRelaySummaries: true);
         RefreshProxyAdvancedSummaries(result);
         RefreshProxyManagedEntryAssessment(result);
 
@@ -339,7 +342,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         ProxyStabilitySummary =
             $"检测时间：{result.CheckedAt:yyyy-MM-dd HH:mm:ss}\n" +
-            $"中转站地址：{result.BaseUrl}\n" +
+            $"接口地址：{result.BaseUrl}\n" +
             $"轮次：{result.CompletedRounds}/{result.RequestedRounds}\n" +
             $"间隔：{result.DelayMilliseconds} ms\n" +
             $"健康度：{result.HealthScore}/100（{result.HealthLabel}）\n" +
@@ -382,7 +385,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RefreshProxyStabilityInsights(result);
         RefreshProxyOverviewSummary();
 
-        AppendModuleOutput("中转站稳定性返回", ProxyStabilitySummary, ProxyStabilityDetail);
+        AppendModuleOutput("接口稳定性返回", ProxyStabilitySummary, ProxyStabilityDetail);
         RecordProxyStabilityTrend(result);
         RefreshProxyUnifiedOutput();
         SaveState();

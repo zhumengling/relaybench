@@ -19,6 +19,13 @@ public sealed partial class MainWindowViewModel
         BulkImport
     }
 
+    private enum ProxyBatchProbeStage
+    {
+        Baseline,
+        Throughput,
+        Completed
+    }
+
     private sealed record ProxyBatchSiteGroupContext(
         string Name,
         string? ApiKey,
@@ -49,9 +56,22 @@ public sealed partial class MainWindowViewModel
         string? SiteGroupName,
         ProxyBatchKeySource KeySource);
 
+    private sealed record ProxyBatchIndexedTargetEntry(
+        int Index,
+        ProxyBatchTargetEntry Entry);
+
+    private sealed record ProxyBatchExecutionBucket(
+        string Key,
+        IReadOnlyList<ProxyBatchIndexedTargetEntry> Entries);
+
     private sealed record ProxyBatchProbeRow(
         ProxyBatchTargetEntry Entry,
         ProxyDiagnosticsResult Result,
-        int Score);
+        int Score,
+        ProxyBatchProbeStage Stage,
+        int CompletedBaselineScenarioCount,
+        int TotalBaselineScenarioCount,
+        bool IsPlaceholder = false,
+        string? PlaceholderMessage = null);
 
 }

@@ -81,7 +81,7 @@ public sealed class ProxyBatchComparisonChartRenderService
         var headerRect = new Rect(ScaleX(14), 12, _chartWidth - (ScaleX(14) * 2), HeaderHeight - 14);
         context.DrawRoundedRectangle(CreateBrush(247, 249, 252), new Pen(CreateBrush(224, 231, 239), 1), headerRect, 14, 14);
 
-        DrawText(context, "中转站入口组累计对比图", new Point(ScaleX(28), 20), 21, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "接口入口组累计对比图", new Point(ScaleX(28), 20), 21, FontWeights.SemiBold, CreateBrush(16, 24, 40));
 
         var best = items[0];
         var roundCount = items.Max(item => item.RunCount);
@@ -206,18 +206,21 @@ public sealed class ProxyBatchComparisonChartRenderService
 
         var badgeBrush = statusText switch
         {
+            "进行中" => CreateBrush(239, 246, 255),
             "稳定" => CreateBrush(236, 253, 245),
             "可用" => CreateBrush(255, 247, 237),
             _ => CreateBrush(254, 242, 242)
         };
         var borderBrush = statusText switch
         {
+            "进行中" => CreateBrush(37, 99, 235),
             "稳定" => CreateBrush(22, 163, 74),
             "可用" => CreateBrush(245, 158, 11),
             _ => CreateBrush(220, 38, 38)
         };
         var textBrush = statusText switch
         {
+            "进行中" => CreateBrush(29, 78, 216),
             "稳定" => CreateBrush(21, 128, 61),
             "可用" => CreateBrush(180, 83, 9),
             _ => CreateBrush(185, 28, 28)
@@ -347,6 +350,11 @@ public sealed class ProxyBatchComparisonChartRenderService
 
     private static string BuildStabilityLabel(ProxyBatchComparisonChartItem item)
     {
+        if (!string.IsNullOrWhiteSpace(item.StabilityText))
+        {
+            return item.StabilityText;
+        }
+
         if (item.StabilityRatio >= 80 &&
             (!item.ChatLatencyMs.HasValue || item.ChatLatencyMs.Value <= 1800) &&
             (!item.TtftMs.HasValue || item.TtftMs.Value <= 1800))

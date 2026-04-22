@@ -67,8 +67,14 @@ public sealed partial class MainWindowViewModel
 
     private async Task RunSpeedTestCoreAsync()
     {
-        var progress = new Progress<string>(message => StatusMessage = message);
+        UpdateGlobalTaskProgress("\u51C6\u5907\u4E2D", 10d);
+        var progress = new Progress<string>(message =>
+        {
+            StatusMessage = message;
+            UpdateGlobalTaskProgressForSpeedTestMessage(message);
+        });
         var result = await _cloudflareSpeedTestService.RunAsync(SelectedSpeedTestProfileKey, progress);
+        UpdateGlobalTaskProgress("\u6C47\u603B\u4E2D", 94d);
         ApplySpeedTestResult(result);
         DashboardCards[4].Status = result.Error is null ? result.GptImpactLabel : "需复核";
         DashboardCards[4].Detail = result.Summary;

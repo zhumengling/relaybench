@@ -5,4 +5,9 @@ public sealed record ProxyEndpointSettings(
     string ApiKey,
     string Model,
     bool IgnoreTlsErrors,
-    int TimeoutSeconds);
+    int TimeoutSeconds,
+    string? EmbeddingsModel = null,
+    string? ImagesModel = null,
+    string? AudioTranscriptionModel = null,
+    string? AudioSpeechModel = null,
+    string? ModerationModel = null);

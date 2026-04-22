@@ -8,6 +8,7 @@ public sealed partial class ProxyDiagnosticsService
         ProxyEndpointSettings settings,
         int requestedSampleCount = 3,
         int requestedSegmentCount = 40,
+        IProgress<ProxyThroughputBenchmarkLiveProgress>? liveProgress = null,
         CancellationToken cancellationToken = default)
     {
         var sampleCount = Math.Clamp(requestedSampleCount, 1, 3);
@@ -39,7 +40,30 @@ public sealed partial class ProxyDiagnosticsService
         for (var index = 0; index < sampleCount; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            samples.Add(await RunLongStreamingTestAsync(normalizedSettings, segmentCount, cancellationToken));
+            var currentSampleIndex = index + 1;
+            var sample = await RunLongStreamingTestCoreAsync(
+                normalizedSettings,
+                segmentCount,
+                liveSnapshot =>
+                {
+                    liveProgress?.Report(BuildThroughputBenchmarkLiveProgress(
+                        baseUri.ToString(),
+                        normalizedSettings.Model,
+                        sampleCount,
+                        segmentCount,
+                        samples,
+                        currentSampleIndex,
+                        liveSnapshot));
+                },
+                cancellationToken);
+            samples.Add(sample);
+            liveProgress?.Report(BuildCompletedThroughputBenchmarkLiveProgress(
+                baseUri.ToString(),
+                normalizedSettings.Model,
+                sampleCount,
+                segmentCount,
+                samples,
+                currentSampleIndex));
         }
 
         var successfulSamples = samples
@@ -106,6 +130,101 @@ public sealed partial class ProxyDiagnosticsService
             samples,
             requestId,
             traceId);
+    }
+
+    private static ProxyThroughputBenchmarkLiveProgress BuildThroughputBenchmarkLiveProgress(
+        string baseUrl,
+        string model,
+        int requestedSampleCount,
+        int segmentCount,
+        IReadOnlyList<ProxyStreamingStabilityResult> completedSamples,
+        int currentSampleIndex,
+        StreamingReadLiveProgress liveSnapshot)
+    {
+        var completedSuccessfulSamples = completedSamples
+            .Where(static sample => sample.Success && sample.OutputTokensPerSecond.HasValue)
+            .ToArray();
+        var liveOutputSamples = completedSuccessfulSamples
+            .Select(static sample => sample.OutputTokensPerSecond!.Value)
+            .ToList();
+        if (liveSnapshot.OutputTokensPerSecond.HasValue)
+        {
+            liveOutputSamples.Add(liveSnapshot.OutputTokensPerSecond.Value);
+        }
+
+        var liveMedian = Median(liveOutputSamples);
+        var liveAverage = liveOutputSamples.Count == 0 ? (double?)null : liveOutputSamples.Average();
+        var liveMinimum = liveOutputSamples.Count == 0 ? (double?)null : liveOutputSamples.Min();
+        var liveMaximum = liveOutputSamples.Count == 0 ? (double?)null : liveOutputSamples.Max();
+        var currentTokenText = liveSnapshot.OutputTokenCount?.ToString() ?? "--";
+        var currentSpeedText = FormatThroughput(liveSnapshot.OutputTokensPerSecond);
+        var summary = liveSnapshot.OutputTokensPerSecond.HasValue || liveSnapshot.OutputTokenCount.HasValue
+            ? $"\u72EC\u7ACB\u541E\u5410\u8FDB\u884C\u4E2D\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\uFF0C\u5F53\u524D {currentSpeedText}\uFF0C\u5DF2\u8F93\u51FA {currentTokenText} token\uFF0C\u7528\u65F6 {liveSnapshot.Elapsed.TotalSeconds:F1}s\u3002"
+            : $"\u72EC\u7ACB\u541E\u5410\u8FDB\u884C\u4E2D\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\u5DF2\u53D1\u9001\u8BF7\u6C42\uFF0C\u7B49\u5F85\u9996 token...";
+
+        return new ProxyThroughputBenchmarkLiveProgress(
+            DateTimeOffset.Now,
+            baseUrl,
+            model,
+            requestedSampleCount,
+            completedSamples.Count,
+            completedSuccessfulSamples.Length,
+            currentSampleIndex,
+            segmentCount,
+            liveSnapshot.Elapsed,
+            liveSnapshot.OutputTokenCount,
+            liveSnapshot.OutputTokenCountEstimated,
+            liveSnapshot.OutputTokensPerSecond,
+            liveSnapshot.EndToEndTokensPerSecond,
+            liveMedian,
+            liveAverage,
+            liveMinimum,
+            liveMaximum,
+            summary,
+            liveSnapshot.Preview);
+    }
+
+    private static ProxyThroughputBenchmarkLiveProgress BuildCompletedThroughputBenchmarkLiveProgress(
+        string baseUrl,
+        string model,
+        int requestedSampleCount,
+        int segmentCount,
+        IReadOnlyList<ProxyStreamingStabilityResult> completedSamples,
+        int currentSampleIndex)
+    {
+        var completedSuccessfulSamples = completedSamples
+            .Where(static sample => sample.Success && sample.OutputTokensPerSecond.HasValue)
+            .ToArray();
+        var outputSamples = completedSuccessfulSamples
+            .Select(static sample => sample.OutputTokensPerSecond!.Value)
+            .ToArray();
+        var currentSample = completedSamples[^1];
+        var currentTokenText = currentSample.OutputTokenCount?.ToString() ?? "--";
+        var currentSpeedText = FormatThroughput(currentSample.OutputTokensPerSecond);
+        var summary = currentSample.Success
+            ? $"\u72EC\u7ACB\u541E\u5410\u8FDB\u884C\u4E2D\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\u5B8C\u6210\uFF0C\u672C\u8F6E {currentSpeedText}\uFF0C\u8F93\u51FA {currentTokenText} token\u3002"
+            : $"\u72EC\u7ACB\u541E\u5410\u8FDB\u884C\u4E2D\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\u5B8C\u6210\uFF0C\u672C\u8F6E\u5F02\u5E38\u3002";
+
+        return new ProxyThroughputBenchmarkLiveProgress(
+            DateTimeOffset.Now,
+            baseUrl,
+            model,
+            requestedSampleCount,
+            completedSamples.Count,
+            completedSuccessfulSamples.Length,
+            currentSampleIndex,
+            segmentCount,
+            currentSample.TotalDuration ?? TimeSpan.Zero,
+            currentSample.OutputTokenCount,
+            currentSample.OutputTokenCountEstimated,
+            currentSample.OutputTokensPerSecond,
+            currentSample.EndToEndTokensPerSecond,
+            Median(outputSamples),
+            outputSamples.Length == 0 ? (double?)null : outputSamples.Average(),
+            outputSamples.Length == 0 ? (double?)null : outputSamples.Min(),
+            outputSamples.Length == 0 ? (double?)null : outputSamples.Max(),
+            summary,
+            currentSample.Preview);
     }
 
     private static double? Median(IReadOnlyList<double> values)

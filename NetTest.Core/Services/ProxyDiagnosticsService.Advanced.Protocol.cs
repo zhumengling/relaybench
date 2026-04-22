@@ -577,7 +577,7 @@ public sealed partial class ProxyDiagnosticsService
             Summary = "System Prompt 映射异常，返回结果更像是跟随了用户覆盖指令。",
             FailureKind = ProxyFailureKind.SemanticMismatch,
             FailureStage = "System Prompt",
-            Error = "系统提示词没有稳定生效，建议排查中转站在模型转换时是否丢失或拼接了 system 角色。"
+            Error = "系统提示词没有稳定生效，建议排查当前接口在模型转换时是否丢失或拼接了 system 角色。"
         };
     }
 
@@ -643,7 +643,7 @@ public sealed partial class ProxyDiagnosticsService
                     BuildLooseSuccessPreview(firstBody),
                     ProxyFailureKind.ProtocolMismatch,
                     "Function Calling",
-                    "中转站返回 200，但 tool_calls 结构缺失或不兼容。",
+                    "当前接口返回 200，但 tool_calls 结构缺失或不兼容。",
                     firstHeaders,
                     RequestId: firstRequestId,
                     TraceId: firstTraceId);
@@ -806,7 +806,7 @@ public sealed partial class ProxyDiagnosticsService
                     BuildLooseSuccessPreview(body),
                     ProxyFailureKind.ProtocolMismatch,
                     "错误透传",
-                    "bad request 场景没有返回 4xx，说明中转站的参数校验或错误映射存在异常。",
+                    "bad request 场景没有返回 4xx，说明当前接口的参数校验或错误映射存在异常。",
                     headers,
                     RequestId: requestId,
                     TraceId: traceId);
@@ -1059,7 +1059,7 @@ public sealed partial class ProxyDiagnosticsService
             relayPath,
             BuildOfficialReferenceIntegrityPayload(relayModel),
             ProxyProbeScenarioKind.OfficialReferenceIntegrity,
-            "官方对照-中转",
+            "官方对照-待测接口",
             ParseChatPreview,
             cancellationToken);
 
@@ -1071,7 +1071,7 @@ public sealed partial class ProxyDiagnosticsService
                 relayOutcome.ScenarioResult.StatusCode,
                 relayOutcome.ScenarioResult.Latency ?? TimeSpan.Zero,
                 relayOutcome.ScenarioResult.Preview,
-                "官方对照完整性测试失败：中转站对照请求未通过。",
+                "官方对照完整性测试失败：待测接口对照请求未通过。",
                 relayOutcome.ScenarioResult.Error ?? relayOutcome.ScenarioResult.Summary,
                 relayOutcome.ScenarioResult.ResponseHeaders,
                 relayOutcome.ScenarioResult.FailureKind,
@@ -1095,7 +1095,7 @@ public sealed partial class ProxyDiagnosticsService
                 ProxyProbeScenarioKind.OfficialReferenceIntegrity,
                 "官方对照完整性",
                 "未执行",
-                "官方参考端请求未通过，当前先不判定中转站与官方输出差异。",
+                "官方参考端请求未通过，当前先不判定待测接口与官方输出差异。",
                 PreviewLabelForSupplementalScenario(officialOutcome.ScenarioResult.Preview),
                 officialOutcome.ScenarioResult.StatusCode,
                 officialOutcome.ScenarioResult.Latency,
@@ -1133,7 +1133,7 @@ public sealed partial class ProxyDiagnosticsService
                 false,
                 0,
                 true,
-                "中转站与官方参考端对同一固定模板的输出完全一致，未观察到吞字、乱码或额外换行。",
+                "待测接口与官方参考端对同一固定模板的输出完全一致，未观察到吞字、乱码或额外换行。",
                 preview,
                 null,
                 "官方对照完整性",
@@ -1163,11 +1163,11 @@ public sealed partial class ProxyDiagnosticsService
                 false,
                 0,
                 false,
-                "官方参考端已稳定回显固定模板，但中转站输出与官方不一致，疑似存在文本破坏或协议转换差异。",
+                "官方参考端已稳定回显固定模板，但待测接口输出与官方不一致，疑似存在文本破坏或协议转换差异。",
                 preview,
                 ProxyFailureKind.SemanticMismatch,
                 "官方对照完整性",
-                "官方端命中固定模板，而中转站回包发生了字符、换行或内容层面的偏差。",
+                "官方端命中固定模板，而待测接口回包发生了字符、换行或内容层面的偏差。",
                 MergeHeaders(relayOutcome.ScenarioResult.ResponseHeaders, officialOutcome.ScenarioResult.ResponseHeaders),
                 OutputTokenCount: relayOutcome.ScenarioResult.OutputTokenCount,
                 OutputTokenCountEstimated: relayOutcome.ScenarioResult.OutputTokenCountEstimated,
@@ -1184,8 +1184,8 @@ public sealed partial class ProxyDiagnosticsService
             "官方对照完整性",
             "待复核",
             outputsEqual
-                ? "中转站与官方参考端输出一致，但官方端本次没有严格回显固定模板，当前对照结果建议复测确认。"
-                : "官方参考端本次没有严格回显固定模板，暂时无法把中转站与官方的差异直接归因为中转问题。",
+                ? "待测接口与官方参考端输出一致，但官方端本次没有严格回显固定模板，当前对照结果建议复测确认。"
+                : "官方参考端本次没有严格回显固定模板，暂时无法把待测接口与官方的差异直接归因为协议转换问题。",
             preview,
             relayOutcome.ScenarioResult.StatusCode,
             relayOutcome.ScenarioResult.Latency,
@@ -1654,11 +1654,11 @@ public sealed partial class ProxyDiagnosticsService
         bool outputsEqual)
     {
         var digestBuilder = new StringBuilder();
-        digestBuilder.Append($"中转 {CountIntegrityLines(relayText)} 行 / {relayText.Length} 字符 / {(relayMatchesTemplate ? "命中模板" : "未命中模板")}；");
+        digestBuilder.Append($"待测接口 {CountIntegrityLines(relayText)} 行 / {relayText.Length} 字符 / {(relayMatchesTemplate ? "命中模板" : "未命中模板")}；");
         digestBuilder.Append($"官方 {CountIntegrityLines(officialText)} 行 / {officialText.Length} 字符 / {(officialMatchesTemplate ? "命中模板" : "未命中模板")}；");
         digestBuilder.Append(outputsEqual
-            ? "中转与官方输出一致"
-            : $"首处差异：{DescribeFirstDifference(relayText, officialText, "中转", "官方")}");
+            ? "待测接口与官方输出一致"
+            : $"首处差异：{DescribeFirstDifference(relayText, officialText, "待测接口", "官方")}");
         return digestBuilder.ToString();
     }
 

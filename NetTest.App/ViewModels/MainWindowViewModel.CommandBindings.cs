@@ -15,6 +15,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<string> VisibleProxyCatalogModels { get; } = [];
 
+    public ObservableCollection<ProxySelectableModelItemViewModel> VisibleProxyMultiModelCatalogItems { get; } = [];
+
     public ObservableCollection<ProxyBatchEditorItemViewModel> ProxyBatchEditorItems { get; } = [];
 
     public ObservableCollection<ProxyBatchEditorItemViewModel> ProxyBatchTemplateDraftItems { get; } = [];
@@ -30,8 +32,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<SelectionOption> WorkbenchPageOptions { get; } =
     [
-        new("single-station", "单站测试"),
-        new("batch-comparison", "批量对比"),
+        new("interface-diagnostics", "接口诊断"),
+        new("batch-evaluation", "批量评测"),
+        new("application-center", "应用接入"),
         new("network-review", "网络复核"),
         new("history-reports", "历史报告")
     ];
@@ -40,12 +43,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [
         new("quick", "快速测试"),
         new("stability", "稳定性测试"),
-        new("deep", "深度测试")
+        new("deep", "深度测试"),
+        new("concurrency", "\u5E76\u53D1\u538B\u6D4B")
     ];
 
     public ObservableCollection<SelectionOption> NetworkReviewIssueOptions { get; } =
     [
-        new("relay-unavailable", "中转站不可用"),
+        new("interface-unavailable", "接口不可用"),
         new("high-ttft", "TTFT 很高"),
         new("high-jitter", "波动很大"),
         new("geo-unlock", "地区 / 解锁异常"),
@@ -79,6 +83,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand RunClientApiDiagnosticsCommand { get; }
 
+    public AsyncRelayCommand ApplyCurrentInterfaceToCodexAppsCommand { get; }
+
     public AsyncRelayCommand RunStunCommand { get; }
 
     public AsyncRelayCommand FetchProxyModelsCommand { get; }
@@ -86,6 +92,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand FetchProxyBatchSharedModelsCommand { get; }
 
     public AsyncRelayCommand FetchProxyBatchEntryModelsCommand { get; }
+
+    public AsyncRelayCommand<string?> FetchProxyCapabilityModelsCommand { get; }
+
+    public AsyncRelayCommand OpenProxyMultiModelPickerCommand { get; }
+
+    public AsyncRelayCommand ToggleProxyCapabilityConfigCommand { get; }
+
+    public AsyncRelayCommand CloseProxyMultiModelPickerCommand { get; }
+
+    public AsyncRelayCommand ConfirmProxyMultiModelPickerCommand { get; }
+
+    public AsyncRelayCommand ClearProxyMultiModelSelectionCommand { get; }
 
     public AsyncRelayCommand OpenProxyBatchEditorCommand { get; }
 
@@ -126,6 +144,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand CloseProxyModelPickerCommand { get; }
 
     public AsyncRelayCommand OpenProxyTrendChartCommand { get; }
+
+    public AsyncRelayCommand OpenProxyConcurrencyChartCommand { get; }
 
     public AsyncRelayCommand OpenBatchComparisonChartCommand { get; }
 

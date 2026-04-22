@@ -124,10 +124,13 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        await ExecuteProxyBusyActionAsync($"正在对 {selectedRows.Length} 个候选站点执行深度测试...", async cancellationToken =>
+        await ExecuteProxyBusyActionAsync(
+            $"正在对 {selectedRows.Length} 个候选站点执行深度测试...",
+            async cancellationToken =>
         {
             var executionPlan = BuildDeepProxySingleExecutionPlan();
             StartBatchDeepComparisonLiveSession(selectedRows, executionPlan);
+            UpdateGlobalTaskProgress("\u51C6\u5907\u4E2D", 8d);
 
             for (var index = 0; index < selectedRows.Length; index++)
             {
@@ -135,6 +138,7 @@ public sealed partial class MainWindowViewModel
                 var row = selectedRows[index];
                 PrepareBatchDeepRowForExecution(row, index, selectedRows.Length);
                 StatusMessage = $"正在执行候选深度测试 {index + 1}/{selectedRows.Length}：{row.EntryName}";
+                UpdateGlobalTaskProgress(index, selectedRows.Length, $"\u7B2C {index + 1}/{selectedRows.Length} \u9879");
 
                 try
                 {
@@ -146,6 +150,7 @@ public sealed partial class MainWindowViewModel
                         updateSingleChartPhases: false,
                         cancellationToken: cancellationToken);
                     ApplyBatchDeepTestResult(row, result, executionPlan);
+                    UpdateGlobalTaskProgress(index + 1, selectedRows.Length, $"\u7B2C {index + 1}/{selectedRows.Length} \u9879");
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -154,15 +159,19 @@ public sealed partial class MainWindowViewModel
                 catch (Exception ex)
                 {
                     ApplyBatchDeepChartFailure(row, ex);
+                    UpdateGlobalTaskProgress(index + 1, selectedRows.Length, $"\u7B2C {index + 1}/{selectedRows.Length} \u9879");
                 }
             }
 
             BatchDeepTestSummary = BuildBatchDeepTestSummary(_batchDeepChartStates);
             RefreshBatchDeepComparisonDialog(activate: true);
             StatusMessage = $"已完成 {selectedRows.Length} 个候选站点的深度测试。";
-            AppendHistory("中转站", "入口组候选深度测试", BatchDeepTestSummary);
+            AppendHistory("接口", "入口组候选深度测试", BatchDeepTestSummary);
             AppendModuleOutput("入口组候选深度测试", BatchSelectionSummary, BatchDeepTestSummary);
-        });
+        },
+        "\u6279\u91CF\u6DF1\u5EA6\u6D4B\u8BD5",
+        "\u51C6\u5907\u4E2D",
+        6d);
     }
 
     private ProxyEndpointSettings BuildBatchProxySettings(ProxyBatchRankingRowViewModel row)

@@ -17,11 +17,12 @@ public sealed partial class MainWindowViewModel
             new("扩展可用性目录", $"{UnlockCatalogSummary}\n\n{UnlockCatalogDetail}"),
             new("客户端 API 联通鉴定", $"{ClientApiSummary}\n\n{ClientApiDetail}"),
             new("STUN NAT 分类测试", $"{StunSummary}\n\n覆盖与复核：\n{StunCoverageSummary}\n\n分类测试过程：\n{StunTestSummary}\n\n属性详情：\n{StunAttributeSummary}"),
-            new("中转站模型列表", $"{ProxyModelCatalogSummary}\n\n{ProxyModelCatalogDetail}"),
+            new("接口模型列表", $"{ProxyModelCatalogSummary}\n\n{ProxyModelCatalogDetail}"),
             new("单站测试", $"{ProxyVerdictSummary}\n\n{ProxyCapabilityMatrixSummary}\n\n{ProxyKeyMetricsSummary}\n\n已管理入口参照：\n{ProxyManagedEntryAssessmentSummary}\n\n{ProxyIssueSummary}\n\n关键响应头：\n{ProxyHeadersSummary}\n\n原始摘要：\n{ProxySummary}\n\n原始明细：\n{ProxyDetail}"),
             new("单站测试（稳定性）", $"{ProxyStabilityInsightSummary}\n\n{ProxyStabilitySummary}\n\n{ProxyStabilityDetail}"),
+            new("单站测试（并发压测）", $"{ProxyConcurrencySummary}\n\n{ProxyConcurrencyDetail}"),
             new("批量对比", $"{ProxyBatchRecommendationSummary}\n\n{ProxyBatchSummary}\n\n{ProxyBatchDetail}"),
-            new("中转站趋势", $"{ProxyTrendSummary}\n\n{ProxyTrendDetail}"),
+            new("接口趋势", $"{ProxyTrendSummary}\n\n{ProxyTrendDetail}"),
             new("测速", $"{SpeedTestSummary}\n\n{SpeedTestLatencyDetail}\n\n{SpeedTestTransferDetail}\n\n{SpeedTestPacketLossDetail}"),
             new("路由与 MTR", $"{RouteSummary}\n\n{RouteMapSummary}\n\n{RouteGeoSummary}\n\n{RouteHopSummary}\n\n原始输出：\n{RouteRawOutput}"),
             new("IP 与分流检测", $"{SplitRoutingSummary}\n\n{SplitRoutingIpInsightSummary}\n\n{SplitRoutingAdapterSummary}\n\n{SplitRoutingExitSummary}\n\n{SplitRoutingDnsSummary}\n\n{SplitRoutingReachabilitySummary}"),
@@ -39,11 +40,12 @@ public sealed partial class MainWindowViewModel
             new("raw/client-api.txt", NormalizeArtifactContent($"{ClientApiSummary}\n\n{ClientApiDetail}"), "网络复核 / 客户端 API 联通鉴定原始结果"),
             new("raw/unlock-catalog.txt", NormalizeArtifactContent($"{UnlockCatalogSummary}\n\n{UnlockCatalogDetail}"), "扩展可用性目录原始摘要"),
             new("raw/stun-tests.txt", NormalizeArtifactContent($"{StunSummary}\n\n{StunCoverageSummary}\n\n{StunTestSummary}\n\n{StunAttributeSummary}"), "网络复核 / STUN 与 NAT 分类原始结果"),
-            new("raw/proxy-model-catalog.txt", NormalizeArtifactContent($"{ProxyModelCatalogSummary}\n\n{ProxyModelCatalogDetail}"), "中转站模型列表原始结果"),
+            new("raw/proxy-model-catalog.txt", NormalizeArtifactContent($"{ProxyModelCatalogSummary}\n\n{ProxyModelCatalogDetail}"), "接口模型列表原始结果"),
             new("raw/proxy-single.txt", NormalizeArtifactContent($"{ProxyVerdictSummary}\n\n{ProxyCapabilityMatrixSummary}\n\n{ProxyKeyMetricsSummary}\n\n{ProxyManagedEntryAssessmentSummary}\n\n{ProxyIssueSummary}\n\n{ProxyHeadersSummary}\n\n{ProxySummary}\n\n{ProxyDetail}"), "单站测试原始结果"),
             new("raw/proxy-stability.txt", NormalizeArtifactContent($"{ProxyStabilityInsightSummary}\n\n{ProxyStabilitySummary}\n\n{ProxyStabilityDetail}"), "单站测试稳定性原始结果"),
+            new("raw/proxy-concurrency.txt", NormalizeArtifactContent($"{ProxyConcurrencySummary}\n\n{ProxyConcurrencyDetail}"), "单站测试并发压测原始结果"),
             new("raw/proxy-batch.txt", NormalizeArtifactContent($"{ProxyBatchRecommendationSummary}\n\n{ProxyBatchSummary}\n\n{ProxyBatchDetail}"), "批量对比原始结果"),
-            new("raw/proxy-trends.txt", NormalizeArtifactContent($"{ProxyTrendSummary}\n\n{ProxyTrendDetail}"), "中转站趋势原始结果"),
+            new("raw/proxy-trends.txt", NormalizeArtifactContent($"{ProxyTrendSummary}\n\n{ProxyTrendDetail}"), "接口趋势原始结果"),
             new("raw/route-output.txt", NormalizeArtifactContent($"{RouteSummary}\n\n{RouteMapSummary}\n\n{RouteGeoSummary}\n\n{RouteHopSummary}\n\n{RouteRawOutput}"), "网络复核 / 路由与 MTR 原始输出"),
             new("raw/port-scan-output.txt", NormalizeArtifactContent($"{PortScanSummary}\n\n{PortScanBatchSummary}\n\n{PortScanExportSummary}\n\n{PortScanDetail}\n\n{PortScanRawOutput}"), "端口扫描原始输出")
         ];
@@ -59,7 +61,12 @@ public sealed partial class MainWindowViewModel
 
         if (ProxyTrendChartImage is not null)
         {
-            artifacts.Add(new DiagnosticReportImageArtifact("media/proxy-trend-chart.png", ProxyTrendChartImage, "\u4E2D\u8F6C\u7AD9\u8D8B\u52BF\u56FE"));
+            artifacts.Add(new DiagnosticReportImageArtifact("media/proxy-trend-chart.png", ProxyTrendChartImage, "\u63A5\u53E3\u8D8B\u52BF\u56FE"));
+        }
+
+        if (ProxyConcurrencyChartImage is not null)
+        {
+            artifacts.Add(new DiagnosticReportImageArtifact("media/proxy-concurrency-chart.png", ProxyConcurrencyChartImage, "\u63A5\u53E3\u5E76\u53D1\u538B\u6D4B\u56FE"));
         }
 
         return artifacts;
@@ -199,6 +206,17 @@ public sealed partial class MainWindowViewModel
                     detail = ProxyDetail,
                     verdictSummary = ProxyVerdictSummary,
                     capabilityMatrixSummary = ProxyCapabilityMatrixSummary,
+                    capabilityMatrix = ProxyCapabilityMatrixCells.Select(cell => new
+                    {
+                        scenario = cell.Scenario.ToString(),
+                        cell.Name,
+                        state = cell.StateText,
+                        model = cell.ModelText,
+                        statusCode = cell.StatusCodeText,
+                        latency = cell.LatencyText,
+                        cell.Summary,
+                        detail = cell.DetailText
+                    }).ToArray(),
                     keyMetricsSummary = ProxyKeyMetricsSummary,
                     longStreamingSummary = ProxyLongStreamingSummary,
                     traceabilitySummary = ProxyTraceabilitySummary,
@@ -270,6 +288,34 @@ public sealed partial class MainWindowViewModel
                         result.FailureStage,
                         result.Error,
                         responseHeaders = result.ResponseHeaders
+                    }).ToArray()
+                },
+                concurrency = new
+                {
+                    summary = ProxyConcurrencySummary,
+                    detail = ProxyConcurrencyDetail,
+                    hasChart = ProxyConcurrencyChartImage is not null,
+                    testedAt = _lastProxyConcurrencyResult?.TestedAt,
+                    baseUrl = _lastProxyConcurrencyResult?.BaseUrl,
+                    model = _lastProxyConcurrencyResult?.Model,
+                    stableConcurrencyLimit = _lastProxyConcurrencyResult?.StableConcurrencyLimit,
+                    rateLimitStartConcurrency = _lastProxyConcurrencyResult?.RateLimitStartConcurrency,
+                    highRiskConcurrency = _lastProxyConcurrencyResult?.HighRiskConcurrency,
+                    error = _lastProxyConcurrencyResult?.Error,
+                    stages = _lastProxyConcurrencyResult?.Stages.Select(stage => new
+                    {
+                        stage.Concurrency,
+                        stage.TotalRequests,
+                        stage.SuccessCount,
+                        stage.RateLimitedCount,
+                        stage.ServerErrorCount,
+                        stage.TimeoutCount,
+                        stage.P50ChatLatencyMs,
+                        stage.P95ChatLatencyMs,
+                        stage.P50TtftMs,
+                        stage.P95TtftMs,
+                        stage.AverageTokensPerSecond,
+                        stage.Summary
                     }).ToArray()
                 },
                 stability = new

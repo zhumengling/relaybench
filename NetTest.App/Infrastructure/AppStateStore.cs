@@ -107,6 +107,21 @@ public sealed class AppStateStore
             snapshot.ProxyOfficialReferenceModel = string.IsNullOrWhiteSpace(config.ProxyOfficialReferenceModel)
                 ? snapshot.ProxyOfficialReferenceModel
                 : config.ProxyOfficialReferenceModel;
+            snapshot.ProxyEmbeddingsModel = string.IsNullOrWhiteSpace(config.ProxyEmbeddingsModel)
+                ? snapshot.ProxyEmbeddingsModel
+                : config.ProxyEmbeddingsModel;
+            snapshot.ProxyImagesModel = string.IsNullOrWhiteSpace(config.ProxyImagesModel)
+                ? snapshot.ProxyImagesModel
+                : config.ProxyImagesModel;
+            snapshot.ProxyAudioTranscriptionModel = string.IsNullOrWhiteSpace(config.ProxyAudioTranscriptionModel)
+                ? snapshot.ProxyAudioTranscriptionModel
+                : config.ProxyAudioTranscriptionModel;
+            snapshot.ProxyAudioSpeechModel = string.IsNullOrWhiteSpace(config.ProxyAudioSpeechModel)
+                ? snapshot.ProxyAudioSpeechModel
+                : config.ProxyAudioSpeechModel;
+            snapshot.ProxyModerationModel = string.IsNullOrWhiteSpace(config.ProxyModerationModel)
+                ? snapshot.ProxyModerationModel
+                : config.ProxyModerationModel;
             snapshot.ProxyBatchEnableLongStreamingTest = config.ProxyBatchEnableLongStreamingTest;
             snapshot.ProxyLongStreamSegmentsText = string.IsNullOrWhiteSpace(config.ProxyLongStreamSegmentsText)
                 ? snapshot.ProxyLongStreamSegmentsText
@@ -151,6 +166,11 @@ public sealed class AppStateStore
                 ProxyOfficialReferenceBaseUrl = snapshot.ProxyOfficialReferenceBaseUrl,
                 ProxyOfficialReferenceApiKey = snapshot.ProxyOfficialReferenceApiKey,
                 ProxyOfficialReferenceModel = snapshot.ProxyOfficialReferenceModel,
+                ProxyEmbeddingsModel = snapshot.ProxyEmbeddingsModel,
+                ProxyImagesModel = snapshot.ProxyImagesModel,
+                ProxyAudioTranscriptionModel = snapshot.ProxyAudioTranscriptionModel,
+                ProxyAudioSpeechModel = snapshot.ProxyAudioSpeechModel,
+                ProxyModerationModel = snapshot.ProxyModerationModel,
                 ProxyBatchEnableLongStreamingTest = snapshot.ProxyBatchEnableLongStreamingTest,
                 ProxyLongStreamSegmentsText = snapshot.ProxyLongStreamSegmentsText,
                 ProxyBatchTargetsText = snapshot.ProxyBatchTargetsText,
@@ -262,6 +282,16 @@ public sealed class AppStateStore
         public string? ProxyOfficialReferenceApiKey { get; set; }
 
         public string? ProxyOfficialReferenceModel { get; set; }
+
+        public string? ProxyEmbeddingsModel { get; set; }
+
+        public string? ProxyImagesModel { get; set; }
+
+        public string? ProxyAudioTranscriptionModel { get; set; }
+
+        public string? ProxyAudioSpeechModel { get; set; }
+
+        public string? ProxyModerationModel { get; set; }
 
         public bool ProxyBatchEnableLongStreamingTest { get; set; }
 
