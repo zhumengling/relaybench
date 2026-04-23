@@ -21,43 +21,38 @@ public sealed partial class MainWindowViewModel
         }
 
         var buckets = BuildProxyBatchExecutionBuckets(entries);
-        var concurrency = Math.Clamp(buckets.Count, 1, 4);
-        using SemaphoreSlim gate = new(concurrency, concurrency);
+        var concurrency = Math.Clamp(buckets.Count, 1, 5);
         var completed = 0;
         var rows = new ProxyBatchProbeRow[entries.Count];
+        System.Collections.Concurrent.ConcurrentQueue<ProxyBatchExecutionBucket> pendingBuckets = new(buckets);
+        var workerCount = Math.Min(concurrency, buckets.Count);
 
-        var tasks = buckets.Select(async bucket =>
-        {
-            var enteredGate = false;
-            await gate.WaitAsync(cancellationToken);
-            enteredGate = true;
-            try
+        var workers = Enumerable.Range(0, workerCount)
+            .Select(async _ =>
             {
-                foreach (var indexedEntry in bucket.Entries)
+                while (pendingBuckets.TryDequeue(out var bucket))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    rows[indexedEntry.Index] = await ProbeSingleBatchEntryAsync(
-                        indexedEntry.Entry,
-                        entries.Count,
-                        timeoutSeconds,
-                        enableLongStreamingTest,
-                        longStreamSegmentCount,
-                        progress,
-                        rowProgress,
-                        () => Interlocked.Increment(ref completed),
-                        cancellationToken);
-                }
-            }
-            finally
-            {
-                if (enteredGate)
-                {
-                    gate.Release();
-                }
-            }
-        });
 
-        await Task.WhenAll(tasks);
+                    foreach (var indexedEntry in bucket.Entries)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        rows[indexedEntry.Index] = await ProbeSingleBatchEntryAsync(
+                            indexedEntry.Entry,
+                            entries.Count,
+                            timeoutSeconds,
+                            enableLongStreamingTest,
+                            longStreamSegmentCount,
+                            progress,
+                            rowProgress,
+                            () => Interlocked.Increment(ref completed),
+                            cancellationToken);
+                    }
+                }
+            });
+
+        await Task.WhenAll(workers);
+
         return rows;
     }
 

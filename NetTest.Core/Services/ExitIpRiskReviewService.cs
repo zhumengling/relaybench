@@ -10,6 +10,8 @@ namespace NetTest.Core.Services;
 public sealed class ExitIpRiskReviewService
 {
     private static readonly HttpClient HttpClient = CreateHttpClient();
+    private const string IpInfoTokenEnvironmentVariable = "IPINFO_TOKEN";
+    private const string RelayBenchIpInfoTokenEnvironmentVariable = "RELAYBENCH_IPINFO_TOKEN";
 
     public async Task<ExitIpRiskReviewResult> RunAsync(
         IProgress<string>? progress = null,
@@ -48,7 +50,7 @@ public sealed class ExitIpRiskReviewService
             ("proxycheck.io", ProbeProxyCheckAsync),
             ("ip-api.com", ProbeIpApiComAsync),
             ("ipwho.is", ProbeIpWhoIsAsync),
-            ("ipinfo.io", ProbeIpInfoAsync),
+            ("country.is", ProbeCountryIsAsync),
             ("IP2Location.io", ProbeIp2LocationAsync),
             ("GreyNoise Community", ProbeGreyNoiseCommunityAsync),
             ("Spamhaus DROP", ProbeSpamhausDropAsync),
@@ -546,11 +548,13 @@ public sealed class ExitIpRiskReviewService
 
     private static async Task<ExitIpRiskSourceResult> ProbeIpInfoAsync(string ip, CancellationToken cancellationToken)
     {
-        const string sourceName = "ipinfo.io";
+        const string sourceName = "country.is";
 
         try
         {
-            using var document = await GetJsonDocumentAsync($"https://ipinfo.io/{Uri.EscapeDataString(ip)}/json", cancellationToken);
+            using var document = await GetJsonDocumentAsync(
+                $"https://api.country.is/{Uri.EscapeDataString(ip)}?fields=city,continent,subdivision,postal,location,asn",
+                cancellationToken);
             var root = document.RootElement;
             var org = GetString(root, "org");
             var summary = $"地区={JoinNonEmpty(" / ", GetString(root, "country"), GetString(root, "city"))}，组织={org ?? "--"}";
@@ -575,9 +579,100 @@ public sealed class ExitIpRiskReviewService
                 Asn: org is null ? null : org.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(),
                 Organization: org);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            return new ExitIpRiskSourceResult(
+                "ipinfo",
+                sourceName,
+                "地理源",
+                false,
+                "限流",
+                "ipinfo.io 匿名查询触发 429 限流，本轮未返回数据。",
+                "当前出口对 ipinfo.io 的匿名配额已耗尽。如需稳定使用，可在环境变量里配置 IPINFO_TOKEN 或 RELAYBENCH_IPINFO_TOKEN 后再重试。",
+                Error: ex.Message);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            return new ExitIpRiskSourceResult(
+                "ipinfo",
+                sourceName,
+                "地理源",
+                false,
+                "需鉴权",
+                "ipinfo.io 当前请求被拒绝，需要有效令牌或更高权限。",
+                "请检查 IPINFO_TOKEN / RELAYBENCH_IPINFO_TOKEN 是否已配置、是否有效，以及其用量是否充足。",
+                Error: ex.Message);
+        }
+        catch (TaskCanceledException ex)
+        {
+            return new ExitIpRiskSourceResult(
+                "ipinfo",
+                sourceName,
+                "地理源",
+                false,
+                "超时",
+                "ipinfo.io 查询超时，本轮未返回结果。",
+                "当前更像是网络链路缓慢、被拦截，或对方响应过慢。可稍后重试，或结合其他免配额来源一起判断。",
+                Error: ex.Message);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException)
         {
             return BuildFailureSourceResult("ipinfo", sourceName, ex);
+        }
+    }
+
+    private static async Task<ExitIpRiskSourceResult> ProbeCountryIsAsync(string ip, CancellationToken cancellationToken)
+    {
+        const string sourceName = "country.is";
+
+        try
+        {
+            using var document = await GetJsonDocumentAsync(
+                $"https://api.country.is/{Uri.EscapeDataString(ip)}?fields=city,continent,subdivision,postal,location,asn",
+                cancellationToken);
+            var root = document.RootElement;
+            var asn = GetProperty(root, "asn");
+            var location = GetProperty(root, "location");
+            var asnNumber = GetString(asn, "number");
+            var organization = GetString(asn, "organization");
+            var summary = $"地区={JoinNonEmpty(" / ", GetString(root, "country"), GetString(root, "city"))}，组织={organization ?? "--"}";
+            var detail =
+                $"IP：{GetString(root, "ip") ?? ip}\n" +
+                $"地区：{JoinNonEmpty(" / ", GetString(root, "country"), GetString(root, "subdivision"), GetString(root, "city"))}\n" +
+                $"组织：{organization ?? "--"}\n" +
+                $"ASN：{(string.IsNullOrWhiteSpace(asnNumber) ? "--" : $"AS{asnNumber}")}\n" +
+                $"邮编：{GetString(root, "postal") ?? "--"}\n" +
+                $"时区：{GetString(location, "time_zone") ?? "--"}\n" +
+                $"坐标：{BuildCoordinateText(location)}";
+
+            return new ExitIpRiskSourceResult(
+                "country-is",
+                sourceName,
+                "地理源",
+                true,
+                "信息",
+                summary,
+                detail,
+                Country: GetString(root, "country"),
+                City: GetString(root, "city"),
+                Asn: string.IsNullOrWhiteSpace(asnNumber) ? null : $"AS{asnNumber}",
+                Organization: organization);
+        }
+        catch (TaskCanceledException ex)
+        {
+            return new ExitIpRiskSourceResult(
+                "country-is",
+                sourceName,
+                "地理源",
+                false,
+                "超时",
+                "country.is 查询超时，本轮未返回结果。",
+                "当前更像是网络链路缓慢、被拦截，或对方响应过慢。可稍后重试，或结合其他免配额来源一起判断。",
+                Error: ex.Message);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException)
+        {
+            return BuildFailureSourceResult("country-is", sourceName, ex);
         }
     }
 
@@ -1253,6 +1348,18 @@ public sealed class ExitIpRiskReviewService
         };
     }
 
+    private static string BuildCoordinateText(JsonElement root)
+    {
+        var latitude = GetDouble(root, "latitude");
+        var longitude = GetDouble(root, "longitude");
+        if (latitude is null || longitude is null)
+        {
+            return "--";
+        }
+
+        return $"{latitude.Value.ToString("F4", CultureInfo.InvariantCulture)}, {longitude.Value.ToString("F4", CultureInfo.InvariantCulture)}";
+    }
+
     private static bool ArrayContainsString(JsonElement root, string propertyName, string expected)
     {
         if (root.ValueKind != JsonValueKind.Array)
@@ -1303,11 +1410,28 @@ public sealed class ExitIpRiskReviewService
         return await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
     }
 
+    private static string BuildIpInfoUrl(string ip)
+    {
+        var baseUrl = $"https://ipinfo.io/{Uri.EscapeDataString(ip)}/json";
+        var token = GetIpInfoToken();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return baseUrl;
+        }
+
+        return $"{baseUrl}?token={Uri.EscapeDataString(token)}";
+    }
+
+    private static string? GetIpInfoToken()
+        => FirstNonEmpty(
+            Environment.GetEnvironmentVariable(IpInfoTokenEnvironmentVariable),
+            Environment.GetEnvironmentVariable(RelayBenchIpInfoTokenEnvironmentVariable));
+
     private static HttpClient CreateHttpClient()
     {
         var handler = new HttpClientHandler
         {
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
         };
 
         var client = new HttpClient(handler)

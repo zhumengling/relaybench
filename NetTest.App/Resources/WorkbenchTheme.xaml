@@ -11,7 +11,175 @@
         <SolidColorBrush x:Key="AccentBrush" Color="#2563EB" />
         <SolidColorBrush x:Key="TextBrush" Color="#101828" />
         <SolidColorBrush x:Key="MutedBrush" Color="#667085" />
+        <SolidColorBrush x:Key="ScrollBarTrackBrush" Color="#EEF2F7" />
+        <SolidColorBrush x:Key="ScrollBarTrackHoverBrush" Color="#E4EAF4" />
+        <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#C2CBD9" />
+        <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#98A6BA" />
+        <SolidColorBrush x:Key="ScrollBarThumbPressedBrush" Color="#6B7D98" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <Style x:Key="ScrollBarPageButtonStyle" TargetType="RepeatButton">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="999" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="ThumbBorder"
+                                Margin="1"
+                                Background="{StaticResource ScrollBarThumbBrush}"
+                                CornerRadius="999"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="1"
+                                                ScaleY="1" />
+                            </Border.RenderTransform>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbBorder"
+                                        Property="Background"
+                                        Value="{StaticResource ScrollBarThumbHoverBrush}" />
+                                <Setter TargetName="ThumbBorder" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="1.08" ScaleY="1.08" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="ThumbBorder"
+                                        Property="Background"
+                                        Value="{StaticResource ScrollBarThumbPressedBrush}" />
+                                <Setter TargetName="ThumbBorder" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="1.12" ScaleY="1.12" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ThumbBorder" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ScrollBar">
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Stylus.IsFlicksEnabled" Value="False" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Border Background="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Vertical">
+                    <Setter Property="Width" Value="12" />
+                    <Setter Property="MinWidth" Value="12" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ScrollBar">
+                                <Grid Width="{TemplateBinding Width}"
+                                      Background="Transparent"
+                                      Margin="1,0,1,0">
+                                    <Border x:Name="TrackBackground"
+                                            Width="8"
+                                            HorizontalAlignment="Center"
+                                            Background="{StaticResource ScrollBarTrackBrush}"
+                                            CornerRadius="999" />
+                                    <Track x:Name="PART_Track"
+                                           IsDirectionReversed="True"
+                                           Focusable="False">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Command="ScrollBar.PageUpCommand"
+                                                          Style="{StaticResource ScrollBarPageButtonStyle}" />
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb MinHeight="28"
+                                                   Style="{StaticResource ScrollBarThumbStyle}" />
+                                        </Track.Thumb>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Command="ScrollBar.PageDownCommand"
+                                                          Style="{StaticResource ScrollBarPageButtonStyle}" />
+                                        </Track.IncreaseRepeatButton>
+                                    </Track>
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="TrackBackground"
+                                                Property="Background"
+                                                Value="{StaticResource ScrollBarTrackHoverBrush}" />
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="TrackBackground" Property="Opacity" Value="0.45" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <Trigger Property="Orientation" Value="Horizontal">
+                    <Setter Property="Height" Value="12" />
+                    <Setter Property="MinHeight" Value="12" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ScrollBar">
+                                <Grid Height="{TemplateBinding Height}"
+                                      Background="Transparent"
+                                      Margin="0,1,0,1">
+                                    <Border x:Name="TrackBackground"
+                                            Height="8"
+                                            VerticalAlignment="Center"
+                                            Background="{StaticResource ScrollBarTrackBrush}"
+                                            CornerRadius="999" />
+                                    <Track x:Name="PART_Track"
+                                           Focusable="False">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Command="ScrollBar.PageLeftCommand"
+                                                          Style="{StaticResource ScrollBarPageButtonStyle}" />
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb MinWidth="28"
+                                                   Style="{StaticResource ScrollBarThumbStyle}" />
+                                        </Track.Thumb>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Command="ScrollBar.PageRightCommand"
+                                                          Style="{StaticResource ScrollBarPageButtonStyle}" />
+                                        </Track.IncreaseRepeatButton>
+                                    </Track>
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="TrackBackground"
+                                                Property="Background"
+                                                Value="{StaticResource ScrollBarTrackHoverBrush}" />
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="TrackBackground" Property="Opacity" Value="0.45" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="FontSize" Value="10.4" />

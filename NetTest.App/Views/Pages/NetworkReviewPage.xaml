@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:infra="clr-namespace:NetTest.App.Infrastructure"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d">
     <UserControl.Resources>
@@ -478,7 +479,8 @@
                                               Margin="0,6,0,0">
                                             <ScrollViewer VerticalScrollBarVisibility="Auto"
                                                           HorizontalScrollBarVisibility="Disabled"
-                                                          Background="Transparent">
+                                                          Background="Transparent"
+                                                          infra:ScrollViewerWheelHelper.EnableNestedWheelRouting="True">
                                                 <ItemsControl ItemsSource="{Binding OfficialApiStatusRows}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
@@ -1056,7 +1058,8 @@
                                                 BorderThickness="1"
                                                 CornerRadius="10">
                                             <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                                          VerticalScrollBarVisibility="Disabled">
+                                                          VerticalScrollBarVisibility="Disabled"
+                                                          infra:ScrollViewerWheelHelper.EnableNestedWheelRouting="True">
                                                 <StackPanel>
                                                     <Border Padding="10,8"
                                                             Background="#F8FAFC"
