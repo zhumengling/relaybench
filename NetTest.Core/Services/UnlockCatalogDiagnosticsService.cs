@@ -12,7 +12,7 @@ public sealed partial class UnlockCatalogDiagnosticsService
     private static readonly IReadOnlyList<UnlockDefinition> Definitions =
     [
         new("ChatGPT Web", "OpenAI", "https://chatgpt.com/", HttpMethod.Get, UnlockProbeKind.ChatGptWeb),
-        new("ChatGPT Trace", "OpenAI", "https://chatgpt.com/cdn-cgi/trace", HttpMethod.Get, UnlockProbeKind.ChatGptTrace),
+        new("Web API Trace", "OpenAI", "https://chatgpt.com/cdn-cgi/trace", HttpMethod.Get, UnlockProbeKind.WebApiTrace),
         new("OpenAI API /models", "OpenAI", "https://api.openai.com/v1/models", HttpMethod.Get, UnlockProbeKind.OpenAiApiModels),
         new("OpenAI Platform", "OpenAI", "https://platform.openai.com/", HttpMethod.Get, UnlockProbeKind.OpenAiPlatform),
         new("Claude Web", "Anthropic", "https://claude.ai/", HttpMethod.Get, UnlockProbeKind.ClaudeWeb),

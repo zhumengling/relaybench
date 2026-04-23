@@ -31,10 +31,10 @@ public sealed partial class SplitRoutingDiagnosticsService
         var normalizedHosts = NormalizeHosts(hosts);
         var adapters = GetAdapters();
 
-        progress?.Report("正在检查 ChatGPT、Cloudflare 与测速端点的公网出口视角...");
+        progress?.Report("正在检查网页 API、Cloudflare 与测速端点的公网出口视角...");
         List<SplitRoutingExitCheck> exitChecks =
         [
-            await RunTraceExitCheckAsync("ChatGPT Trace 出口", "https://chatgpt.com/cdn-cgi/trace", cancellationToken),
+            await RunTraceExitCheckAsync("网页 API Trace 出口", "https://chatgpt.com/cdn-cgi/trace", cancellationToken),
             await RunTraceExitCheckAsync("Cloudflare Trace 出口", "https://www.cloudflare.com/cdn-cgi/trace", cancellationToken),
             await RunSpeedExitCheckAsync(cancellationToken)
         ];

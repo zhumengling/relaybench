@@ -107,4 +107,12 @@ public sealed partial class MainWindowViewModel
             "IP / \u5206\u6D41",
             "\u51C6\u5907\u4E2D",
             8d);
+
+    private Task RunIpRiskReviewWithGlobalProgressAsync()
+        => ExecuteBusyActionAsync(
+            "\u6B63\u5728\u8FD0\u884C当前出口 IP 风险复核...",
+            RunIpRiskReviewCoreAsync,
+            "IP \u98CE\u9669",
+            "\u51C6\u5907\u4E2D",
+            10d);
 }

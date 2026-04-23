@@ -1,6 +1,6 @@
 namespace NetTest.Core.Models;
 
-public sealed record ChatGptTraceResult(
+public sealed record WebApiTraceResult(
     DateTimeOffset CheckedAt,
     string RawTrace,
     IReadOnlyDictionary<string, string> Values,

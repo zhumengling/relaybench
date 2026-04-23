@@ -8,8 +8,8 @@ namespace NetTest.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private bool _isOfficialApiTraceDialogOpen;
-    private string _officialApiTraceDialogTitle = "\u5b98\u65b9 API \u539f\u59cb Trace";
-    private string _officialApiTraceDialogContent = "\u8bf7\u5148\u8fd0\u884c\u4e00\u6b21\u5b98\u65b9 API \u68c0\u6d4b\uff0c\u7136\u540e\u518d\u67e5\u770b\u539f\u59cb\u8fd4\u56de\u3002";
+    private string _officialApiTraceDialogTitle = "\u7F51\u9875 API \u539F\u59CB Trace";
+    private string _officialApiTraceDialogContent = "\u8BF7\u5148\u8FD0\u884C\u4E00\u6B21\u7F51\u9875 API \u68C0\u6D4B\uFF0C\u7136\u540E\u518D\u67E5\u770B\u539F\u59CB\u8FD4\u56DE\u3002";
 
     public ObservableCollection<OfficialApiStatusRowViewModel> OfficialApiStatusRows { get; } = [];
 

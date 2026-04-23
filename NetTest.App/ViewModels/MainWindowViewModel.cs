@@ -11,7 +11,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private const string DefaultStunServerHost = StunServerPresetCatalog.RecommendedUdpNatReviewHost;
 
     private readonly BasicNetworkDiagnosticsService _networkDiagnosticsService = new();
-    private readonly ChatGptTraceService _chatGptTraceService = new();
+    private readonly WebApiTraceService _webApiTraceService = new();
     private readonly StunProbeService _stunProbeService = new();
     private readonly ProxyDiagnosticsService _proxyDiagnosticsService = new();
     private readonly CloudflareSpeedTestService _cloudflareSpeedTestService = new();
@@ -43,8 +43,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _networkSummary = "运行网络检测后，这里会显示公网 IP、活动网卡和 Ping 摘要。";
     private string _adapterSummary = "尚未采集网卡快照。";
     private string _pingSummary = "暂无 Ping 结果。";
-    private string _chatGptSummary = "运行官方 API 可用性检测后，这里会显示 loc、colo 和支持地区判断。";
-    private string _chatGptRawTrace = string.Empty;
+    private string _webApiSummary = "运行网页 API 可用性检测后，这里会显示 loc、colo 和支持地区判断。";
+    private string _webApiRawTrace = string.Empty;
     private string _selectedStunTransportKey = "udp";
     private string _stunServer = DefaultStunServerHost;
     private string _stunSummary = "运行 STUN 检测后，这里会显示映射地址与 OTHER-ADDRESS 行为。";

@@ -21,9 +21,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             },
             new DashboardCardViewModel
             {
-                Title = "官方 API",
+                Title = "网页 API",
                 Status = "待运行",
-                Detail = "读取 chatgpt.com/cdn-cgi/trace 并判断官方 API 区域可用性"
+                Detail = "读取 chatgpt.com/cdn-cgi/trace 并判断网页 API 区域可用性"
             },
             new DashboardCardViewModel
             {
@@ -66,7 +66,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RunQuickSuiteCommand = new AsyncRelayCommand(RunQuickSuiteAsync, CanRun);
         ExportCurrentReportCommand = new AsyncRelayCommand(ExportCurrentReportAsync, CanRun);
         RunNetworkCommand = new AsyncRelayCommand(RunNetworkAsync, CanRun);
-        RunChatGptTraceCommand = new AsyncRelayCommand(RunChatGptTraceAsync, CanRun);
+        RunWebApiTraceCommand = new AsyncRelayCommand(RunWebApiTraceAsync, CanRun);
         RunClientApiDiagnosticsCommand = new AsyncRelayCommand(RunClientApiDiagnosticsAsync, CanRun);
         ApplyCurrentInterfaceToCodexAppsCommand = new AsyncRelayCommand(ApplyCurrentInterfaceToCodexAppsAsync, CanApplyCurrentInterfaceToCodexApps, onError: HandleNonFatalCommandException);
         RunStunCommand = new AsyncRelayCommand(RunStunAsync, CanRun);
@@ -125,7 +125,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ExportPortScanCsvCommand = new AsyncRelayCommand(ExportPortScanCsvAsync, CanExportPortScanResults);
         ExportPortScanExcelCommand = new AsyncRelayCommand(ExportPortScanExcelAsync, CanExportPortScanResults);
         RunSplitRoutingCommand = new AsyncRelayCommand(RunSplitRoutingWithGlobalProgressAsync, CanRun);
+        RunIpRiskReviewCommand = new AsyncRelayCommand(RunIpRiskReviewWithGlobalProgressAsync, CanRun);
 
+        ResetIpRiskPresentation();
         LoadState();
         RefreshFilteredPortScanFindings();
         RefreshPortScanBatchSummary();

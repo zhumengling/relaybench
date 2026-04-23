@@ -181,6 +181,36 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    private void UpdateGlobalTaskProgressForIpRiskMessage(string? message)
+    {
+        if (!IsGlobalTaskProgressRunning || string.IsNullOrWhiteSpace(message))
+        {
+            return;
+        }
+
+        if (message.Contains("\u8BC6\u522B", StringComparison.Ordinal) ||
+            message.Contains("\u51FA\u53E3 IP", StringComparison.Ordinal))
+        {
+            UpdateGlobalTaskProgress("\u51FA\u53E3\u4E2D", 18d);
+            return;
+        }
+
+        if (TryParseFraction(message, out var current, out var total))
+        {
+            var safeTotal = Math.Max(total, 1);
+            var safeCurrent = Math.Clamp(current, 1, safeTotal);
+            var percent = 28d + (double)safeCurrent / safeTotal * 56d;
+            UpdateGlobalTaskProgress($"\u7B2C {safeCurrent}/{safeTotal} \u6E90", percent);
+            return;
+        }
+
+        if (message.Contains("\u6C47\u603B", StringComparison.Ordinal) ||
+            message.Contains("\u603B\u7ED3", StringComparison.Ordinal))
+        {
+            UpdateGlobalTaskProgress("\u6C47\u603B\u4E2D", 92d);
+        }
+    }
+
     private void UpdateGlobalTaskProgressForSpeedTestMessage(string? message)
     {
         if (!IsGlobalTaskProgressRunning || string.IsNullOrWhiteSpace(message))

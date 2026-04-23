@@ -58,7 +58,7 @@
 当前支持：
 
 - 基础网络检查
-- ChatGPT Trace 与地区信息观察
+- 网页 API Trace 与地区信息观察
 - 官方 API 可访问性检查
 - NAT / STUN 观察
 - 路由与 MTR 风格链路检查

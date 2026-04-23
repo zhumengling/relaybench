@@ -14,7 +14,7 @@ public sealed partial class UnlockCatalogDiagnosticsService
     {
         return definition.Kind switch
         {
-            UnlockProbeKind.ChatGptTrace => EvaluateChatGptTrace(statusCode, bodySample),
+            UnlockProbeKind.WebApiTrace => EvaluateWebApiTrace(statusCode, bodySample),
             UnlockProbeKind.OpenAiApiModels => EvaluateOpenAiApi(statusCode, bodySample),
             UnlockProbeKind.AnthropicApi => EvaluateAnthropicApi(statusCode, bodySample),
             UnlockProbeKind.GeminiApiModels => EvaluateGenericProtectedApi("Gemini API", statusCode, bodySample),
@@ -39,7 +39,7 @@ public sealed partial class UnlockCatalogDiagnosticsService
         };
     }
 
-    private SemanticAssessment EvaluateChatGptTrace(HttpStatusCode statusCode, string bodySample)
+    private SemanticAssessment EvaluateWebApiTrace(HttpStatusCode statusCode, string bodySample)
     {
         if (statusCode != HttpStatusCode.OK)
         {
@@ -60,7 +60,7 @@ public sealed partial class UnlockCatalogDiagnosticsService
             return new SemanticAssessment(
                 SemanticCategories.ReviewRequired,
                 "Trace \u53ef\u8fbe\u4f46\u7f3a\u5c11 loc",
-                "Trace \u5df2\u8fd4\u56de\u5185\u5bb9\uFF0C\u4f46\u7f3a\u5c11 loc \u5b57\u6bb5\uFF0C\u65e0\u6cd5\u76f4\u63a5\u5224\u65ad ChatGPT \u5730\u533a\u53ef\u7528\u6027\u3002",
+                "Trace \u5df2\u8fd4\u56de\u5185\u5bb9\uFF0C\u4f46\u7f3a\u5c11 loc \u5b57\u6bb5\uFF0C\u65e0\u6cd5\u76f4\u63a5\u5224\u65ad\u7f51\u9875 API \u5730\u533a\u53ef\u7528\u6027\u3002",
                 $"ip={publicIp ?? "--"}\uFF1Bcolo={colo ?? "--"}");
         }
 
@@ -69,12 +69,12 @@ public sealed partial class UnlockCatalogDiagnosticsService
         return isSupported
             ? new SemanticAssessment(
                 SemanticCategories.Ready,
-                "ChatGPT \u5730\u533a\u547d\u4e2d\u652f\u6301\u8303\u56f4",
-                $"{locationName}\uFF08{locationCode}\uFF09\u5728\u5f53\u524d\u5185\u7f6e OpenAI \u652f\u6301\u5730\u533a\u76ee\u5f55\u4e2d\uFF0C\u53ef\u89c6\u4e3a ChatGPT Trace \u8bed\u4e49\u901a\u8fc7\u3002",
+                "\u7f51\u9875 API \u5730\u533a\u547d\u4e2d\u652f\u6301\u8303\u56f4",
+                $"{locationName}\uFF08{locationCode}\uFF09\u5728\u5f53\u524d\u5185\u7f6e OpenAI \u652f\u6301\u5730\u533a\u76ee\u5f55\u4e2d\uFF0C\u53ef\u89c6\u4e3a\u7f51\u9875 API Trace \u8bed\u4e49\u901a\u8fc7\u3002",
                 $"ip={publicIp ?? "--"}\uFF1Bloc={locationCode}\uFF1Bcolo={colo ?? "--"}")
             : new SemanticAssessment(
                 SemanticCategories.RegionRestricted,
-                "ChatGPT Trace \u63d0\u793a\u5730\u533a\u4e0d\u5728\u652f\u6301\u8303\u56f4",
+                "\u7f51\u9875 API Trace \u63d0\u793a\u5730\u533a\u4e0d\u5728\u652f\u6301\u8303\u56f4",
                 $"{locationName}\uFF08{locationCode}\uFF09\u4e0d\u5728\u5f53\u524d\u5185\u7f6e OpenAI \u652f\u6301\u5730\u533a\u76ee\u5f55\u4e2d\uFF0C\u7591\u4f3c\u5b58\u5728\u5730\u533a\u9650\u5236\u3002",
                 $"ip={publicIp ?? "--"}\uFF1Bloc={locationCode}\uFF1Bcolo={colo ?? "--"}");
     }

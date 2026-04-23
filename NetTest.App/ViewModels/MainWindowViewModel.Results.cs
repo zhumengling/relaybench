@@ -57,9 +57,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         AppendModuleOutput("网络返回", NetworkSummary, PingSummary);
     }
 
-    private void ApplyChatGptTrace(ChatGptTraceResult result)
+    private void ApplyWebApiTrace(WebApiTraceResult result)
     {
-        ChatGptSummary =
+        WebApiSummary =
             $"检测时间：{result.CheckedAt:yyyy-MM-dd HH:mm:ss}\n" +
             $"出口 IP：{result.PublicIp ?? "未获取"}\n" +
             $"loc：{result.LocationCode ?? "缺失"}\n" +
@@ -68,11 +68,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
             $"判断：{result.SupportSummary}\n" +
             $"错误：{result.Error ?? "无"}";
 
-        ChatGptRawTrace = string.IsNullOrWhiteSpace(result.RawTrace)
+        WebApiRawTrace = string.IsNullOrWhiteSpace(result.RawTrace)
             ? "本次未捕获到原始 Trace 文本。"
             : result.RawTrace;
 
-        AppendModuleOutput("官方 API Trace 返回", ChatGptSummary);
+        AppendModuleOutput("网页 API Trace 返回", WebApiSummary);
     }
 
     private void ApplyStunResult(StunProbeResult result)

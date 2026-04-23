@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using NetTest.App.Infrastructure;
 using NetTest.App.Services;
+using NetTest.Core.Models;
 
 namespace NetTest.App.ViewModels;
 
@@ -24,6 +25,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<ProxyBatchSiteGroupViewModel> ProxyBatchSiteGroups { get; } = [];
 
     public ObservableCollection<ProxyBatchRankingRowViewModel> ProxyBatchRankingRows { get; } = [];
+
+    public ObservableCollection<ExitIpRiskSourceResult> IpRiskSourceResults { get; } = [];
+
+    public ObservableCollection<IpRiskSummaryBadgeViewModel> IpRiskSummaryBadges { get; } = [];
+
+    public ObservableCollection<IpRiskIndicatorCardViewModel> IpRiskIndicatorCards { get; } = [];
+
+    public ObservableCollection<IpRiskSourceRowViewModel> IpRiskSourceRows { get; } = [];
 
     public ObservableCollection<SelectionOption> StunTransportOptions { get; } =
         new(StunServerPresetCatalog.BuildTransportOptions());
@@ -59,18 +68,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<SelectionOption> NetworkReviewToolOptions { get; } =
     [
         new(NetworkReviewToolNetwork, "基础网络"),
-        new(NetworkReviewToolOfficialApi, "官方 API"),
+        new(NetworkReviewToolOfficialApi, "网页 API"),
         new(NetworkReviewToolSpeed, "测速"),
         new(NetworkReviewToolRoute, "路由 / MTR"),
         new(NetworkReviewToolSplitRouting, "IP 与分流"),
+        new(NetworkReviewToolIpRisk, "IP 风险"),
         new(NetworkReviewToolStun, "NAT / STUN"),
         new(NetworkReviewToolPortScan, "端口扫描")
-    ];
-
-    public ObservableCollection<SelectionOption> OfficialApiModeOptions { get; } =
-    [
-        new("web-api", "网页 API"),
-        new("client-api", "客户端 API")
     ];
 
     public AsyncRelayCommand RunQuickSuiteCommand { get; }
@@ -79,7 +83,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand RunNetworkCommand { get; }
 
-    public AsyncRelayCommand RunChatGptTraceCommand { get; }
+    public AsyncRelayCommand RunWebApiTraceCommand { get; }
 
     public AsyncRelayCommand RunClientApiDiagnosticsCommand { get; }
 
@@ -194,4 +198,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand ExportPortScanExcelCommand { get; }
 
     public AsyncRelayCommand RunSplitRoutingCommand { get; }
+
+    public AsyncRelayCommand RunIpRiskReviewCommand { get; }
 }

@@ -15,7 +15,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 RunQuickSuiteCommand.RaiseCanExecuteChanged();
                 ExportCurrentReportCommand.RaiseCanExecuteChanged();
                 RunNetworkCommand.RaiseCanExecuteChanged();
-                RunChatGptTraceCommand.RaiseCanExecuteChanged();
+                RunWebApiTraceCommand.RaiseCanExecuteChanged();
                 RunClientApiDiagnosticsCommand.RaiseCanExecuteChanged();
                 ApplyCurrentInterfaceToCodexAppsCommand.RaiseCanExecuteChanged();
                 RunStunCommand.RaiseCanExecuteChanged();
@@ -109,16 +109,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
         private set => SetProperty(ref _pingSummary, value);
     }
 
-    public string ChatGptSummary
+    public string WebApiSummary
     {
-        get => _chatGptSummary;
-        private set => SetProperty(ref _chatGptSummary, value);
+        get => _webApiSummary;
+        private set => SetProperty(ref _webApiSummary, value);
     }
 
-    public string ChatGptRawTrace
+    public string WebApiRawTrace
     {
-        get => _chatGptRawTrace;
-        private set => SetProperty(ref _chatGptRawTrace, value);
+        get => _webApiRawTrace;
+        private set => SetProperty(ref _webApiRawTrace, value);
     }
 
     public string SelectedStunTransportKey

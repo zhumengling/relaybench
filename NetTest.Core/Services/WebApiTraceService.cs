@@ -3,7 +3,7 @@ using NetTest.Core.Support;
 
 namespace NetTest.Core.Services;
 
-public sealed class ChatGptTraceService
+public sealed class WebApiTraceService
 {
     private static readonly HttpClient HttpClient = new()
     {
@@ -12,7 +12,7 @@ public sealed class ChatGptTraceService
 
     private readonly OpenAiSupportedRegionCatalog _regionCatalog = new();
 
-    public async Task<ChatGptTraceResult> RunAsync(CancellationToken cancellationToken = default)
+    public async Task<WebApiTraceResult> RunAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -33,7 +33,7 @@ public sealed class ChatGptTraceService
                     ? $"{locationName ?? locationCode}（{locationCode}）在内置支持地区列表中。"
                     : $"{locationName ?? locationCode}（{locationCode}）不在内置支持地区列表中。";
 
-            return new ChatGptTraceResult(
+            return new WebApiTraceResult(
                 DateTimeOffset.Now,
                 rawTrace,
                 values,
@@ -47,7 +47,7 @@ public sealed class ChatGptTraceService
         }
         catch (Exception ex)
         {
-            return new ChatGptTraceResult(
+            return new WebApiTraceResult(
                 DateTimeOffset.Now,
                 string.Empty,
                 new Dictionary<string, string>(),

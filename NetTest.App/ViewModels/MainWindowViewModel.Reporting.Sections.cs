@@ -13,7 +13,7 @@ public sealed partial class MainWindowViewModel
             new("结论摘要", conclusionSummary),
             new("总览", $"状态：{overviewStatus}\n上次运行：{LastRunAt}\n\n{PlannedModulesSummary}"),
             new("网络检测", $"{NetworkSummary}\n\n{AdapterSummary}\n\n{PingSummary}"),
-            new("官方 API 可用性", $"{ChatGptSummary}\n\n扩展可用性目录：\n{UnlockCatalogSummary}\n\n原始 Trace：\n{ChatGptRawTrace}"),
+            new("网页 API 可用性", $"{WebApiSummary}\n\n扩展可用性目录：\n{UnlockCatalogSummary}\n\n原始 Trace：\n{WebApiRawTrace}"),
             new("扩展可用性目录", $"{UnlockCatalogSummary}\n\n{UnlockCatalogDetail}"),
             new("客户端 API 联通鉴定", $"{ClientApiSummary}\n\n{ClientApiDetail}"),
             new("STUN NAT 分类测试", $"{StunSummary}\n\n覆盖与复核：\n{StunCoverageSummary}\n\n分类测试过程：\n{StunTestSummary}\n\n属性详情：\n{StunAttributeSummary}"),
@@ -36,7 +36,7 @@ public sealed partial class MainWindowViewModel
         return
         [
             new("raw/conclusions.txt", NormalizeArtifactContent(conclusionSummary), "结论摘要"),
-            new("raw/chatgpt-trace.txt", NormalizeArtifactContent(ChatGptRawTrace), "网络复核 / 官方 API Trace 原始输出"),
+            new("raw/web-api-trace.txt", NormalizeArtifactContent(WebApiRawTrace), "网络复核 / 网页 API Trace 原始输出"),
             new("raw/client-api.txt", NormalizeArtifactContent($"{ClientApiSummary}\n\n{ClientApiDetail}"), "网络复核 / 客户端 API 联通鉴定原始结果"),
             new("raw/unlock-catalog.txt", NormalizeArtifactContent($"{UnlockCatalogSummary}\n\n{UnlockCatalogDetail}"), "扩展可用性目录原始摘要"),
             new("raw/stun-tests.txt", NormalizeArtifactContent($"{StunSummary}\n\n{StunCoverageSummary}\n\n{StunTestSummary}\n\n{StunAttributeSummary}"), "网络复核 / STUN 与 NAT 分类原始结果"),
@@ -135,8 +135,8 @@ public sealed partial class MainWindowViewModel
             },
             chatgptUnlock = new
             {
-                summary = ChatGptSummary,
-                rawTrace = ChatGptRawTrace,
+            summary = WebApiSummary,
+            rawTrace = WebApiRawTrace,
                 unlockCatalogSummary = UnlockCatalogSummary,
                 unlockCatalogDetail = UnlockCatalogDetail,
                 semanticCounts = new

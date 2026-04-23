@@ -166,7 +166,7 @@ public sealed partial class UnlockCatalogDiagnosticsService
     private enum UnlockProbeKind
     {
         ChatGptWeb,
-        ChatGptTrace,
+        WebApiTrace,
         OpenAiApiModels,
         OpenAiPlatform,
         ClaudeWeb,

@@ -41,7 +41,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         await ExecuteBusyActionAsync("正在运行快速诊断套件...", async () =>
         {
             await RunNetworkCoreAsync();
-            await RunChatGptTraceCoreAsync();
+            await RunWebApiTraceCoreAsync();
             await RunStunCoreAsync();
 
             if (CanRunProxyFromQuickSuite(out var quickSkipReason))
@@ -66,10 +66,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             "\u8BF7\u6C42\u4E2D",
             18d);
 
-    private Task RunChatGptTraceAsync()
+    private Task RunWebApiTraceAsync()
         => ExecuteBusyActionAsync(
-            "正在运行官方 API 可用性检测...",
-            RunChatGptTraceCoreAsync,
+            "正在运行网页 API 可用性检测...",
+            RunWebApiTraceCoreAsync,
             "\u7F51\u9875 API \u68C0\u6D4B",
             "\u8BF7\u6C42\u4E2D",
             18d);
@@ -320,10 +320,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         AppendHistory("网络", "基础网络检测", NetworkSummary);
     }
 
-    private async Task RunChatGptTraceCoreAsync()
+    private async Task RunWebApiTraceCoreAsync()
     {
         UpdateGlobalTaskProgress("\u8BF7\u6C42\u4E2D", 26d);
-        var result = await _chatGptTraceService.RunAsync();
+        var result = await _webApiTraceService.RunAsync();
         UpdateGlobalTaskProgress("\u590D\u6838\u4E2D", 56d);
         var unlockProgressPercent = 56d;
         var unlockProgress = new Progress<string>(message =>
@@ -333,13 +333,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
             UpdateGlobalTaskProgress("\u590D\u6838\u4E2D", unlockProgressPercent);
         });
         var unlockCatalogResult = await _unlockCatalogDiagnosticsService.RunAsync(unlockProgress);
-        ApplyChatGptTrace(result);
+        ApplyWebApiTrace(result);
         ApplyUnlockCatalogResult(unlockCatalogResult);
         DashboardCards[1].Status = result.Error is null ? "完成" : "失败";
         DashboardCards[1].Detail = result.Error is null
             ? $"{result.LocationCode ?? "--"} / {result.CloudflareColo ?? "--"} / {(result.IsSupportedRegion ? "支持" : "需复核")} / 业务就绪 {unlockCatalogResult.SemanticReadyCount}/{unlockCatalogResult.Checks.Count}"
             : result.Error;
-        AppendHistory("官方API", "官方 API 可用性检测", $"{ChatGptSummary}\n\n{UnlockCatalogSummary}");
+        AppendHistory("网页API", "网页 API 可用性检测", $"{WebApiSummary}\n\n{UnlockCatalogSummary}");
     }
 
     private async Task RunClientApiDiagnosticsCoreAsync()
