@@ -22,8 +22,8 @@ public sealed partial class MainWindowViewModel
         {
             StatusMessage = $"当前无法开始快速对比：{ex.Message}";
             MessageBox.Show(
-                $"当前无法开始快速对比。\n\n{ex.Message}",
-                "无法开始快速对比",
+                $"还不能开始快速对比。\n\n{ex.Message}",
+                "请先补全入口信息",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
             return;

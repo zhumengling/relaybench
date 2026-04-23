@@ -93,6 +93,31 @@ public sealed class ClientApiDiagnosticEnvironment : IClientApiDiagnosticEnviron
         }
     }
 
+    public IReadOnlyList<string> EnumerateFilesRecursive(string directoryPath, string searchPattern)
+    {
+        try
+        {
+            return Directory.Exists(directoryPath)
+                ? Directory.GetFiles(directoryPath, searchPattern, SearchOption.AllDirectories)
+                : Array.Empty<string>();
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    public void CopyFile(string sourcePath, string destinationPath, bool overwrite)
+    {
+        var directory = Path.GetDirectoryName(destinationPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        File.Copy(sourcePath, destinationPath, overwrite);
+    }
+
     public IReadOnlyList<string> ResolveCommandPaths(string commandName)
     {
         try

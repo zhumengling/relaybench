@@ -58,7 +58,7 @@ public sealed class AsyncRelayCommand : ICommand
         }
 
         MessageBox.Show(
-            ex.Message,
+            $"操作没有完成。\n\n{ex.Message}",
             "RelayBench",
             MessageBoxButton.OK,
             MessageBoxImage.Warning);
@@ -135,7 +135,7 @@ public sealed class AsyncRelayCommand<T> : ICommand
         }
 
         MessageBox.Show(
-            ex.Message,
+            $"操作没有完成。\n\n{ex.Message}",
             "RelayBench",
             MessageBoxButton.OK,
             MessageBoxImage.Warning);

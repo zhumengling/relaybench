@@ -200,4 +200,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand RunSplitRoutingCommand { get; }
 
     public AsyncRelayCommand RunIpRiskReviewCommand { get; }
+
+    public AsyncRelayCommand ConfirmConfirmationDialogCommand { get; }
+
+    public AsyncRelayCommand CancelConfirmationDialogCommand { get; }
 }

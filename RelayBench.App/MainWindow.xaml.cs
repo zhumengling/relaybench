@@ -288,6 +288,8 @@ public partial class MainWindow : Window
             new OverlayAnimationState(ProxyMultiModelPickerOverlay, ProxyMultiModelPickerOverlayPanel, static viewModel => viewModel.IsProxyMultiModelPickerOpen);
         _overlayAnimations[nameof(MainWindowViewModel.IsOfficialApiTraceDialogOpen)] =
             new OverlayAnimationState(OfficialApiTraceOverlay, OfficialApiTraceOverlayPanel, static viewModel => viewModel.IsOfficialApiTraceDialogOpen);
+        _overlayAnimations[nameof(MainWindowViewModel.IsConfirmationDialogOpen)] =
+            new OverlayAnimationState(ConfirmationDialogOverlay, ConfirmationDialogOverlayPanel, static viewModel => viewModel.IsConfirmationDialogOpen);
         _overlayAnimations[nameof(MainWindowViewModel.IsProxyBatchEditorOpen)] =
             new OverlayAnimationState(ProxyBatchEditorOverlay, ProxyBatchEditorOverlayPanel, static viewModel => viewModel.IsProxyBatchEditorOpen);
     }

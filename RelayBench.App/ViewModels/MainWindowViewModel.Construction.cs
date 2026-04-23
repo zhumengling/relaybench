@@ -126,6 +126,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ExportPortScanExcelCommand = new AsyncRelayCommand(ExportPortScanExcelAsync, CanExportPortScanResults);
         RunSplitRoutingCommand = new AsyncRelayCommand(RunSplitRoutingWithGlobalProgressAsync, CanRun);
         RunIpRiskReviewCommand = new AsyncRelayCommand(RunIpRiskReviewWithGlobalProgressAsync, CanRun);
+        ConfirmConfirmationDialogCommand = new AsyncRelayCommand(ConfirmConfirmationDialogAsync);
+        CancelConfirmationDialogCommand = new AsyncRelayCommand(CancelConfirmationDialogAsync);
 
         ResetIpRiskPresentation();
         LoadState();

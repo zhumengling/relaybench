@@ -117,7 +117,7 @@ public sealed partial class MainWindowViewModel
             statusForeground,
             () => OpenOfficialApiTraceDialogAsync(traceTitle, traceContent),
             check.RestoreSupported
-                ? () => RestoreClientApiDefaultConfigAsync(check)
+                ? () => RestoreClientApiDefaultConfigWithMergeAsync(check)
                 : null,
             BuildClientApiStateText(check),
             BuildClientApiAccessDetailText(check),

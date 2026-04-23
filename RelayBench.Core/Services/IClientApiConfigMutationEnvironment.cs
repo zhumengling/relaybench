@@ -12,6 +12,8 @@ public interface IClientApiConfigMutationEnvironment
 
     bool FileExists(string path);
 
+    bool DirectoryExists(string path);
+
     string? ReadFileText(string path);
 
     void WriteFileText(string path, string content);
@@ -19,4 +21,8 @@ public interface IClientApiConfigMutationEnvironment
     void DeleteFile(string path);
 
     IReadOnlyList<string> EnumerateFiles(string directoryPath, string searchPattern);
+
+    IReadOnlyList<string> EnumerateFilesRecursive(string directoryPath, string searchPattern);
+
+    void CopyFile(string sourcePath, string destinationPath, bool overwrite);
 }

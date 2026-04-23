@@ -1,5 +1,4 @@
 using System.Text;
-using System.Windows;
 using RelayBench.Core.Models;
 
 namespace RelayBench.App.ViewModels;
@@ -25,31 +24,31 @@ public sealed partial class MainWindowViewModel
         get
         {
             StringBuilder builder = new();
-            builder.AppendLine($"\u5F53\u524D Base URL\uFF1A{FormatPreviewValue(ProxyBaseUrl)}");
-            builder.AppendLine($"\u5F53\u524D\u6A21\u578B\uFF1A{FormatPreviewValue(ProxyModel)}");
-            builder.AppendLine($"\u5F53\u524D API Key\uFF1A{FormatPreviewApiKey(ProxyApiKey)}");
-            builder.AppendLine($"\u914D\u7F6E\u540D\u79F0\uFF1A{ResolveCurrentProxyDisplayName() ?? "\u5C06\u4F7F\u7528\u9ED8\u8BA4 Custom OpenAI-Compatible"}");
+            builder.AppendLine($"当前 Base URL：{FormatPreviewValue(ProxyBaseUrl)}");
+            builder.AppendLine($"当前模型：{FormatPreviewValue(ProxyModel)}");
+            builder.AppendLine($"当前 API Key：{FormatPreviewApiKey(ProxyApiKey)}");
+            builder.AppendLine($"配置名称：{ResolveCurrentProxyDisplayName() ?? "将使用默认 Custom OpenAI-Compatible"}");
             builder.AppendLine();
-            builder.AppendLine("\u5199\u5165\u76EE\u6807\uFF1A");
+            builder.AppendLine("写入目标：");
             builder.AppendLine("- ~/.codex/config.toml");
             builder.AppendLine("- ~/.codex/auth.json");
-            builder.AppendLine("- ~/.codex/settings.json\uFF08\u4EC5\u5728\u8FD8\u539F/\u57FA\u7EBF\u573A\u666F\u4E2D\u7528\u5230\uFF09");
+            builder.AppendLine("- ~/.codex/settings.json（仅在还原 / 基线场景中用到）");
             builder.AppendLine();
-            builder.AppendLine("\u9002\u7528\u8F6F\u4EF6\uFF1A");
+            builder.AppendLine("适用软件：");
             builder.AppendLine("- Codex CLI");
             builder.AppendLine("- Codex Desktop");
             builder.AppendLine("- VSCode Codex");
             builder.AppendLine();
-            builder.AppendLine("\u8BF4\u660E\uFF1A");
-            builder.AppendLine("- \u4E0D\u4F1A\u542F\u7528\u6216\u4FEE\u6539\u672C\u5730\u4EE3\u7406");
-            builder.AppendLine("- \u4E0D\u4F1A\u52A8 Claude CLI / Antigravity \u7684\u914D\u7F6E");
-            builder.AppendLine("- \u5B8C\u6210\u5199\u5165\u540E\u4F1A\u7ACB\u5373\u91CD\u65B0\u626B\u63CF\u672C\u5730\u5E94\u7528\u72B6\u6001");
+            builder.AppendLine("说明：");
+            builder.AppendLine("- 不会启用或修改本地代理");
+            builder.AppendLine("- 不会动 Claude CLI / Antigravity 的配置");
+            builder.AppendLine("- 完成写入后会立即重新扫描本地应用状态");
 
             var missing = GetApplicationCenterMissingContextFields();
             if (missing.Count > 0)
             {
                 builder.AppendLine();
-                builder.AppendLine($"\u5F85\u8865\u5168\u9879\uFF1A{string.Join("\u3001", missing)}");
+                builder.AppendLine($"待补全项：{string.Join("、", missing)}");
             }
 
             return builder.ToString().TrimEnd();
@@ -59,31 +58,35 @@ public sealed partial class MainWindowViewModel
     private bool CanApplyCurrentInterfaceToCodexApps()
         => !IsBusy && GetApplicationCenterMissingContextFields().Count == 0;
 
-    private Task ApplyCurrentInterfaceToCodexAppsAsync()
+    private async Task ApplyCurrentInterfaceToCodexAppsAsync()
     {
         var missing = GetApplicationCenterMissingContextFields();
         if (missing.Count > 0)
         {
-            StatusMessage = $"\u5E94\u7528\u5931\u8D25\uFF1A\u8FD8\u7F3A {string.Join("\u3001", missing)}\u3002";
-            return Task.CompletedTask;
+            StatusMessage = $"应用失败：还缺 {string.Join("、", missing)}。";
+            return;
         }
 
-        var confirmed = MessageBox.Show(
-            "\u786E\u5B9A\u8981\u5C06\u5F53\u524D\u63A5\u53E3\u5E94\u7528\u5230 Codex \u7CFB\u5217\u8F6F\u4EF6\u5417\uFF1F\n\n" +
-            "\u672C\u6B21\u4F1A\u5199\u5165 Codex CLI / Codex Desktop / VSCode Codex \u5171\u7528\u7684 .codex \u914D\u7F6E\uFF0C\u4FEE\u6539\u524D\u4F1A\u81EA\u52A8\u521B\u5EFA\u5907\u4EFD\u3002",
-            "\u786E\u8BA4\u5E94\u7528\u5230 Codex \u7CFB\u5217",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question,
-            MessageBoxResult.No);
+        var confirmed = await ShowConfirmationDialogAsync(
+            "确认应用到软件",
+            "确定要将当前接口应用到 Codex 系列软件吗？",
+            "本次会写入 Codex CLI / Codex Desktop / VSCode Codex 共用的 .codex 配置。\n" +
+            "修改前会自动创建备份。",
+            "应用到软件",
+            "取消");
 
-        if (confirmed != MessageBoxResult.Yes)
+        if (!confirmed)
         {
-            StatusMessage = "\u5DF2\u53D6\u6D88\u5C06\u5F53\u524D\u63A5\u53E3\u5E94\u7528\u5230 Codex \u7CFB\u5217\u3002";
-            return Task.CompletedTask;
+            StatusMessage = "已取消将当前接口应用到 Codex 系列。";
+            return;
         }
 
-        return ExecuteBusyActionAsync(
-            "\u6B63\u5728\u5E94\u7528\u5F53\u524D\u63A5\u53E3\u5230 Codex \u7CFB\u5217...",
+        var shouldMergeChats = await ConfirmCodexChatMergeAsync(
+            CodexChatMergeTarget.ThirdPartyCustom,
+            "应用到 Codex 系列");
+
+        await ExecuteBusyActionAsync(
+            "正在应用当前接口到 Codex 系列...",
             async () =>
             {
                 var result = await _codexFamilyConfigApplyService.ApplyAsync(
@@ -92,14 +95,30 @@ public sealed partial class MainWindowViewModel
                     ProxyModel,
                     ResolveCurrentProxyDisplayName());
 
-                StatusMessage = result.Succeeded
-                    ? result.Summary
-                    : $"\u5E94\u7528\u5931\u8D25\uFF1A{result.Error ?? result.Summary}";
+                StringBuilder detailBuilder = new();
+                detailBuilder.AppendLine(BuildApplicationCenterApplyDetail(result));
+
+                CodexChatMergeResult? mergeResult = null;
+                if (result.Succeeded)
+                {
+                    mergeResult = await MergeCodexChatsIfRequestedAsync(
+                        shouldMergeChats,
+                        CodexChatMergeTarget.ThirdPartyCustom,
+                        detailBuilder);
+                }
 
                 AppendModuleOutput(
-                    "\u5E94\u7528\u5F53\u524D\u63A5\u53E3\u5230 Codex \u7CFB\u5217",
-                    BuildApplicationCenterApplySummary(result),
-                    BuildApplicationCenterApplyDetail(result));
+                    "应用当前接口到 Codex 系列",
+                    BuildApplicationCenterApplySummary(result, mergeResult),
+                    detailBuilder.ToString().TrimEnd());
+
+                StatusMessage = result.Succeeded
+                    ? mergeResult is { Succeeded: false }
+                        ? $"配置已应用，但聊天整理失败：{mergeResult.Error ?? mergeResult.Summary}"
+                        : mergeResult is { Succeeded: true }
+                            ? $"{result.Summary}；{mergeResult.Summary}"
+                            : result.Summary
+                    : $"应用失败：{result.Error ?? result.Summary}";
 
                 if (result.Succeeded)
                 {
@@ -108,20 +127,24 @@ public sealed partial class MainWindowViewModel
             });
     }
 
-    private static string BuildApplicationCenterApplySummary(ClientAppApplyResult result)
-        => $"\u76EE\u6807\uFF1A{(result.AppliedTargets.Count == 0 ? "Codex \u7CFB\u5217" : string.Join(" / ", result.AppliedTargets))}\n\u7ED3\u679C\uFF1A{result.Summary}";
+    private static string BuildApplicationCenterApplySummary(
+        ClientAppApplyResult result,
+        CodexChatMergeResult? mergeResult)
+        => $"目标：{(result.AppliedTargets.Count == 0 ? "Codex 系列" : string.Join(" / ", result.AppliedTargets))}\n" +
+           $"配置结果：{result.Summary}\n" +
+           $"聊天整理：{mergeResult?.Summary ?? "未执行"}";
 
     private string BuildApplicationCenterApplyDetail(ClientAppApplyResult result)
     {
         StringBuilder builder = new();
-        builder.AppendLine($"\u5F53\u524D Base URL\uFF1A{ProxyBaseUrl}");
-        builder.AppendLine($"\u5F53\u524D\u6A21\u578B\uFF1A{ProxyModel}");
-        builder.AppendLine($"\u5F53\u524D API Key\uFF1A{MaskApiKey(ProxyApiKey)}");
-        builder.AppendLine($"\u914D\u7F6E\u540D\u79F0\uFF1A{ResolveCurrentProxyDisplayName() ?? "Custom OpenAI-Compatible"}");
-        builder.AppendLine($"\u5E94\u7528\u76EE\u6807\uFF1A{(result.AppliedTargets.Count == 0 ? "\u65E0" : string.Join(" / ", result.AppliedTargets))}");
-        builder.AppendLine($"\u5DF2\u5904\u7406\u6587\u4EF6\uFF1A{(result.ChangedFiles.Count == 0 ? "\u65E0" : string.Join("\n", result.ChangedFiles))}");
-        builder.AppendLine($"\u5907\u4EFD\u6587\u4EF6\uFF1A{(result.BackupFiles.Count == 0 ? "\u65E0" : string.Join("\n", result.BackupFiles))}");
-        builder.Append($"\u9519\u8BEF\uFF1A{result.Error ?? "\u65E0"}");
+        builder.AppendLine($"当前 Base URL：{ProxyBaseUrl}");
+        builder.AppendLine($"当前模型：{ProxyModel}");
+        builder.AppendLine($"当前 API Key：{MaskApiKey(ProxyApiKey)}");
+        builder.AppendLine($"配置名称：{ResolveCurrentProxyDisplayName() ?? "Custom OpenAI-Compatible"}");
+        builder.AppendLine($"应用目标：{(result.AppliedTargets.Count == 0 ? "无" : string.Join(" / ", result.AppliedTargets))}");
+        builder.AppendLine($"已处理文件：{(result.ChangedFiles.Count == 0 ? "无" : string.Join("\n", result.ChangedFiles))}");
+        builder.AppendLine($"备份文件：{(result.BackupFiles.Count == 0 ? "无" : string.Join("\n", result.BackupFiles))}");
+        builder.Append($"错误：{result.Error ?? "无"}");
         return builder.ToString();
     }
 
@@ -143,7 +166,7 @@ public sealed partial class MainWindowViewModel
 
         if (string.IsNullOrWhiteSpace(ProxyModel))
         {
-            missing.Add("\u6A21\u578B");
+            missing.Add("模型");
         }
 
         if (string.IsNullOrWhiteSpace(ProxyApiKey))
@@ -167,11 +190,11 @@ public sealed partial class MainWindowViewModel
 
     private static string FormatPreviewValue(string? value)
         => string.IsNullOrWhiteSpace(value)
-            ? "\uFF08\u672A\u586B\u5199\uFF09"
+            ? "（未填写）"
             : value.Trim();
 
     private static string FormatPreviewApiKey(string? value)
         => string.IsNullOrWhiteSpace(value)
-            ? "\uFF08\u672A\u586B\u5199\uFF09"
+            ? "（未填写）"
             : MaskApiKey(value);
 }
