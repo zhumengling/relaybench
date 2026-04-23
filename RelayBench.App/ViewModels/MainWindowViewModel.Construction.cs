@@ -128,6 +128,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RunIpRiskReviewCommand = new AsyncRelayCommand(RunIpRiskReviewWithGlobalProgressAsync, CanRun);
         ConfirmConfirmationDialogCommand = new AsyncRelayCommand(ConfirmConfirmationDialogAsync);
         CancelConfirmationDialogCommand = new AsyncRelayCommand(CancelConfirmationDialogAsync);
+        OpenAboutDialogCommand = new AsyncRelayCommand(OpenAboutDialogAsync);
+        CloseAboutDialogCommand = new AsyncRelayCommand(CloseAboutDialogAsync);
+        OpenProjectHomepageCommand = new AsyncRelayCommand(OpenProjectHomepageAsync);
 
         ResetIpRiskPresentation();
         LoadState();

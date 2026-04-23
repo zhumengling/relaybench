@@ -204,4 +204,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand ConfirmConfirmationDialogCommand { get; }
 
     public AsyncRelayCommand CancelConfirmationDialogCommand { get; }
+
+    public AsyncRelayCommand OpenAboutDialogCommand { get; }
+
+    public AsyncRelayCommand CloseAboutDialogCommand { get; }
+
+    public AsyncRelayCommand OpenProjectHomepageCommand { get; }
 }

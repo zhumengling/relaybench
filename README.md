@@ -195,8 +195,8 @@ publish.cmd
 例如当前版本会生成：
 
 ```text
-release\relaybench-v0.1.5-win-x64-framework-dependent.zip
-release\relaybench-v0.1.5-win-x64-self-contained.zip
+release\relaybench-v0.1.6-win-x64-framework-dependent.zip
+release\relaybench-v0.1.6-win-x64-self-contained.zip
 ```
 
 ## 目录说明
