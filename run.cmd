@@ -33,7 +33,7 @@ if /I "%~1"=="release" (
     goto parse_args
 )
 
-echo [NetTest] Unknown argument: %~1
+echo [RelayBench] Unknown argument: %~1
 echo Usage:
 echo   run.cmd              ^<== start Release
 echo   run.cmd debug        ^<== start Debug
@@ -44,16 +44,16 @@ exit /b 1
 :execute
 where dotnet >nul 2>nul
 if errorlevel 1 (
-    echo [NetTest] dotnet was not found. Please install the .NET SDK first.
+    echo [RelayBench] dotnet was not found. Please install the .NET SDK first.
     exit /b 1
 )
 
 if /I "%MODE%"=="build" (
-    echo [NetTest] Building %CONFIG%...
-    dotnet build ".\NetTest.App\NetTest.App.csproj" -c %CONFIG%
+    echo [RelayBench] Building %CONFIG%...
+    dotnet build ".\RelayBench.App\RelayBench.App.csproj" -c %CONFIG%
     exit /b %errorlevel%
 )
 
-echo [NetTest] Starting %CONFIG%...
-dotnet run --project ".\NetTest.App\NetTest.App.csproj" -c %CONFIG% --no-launch-profile
+echo [RelayBench] Starting %CONFIG%...
+dotnet run --project ".\RelayBench.App\RelayBench.App.csproj" -c %CONFIG% --no-launch-profile
 exit /b %errorlevel%

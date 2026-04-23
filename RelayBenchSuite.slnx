@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="RelayBench.App/RelayBench.App.csproj" />
+  <Project Path="RelayBench.Core/RelayBench.Core.csproj" />
+</Solution>

@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>RelayBench.Core</AssemblyName>
+    <RootNamespace>RelayBench.Core</RootNamespace>
+    <Product>RelayBench</Product>
+    <AssemblyTitle>RelayBench.Core</AssemblyTitle>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\openai_supported_regions.json" />
+  </ItemGroup>
+
+</Project>

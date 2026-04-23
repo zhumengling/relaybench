@@ -127,8 +127,8 @@
 在仓库根目录执行：
 
 ```powershell
-dotnet build .\NetTestSuite.slnx -c Debug -v minimal
-dotnet run --project .\NetTest.App\NetTest.App.csproj -c Debug
+dotnet build .\RelayBenchSuite.slnx -c Debug -v minimal
+dotnet run --project .\RelayBench.App\RelayBench.App.csproj -c Debug
 ```
 
 ## 构建发布版
@@ -160,8 +160,8 @@ release\relaybench-v0.1.5-win-x64-self-contained.zip
 
 ## 目录说明
 
-- `NetTest.App`：WPF UI、页面、ViewModel 与本地状态管理
-- `NetTest.Core`：网络诊断、测速、STUN、路由、端口扫描与接口测试核心逻辑
+- `RelayBench.App`：WPF UI、页面、ViewModel 与本地状态管理
+- `RelayBench.Core`：网络诊断、测速、STUN、路由、端口扫描与接口测试核心逻辑
 
 ## 当前依赖的在线数据源
 

@@ -1,0 +1,750 @@
+<UserControl x:Class="RelayBench.App.Views.Pages.SingleStationPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource SectionPanelBorderStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="1.5*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="1.2*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x63A5;&#x53E3;&#x5730;&#x5740;" />
+                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                             Text="{Binding ProxyBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2">
+                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="API Key" />
+                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                             Text="{Binding ProxyApiKey, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="4">
+                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x6A21;&#x578B;" />
+                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                             Text="{Binding ProxyModel, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+
+                <Button Grid.Column="6"
+                        VerticalAlignment="Bottom"
+                        Command="{Binding FetchProxyModelsCommand}"
+                        Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1"
+                Margin="0,4,0,0"
+                Style="{StaticResource SectionPanelBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0">
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="测试模式" />
+                    <TextBlock Margin="0,2,0,0"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               Text="{Binding SingleStationModeDescription}" />
+                </StackPanel>
+
+                <WrapPanel Grid.Row="0"
+                           Grid.Column="2"
+                           VerticalAlignment="Center">
+                    <Button Command="{Binding RunSelectedSingleStationModeCommand}"
+                            Style="{StaticResource PrimaryActionButtonStyle}"
+                            Content="{Binding SingleStationPrimaryButtonText}" />
+                    <Button Margin="8,0,0,0"
+                            Padding="12,6"
+                            Command="{Binding StopCurrentProxyTestCommand}"
+                            Content="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;" />
+                </WrapPanel>
+
+                <ComboBox Grid.Row="1"
+                          Grid.ColumnSpan="3"
+                          Margin="0,6,0,0"
+                          Style="{StaticResource CompactComboBoxStyle}"
+                          ItemsSource="{Binding SingleStationModeOptions}"
+                          TextSearch.TextPath="DisplayName"
+                          SelectedValuePath="Key"
+                          SelectedValue="{Binding SelectedSingleStationModeKey, Mode=TwoWay}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Foreground="#101828"
+                                       FontSize="11.1"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding DisplayName}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <Grid Grid.Row="2"
+                      Grid.ColumnSpan="3"
+                      Margin="0,6,0,0"
+                      Visibility="{Binding IsSingleStationStabilityMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="160" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x8F6E;&#x6B21;" />
+                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                 Text="{Binding ProxySeriesRoundsText, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x95F4;&#x9694;&#xFF08;ms&#xFF09;" />
+                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                 Text="{Binding ProxySeriesDelayMsText, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                </Grid>
+
+                <Border Grid.Row="2"
+                        Grid.ColumnSpan="3"
+                        Margin="0,6,0,0"
+                        Style="{StaticResource InsetPanelBorderStyle}"
+                        Visibility="{Binding IsSingleStationDeepMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="测试项" />
+
+                        <ComboBox Style="{StaticResource CompactComboBoxStyle}"
+                                  Margin="0,6,0,0"
+                                  ItemsSource="{Binding ProxyDiagnosticPresetOptions}"
+                                  TextSearch.TextPath="DisplayName"
+                                  SelectedValuePath="Key"
+                                  SelectedValue="{Binding SelectedProxyDiagnosticPresetKey, Mode=TwoWay}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Foreground="#101828"
+                                               FontSize="11.1"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <WrapPanel Margin="0,6,0,0">
+                            <CheckBox Content="&#x534F;&#x8BAE;&#x517C;&#x5BB9;" IsChecked="{Binding ProxyEnableProtocolCompatibilityTest, Mode=TwoWay}" />
+                            <CheckBox Content="&#x9519;&#x8BEF;&#x900F;&#x4F20;" IsChecked="{Binding ProxyEnableErrorTransparencyTest, Mode=TwoWay}" />
+                            <CheckBox Content="&#x6D41;&#x5F0F;&#x5B8C;&#x6574;&#x6027;" IsChecked="{Binding ProxyEnableStreamingIntegrityTest, Mode=TwoWay}" />
+                            <CheckBox Content="&#x591A;&#x6A21;&#x6001;" IsChecked="{Binding ProxyEnableMultiModalTest, Mode=TwoWay}" />
+                            <CheckBox Content="&#x7F13;&#x5B58;&#x673A;&#x5236;" IsChecked="{Binding ProxyEnableCacheMechanismTest, Mode=TwoWay}" />
+                            <CheckBox Content="&#x7F13;&#x5B58;&#x9694;&#x79BB;" IsChecked="{Binding ProxyEnableCacheIsolationTest, Mode=TwoWay}" />
+                            <CheckBox Content="&#x5B98;&#x65B9;&#x5BF9;&#x7167;" IsChecked="{Binding ProxyEnableOfficialReferenceIntegrityTest, Mode=TwoWay}" />
+                            <Button Margin="8,0,0,0"
+                                    Padding="10,2"
+                                    Command="{Binding OpenProxyMultiModelPickerCommand}"
+                                    Content="&#x591A;&#x6A21;&#x578B;..." />
+                            <Button Margin="8,0,0,0"
+                                    Padding="10,2"
+                                    Command="{Binding ToggleProxyCapabilityConfigCommand}"
+                                    Content="{Binding ProxyCapabilityConfigButtonText, Mode=OneWay}" />
+                            <TextBlock Margin="8,4,0,0"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyMultiModelSelectionSummary, Mode=OneWay}" />
+                            <TextBlock Margin="8,4,0,0"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyCapabilityModelConfigSummary, Mode=OneWay}" />
+                        </WrapPanel>
+
+                        <Border Margin="0,6,0,0"
+                                Style="{StaticResource InsetPanelBorderStyle}"
+                                Visibility="{Binding ProxyEnableCacheIsolationTest, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="备用 Key" />
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                           Text="用于 A/B 隔离验证，不要与主 Key 相同。" />
+                                <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                         Text="{Binding ProxyCacheIsolationAlternateApiKey, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,6,0,0"
+                                Style="{StaticResource InsetPanelBorderStyle}"
+                                Visibility="{Binding ProxyEnableOfficialReferenceIntegrityTest, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="6" />
+                                    <ColumnDefinition Width="1.2*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Row="0" Grid.ColumnSpan="3">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="对照接口" />
+                                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                               Text="填写 Base URL 和 API Key；模型可选。" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,6,0,0">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x53C2;&#x8003; Base URL" />
+                                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                             Text="{Binding ProxyOfficialReferenceBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,6,0,0">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x53C2;&#x8003; API Key" />
+                                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                             Text="{Binding ProxyOfficialReferenceApiKey, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,6,0,0">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x53C2;&#x8003;&#x6A21;&#x578B;&#xFF08;&#x53EF;&#x9009;&#xFF09;" />
+                                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                             Text="{Binding ProxyOfficialReferenceModel, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Margin="0,6,0,0"
+                                Style="{StaticResource InsetPanelBorderStyle}"
+                                Visibility="{Binding IsProxyCapabilityConfigOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="能力模型" />
+                                <Border Margin="0,4,0,0"
+                                        Style="{StaticResource DialogMetaStripBorderStyle}">
+                                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                               Text="{Binding ProxyCapabilityModelConfigSummary, Mode=OneWay}" />
+                                </Border>
+
+                                <Grid Margin="0,8,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Row="0" Grid.Column="0">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Embeddings" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding ProxyEmbeddingsModel, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Button Grid.Column="1"
+                                                Margin="6,0,0,0"
+                                                MinWidth="84"
+                                                Padding="10,4"
+                                                Command="{Binding FetchProxyCapabilityModelsCommand}"
+                                                CommandParameter="embeddings"
+                                                Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                    </Grid>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="0" Grid.Column="2">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Images" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding ProxyImagesModel, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Button Grid.Column="1"
+                                                Margin="6,0,0,0"
+                                                MinWidth="84"
+                                                Padding="10,4"
+                                                Command="{Binding FetchProxyCapabilityModelsCommand}"
+                                                CommandParameter="images"
+                                                Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                    </Grid>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="0" Grid.Column="4">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Audio Transcription" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding ProxyAudioTranscriptionModel, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Button Grid.Column="1"
+                                                Margin="6,0,0,0"
+                                                MinWidth="84"
+                                                Padding="10,4"
+                                                Command="{Binding FetchProxyCapabilityModelsCommand}"
+                                                CommandParameter="audio-transcription"
+                                                Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                    </Grid>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,6,0,0">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Moderation" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding ProxyModerationModel, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Button Grid.Column="1"
+                                                Margin="6,0,0,0"
+                                                MinWidth="84"
+                                                Padding="10,4"
+                                                Command="{Binding FetchProxyCapabilityModelsCommand}"
+                                                CommandParameter="moderation"
+                                                Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                    </Grid>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,6,0,0">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Audio Speech / TTS" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding ProxyAudioSpeechModel, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Button Grid.Column="1"
+                                                Margin="6,0,0,0"
+                                                MinWidth="84"
+                                                Padding="10,4"
+                                                Command="{Binding FetchProxyCapabilityModelsCommand}"
+                                                CommandParameter="audio-speech"
+                                                Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                    </Grid>
+                                </StackPanel>
+
+                                <Border Grid.Row="1"
+                                        Grid.Column="4"
+                                        Margin="0,6,0,0"
+                                        Padding="10,8"
+                                        Background="#F8FAFC"
+                                        BorderBrush="{StaticResource PanelBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Visibility="Collapsed">
+                                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                               TextWrapping="Wrap"
+                                               Text="每个能力可单独填模型；留空则不参与本轮测试。" />
+                                </Border>
+                                <Expander Grid.Row="1"
+                                          Grid.Column="4"
+                                          Margin="0,6,0,0"
+                                          IsExpanded="False">
+                                    <Expander.Header>
+                                        <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="规则" />
+                                    </Expander.Header>
+                                    <Border Margin="0,6,0,0"
+                                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                                        <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                   TextWrapping="Wrap"
+                                                   Text="每个能力可单独填模型；留空则不参与本轮测试。" />
+                                    </Border>
+                                </Expander>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="2"
+                        Grid.ColumnSpan="3"
+                        Margin="0,6,0,0"
+                        Style="{StaticResource InsetPanelBorderStyle}"
+                        Visibility="{Binding IsSingleStationConcurrencyMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5E76;&#x53D1;&#x538B;&#x6D4B;&#x8BA1;&#x5212;" />
+                        <Border Margin="0,4,0,0"
+                                Style="{StaticResource DialogMetaStripBorderStyle}">
+                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyConcurrencyPlanSummary}" />
+                        </Border>
+                        <Expander Margin="0,6,0,0"
+                                  IsExpanded="False">
+                            <Expander.Header>
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="阈值说明" />
+                            </Expander.Header>
+                            <TextBlock Margin="0,6,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyConcurrencyThresholdHint}" />
+                        </Expander>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2"
+                Margin="0,4,0,0"
+                Style="{StaticResource SectionPanelBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="测试结果" />
+
+                <Border Grid.Row="1"
+                        Margin="0,6,0,0"
+                        Style="{StaticResource InsetPanelBorderStyle}"
+                        Visibility="{Binding IsSingleStationConcurrencyMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="分档结果" />
+                                <TextBlock Margin="0,3,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           Text="每档完成后补充成功数、429 / 5xx、延迟、TTFT、tok/s。" />
+                            </StackPanel>
+
+                            <Button Grid.Column="1"
+                                    MinWidth="104"
+                                    Padding="10,4"
+                                    VerticalAlignment="Top"
+                                    Command="{Binding OpenProxyConcurrencyChartCommand}"
+                                    Content="&#x653E;&#x5927;&#x56FE;&#x8868;" />
+                        </Grid>
+
+                        <Border Grid.Row="1"
+                                Margin="0,8,0,0"
+                                Padding="8"
+                                Background="#F8FAFC"
+                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10">
+                            <Grid MinHeight="160">
+                                <Image Source="{Binding ProxyConcurrencyChartImage, Mode=OneWay}"
+                                       Stretch="Uniform">
+                                    <Image.Style>
+                                        <Style TargetType="Image">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasProxyConcurrencyChart}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Image.Style>
+                                </Image>
+
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ProxyConcurrencyChartStatusSummary, Mode=OneWay}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasProxyConcurrencyChart}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="2"
+                                Margin="0,6,0,0"
+                                Padding="0,0,0,6"
+                                BorderBrush="#D0D5DD"
+                                BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="58" />
+                                    <ColumnDefinition Width="72" />
+                                    <ColumnDefinition Width="48" />
+                                    <ColumnDefinition Width="48" />
+                                    <ColumnDefinition Width="52" />
+                                    <ColumnDefinition Width="78" />
+                                    <ColumnDefinition Width="82" />
+                                    <ColumnDefinition Width="76" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" FontSize="10.8" FontWeight="SemiBold" Text="&#x6863;&#x4F4D;" />
+                                <TextBlock Grid.Column="1" FontSize="10.8" FontWeight="SemiBold" Text="&#x6210;&#x529F;" />
+                                <TextBlock Grid.Column="2" FontSize="10.8" FontWeight="SemiBold" Text="429" />
+                                <TextBlock Grid.Column="3" FontSize="10.8" FontWeight="SemiBold" Text="5xx" />
+                                <TextBlock Grid.Column="4" FontSize="10.8" FontWeight="SemiBold" Text="&#x8D85;&#x65F6;" />
+                                <TextBlock Grid.Column="5" FontSize="10.8" FontWeight="SemiBold" Text="p50 &#x5EF6;&#x8FDF;" />
+                                <TextBlock Grid.Column="6" FontSize="10.8" FontWeight="SemiBold" Text="p95 TTFT" />
+                                <TextBlock Grid.Column="7" FontSize="10.8" FontWeight="SemiBold" Text="tok/s" />
+                                <TextBlock Grid.Column="8" FontSize="10.8" FontWeight="SemiBold" Text="&#x6458;&#x8981;" />
+                            </Grid>
+                        </Border>
+
+                        <Grid Grid.Row="3"
+                              Margin="0,6,0,0"
+                              MinHeight="92">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          MaxHeight="220">
+                                <ItemsControl ItemsSource="{Binding ProxyConcurrencyStages}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="0,6"
+                                                    BorderBrush="#EAECF0"
+                                                    BorderThickness="0,0,0,1">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="58" />
+                                                        <ColumnDefinition Width="72" />
+                                                        <ColumnDefinition Width="48" />
+                                                        <ColumnDefinition Width="48" />
+                                                        <ColumnDefinition Width="52" />
+                                                        <ColumnDefinition Width="78" />
+                                                        <ColumnDefinition Width="82" />
+                                                        <ColumnDefinition Width="76" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <TextBlock Grid.Column="0"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding Concurrency}" />
+
+                                                    <TextBlock Grid.Column="1"
+                                                               VerticalAlignment="Center">
+                                                        <Run Text="{Binding SuccessCount}" />
+                                                        <Run Text="/" />
+                                                        <Run Text="{Binding TotalRequests}" />
+                                                    </TextBlock>
+
+                                                    <TextBlock Grid.Column="2"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding RateLimitedCount}" />
+                                                    <TextBlock Grid.Column="3"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding ServerErrorCount}" />
+                                                    <TextBlock Grid.Column="4"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding TimeoutCount}" />
+                                                    <TextBlock Grid.Column="5"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding P50ChatLatencyMs, TargetNullValue=--, StringFormat={}{0:F0} ms}" />
+                                                    <TextBlock Grid.Column="6"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding P95TtftMs, TargetNullValue=--, StringFormat={}{0:F0} ms}" />
+                                                    <TextBlock Grid.Column="7"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding AverageTokensPerSecond, TargetNullValue=--, StringFormat={}{0:F1} tok/s}" />
+                                                    <TextBlock Grid.Column="8"
+                                                               VerticalAlignment="Center"
+                                                               TextWrapping="Wrap"
+                                                               Foreground="{StaticResource TextBrush}"
+                                                               Text="{Binding Summary}" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                            <TextBlock HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Text="暂无并发结果。开始并发压测后逐步补齐。">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasProxyConcurrencyStages}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <TextBox Grid.Row="2"
+                         Margin="0,4,0,0"
+                         MinHeight="104"
+                         Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                         Text="{Binding SingleStationResultSummary, Mode=OneWay}" />
+                <Border Grid.Row="3"
+                        Margin="0,4,0,0">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource InsetPanelBorderStyle}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsSingleStationDeepMode}" Value="True" />
+                                        <Condition Binding="{Binding HasProxyCapabilityMatrixCells}" Value="True" />
+                                    </MultiDataTrigger.Conditions>
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel>
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="能力矩阵" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="点选单元格后，下方显示路径、模型、状态和结论。" />
+                        </StackPanel>
+
+                        <Grid Grid.Row="1"
+                              Margin="0,8,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <ListBox ItemsSource="{Binding VisibleProxyCapabilityMatrixCells}"
+                                      SelectedItem="{Binding SelectedProxyCapabilityMatrixCell, Mode=TwoWay}"
+                                      BorderThickness="0"
+                                      Background="Transparent"
+                                      HorizontalContentAlignment="Stretch"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                      ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="1" />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,6,6"
+                                                Padding="10,8"
+                                                BorderBrush="#D0D5DD"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                Background="#FFFFFF">
+                                            <StackPanel>
+                                                <TextBlock FontSize="11.2"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding Name}" />
+                                                <TextBlock Margin="0,4,0,0"
+                                                           FontSize="10.6"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding StateText}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#475467" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding StateText}" Value="&#x652F;&#x6301;">
+                                                                    <Setter Property="Foreground" Value="#15803D" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding StateText}" Value="&#x5F85;&#x6267;&#x884C;">
+                                                                    <Setter Property="Foreground" Value="#175CD3" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding StateText}" Value="&#x672A;&#x914D;&#x7F6E;">
+                                                                    <Setter Property="Foreground" Value="#667085" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding StateText}" Value="&#x9650;&#x6D41;">
+                                                                    <Setter Property="Foreground" Value="#B54708" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding StateText}" Value="&#x9274;&#x6743;&#x5931;&#x8D25;">
+                                                                    <Setter Property="Foreground" Value="#B42318" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding StateText}" Value="&#x5931;&#x8D25;">
+                                                                    <Setter Property="Foreground" Value="#B42318" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding StateText}" Value="&#x5F02;&#x5E38;">
+                                                                    <Setter Property="Foreground" Value="#B42318" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding StateText}" Value="&#x4E0D;&#x652F;&#x6301;">
+                                                                    <Setter Property="Foreground" Value="#B54708" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Margin="0,2,0,0"
+                                                           Foreground="#667085"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding ModelText}" />
+                                                <TextBlock Margin="0,2,0,0"
+                                                           Foreground="#667085"
+                                                           Text="{Binding StatusCodeText, StringFormat=HTTP {0}}" />
+                                                <TextBlock Margin="0,2,0,0"
+                                                           Foreground="#667085"
+                                                           Text="{Binding LatencyText}" />
+                                                <TextBlock Margin="0,4,0,0"
+                                                           Foreground="#344054"
+                                                           TextWrapping="Wrap"
+                                                           Text="{Binding Summary}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <TextBox Grid.Row="1"
+                                     Margin="0,2,0,0"
+                                     MinHeight="118"
+                                     Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
+                                     Text="{Binding ProxyCapabilityMatrixDetailText, Mode=OneWay}" />
+                        </Grid>
+                    </Grid>
+                </Border>
+                <TextBox Grid.Row="4"
+                         Margin="0,4,0,0"
+                         Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
+                         Text="{Binding ProxyUnifiedOutput, Mode=OneWay}"
+                         TextChanged="LiveOutputTextBox_OnTextChanged" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

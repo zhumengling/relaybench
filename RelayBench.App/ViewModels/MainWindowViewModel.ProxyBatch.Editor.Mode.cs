@@ -1,0 +1,171 @@
+using System.Text;
+using RelayBench.App.Infrastructure;
+using RelayBench.Core.Models;
+
+namespace RelayBench.App.ViewModels;
+
+public sealed partial class MainWindowViewModel
+{
+
+    private ProxyBatchEditorItemViewModel? ResolveExistingSiteGroupReference(
+        string? siteGroupName,
+        ProxyBatchEditorItemViewModel? currentSelection)
+    {
+        if (string.IsNullOrWhiteSpace(siteGroupName))
+        {
+            return null;
+        }
+
+        return ProxyBatchEditorItems.FirstOrDefault(item =>
+            !ReferenceEquals(item, currentSelection) &&
+            string.Equals(item.SiteGroupName, siteGroupName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void SetProxyBatchEditorMode(ProxyBatchEditorMode mode)
+    {
+        if (_proxyBatchEditorMode == mode)
+        {
+            return;
+        }
+
+        _proxyBatchEditorMode = mode;
+        OnPropertyChanged(nameof(ProxyBatchEditorModeIndex));
+        OnPropertyChanged(nameof(ProxyBatchGuideSummary));
+        OnPropertyChanged(nameof(ProxyBatchEditorFormModeSummary));
+        OnPropertyChanged(nameof(ProxyBatchEditorListSummary));
+        OnPropertyChanged(nameof(ProxyBatchEditorSelectionSummary));
+
+        if (SelectedProxyBatchEditorItem is null)
+        {
+            if (mode == ProxyBatchEditorMode.BulkImport)
+            {
+                ClearProxyBatchEntryFields();
+            }
+
+            return;
+        }
+
+        if (mode == ProxyBatchEditorMode.BulkImport)
+        {
+            LoadProxyBatchEntryFields(SelectedProxyBatchEditorItem);
+        }
+        else
+        {
+            LoadProxyBatchEditorForm(SelectedProxyBatchEditorItem);
+        }
+    }
+
+    private void PersistProxyBatchDraftState()
+    {
+        if (_suppressProxyBatchDraftAutoSave)
+        {
+            return;
+        }
+
+        SaveState();
+    }
+
+    private ProxyBatchEditorMode ResolveEffectiveProxyBatchEditorMode()
+    {
+        var hasSharedKeyOrModel =
+            !string.IsNullOrWhiteSpace(NormalizeNullable(ProxyBatchFormSiteGroupApiKey)) ||
+            !string.IsNullOrWhiteSpace(NormalizeNullable(ProxyBatchFormSiteGroupModel));
+        var hasEntryKeyOrModel =
+            !string.IsNullOrWhiteSpace(NormalizeNullable(ProxyBatchFormApiKey)) ||
+            !string.IsNullOrWhiteSpace(NormalizeNullable(ProxyBatchFormModel));
+
+        if (hasSharedKeyOrModel && !hasEntryKeyOrModel)
+        {
+            return ProxyBatchEditorMode.SharedKeyGroup;
+        }
+
+        if (hasEntryKeyOrModel)
+        {
+            return ProxyBatchEditorMode.MultiKey;
+        }
+
+        return _proxyBatchEditorMode == ProxyBatchEditorMode.BulkImport
+            ? ProxyBatchEditorMode.SharedKeyGroup
+            : _proxyBatchEditorMode;
+    }
+
+    private static ProxyBatchEditorMode ResolveProxyBatchEditorMode(ProxyBatchDraftSnapshot draft)
+    {
+        var requestedMode = (ProxyBatchEditorMode)Math.Clamp(draft.EditorModeIndex, 0, 2);
+        if (requestedMode == ProxyBatchEditorMode.BulkImport)
+        {
+            return requestedMode;
+        }
+
+        var hasSharedKeyOrModel =
+            !string.IsNullOrWhiteSpace(NormalizeNullable(draft.SiteGroupApiKey)) ||
+            !string.IsNullOrWhiteSpace(NormalizeNullable(draft.SiteGroupModel));
+        var hasEntryKeyOrModel =
+            !string.IsNullOrWhiteSpace(NormalizeNullable(draft.EntryApiKey)) ||
+            !string.IsNullOrWhiteSpace(NormalizeNullable(draft.EntryModel));
+
+        if (hasSharedKeyOrModel && !hasEntryKeyOrModel)
+        {
+            return ProxyBatchEditorMode.SharedKeyGroup;
+        }
+
+        if (hasEntryKeyOrModel)
+        {
+            return ProxyBatchEditorMode.MultiKey;
+        }
+
+        return requestedMode;
+    }
+
+    private ProxyBatchEditorMode ResolveProxyBatchEditorMode(ProxyBatchEditorItemViewModel item)
+    {
+        if (!string.IsNullOrWhiteSpace(item.SiteGroupName) &&
+            string.IsNullOrWhiteSpace(item.EntryApiKey))
+        {
+            return ProxyBatchEditorMode.SharedKeyGroup;
+        }
+
+        return ProxyBatchEditorMode.MultiKey;
+    }
+
+    private static string BuildBatchSiteGroupName(string baseUrl)
+    {
+        if (Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) &&
+            !string.IsNullOrWhiteSpace(uri.Host))
+        {
+            return uri.Host;
+        }
+
+        return "default-group";
+    }
+
+    private void NormalizeSiteGroupConsistency(string? siteGroupName)
+    {
+        if (string.IsNullOrWhiteSpace(siteGroupName))
+        {
+            return;
+        }
+
+        var items = ProxyBatchEditorItems
+            .Where(item => string.Equals(item.SiteGroupName, siteGroupName, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        if (items.Length == 0)
+        {
+            return;
+        }
+
+        var sharedApiKey = items
+            .Select(item => NormalizeNullable(item.SiteGroupApiKey))
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+        var sharedModel = items
+            .Select(item => NormalizeNullable(item.SiteGroupModel))
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+
+        foreach (var item in items)
+        {
+            item.SiteGroupApiKey = sharedApiKey;
+            item.SiteGroupModel = sharedModel;
+        }
+    }
+
+}

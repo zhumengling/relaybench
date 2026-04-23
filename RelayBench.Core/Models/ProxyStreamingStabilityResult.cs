@@ -1,0 +1,26 @@
+namespace RelayBench.Core.Models;
+
+public sealed record ProxyStreamingStabilityResult(
+    DateTimeOffset CheckedAt,
+    string BaseUrl,
+    string Model,
+    bool Success,
+    bool ReceivedDone,
+    int ExpectedSegmentCount,
+    int ActualSegmentCount,
+    bool SequenceIntegrityPassed,
+    int ChunkCount,
+    TimeSpan? FirstTokenLatency,
+    TimeSpan? TotalDuration,
+    double? OutputTokensPerSecond,
+    double? EndToEndTokensPerSecond,
+    int? OutputTokenCount,
+    bool OutputTokenCountEstimated,
+    int? OutputCharacterCount,
+    double? MaxChunkGapMilliseconds,
+    double? AverageChunkGapMilliseconds,
+    string Summary,
+    string? Error,
+    string? Preview,
+    string? RequestId = null,
+    string? TraceId = null);

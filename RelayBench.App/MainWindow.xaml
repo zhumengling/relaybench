@@ -1,0 +1,1419 @@
+<Window x:Class="RelayBench.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:pages="clr-namespace:RelayBench.App.Views.Pages"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        mc:Ignorable="d"
+        Title="RelayBench &#x63A5;&#x53E3;&#x6D4B;&#x8BD5;&#x5DE5;&#x4F5C;&#x53F0;"
+        Width="1440"
+        Height="860"
+        MinWidth="1120"
+        MinHeight="700"
+        Background="#F5F7FA"
+        FontFamily="Microsoft YaHei UI"
+        FontSize="11"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextHintingMode="Fixed"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="CanResize">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0"
+                            CornerRadius="0"
+                            GlassFrameThickness="0"
+                            ResizeBorderThickness="6"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid Margin="3">
+        <Border x:Name="MainShellBorder"
+                Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource PanelBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="14">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="44" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        Padding="10,6,6,6"
+                        Background="{StaticResource PanelBrushStrong}"
+                        BorderBrush="{StaticResource PanelBorderBrush}"
+                        BorderThickness="0,0,0,1"
+                        CornerRadius="14,14,0,0">
+                    <Border.Resources>
+                        <Style x:Key="TitleBarButtonStyle"
+                               TargetType="Button"
+                               BasedOn="{StaticResource {x:Type Button}}">
+                            <Setter Property="Width" Value="38" />
+                            <Setter Property="Height" Value="28" />
+                            <Setter Property="MinWidth" Value="38" />
+                            <Setter Property="Margin" Value="4,0,0,0" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="BorderBrush" Value="Transparent" />
+                            <Setter Property="FontSize" Value="11.4" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Style>
+                    </Border.Resources>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Grid.Column="0"
+                              Background="Transparent"
+                              MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Width="22"
+                                    Height="22"
+                                    VerticalAlignment="Center"
+                                    Background="{StaticResource AccentBrush}"
+                                    CornerRadius="7">
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="#FFFFFF"
+                                           FontSize="10.8"
+                                           FontWeight="Bold"
+                                           Text="R" />
+                            </Border>
+
+                            <TextBlock Grid.Column="1"
+                                       Margin="9,0,0,0"
+                                       VerticalAlignment="Center"
+                                       FontSize="12.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextBrush}"
+                                       Text="RelayBench &#x63A5;&#x53E3;&#x6D4B;&#x8BD5;&#x5DE5;&#x4F5C;&#x53F0;" />
+
+                            <Border x:Name="GlobalTaskProgressBorder"
+                                    Grid.Column="3"
+                                    MinWidth="260"
+                                    MaxWidth="620"
+                                    Height="28"
+                                    Margin="0,0,10,0"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Center"
+                                    Padding="10,0"
+                                    BorderThickness="1"
+                                    CornerRadius="999"
+                                    IsHitTestVisible="False"
+                                    Opacity="0"
+                                    Visibility="Collapsed">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background">
+                                            <Setter.Value>
+                                                <LinearGradientBrush StartPoint="0,0"
+                                                                     EndPoint="1,1">
+                                                    <GradientStop Color="#FBFDFF" Offset="0" />
+                                                    <GradientStop Color="#F3F7FF" Offset="1" />
+                                                </LinearGradientBrush>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Setter Property="BorderBrush" Value="#D9E7FF" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsGlobalTaskProgressCompleted, Mode=OneWay}"
+                                                         Value="True">
+                                                <Setter Property="Background" Value="#F3FFF7" />
+                                                <Setter Property="BorderBrush" Value="#9ADAB4" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsGlobalTaskProgressStopped, Mode=OneWay}"
+                                                         Value="True">
+                                                <Setter Property="Background" Value="#FFF8EE" />
+                                                <Setter Property="BorderBrush" Value="#F8C77C" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsGlobalTaskProgressFailed, Mode=OneWay}"
+                                                         Value="True">
+                                                <Setter Property="Background" Value="#FFF5F5" />
+                                                <Setter Property="BorderBrush" Value="#F7B0B0" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MinWidth="120" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock VerticalAlignment="Center"
+                                               Foreground="#0F172A"
+                                               FontSize="10.6"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding GlobalTaskProgressTitle, Mode=OneWay}"
+                                               TextTrimming="CharacterEllipsis" />
+
+                                    <Border Grid.Column="2"
+                                            Height="6"
+                                            VerticalAlignment="Center"
+                                            Background="#EAF0FF"
+                                            BorderBrush="#D6E1FB"
+                                            BorderThickness="1"
+                                            CornerRadius="999">
+                                        <Grid ClipToBounds="True">
+                                            <Border Margin="1"
+                                                    Background="#1FFFFFFF"
+                                                    CornerRadius="999" />
+                                            <Border x:Name="GlobalTaskProgressFill"
+                                                    HorizontalAlignment="Stretch"
+                                                    CornerRadius="999"
+                                                    RenderTransformOrigin="0,0.5">
+                                                <Border.RenderTransform>
+                                                    <ScaleTransform ScaleX="0" ScaleY="1" />
+                                                </Border.RenderTransform>
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background">
+                                                            <Setter.Value>
+                                                                <LinearGradientBrush StartPoint="0,0"
+                                                                                     EndPoint="1,0">
+                                                                    <GradientStop Color="#2F6BFF" Offset="0" />
+                                                                    <GradientStop Color="#7C3AED" Offset="1" />
+                                                                </LinearGradientBrush>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsGlobalTaskProgressCompleted, Mode=OneWay}"
+                                                                         Value="True">
+                                                                <Setter Property="Background">
+                                                                    <Setter.Value>
+                                                                        <LinearGradientBrush StartPoint="0,0"
+                                                                                             EndPoint="1,0">
+                                                                            <GradientStop Color="#16A34A" Offset="0" />
+                                                                            <GradientStop Color="#22C55E" Offset="1" />
+                                                                        </LinearGradientBrush>
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsGlobalTaskProgressStopped, Mode=OneWay}"
+                                                                         Value="True">
+                                                                <Setter Property="Background">
+                                                                    <Setter.Value>
+                                                                        <LinearGradientBrush StartPoint="0,0"
+                                                                                             EndPoint="1,0">
+                                                                            <GradientStop Color="#F59E0B" Offset="0" />
+                                                                            <GradientStop Color="#FB923C" Offset="1" />
+                                                                        </LinearGradientBrush>
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsGlobalTaskProgressFailed, Mode=OneWay}"
+                                                                         Value="True">
+                                                                <Setter Property="Background">
+                                                                    <Setter.Value>
+                                                                        <LinearGradientBrush StartPoint="0,0"
+                                                                                             EndPoint="1,0">
+                                                                            <GradientStop Color="#EF4444" Offset="0" />
+                                                                            <GradientStop Color="#F97373" Offset="1" />
+                                                                        </LinearGradientBrush>
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
+                                    <TextBlock Grid.Column="4"
+                                               MinWidth="116"
+                                               VerticalAlignment="Center"
+                                               Foreground="#475467"
+                                               FontSize="10.2"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding GlobalTaskProgressStatusText, Mode=OneWay}"
+                                               TextAlignment="Right"
+                                               TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right">
+                            <Button Style="{StaticResource TitleBarButtonStyle}"
+                                    Click="MinimizeWindowButton_OnClick"
+                                    ToolTip="&#x6700;&#x5C0F;&#x5316;"
+                                    Content="&#x2014;" />
+                            <Button Click="MaximizeRestoreWindowButton_OnClick">
+                                <Button.Style>
+                                    <Style TargetType="Button"
+                                           BasedOn="{StaticResource TitleBarButtonStyle}">
+                                        <Setter Property="ToolTip" Value="&#x6700;&#x5927;&#x5316;" />
+                                        <Setter Property="Content" Value="&#x25A1;" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=WindowState}"
+                                                         Value="Maximized">
+                                                <Setter Property="ToolTip" Value="&#x8FD8;&#x539F;" />
+                                                <Setter Property="Content" Value="&#x2752;" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button Style="{StaticResource TitleBarButtonStyle}"
+                                    Click="CloseWindowButton_OnClick"
+                                    ToolTip="&#x5173;&#x95ED;"
+                                    Content="&#x2715;" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1"
+                      Margin="7,6,7,7">
+                    <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        Visibility="Collapsed"
+                        Margin="0,0,0,18"
+                        Padding="18"
+                        Background="{StaticResource InputBrush}"
+                        CornerRadius="18">
+                    <StackPanel>
+                        <TextBlock FontSize="24" FontWeight="Bold" Text="RelayBench &#x63A5;&#x53E3;&#x6D4B;&#x8BD5;&#x5DE5;&#x4F5C;&#x53F0;" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="菜单入口已并排收进左上角主区域，左侧独立栏不再显示，当前状态和实时输出集中在右侧工作区查看。" />
+                        <TextBlock Margin="0,10,0,0"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   Text="{Binding LastRunAt, StringFormat=上次运行：{0}}" />
+                        <TextBox Margin="0,12,0,0"
+                                 Height="96"
+                                 IsReadOnly="True"
+                                 Text="{Binding StatusMessage, Mode=OneWay}" />
+                    </StackPanel>
+                </Border>
+
+                <Border DockPanel.Dock="Top"
+                        Visibility="Collapsed"
+                        Margin="0,0,0,18"
+                        Padding="18"
+                        Background="{StaticResource InputBrush}"
+                        CornerRadius="18">
+                    <StackPanel>
+                        <TextBlock FontSize="19" FontWeight="Bold" Text="诊断控制台" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="左侧现在只承担标题、菜单和状态展示；右侧继续负责实时输出与各模块详细结果。" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1"
+                        Margin="0,0,0,4"
+                        Padding="7,4"
+                        Background="{StaticResource InputBrush}"
+                        CornerRadius="10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock VerticalAlignment="Center"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   Text="{Binding StatusMessage, Mode=OneWay}" />
+                        <TextBlock Grid.Column="1"
+                                   Margin="10,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   Text="{Binding LastRunAt, StringFormat=上次运行：{0}}" />
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="0"
+                      Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="210" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Style="{StaticResource NavigationRailBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                   Text="&#x5DE5;&#x4F5C;&#x53F0;&#x5BFC;&#x822A;" />
+                        <TextBlock Grid.Row="1"
+                                       Margin="0,3,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="&#x6309;&#x4EFB;&#x52A1;&#x5207;&#x6362;&#x9875;&#x9762;&#xFF1A;&#x5148;&#x505A;&#x63A5;&#x53E3;&#x8BCA;&#x65AD;&#xFF0C;&#x518D;&#x505A;&#x6279;&#x91CF;&#x8BC4;&#x6D4B;&#x3001;&#x5E94;&#x7528;&#x63A5;&#x5165;&#x4E0E;&#x7F51;&#x7EDC;&#x590D;&#x6838;&#x3002;" />
+
+                            <ListBox Grid.Row="2"
+                                     Margin="0,8,0,0"
+                                     ItemContainerStyle="{StaticResource NavigationListBoxItemStyle}"
+                                     ItemsSource="{Binding WorkbenchPageOptions}"
+                                     SelectedValuePath="Key"
+                                     SelectedValue="{Binding SelectedWorkbenchPageKey, Mode=TwoWay}"
+                                     Style="{StaticResource NavigationListBoxStyle}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock FontSize="11.2"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding DisplayName}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                Style="{StaticResource SectionPanelBorderStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                               Text="{Binding CurrentPageTitle}" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               Text="{Binding CurrentPageSubtitle}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1"
+                                            HorizontalAlignment="Right">
+                                    <TextBlock HorizontalAlignment="Right"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               Text="{Binding StatusMessage, Mode=OneWay}" />
+                                    <TextBlock Margin="0,2,0,0"
+                                               HorizontalAlignment="Right"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               Text="{Binding LastRunAt, StringFormat=上次运行：{0}}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Grid x:Name="WorkbenchPageHost"
+                              Grid.Row="1"
+                              Margin="0,4,0,0">
+                            <pages:SingleStationPage Visibility="{Binding IsInterfaceDiagnosticsPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <pages:BatchComparisonPage Visibility="{Binding IsBatchEvaluationPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <pages:ApplicationCenterPage Visibility="{Binding IsApplicationCenterPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <pages:NetworkReviewPage Visibility="{Binding IsNetworkReviewPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <pages:HistoryReportsPage Visibility="{Binding IsHistoryReportsPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </Grid>
+                    </Grid>
+                </Grid>
+
+        <Grid x:Name="ProxyChartOverlay"
+              Panel.ZIndex="21"
+              Background="#660F172A"
+              Visibility="Collapsed">
+            <Border x:Name="ProxyChartOverlayPanel"
+                    Margin="18"
+                    Padding="12"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="8" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource DialogTitleTextStyle}"
+                                       Text="{Binding ProxyChartDialogTitle, Mode=OneWay}" />
+                            <WrapPanel Margin="0,6,0,0">
+                                <Border Style="{StaticResource DialogTagBorderStyle}">
+                                    <TextBlock Style="{StaticResource DialogTagTextStyle}"
+                                               Text="图表总览" />
+                                </Border>
+                                <Border Style="{StaticResource DialogAccentTagBorderStyle}">
+                                    <TextBlock Style="{StaticResource DialogTagTextStyle}"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               Text="双击切图" />
+                                </Border>
+                            </WrapPanel>
+                            <Expander Margin="0,4,0,0"
+                                      IsExpanded="False">
+                                <Expander.Style>
+                                    <Style TargetType="Expander">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsProxyChartImageOnlyMode}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Expander.Style>
+                                <Expander.Header>
+                                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                               Text="说明" />
+                                </Expander.Header>
+                                <TextBlock Margin="0,6,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           Text="{Binding ProxyChartDialogIntro, Mode=OneWay}" />
+                            </Expander>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right">
+                            <Button MinWidth="120"
+                                    Margin="12,0,0,0"
+                                    Command="{Binding ToggleProxyChartImageOnlyModeCommand}"
+                                    Content="{Binding ProxyChartImageOnlyModeButtonText, Mode=OneWay}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanToggleProxyChartImageOnlyMode}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button MinWidth="112"
+                                    Margin="12,0,0,0"
+                                    Command="{Binding RetryProxyChartCommand}"
+                                    Content="{Binding ProxyChartRetryButtonText, Mode=OneWay}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasProxyChartRetryAction}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button MinWidth="112"
+                                    Margin="12,0,0,0"
+                                    Command="{Binding StopCurrentProxyTestCommand}"
+                                    IsEnabled="{Binding CanStopCurrentProxyTest, Mode=OneWay}"
+                                    Content="停止测试" />
+                            <Button MinWidth="96"
+                                    Margin="12,0,0,0"
+                                    Command="{Binding CloseProxyTrendChartCommand}"
+                                    Content="关闭" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="2">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProxyChartImageOnlyMode}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.25*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="1.15*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Style="{StaticResource DialogSectionBorderStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="图表摘要" />
+                                    <TextBox Grid.Row="1"
+                                             Margin="0,8,0,0"
+                                             Height="72"
+                                             Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                             Text="{Binding ProxyChartDialogSummary, Mode=OneWay}" />
+                                </Grid>
+                            </Border>
+                            <Border Grid.Column="2" Style="{StaticResource DialogSectionBorderStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="检测摘要" />
+                                    <TextBox Grid.Row="1"
+                                             Margin="0,8,0,0"
+                                             Height="88"
+                                             Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
+                                             Text="{Binding ProxyChartDialogCapabilitySummary, Mode=OneWay}" />
+                                </Grid>
+                            </Border>
+                            <Border Grid.Column="4" Style="{StaticResource DialogSectionBorderStyle}">
+                                <Expander IsExpanded="False">
+                                    <Expander.Header>
+                                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="读图说明" />
+                                    </Expander.Header>
+                                    <TextBlock Margin="0,8,0,0"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               Text="{Binding ProxyChartDialogGuideSummary, Mode=OneWay}" />
+                                </Expander>
+                            </Border>
+                        </Grid>
+                    </Grid>
+
+                    <Border Grid.Row="4">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource DialogSectionBorderStyle}">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProxyChartImageOnlyMode}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="检测明细" />
+                                <Button Grid.Column="1"
+                                        MinWidth="128"
+                                        Margin="12,0,0,0"
+                                        Command="{Binding ToggleProxyChartViewCommand}"
+                                        Content="{Binding ProxyChartToggleButtonText, Mode=OneWay}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CanToggleProxyChartView}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </Grid>
+                            <TextBox Grid.Row="1"
+                                     Margin="0,8,0,0"
+                                     MinHeight="88"
+                                     MaxHeight="108"
+                                     Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
+                                     Text="{Binding ProxyChartDialogCapabilityDetail, Mode=OneWay}" />
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="6"
+                          Margin="0"
+                          Background="Transparent"
+                          ClipToBounds="True">
+                        <Grid.InputBindings>
+                            <MouseBinding Gesture="LeftDoubleClick"
+                                          Command="{Binding ToggleProxyChartImageOnlyModeCommand}" />
+                        </Grid.InputBindings>
+                        <TextBlock HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource MutedBrush}"
+                                   TextWrapping="Wrap"
+                                   FontSize="14"
+                                   Text="{Binding ProxyChartDialogEmptyStateText, Mode=OneWay}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasProxyChartDialogImage}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <ScrollViewer x:Name="ProxyChartImageScrollViewer"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto"
+                                      SizeChanged="ProxyChartImageScrollViewer_OnSizeChanged"
+                                      CanContentScroll="False"
+                                      Visibility="{Binding HasProxyChartDialogImage, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ScrollViewer.InputBindings>
+                                <MouseBinding Gesture="LeftDoubleClick"
+                                              Command="{Binding ToggleProxyChartImageOnlyModeCommand}" />
+                            </ScrollViewer.InputBindings>
+                            <Image x:Name="ProxyChartDialogImageControl"
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Top"
+                                   MouseMove="ProxyChartDialogImage_OnMouseMove"
+                                   MouseLeave="ProxyChartDialogImage_OnMouseLeave"
+                                   Stretch="None"
+                                   Source="{Binding ProxyChartDialogImage, Mode=OneWay}" />
+                        </ScrollViewer>
+                    </Grid>
+
+                    <Border Grid.Row="7"
+                            Margin="0,10,0,0"
+                            Padding="10,8"
+                            Background="{StaticResource InputBrush}"
+                            BorderBrush="{StaticResource PanelBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProxyChartImageOnlyMode}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Foreground="{StaticResource AccentBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ProxyChartDialogStatusSummary, Mode=OneWay}" />
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ProxyModelPickerOverlay"
+              Panel.ZIndex="20"
+              Background="#660F172A"
+              Visibility="Collapsed">
+            <Border x:Name="ProxyModelPickerOverlayPanel"
+                    Width="920"
+                    MaxHeight="660"
+                    Padding="14"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="300" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="3">
+                        <TextBlock Style="{StaticResource DialogTitleTextStyle}" Text="选择模型" />
+                        <WrapPanel Margin="0,6,0,0">
+                            <Border Style="{StaticResource DialogTagBorderStyle}">
+                                <TextBlock Style="{StaticResource DialogTagTextStyle}" Text="单模型" />
+                            </Border>
+                            <Border Style="{StaticResource DialogAccentTagBorderStyle}">
+                                <TextBlock Style="{StaticResource DialogTagTextStyle}"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Text="回填当前模型" />
+                            </Border>
+                        </WrapPanel>
+                        <Border Margin="0,6,0,0"
+                                Style="{StaticResource DialogMetaStripBorderStyle}">
+                            <TextBlock Foreground="{StaticResource AccentBrush}"
+                                       Text="{Binding ProxyModelPickerTargetSummary, Mode=OneWay}" />
+                        </Border>
+                        <Expander Margin="0,6,0,0"
+                                  IsExpanded="False">
+                            <Expander.Header>
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="说明" />
+                            </Expander.Header>
+                            <TextBlock Margin="0,6,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyModelPickerInstruction, Mode=OneWay}" />
+                        </Expander>
+                    </StackPanel>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="0"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="模型列表" />
+                            <TextBox Grid.Row="1"
+                                     Margin="0,6,0,6"
+                                     Style="{StaticResource CompactInputTextBoxStyle}"
+                                     Text="{Binding ProxyModelCatalogFilterText, UpdateSourceTrigger=PropertyChanged}" />
+                            <ListBox Grid.Row="2"
+                                     Margin="0,8,0,0"
+                                     ItemsSource="{Binding VisibleProxyCatalogModels}"
+                                     SelectedItem="{Binding SelectedProxyCatalogModel, Mode=TwoWay}" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="2"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="130" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="拉取摘要" />
+                            <TextBox Grid.Row="1"
+                                     Margin="0,8,0,0"
+                                     Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                     Text="{Binding ProxyModelCatalogSummary, Mode=OneWay}" />
+                            <Expander Grid.Row="3"
+                                      Margin="0,8,0,0"
+                                      IsExpanded="False">
+                                <Expander.Header>
+                                    <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                               Text="拉取明细 / 原始返回" />
+                                </Expander.Header>
+                                <TextBox Margin="0,8,0,0"
+                                         Style="{StaticResource ReadOnlyRawLogTextBoxStyle}"
+                                         Text="{Binding ProxyModelCatalogDetail, Mode=OneWay}" />
+                            </Expander>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            Grid.ColumnSpan="3"
+                            Margin="0,12,0,0"
+                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="筛选后直接点击模型即可回填。" />
+                            <Button Grid.Column="1"
+                                    MinWidth="96"
+                                    Margin="8,0,0,0"
+                                    Command="{Binding CloseProxyModelPickerCommand}"
+                                    Content="关闭" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ProxyMultiModelPickerOverlay"
+              Panel.ZIndex="20"
+              Background="#660F172A"
+              Visibility="Collapsed">
+            <Border x:Name="ProxyMultiModelPickerOverlayPanel"
+                    Width="980"
+                    MaxHeight="700"
+                    Padding="14"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="340" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="3">
+                        <TextBlock Style="{StaticResource DialogTitleTextStyle}"
+                                   Text="&#x591A;&#x6A21;&#x578B; tok/s" />
+                        <WrapPanel Margin="0,6,0,0">
+                            <Border Style="{StaticResource DialogTagBorderStyle}">
+                                <TextBlock Style="{StaticResource DialogTagTextStyle}" Text="串行追加" />
+                            </Border>
+                            <Border Style="{StaticResource DialogAccentTagBorderStyle}">
+                                <TextBlock Style="{StaticResource DialogTagTextStyle}"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Text="单流测速" />
+                            </Border>
+                        </WrapPanel>
+                        <Border Margin="0,6,0,0"
+                                Style="{StaticResource DialogMetaStripBorderStyle}">
+                            <TextBlock Foreground="{StaticResource AccentBrush}"
+                                       Text="{Binding ProxyMultiModelSelectionSummary, Mode=OneWay}" />
+                        </Border>
+                        <Expander Margin="0,6,0,0"
+                                  IsExpanded="False">
+                            <Expander.Header>
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="说明" />
+                            </Expander.Header>
+                            <TextBlock Margin="0,6,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyMultiModelPickerInstruction, Mode=OneWay}" />
+                        </Expander>
+                    </StackPanel>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="0"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                       Text="&#x53EF;&#x9009;&#x6A21;&#x578B;" />
+                            <TextBox Grid.Row="1"
+                                     Margin="0,6,0,6"
+                                     Style="{StaticResource CompactInputTextBoxStyle}"
+                                     Text="{Binding ProxyMultiModelCatalogFilterText, UpdateSourceTrigger=PropertyChanged}" />
+                            <ListBox Grid.Row="2"
+                                     Margin="0,8,0,0"
+                                     ItemsSource="{Binding VisibleProxyMultiModelCatalogItems}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Padding="4,2"
+                                                  Content="{Binding Name}"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="2"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="120" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="120" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                       Text="&#x5DF2;&#x9009;&#x6A21;&#x578B;" />
+                            <TextBox Grid.Row="1"
+                                     Margin="0,8,0,0"
+                                     Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                     Text="{Binding ProxyMultiModelSelectionDetail, Mode=OneWay}" />
+                            <TextBlock Grid.Row="3"
+                                       Style="{StaticResource SectionTitleTextStyle}"
+                                       Text="&#x62C9;&#x53D6;&#x6458;&#x8981;" />
+                            <TextBox Grid.Row="4"
+                                     Margin="0,8,0,0"
+                                     Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                     Text="{Binding ProxyModelCatalogSummary, Mode=OneWay}" />
+                            <Expander Grid.Row="6"
+                                      Margin="0,8,0,0"
+                                      IsExpanded="False">
+                                <Expander.Header>
+                                    <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                               Text="&#x62C9;&#x53D6;&#x660E;&#x7EC6; / API" />
+                                </Expander.Header>
+                                <TextBox Margin="0,8,0,0"
+                                         Style="{StaticResource ReadOnlyRawLogTextBoxStyle}"
+                                         Text="{Binding ProxyModelCatalogDetail, Mode=OneWay}" />
+                            </Expander>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            Grid.ColumnSpan="3"
+                            Margin="0,12,0,0"
+                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="确认后会串行追加单流 tok/s 测试。" />
+                            <WrapPanel Grid.Column="1"
+                                       HorizontalAlignment="Right">
+                                <Button MinWidth="108"
+                                        Command="{Binding ClearProxyMultiModelSelectionCommand}"
+                                        Content="&#x6E05;&#x7A7A;&#x9009;&#x62E9;" />
+                                <Button MinWidth="96"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding ConfirmProxyMultiModelPickerCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="&#x786E;&#x8BA4;" />
+                                <Button MinWidth="96"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding CloseProxyMultiModelPickerCommand}"
+                                        Content="&#x5173;&#x95ED;" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="OfficialApiTraceOverlay"
+              Panel.ZIndex="20"
+              Background="#660F172A"
+              Visibility="Collapsed">
+            <Border x:Name="OfficialApiTraceOverlayPanel"
+                    Width="980"
+                    MaxHeight="720"
+                    Padding="14"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="10" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Style="{StaticResource DialogTitleTextStyle}"
+                               Text="{Binding OfficialApiTraceDialogTitle, Mode=OneWay}" />
+
+                    <Border Grid.Row="2"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x539F;&#x59CB;&#x8FD4;&#x56DE; / Trace" />
+                            <TextBox Grid.Row="1"
+                                     Margin="0,8,0,0"
+                                     Style="{StaticResource ReadOnlyRawLogTextBoxStyle}"
+                                     Text="{Binding OfficialApiTraceDialogContent, Mode=OneWay}" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            Margin="0,10,0,0"
+                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="这里保留原始返回，方便核对真实报错。" />
+                            <Button Grid.Column="1"
+                                    MinWidth="96"
+                                    Margin="12,0,0,0"
+                                    Command="{Binding CloseOfficialApiTraceDialogCommand}"
+                                    Content="&#x5173;&#x95ED;" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ProxyBatchEditorOverlay"
+              Panel.ZIndex="19"
+              Background="#660F172A"
+              Visibility="Collapsed">
+            <Border x:Name="ProxyBatchEditorOverlayPanel"
+                    Width="1120"
+                    MaxHeight="720"
+                    Padding="14"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="10" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="300" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="3">
+                        <TextBlock Style="{StaticResource DialogTitleTextStyle}" Text="入口组维护" />
+                        <WrapPanel Margin="0,6,0,0">
+                            <Border Style="{StaticResource DialogTagBorderStyle}">
+                                <TextBlock Style="{StaticResource DialogTagTextStyle}" Text="按站点" />
+                            </Border>
+                            <Border Style="{StaticResource DialogAccentTagBorderStyle}">
+                                <TextBlock Style="{StaticResource DialogTagTextStyle}"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Text="批量录入" />
+                            </Border>
+                        </WrapPanel>
+                        <Border Margin="0,6,0,0"
+                                Style="{StaticResource DialogMetaStripBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Foreground="{StaticResource AccentBrush}"
+                                           Text="{Binding ProxyBatchTargetDigestSummary, Mode=OneWay}" />
+                                <TextBlock Margin="0,3,0,0"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ProxyBatchExecutionPlanSummary, Mode=OneWay}" />
+                            </StackPanel>
+                        </Border>
+                        <Expander Margin="0,6,0,0"
+                                  IsExpanded="False">
+                            <Expander.Header>
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="说明" />
+                            </Expander.Header>
+                            <TextBlock Margin="0,6,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="左侧按站点管理，右侧一次录一个站点。右侧表格里的所有行会作为同一个站点保存；点完“加入入口组”后，会自动清空，只保留第一行空白继续下一个。" />
+                        </Expander>
+                    </StackPanel>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="0"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="已录入站点" />
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,6,0,6"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyBatchEditorListSummaryDisplay, Mode=OneWay}" />
+                            <ListBox Grid.Row="2"
+                                     Margin="0,4,0,0"
+                                     ItemsSource="{Binding ProxyBatchSiteGroups}"
+                                     SelectedItem="{Binding SelectedProxyBatchSiteGroup, Mode=TwoWay}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <DockPanel LastChildFill="False">
+                                                <TextBlock FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding DisplayTitle}" />
+                                                <TextBlock DockPanel.Dock="Right"
+                                                           Foreground="{StaticResource AccentBrush}"
+                                                           Text="{Binding SiteGroupDisplay}" />
+                                            </DockPanel>
+                                            <TextBlock Margin="0,2,0,0"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding BaseUrl}" />
+                                            <TextBlock Margin="0,1,0,0"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding KeyDisplay}" />
+                                            <TextBlock Margin="0,1,0,0"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding ModelDisplay}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="2"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="当前站点录入" />
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Foreground="{StaticResource AccentBrush}"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ProxyBatchEditorFormModeSummary, Mode=OneWay}" />
+                                <TextBlock Margin="0,2,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           Text="{Binding ProxyBatchEditorSelectionSummary, Mode=OneWay}" />
+                            </StackPanel>
+
+                            <Expander Grid.Row="2"
+                                      Margin="0,8,0,0"
+                                      IsExpanded="False">
+                                <Expander.Header>
+                                    <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="填写规则" />
+                                </Expander.Header>
+                                <Border Margin="0,6,0,0"
+                                        Padding="10,8"
+                                        Background="#F8FAFC"
+                                        BorderBrush="{StaticResource PanelBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10">
+                                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                               TextWrapping="Wrap"
+                                               Text="直接按表格填写“名称 / URL / Key / 模型”即可。可以一行一行录，也可以从剪贴板粘贴 Excel、整表或零散数据；如果只粘贴了 URL 或 key，空白列会自动沿用上一行。站点名留空时，会按第一条有效名称或域名命名。" />
+                                </Border>
+                            </Expander>
+
+                            <Grid Grid.Row="3"
+                                  Margin="0,8,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <WrapPanel>
+                                    <Button MinWidth="104"
+                                            Command="{Binding AddProxyBatchTemplateRowCommand}"
+                                            Content="新增一行" />
+                                    <Button MinWidth="128"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding PasteProxyBatchTemplateRowsCommand}"
+                                            Content="从剪贴板粘贴" />
+                                    <Button MinWidth="120"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding ClearProxyBatchTemplateEmptyRowsCommand}"
+                                            Content="清理空白行" />
+                                </WrapPanel>
+
+                                <Border Grid.Row="1"
+                                        Margin="0,8,0,0"
+                                        BorderBrush="{StaticResource PanelBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Background="#FFFFFF">
+                                    <DataGrid AutoGenerateColumns="False"
+                                              CanUserAddRows="False"
+                                              CanUserDeleteRows="False"
+                                              GridLinesVisibility="Horizontal"
+                                              HeadersVisibility="Column"
+                                              ItemsSource="{Binding ProxyBatchTemplateDraftItems}"
+                                              PreviewMouseLeftButtonDown="ProxyBatchDraftDataGrid_OnPreviewMouseLeftButtonDown"
+                                              RowHeaderWidth="0">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Width="1.15*"
+                                                                Binding="{Binding EntryName, UpdateSourceTrigger=PropertyChanged}"
+                                                                Header="名称" />
+                                            <DataGridTextColumn Width="2.15*"
+                                                                Binding="{Binding BaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                                                                Header="URL" />
+                                            <DataGridTextColumn Width="1.45*"
+                                                                Binding="{Binding EntryApiKey, UpdateSourceTrigger=PropertyChanged}"
+                                                                Header="Key" />
+                                            <DataGridTemplateColumn Width="0.8*"
+                                                                    Header="状态"
+                                                                    IsReadOnly="True">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock VerticalAlignment="Center"
+                                                                   Text="{Binding TemplateStatus}">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding TemplateStatus}" Value="缺 URL">
+                                                                            <Setter Property="Foreground" Value="#D97706" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding TemplateStatus}" Value="URL 无效">
+                                                                            <Setter Property="Foreground" Value="#DC2626" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="1.05*"
+                                                                    Header="测试">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"
+                                                                  MinWidth="58"
+                                                                  Focusable="False"
+                                                                  Content="{Binding BatchTestShortDisplay}"
+                                                                  IsChecked="{Binding IncludeInBatchTest, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                  ToolTip="打开后才会参与批量快速测试和深度测试。" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="1.9*"
+                                                                    Header="模型">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <DockPanel LastChildFill="True">
+                                                            <Button DockPanel.Dock="Right"
+                                                                    Width="28"
+                                                                    Height="24"
+                                                                    Margin="6,0,0,0"
+                                                                    Command="{Binding DataContext.FetchProxyBatchTemplateRowModelsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Content="⟳"
+                                                                    ToolTip="按本行 URL + key 拉取模型；如果本行 key 为空，会自动沿用上一行已填写 key。" />
+                                                            <TextBlock VerticalAlignment="Center"
+                                                                       Text="{Binding EntryModel}"
+                                                                       TextTrimming="CharacterEllipsis" />
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                                <DataGridTemplateColumn.CellEditingTemplate>
+                                                    <DataTemplate>
+                                                        <DockPanel LastChildFill="True">
+                                                            <Button DockPanel.Dock="Right"
+                                                                    Width="28"
+                                                                    Height="24"
+                                                                    Margin="6,0,0,0"
+                                                                    Command="{Binding DataContext.FetchProxyBatchTemplateRowModelsCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Content="⟳"
+                                                                    ToolTip="按本行 URL + key 拉取模型；如果本行 key 为空，会自动沿用上一行已填写 key。" />
+                                                            <TextBox Padding="0"
+                                                                     BorderThickness="0"
+                                                                     Background="Transparent"
+                                                                     Text="{Binding EntryModel, UpdateSourceTrigger=PropertyChanged}" />
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellEditingTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Width="0.9*"
+                                                                    Header="操作"
+                                                                    IsReadOnly="True">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <Button MinWidth="54"
+                                                                Padding="8,2"
+                                                                HorizontalAlignment="Center"
+                                                                Command="{Binding DataContext.DeleteProxyBatchTemplateRowCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                CommandParameter="{Binding}"
+                                                                Content="删行"
+                                                                ToolTip="删除当前这一行；如果删到只剩最后一行，会自动保留 1 个空白行。" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Border>
+                            </Grid>
+
+                            <Border Grid.Row="4"
+                                    Margin="0,8,0,0"
+                                    Padding="10,8"
+                                    Background="#F5F7FA"
+                                    BorderBrush="{StaticResource PanelBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10">
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                           Text="{Binding ProxyBatchTemplateSummary, Mode=OneWay}" />
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            Grid.ColumnSpan="3"
+                            Margin="0,10,0,0"
+                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="先录站点，再回批量对比继续。" />
+                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
+                                <Button MinWidth="144" Command="{Binding AddCurrentProxyBaseUrlToBatchCommand}" Content="带入主页网址 / Key" />
+                                <Button MinWidth="120"
+                                        Command="{Binding CommitProxyBatchEditorItemCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="{Binding ProxyBatchPrimaryActionText}" />
+                                <Button MinWidth="104"
+                                        Command="{Binding DeleteProxyBatchEditorItemCommand}"
+                                        Content="删除选中"
+                                        IsEnabled="{Binding IsProxyBatchEditorItemSelected}" />
+                                <Button MinWidth="116" Command="{Binding ResetProxyBatchEditorFormCommand}" Content="清空当前站点" />
+                                <Button MinWidth="128"
+                                        Command="{Binding RunProxyBatchCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="开始快速对比" />
+                                <Button MinWidth="88" Margin="0" Command="{Binding CloseProxyBatchEditorCommand}" Content="关闭" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+                </Grid>
+            </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+
+
+
+
+

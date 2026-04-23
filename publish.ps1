@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSCommandPath
-$projectPath = Join-Path $repoRoot "NetTest.App\NetTest.App.csproj"
+$projectPath = Join-Path $repoRoot "RelayBench.App\RelayBench.App.csproj"
 $nugetConfigPath = Join-Path $repoRoot "NuGet.Config"
 $propsPath = Join-Path $repoRoot "Directory.Build.props"
 $resolvedOutputRoot = Join-Path $repoRoot $OutputRoot
