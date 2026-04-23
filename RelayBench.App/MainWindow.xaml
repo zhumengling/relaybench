@@ -1101,7 +1101,7 @@
                                 Style="{StaticResource DialogAccentTagBorderStyle}">
                             <TextBlock Style="{StaticResource DialogTagTextStyle}"
                                        Foreground="{StaticResource AccentBrush}"
-                                       Text="请确认后继续" />
+                                       Text="请先确认" />
                         </Border>
                     </StackPanel>
 
@@ -1141,7 +1141,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock VerticalAlignment="Center"
                                        Style="{StaticResource SectionHintTextStyle}"
-                                       Text="请确认后继续操作。" />
+                                       Text="确认后继续。" />
                             <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
                                 <Button MinWidth="104"
                                         Margin="8,0,0,0"

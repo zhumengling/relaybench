@@ -8,24 +8,24 @@ public sealed partial class MainWindowViewModel
     {
         var confirmed = await ShowConfirmationDialogAsync(
             "确认还原默认配置",
-            $"确定要还原 {check.Name} 的默认配置吗？",
-            "这会尝试清理代理接管或自定义入口配置，并在修改前自动创建备份文件。",
+            $"确定要把 {check.Name} 改回默认设置吗？",
+            "当前接管配置会被清理，修改前会自动创建备份。",
             "还原默认配置",
             "取消");
 
         if (!confirmed)
         {
-            StatusMessage = $"已取消还原 {check.Name} 的默认配置。";
+            StatusMessage = $"已取消 {check.Name} 的还原。";
             return;
         }
 
         var shouldMergeChats = IsCodexChatMergeClient(check.Name) &&
                                await ConfirmCodexChatMergeAsync(
                                    CodexChatMergeTarget.OfficialOpenAi,
-                                   $"将 {check.Name} 改回 ChatGPT 官方");
+                                   $"切回 ChatGPT 官方（{check.Name}）");
 
         await ExecuteBusyActionAsync(
-            $"正在还原 {check.Name} 的默认配置...",
+            $"正在还原 {check.Name}...",
             async () =>
             {
                 var result = await _clientApiConfigRestoreService.RestoreAsync(check.Name);
@@ -39,7 +39,7 @@ public sealed partial class MainWindowViewModel
 
                 StatusMessage = result.Succeeded
                     ? mergeResult is { Succeeded: false }
-                        ? $"默认配置已还原，但聊天整理失败：{mergeResult.Error ?? mergeResult.Summary}"
+                        ? $"默认设置已恢复，但聊天整理失败：{mergeResult.Error ?? mergeResult.Summary}"
                         : mergeResult is { Succeeded: true }
                             ? $"{result.Summary}；{mergeResult.Summary}"
                             : result.Summary
@@ -51,12 +51,12 @@ public sealed partial class MainWindowViewModel
 
                 if (mergeResult is not null)
                 {
-                    detail += $"\n\n聊天整理：\n{BuildCodexChatMergeDetail(mergeResult)}";
+                    detail += $"\n\n聊天记录：\n{BuildCodexChatMergeDetail(mergeResult)}";
                 }
 
                 AppendModuleOutput(
                     $"{check.Name} 默认配置还原",
-                    $"{result.Summary}\n聊天整理：{mergeResult?.Summary ?? "未执行"}",
+                    $"{result.Summary}\n聊天记录：{mergeResult?.Summary ?? "保持原样"}",
                     detail);
 
                 if (result.Succeeded)

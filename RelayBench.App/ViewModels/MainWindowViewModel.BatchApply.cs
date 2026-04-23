@@ -19,32 +19,30 @@ public sealed partial class MainWindowViewModel
     {
         if (row is null)
         {
-            StatusMessage = "应用失败：没有选中可写入的软件入口。";
+            StatusMessage = "没有可应用的软件入口。";
             return;
         }
 
         var confirmed = await ShowConfirmationDialogAsync(
             "确认应用到软件",
-            $"确定要将排行榜中的“{row.EntryName}”应用到 Codex 系列软件吗？",
-            "本次会写入 Codex CLI / Codex Desktop / VSCode Codex 共用的 .codex 配置：\n" +
-            "~/.codex/config.toml\n" +
-            "~/.codex/auth.json\n\n" +
-            "不会启用本地代理；修改前会自动创建备份。",
+            $"确定要把“{row.EntryName}”应用到 Codex 系列吗？",
+            "当前地址、密钥和模型会写入 Codex CLI、Codex Desktop、VSCode Codex 共用配置。\n" +
+            "修改前会自动创建备份。",
             "应用到软件",
             "取消");
 
         if (!confirmed)
         {
-            StatusMessage = $"已取消将 {row.EntryName} 应用到 Codex 软件。";
+            StatusMessage = $"已取消“{row.EntryName}”的应用。";
             return;
         }
 
         var shouldMergeChats = await ConfirmCodexChatMergeAsync(
             CodexChatMergeTarget.ThirdPartyCustom,
-            $"将 {row.EntryName} 应用到 Codex 软件");
+            $"切到第三方（{row.EntryName}）");
 
         await ExecuteBusyActionAsync(
-            $"正在将 {row.EntryName} 应用到 Codex 软件...",
+            $"正在应用“{row.EntryName}”...",
             async () =>
             {
                 var result = await _codexFamilyConfigApplyService.ApplyAsync(row.BaseUrl, row.ApiKey, row.Model, row.EntryName);
@@ -58,7 +56,7 @@ public sealed partial class MainWindowViewModel
 
                 StatusMessage = result.Succeeded
                     ? mergeResult is { Succeeded: false }
-                        ? $"配置已应用，但聊天整理失败：{mergeResult.Error ?? mergeResult.Summary}"
+                        ? $"配置已更新，但聊天整理失败：{mergeResult.Error ?? mergeResult.Summary}"
                         : mergeResult is { Succeeded: true }
                             ? $"{result.Summary}；{mergeResult.Summary}"
                             : result.Summary
@@ -80,7 +78,7 @@ public sealed partial class MainWindowViewModel
         ProxyBatchRankingRowViewModel row,
         ClientAppApplyResult result,
         CodexChatMergeResult? mergeResult)
-        => $"入口：{row.EntryName}\n目标：Codex CLI / Codex Desktop / VSCode Codex\n配置结果：{result.Summary}\n聊天整理：{mergeResult?.Summary ?? "未执行"}";
+        => $"入口：{row.EntryName}\n目标：Codex CLI / Codex Desktop / VSCode Codex\n配置结果：{result.Summary}\n聊天记录：{mergeResult?.Summary ?? "保持原样"}";
 
     private static string BuildRankingRowApplyDetail(
         ProxyBatchRankingRowViewModel row,
@@ -89,13 +87,13 @@ public sealed partial class MainWindowViewModel
     {
         StringBuilder builder = new();
         builder.AppendLine($"入口名称：{row.EntryName}");
-        builder.AppendLine($"BaseUrl：{row.BaseUrl}");
-        builder.AppendLine($"API Key：{MaskApiKey(row.ApiKey)}");
-        builder.AppendLine($"Model：{row.Model}");
-        builder.AppendLine($"应用目标：{string.Join(" / ", result.AppliedTargets)}");
-        builder.AppendLine($"已处理文件：{(result.ChangedFiles.Count == 0 ? "无" : string.Join("\n", result.ChangedFiles))}");
+        builder.AppendLine($"地址：{row.BaseUrl}");
+        builder.AppendLine($"密钥：{MaskApiKey(row.ApiKey)}");
+        builder.AppendLine($"模型：{row.Model}");
+        builder.AppendLine($"应用到：{string.Join(" / ", result.AppliedTargets)}");
+        builder.AppendLine($"更新文件：{(result.ChangedFiles.Count == 0 ? "无" : string.Join("\n", result.ChangedFiles))}");
         builder.AppendLine($"备份文件：{(result.BackupFiles.Count == 0 ? "无" : string.Join("\n", result.BackupFiles))}");
-        builder.AppendLine($"聊天整理：{mergeResult?.Summary ?? "未执行"}");
+        builder.AppendLine($"聊天记录：{mergeResult?.Summary ?? "保持原样"}");
         if (mergeResult is not null)
         {
             builder.AppendLine(BuildCodexChatMergeDetail(mergeResult));
@@ -111,7 +109,7 @@ public sealed partial class MainWindowViewModel
         => result.AppliedTargets.Count == 0
             ? "未发现可应用的 Codex 软件"
             : mergeResult is { Succeeded: true }
-                ? $"已应用到：{string.Join("、", result.AppliedTargets)}；已合并聊天"
+                ? $"已应用到：{string.Join("、", result.AppliedTargets)}；聊天已整理"
                 : $"已应用到：{string.Join("、", result.AppliedTargets)}";
 
     private void ShowBatchRankingApplyToast(string message)

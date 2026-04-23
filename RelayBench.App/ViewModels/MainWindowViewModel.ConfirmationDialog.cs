@@ -96,9 +96,9 @@ public sealed partial class MainWindowViewModel
 
         return ShowConfirmationDialogAsync(
             "是否一起带上聊天记录",
-            $"{actionLabel}后，是否把已有 Codex 聊天一起整理到“{targetLabel}”下面显示？",
-            $"是：把当前在“{sourceLabel}”下面显示的聊天，一起整理到“{targetLabel}”下面继续查看。\n" +
-            "否：只切换配置，不处理现有聊天。\n\n" +
+            $"{actionLabel}后，是否把已有 Codex 聊天一起整理到“{targetLabel}”下面继续查看？",
+            $"如果选择“是”，当前在“{sourceLabel}”下面显示的聊天会一起整理到“{targetLabel}”下面。\n" +
+            "如果选择“否”，只切换配置，不处理现有聊天。\n\n" +
             "操作前会自动备份本地聊天索引和状态文件，不会直接覆盖聊天内容。",
             "一起整理",
             "仅切换配置");
