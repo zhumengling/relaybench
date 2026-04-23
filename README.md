@@ -4,6 +4,7 @@
 
 - 对单个接口做快速测试、稳定性测试和深度测试。
 - 对多个接口做批量快速对比、排行榜排序和候选深测。
+- 可把当前入口直接应用到 Codex 系列软件，并按需整理聊天记录显示。
 - 在接口不可用、延迟异常或能力异常时，借助网络复核能力区分是本地网络问题还是目标接口问题。
 
 ## 界面预览
@@ -38,6 +39,9 @@
 - 深度测试
 - 模型拉取与基础兼容性验证
 - 流式首字延迟（TTFT）与流式响应表现观察
+- 非聊天 API 能力矩阵
+- 多模型串行 tok/s 对比
+- 独立吞吐 3 轮均值
 
 ### 2. 批量对比
 
@@ -50,6 +54,8 @@
 - 排行榜图表与列表展示
 - 手动勾选候选站点
 - 对勾选站点继续发起批量深度测试
+- 同站点多入口顺序执行，避免同组入口同时抢占额度
+- 排行榜入口一键应用到 Codex 系列软件
 
 ### 3. 网络复核
 
@@ -60,13 +66,27 @@
 - 基础网络检查
 - 网页 API Trace 与地区信息观察
 - 官方 API 可访问性检查
+- 客户端 API 接入状态复核
 - NAT / STUN 观察
 - 路由与 MTR 风格链路检查
 - Cloudflare 风格测速
 - 分流与出口复核
+- 出口 IP 风险复核
 - 本地端口扫描
 
-### 4. 历史报告
+### 4. 应用接入
+
+用于检查本机 AI 客户端的接入状态，并把当前入口快速写入到支持的客户端。
+
+当前支持：
+
+- Codex CLI / Codex Desktop / VSCode Codex 接入检测
+- Antigravity / Claude CLI 本地接入状态扫描
+- 一键应用当前入口到 Codex 系列
+- 一键还原 Codex 系列默认配置
+- 切换官方 / 第三方时按需整理聊天记录显示
+
+### 5. 历史报告
 
 用于查看历史结果、归档诊断信息，并导出结构化报告。
 
@@ -85,8 +105,12 @@
 - `GET /models` 探测
 - 小体积非流式请求测试
 - 流式请求测试与 TTFT 采样
+- 非聊天 API 能力矩阵（embeddings / images / audio / moderation）
+- 多模型单流 tok/s 对比
+- 独立吞吐 3 轮均值
 - 多轮稳定性测试、成功率统计与连续失败统计
 - 批量候选站点对比与综合评分排序
+- 同站点多入口顺序调度
 - 单站 / 稳定性 / 批量结果的本地历史记录
 
 ### 网络复核相关
@@ -95,12 +119,20 @@
 - `chatgpt.com/cdn-cgi/trace` 解析
 - OpenAI 支持地区快照对照
 - 常见 AI 服务可访问性检查
+- 本地客户端 API / 接入状态检查
 - STUN 映射地址与 NAT 类型的尽力判断
 - `tracert` 与逐跳延迟/丢包采样
 - OpenStreetMap 路由地图渲染
 - Cloudflare 风格下载/上传测速
 - 出口 IP、DNS 与分流路径复核
+- 多源出口 IP 风险复核
 - 内置异步 TCP 端口扫描引擎
+
+### 客户端接入相关
+
+- Codex 系列入口应用与默认配置还原
+- 统一风格确认弹窗
+- 官方 / 第三方切换时按需整理聊天记录
 
 ## 技术栈
 
@@ -168,9 +200,21 @@ release\relaybench-v0.1.5-win-x64-self-contained.zip
 当前版本在部分功能中会访问以下在线服务：
 
 - OpenStreetMap：地图瓦片背景
-- ipwho.is：公网路由节点地理信息查询
-- Cloudflare Speed Test：下载、上传与延迟测量
 - `chatgpt.com/cdn-cgi/trace`：出口信息与地区观察
+- Cloudflare Speed Test：下载、上传与延迟测量
+- iprisk.top：当前出口 IP 识别
+- ipapi.is：IP 风险与 ASN 信息
+- proxycheck.io：代理 / VPN 检查
+- ip-api.com：出口地区与基础网络信息
+- ipwho.is：地理与 ASN 信息补充
+- country.is：轻量地理与 ASN 信息补充
+- IP2Location.io：IP 类型与风险补充
+- GreyNoise Community：噪声 / 扫描情报
+- Spamhaus DROP / ASN-DROP：威胁情报名单
+- AlienVault OTX：威胁情报补充
+- Shodan InternetDB：暴露面补充
+- abuse.ch Feodo Tracker：恶意基础设施名单
+- Tor Project：Tor 出口校验
 
 应用会对部分结果进行本地缓存，以减少重复请求。
 
