@@ -200,6 +200,52 @@ public sealed partial class MainWindowViewModel
             items,
             ref order,
             scenarios,
+            ProxyProbeScenarioKind.Embeddings,
+            "非聊天 API",
+            "embeddings / images / audio / moderation",
+            "Embeddings",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "向量化能力"));
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
+            ProxyProbeScenarioKind.Images,
+            "非聊天 API",
+            "embeddings / images / audio / moderation",
+            "Images",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "生图能力"));
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
+            ProxyProbeScenarioKind.AudioTranscription,
+            "非聊天 API",
+            "embeddings / images / audio / moderation",
+            "Audio Transcription",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "音频转写能力"));
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
+            ProxyProbeScenarioKind.AudioSpeech,
+            "非聊天 API",
+            "embeddings / images / audio / moderation",
+            "Audio Speech / TTS",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "文本转语音能力"));
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
+            ProxyProbeScenarioKind.Moderation,
+            "非聊天 API",
+            "embeddings / images / audio / moderation",
+            "Moderation",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "内容审核能力"));
+
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
             ProxyProbeScenarioKind.SystemPromptMapping,
             "深度测试",
             "协议兼容、错误透传与缓存隔离",

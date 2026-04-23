@@ -50,6 +50,16 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="HistoryMetaStripBorderStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource InsetPanelBorderStyle}">
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="#DCE6F8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -68,16 +78,18 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x8FD0;&#x884C;&#x5386;&#x53F2;" />
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="历史报告" />
                     <TextBlock Margin="0,3,0,0"
                                Style="{StaticResource SectionHintTextStyle}"
-                               Text="&#x6309;&#x6700;&#x8FD1;&#x8FD0;&#x884C;&#x6B21;&#x5E8F;&#x5012;&#x5E8F;&#x5C55;&#x793A;&#x5386;&#x53F2;&#xFF0C;&#x70B9;&#x51FB;&#x5DE6;&#x4FA7;&#x5217;&#x8868;&#x5373;&#x53EF;&#x5728;&#x53F3;&#x4FA7;&#x6253;&#x5F00;&#x8FD9;&#x6B21;&#x8FD0;&#x884C;&#x7684;&#x5B8C;&#x6574;&#x4FE1;&#x606F;&#x3002;" />
+                               Text="按运行时间倒序显示" />
                 </StackPanel>
 
-                <TextBlock Grid.Row="1"
-                           Margin="0,6,0,0"
-                           Style="{StaticResource SectionHintTextStyle}"
-                           Text="&#x5DE6;&#x4FA7;&#x5217;&#x8868;&#x53EA;&#x663E;&#x793A;&#x9884;&#x89C8;&#x6458;&#x8981;&#xFF0C;&#x53F3;&#x4FA7;&#x663E;&#x793A;&#x9009;&#x4E2D;&#x8BB0;&#x5F55;&#x7684;&#x5168;&#x6587;&#x3002;" />
+                <Border Grid.Row="1"
+                        Margin="0,6,0,0"
+                        Style="{StaticResource HistoryMetaStripBorderStyle}">
+                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                               Text="左侧看预览，右侧看详情。" />
+                </Border>
 
                 <Border Grid.Row="2"
                         Margin="0,6,0,0"
@@ -160,7 +172,7 @@
 
                         <TextBlock HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
-                                   Text="&#x8FD8;&#x6CA1;&#x6709;&#x53EF;&#x56DE;&#x770B;&#x7684;&#x8FD0;&#x884C;&#x5386;&#x53F2;&#x3002;">
+                                   Text="暂无历史记录。">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -193,15 +205,15 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x672C;&#x6B21;&#x8FD0;&#x884C;&#x8BE6;&#x60C5;" />
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="运行详情" />
                         <TextBlock Margin="0,3,0,0"
                                    Style="{StaticResource SectionHintTextStyle}"
-                                   Text="&#x9ED8;&#x8BA4;&#x4F1A;&#x9009;&#x4E2D;&#x6700;&#x65B0;&#x4E00;&#x6B21;&#x8FD0;&#x884C;&#xFF1B;&#x4F60;&#x4E5F;&#x53EF;&#x4EE5;&#x5728;&#x5DE6;&#x4FA7;&#x5207;&#x6362;&#x5230;&#x66F4;&#x65E9;&#x7684;&#x8BB0;&#x5F55;&#x3002;" />
+                                   Text="默认选中最新记录" />
                     </StackPanel>
 
                     <Border Grid.Row="1"
                             Margin="0,6,0,0"
-                            Style="{StaticResource InsetPanelBorderStyle}">
+                            Style="{StaticResource HistoryMetaStripBorderStyle}">
                         <StackPanel>
                             <TextBlock FontSize="11.8"
                                        FontWeight="SemiBold"
@@ -211,14 +223,21 @@
                                        Style="{StaticResource SectionHintTextStyle}"
                                        Text="{Binding SelectedHistoryRunMeta, Mode=OneWay}"
                                        TextWrapping="Wrap" />
-                            <TextBlock Margin="0,3,0,0"
-                                       Style="{StaticResource SectionHintTextStyle}"
-                                       Text="{Binding SelectedHistoryRunOriginalTitle, Mode=OneWay}"
-                                       TextWrapping="Wrap" />
-                            <TextBlock Margin="0,4,0,0"
-                                       Style="{StaticResource SectionHintTextStyle}"
-                                       Text="{Binding SelectedHistoryRunPreviewText, Mode=OneWay}"
-                                       TextWrapping="Wrap" />
+                            <Expander Margin="0,6,0,0"
+                                      IsExpanded="False">
+                                <Expander.Header>
+                                    <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="补充信息" />
+                                </Expander.Header>
+                                <StackPanel Margin="0,6,0,0">
+                                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                               Text="{Binding SelectedHistoryRunOriginalTitle, Mode=OneWay}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               Text="{Binding SelectedHistoryRunPreviewText, Mode=OneWay}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Expander>
                         </StackPanel>
                     </Border>
 
@@ -238,17 +257,17 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x62A5;&#x544A;&#x5F52;&#x6863;" />
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="报告导出" />
                         <TextBlock Margin="0,3,0,0"
                                    Style="{StaticResource SectionHintTextStyle}"
-                                   Text="&#x5BFC;&#x51FA;&#x540E;&#x7684;&#x7ED3;&#x6784;&#x5316;&#x62A5;&#x544A;&#x4F1A;&#x96C6;&#x4E2D;&#x663E;&#x793A;&#x5728;&#x8FD9;&#x91CC;&#xFF0C;&#x65B9;&#x4FBF;&#x56DE;&#x770B;&#x548C;&#x5F52;&#x6863;&#x7BA1;&#x7406;&#x3002;" />
+                                   Text="导出当前结果并在此查看摘要" />
                     </StackPanel>
 
                     <Button Grid.Row="1"
                             Margin="0,6,0,0"
                             HorizontalAlignment="Left"
                             Command="{Binding ExportCurrentReportCommand}"
-                            Content="&#x5BFC;&#x51FA;&#x5F53;&#x524D;&#x62A5;&#x544A;" />
+                            Content="导出当前报告" />
                     <TextBox Grid.Row="2"
                              Margin="0,6,0,0"
                              Style="{StaticResource ReadOnlyOutputTextBoxStyle}"

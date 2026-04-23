@@ -64,7 +64,7 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Row="0" Grid.Column="0">
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x5F53;&#x524D;&#x6A21;&#x5F0F;&#x53C2;&#x6570;&#x4E0E;&#x6267;&#x884C;" />
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="测试模式" />
                     <TextBlock Margin="0,2,0,0"
                                Style="{StaticResource SectionHintTextStyle}"
                                Text="{Binding SingleStationModeDescription}" />
@@ -129,7 +129,7 @@
                         Style="{StaticResource InsetPanelBorderStyle}"
                         Visibility="{Binding IsSingleStationDeepMode, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x6DF1;&#x5EA6;&#x6D4B;&#x8BD5;&#x9879;" />
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="测试项" />
 
                         <ComboBox Style="{StaticResource CompactComboBoxStyle}"
                                   Margin="0,6,0,0"
@@ -177,9 +177,9 @@
                                 Style="{StaticResource InsetPanelBorderStyle}"
                                 Visibility="{Binding ProxyEnableCacheIsolationTest, Converter={StaticResource BoolToVisibilityConverter}}">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x7F13;&#x5B58;&#x9694;&#x79BB;&#x5907;&#x7528; Key" />
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="备用 Key" />
                                 <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                           Text="&#x586B;&#x5199;&#x7B2C;&#x4E8C;&#x4E2A; API Key&#xFF0C;&#x7528;&#x4E8E; A / B Key &#x9694;&#x79BB;&#x9A8C;&#x8BC1;&#xFF1B;&#x4E0D;&#x8981;&#x4E0E;&#x4E0A;&#x65B9;&#x4E3B; Key &#x76F8;&#x540C;&#x3002;" />
+                                           Text="用于 A/B 隔离验证，不要与主 Key 相同。" />
                                 <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
                                          Text="{Binding ProxyCacheIsolationAlternateApiKey, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
@@ -201,9 +201,9 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Row="0" Grid.ColumnSpan="3">
-                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5B98;&#x65B9;&#x5BF9;&#x7167;&#x53C2;&#x8003;&#x5165;&#x53E3;" />
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="对照接口" />
                                     <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                               Text="&#x586B;&#x5199;&#x5B98;&#x65B9;&#x6216;&#x53C2;&#x8003;&#x5165;&#x53E3;&#x7684; Base URL &#x4E0E; API Key&#xFF1B;&#x6A21;&#x578B;&#x53EF;&#x9009;&#xFF0C;&#x4E0D;&#x586B;&#x5219;&#x6CBF;&#x7528;&#x5F53;&#x524D;&#x6A21;&#x578B;&#x3002;" />
+                                               Text="填写 Base URL 和 API Key；模型可选。" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,6,0,0">
@@ -230,10 +230,12 @@
                                 Style="{StaticResource InsetPanelBorderStyle}"
                                 Visibility="{Binding IsProxyCapabilityConfigOpen, Converter={StaticResource BoolToVisibilityConverter}}">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x975E;&#x804A;&#x5929; API &#x6A21;&#x578B;&#x914D;&#x7F6E;" />
-                                <TextBlock Margin="0,3,0,0"
-                                           Style="{StaticResource SectionHintTextStyle}"
-                                           Text="{Binding ProxyCapabilityModelConfigSummary, Mode=OneWay}" />
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="能力模型" />
+                                <Border Margin="0,4,0,0"
+                                        Style="{StaticResource DialogMetaStripBorderStyle}">
+                                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                               Text="{Binding ProxyCapabilityModelConfigSummary, Mode=OneWay}" />
+                                </Border>
 
                                 <Grid Margin="0,8,0,0">
                                 <Grid.RowDefinitions>
@@ -355,11 +357,26 @@
                                         Background="#F8FAFC"
                                         BorderBrush="{StaticResource PanelBorderBrush}"
                                         BorderThickness="1"
-                                        CornerRadius="10">
+                                        CornerRadius="10"
+                                        Visibility="Collapsed">
                                     <TextBlock Style="{StaticResource SectionHintTextStyle}"
                                                TextWrapping="Wrap"
-                                               Text="&#x6BCF;&#x4E2A;&#x80FD;&#x529B;&#x5355;&#x72EC;&#x586B;&#x6A21;&#x578B;&#x3002;&#x70B9;&#x540E;&#x9762;&#x7684;&#x201C;&#x62C9;&#x53D6;&#x6A21;&#x578B;&#x201D;&#x4F1A;&#x7528;&#x4E0A;&#x65B9;&#x63A5;&#x53E3;&#x5730;&#x5740; + API Key &#x62C9;&#x53D6;&#x5E76;&#x56DE;&#x586B;&#x5230;&#x5BF9;&#x5E94;&#x80FD;&#x529B;&#x9879;&#x3002;&#x7559;&#x7A7A;&#x5219;&#x8BB0;&#x4E3A;&#x201C;&#x672A;&#x914D;&#x7F6E;&#x201D;&#xFF0C;&#x4E0D;&#x53C2;&#x4E0E;&#x672C;&#x8F6E;&#x6D4B;&#x8BD5;&#x3002;" />
+                                               Text="每个能力可单独填模型；留空则不参与本轮测试。" />
                                 </Border>
+                                <Expander Grid.Row="1"
+                                          Grid.Column="4"
+                                          Margin="0,6,0,0"
+                                          IsExpanded="False">
+                                    <Expander.Header>
+                                        <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="规则" />
+                                    </Expander.Header>
+                                    <Border Margin="0,6,0,0"
+                                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                                        <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                   TextWrapping="Wrap"
+                                                   Text="每个能力可单独填模型；留空则不参与本轮测试。" />
+                                    </Border>
+                                </Expander>
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -373,12 +390,20 @@
                         Visibility="{Binding IsSingleStationConcurrencyMode, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5E76;&#x53D1;&#x538B;&#x6D4B;&#x8BA1;&#x5212;" />
-                        <TextBlock Margin="0,4,0,0"
-                                   Style="{StaticResource SectionHintTextStyle}"
-                                   Text="{Binding ProxyConcurrencyPlanSummary}" />
-                        <TextBlock Margin="0,4,0,0"
-                                   Style="{StaticResource SectionHintTextStyle}"
-                                   Text="{Binding ProxyConcurrencyThresholdHint}" />
+                        <Border Margin="0,4,0,0"
+                                Style="{StaticResource DialogMetaStripBorderStyle}">
+                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyConcurrencyPlanSummary}" />
+                        </Border>
+                        <Expander Margin="0,6,0,0"
+                                  IsExpanded="False">
+                            <Expander.Header>
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="阈值说明" />
+                            </Expander.Header>
+                            <TextBlock Margin="0,6,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding ProxyConcurrencyThresholdHint}" />
+                        </Expander>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -396,7 +421,7 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x7ED3;&#x679C;&#x4E0E;&#x7EDF;&#x4E00;&#x8F93;&#x51FA;" />
+                <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="测试结果" />
 
                 <Border Grid.Row="1"
                         Margin="0,6,0,0"
@@ -417,10 +442,10 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0">
-                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5206;&#x6863;&#x7ED3;&#x679C;" />
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="分档结果" />
                                 <TextBlock Margin="0,3,0,0"
                                            Style="{StaticResource SectionHintTextStyle}"
-                                           Text="&#x6BCF;&#x5B8C;&#x6210;&#x4E00;&#x6863;&#x5E76;&#x53D1;&#xFF0C;&#x4F1A;&#x5728;&#x4E0B;&#x65B9;&#x8865;&#x4E0A;&#x6210;&#x529F;&#x6570;&#x3001;429 / 5xx / &#x8D85;&#x65F6;&#x8BA1;&#x6570;&#x3001;p50 &#x5EF6;&#x8FDF;&#x3001;p95 TTFT &#x548C;&#x5E73;&#x5747; tok/s&#x3002;" />
+                                           Text="每档完成后补充成功数、429 / 5xx、延迟、TTFT、tok/s。" />
                             </StackPanel>
 
                             <Button Grid.Column="1"
@@ -569,7 +594,7 @@
 
                             <TextBlock HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
-                                       Text="&#x5C1A;&#x65E0;&#x5E76;&#x53D1;&#x538B;&#x6D4B;&#x7ED3;&#x679C;&#x3002;&#x70B9;&#x51FB;&#x201C;&#x5F00;&#x59CB;&#x5E76;&#x53D1;&#x538B;&#x6D4B;&#x201D;&#x540E;&#xFF0C;&#x8FD9;&#x91CC;&#x4F1A;&#x6309;&#x6863;&#x4F4D;&#x9010;&#x6B65;&#x8865;&#x9F50;&#x3002;">
+                                       Text="暂无并发结果。开始并发压测后逐步补齐。">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
                                         <Setter Property="Visibility" Value="Visible" />
@@ -613,10 +638,10 @@
                         </Grid.RowDefinitions>
 
                         <StackPanel>
-                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x975E;&#x804A;&#x5929; API &#x80FD;&#x529B;&#x77E9;&#x9635;" />
-                            <TextBlock Margin="0,3,0,0"
-                                       Style="{StaticResource SectionHintTextStyle}"
-                                       Text="&#x70B9;&#x9009;&#x4E0A;&#x65B9;&#x5355;&#x5143;&#x683C;&#xFF0C;&#x4E0B;&#x65B9;&#x4F1A;&#x663E;&#x793A;&#x8BE5;&#x9879;&#x7684;&#x8DEF;&#x5F84;&#x3001;&#x6A21;&#x578B;&#x3001;HTTP &#x72B6;&#x6001;&#x7801;&#x3001;&#x5EF6;&#x8FDF;&#x548C;&#x7ED3;&#x8BBA;&#x3002;" />
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="能力矩阵" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="点选单元格后，下方显示路径、模型、状态和结论。" />
                         </StackPanel>
 
                         <Grid Grid.Row="1"

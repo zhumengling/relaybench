@@ -13,10 +13,10 @@ public sealed partial class MainWindowViewModel
             var missing = GetApplicationCenterMissingContextFields();
             if (missing.Count == 0)
             {
-                return "\u5F53\u524D\u63A5\u53E3\u4FE1\u606F\u5DF2\u5C31\u7EEA\u3002\u53EF\u4EE5\u4E00\u952E\u5199\u5165 Codex CLI / Codex Desktop / VSCode Codex \u5171\u7528\u7684 .codex \u914D\u7F6E\uFF0C\u5E76\u5728\u4FEE\u6539\u524D\u81EA\u52A8\u5907\u4EFD\u65E7\u6587\u4EF6\u3002";
+                return "接口已就绪，可写入 Codex CLI / Desktop / VSCode Codex；写入前会自动备份。";
             }
 
-            return $"\u8FD8\u7F3A {string.Join("\u3001", missing)}\u3002\u8865\u9F50\u540E\u624D\u80FD\u5C06\u5F53\u524D\u63A5\u53E3\u5E94\u7528\u5230 Codex \u7CFB\u5217\u8F6F\u4EF6\u3002";
+            return $"还缺 {string.Join("、", missing)}，补齐后可写入 Codex 系列。";
         }
     }
 

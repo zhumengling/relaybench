@@ -19,6 +19,38 @@
             <Setter Property="Margin" Value="0,3,0,0" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
+
+        <Style x:Key="ApplicationCenterTagBorderStyle"
+               TargetType="Border">
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Padding" Value="7,2" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="#D0D5DD" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+
+        <Style x:Key="ApplicationCenterValueTagBorderStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource ApplicationCenterTagBorderStyle}">
+            <Setter Property="Background" Value="#FDFEFF" />
+            <Setter Property="BorderBrush" Value="#E4E7EC" />
+        </Style>
+
+        <Style x:Key="ApplicationCenterStateBorderStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource ApplicationCenterValueTagBorderStyle}">
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Padding" Value="8,4" />
+        </Style>
+
+        <Style x:Key="ApplicationCenterTagTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource SectionHintTextStyle}">
+            <Setter Property="FontSize" Value="10.2" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -35,10 +67,20 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0">
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x5E94;&#x7528;&#x63A5;&#x5165;&#x4E2D;&#x5FC3;" />
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="应用接入" />
                     <TextBlock Margin="0,3,0,0"
-                               Style="{StaticResource SectionHintTextStyle}"
-                               Text="&#x626B;&#x63CF;&#x672C;&#x673A;&#x5B89;&#x88C5;&#x7684; Codex / VSCode / Antigravity / Claude &#x7B49;&#x5BA2;&#x6237;&#x7AEF;&#xFF0C;&#x67E5;&#x770B;&#x5F53;&#x524D;&#x63A5;&#x5165;&#x72B6;&#x6001;&#x3001;&#x914D;&#x7F6E;&#x6765;&#x6E90;&#x4E0E;&#x5E95;&#x5C42; API &#x53EF;&#x8FBE;&#x6027;&#x3002;" />
+                               Text="扫描本机支持应用并检查接入状态">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasClientApiStatusRows}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
 
                 <WrapPanel Grid.Column="1"
@@ -67,10 +109,20 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x672C;&#x673A;&#x5E94;&#x7528;&#x5217;&#x8868;" />
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="应用列表" />
                         <TextBlock Margin="0,2,0,0"
-                                   Style="{StaticResource SectionHintTextStyle}"
-                                   Text="&#x5217;&#x51FA;&#x5DF2;&#x53D1;&#x73B0;&#x7684;&#x5E94;&#x7528;&#x3001;&#x5F53;&#x524D;&#x63A5;&#x5165;&#x65B9;&#x5F0F;&#x3001;&#x539F;&#x59CB; Trace &#x67E5;&#x770B;&#x548C;&#x8FD8;&#x539F;&#x5165;&#x53E3;&#x3002;" />
+                                   Text="查看已发现应用、当前入口和还原操作">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasClientApiStatusRows}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
 
                     <Grid Grid.Row="1"
@@ -116,22 +168,45 @@
                                                                TextWrapping="Wrap"
                                                                Foreground="{StaticResource TextBrush}"
                                                                Text="{Binding Summary}" />
-                                                    <TextBlock Margin="0,4,0,0"
-                                                               Style="{StaticResource ApplicationCenterMetaTextStyle}"
-                                                               Text="{Binding StateText}" />
-                                                    <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
-                                                               Text="{Binding AccessDetailText}" />
-                                                    <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
-                                                               Text="{Binding EndpointText, StringFormat=&#x5F53;&#x524D;&#x5165;&#x53E3;&#xFF1A;{0}}" />
-                                                    <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
-                                                               Text="{Binding ConfigSourceText, StringFormat=&#x914D;&#x7F6E;&#x6765;&#x6E90;&#xFF1A;{0}}" />
-                                                    <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
-                                                               Text="{Binding RestoreHintText, StringFormat=&#x8FD8;&#x539F;&#x8BF4;&#x660E;&#xFF1A;{0}}" />
-                                                    <TextBlock Margin="0,4,0,0"
-                                                               FontFamily="Consolas"
-                                                               FontSize="10.2"
-                                                               Foreground="#667085"
-                                                               Text="{Binding EndpointMetaText}" />
+                                                    <WrapPanel Margin="0,6,0,0">
+                                                        <Border Style="{StaticResource ApplicationCenterTagBorderStyle}">
+                                                            <TextBlock Style="{StaticResource ApplicationCenterTagTextStyle}"
+                                                                       Text="&#x5F53;&#x524D;&#x5165;&#x53E3;" />
+                                                        </Border>
+                                                        <Border Style="{StaticResource ApplicationCenterValueTagBorderStyle}">
+                                                            <TextBlock Style="{StaticResource ApplicationCenterTagTextStyle}"
+                                                                       Foreground="{StaticResource TextBrush}"
+                                                                       Text="{Binding EndpointText}" />
+                                                        </Border>
+                                                    </WrapPanel>
+                                                    <Border Style="{StaticResource ApplicationCenterStateBorderStyle}"
+                                                            Background="{Binding StatusBackground}"
+                                                            BorderBrush="{Binding StatusForeground}">
+                                                        <TextBlock Style="{StaticResource ApplicationCenterTagTextStyle}"
+                                                                   Foreground="{Binding StatusForeground}"
+                                                                   Text="{Binding StateText}"
+                                                                   TextWrapping="Wrap" />
+                                                    </Border>
+                                                    <Expander Margin="0,4,0,0"
+                                                              IsExpanded="False">
+                                                        <Expander.Header>
+                                                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                                       Text="更多" />
+                                                        </Expander.Header>
+                                                        <StackPanel Margin="0,6,0,0">
+                                                            <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
+                                                                       Text="{Binding AccessDetailText}" />
+                                                            <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
+                                                                       Text="{Binding ConfigSourceText, StringFormat=配置来源：{0}}" />
+                                                            <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
+                                                                       Text="{Binding RestoreHintText, StringFormat=还原说明：{0}}" />
+                                                            <TextBlock Margin="0,4,0,0"
+                                                                       FontFamily="Consolas"
+                                                                       FontSize="10.2"
+                                                                       Foreground="#667085"
+                                                                       Text="{Binding EndpointMetaText}" />
+                                                        </StackPanel>
+                                                    </Expander>
                                                 </StackPanel>
 
                                                 <Border Grid.Column="1"
@@ -166,7 +241,7 @@
 
                         <TextBlock HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
-                                   Text="&#x5C1A;&#x672A;&#x6267;&#x884C;&#x626B;&#x63CF;&#x3002;&#x70B9;&#x51FB;&#x53F3;&#x4E0A;&#x89D2;&#x201C;&#x5F00;&#x59CB;&#x626B;&#x63CF;&#x201D;&#x540E;&#xFF0C;&#x8FD9;&#x91CC;&#x4F1A;&#x663E;&#x793A;&#x652F;&#x6301;&#x7684;&#x5BA2;&#x6237;&#x7AEF;&#x5E94;&#x7528;&#x53CA;&#x5176;&#x63A5;&#x5165;&#x72B6;&#x6001;&#x3002;">
+                                   Text="尚未扫描应用。点击“开始扫描”后显示结果。">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
                                     <Setter Property="Visibility" Value="Visible" />
@@ -194,10 +269,10 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x5F53;&#x524D;&#x63A5;&#x53E3;&#x4E0A;&#x4E0B;&#x6587;" />
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="当前接口" />
                         <TextBlock Margin="0,2,0,0"
                                    Style="{StaticResource SectionHintTextStyle}"
-                                   Text="&#x8FD9;&#x91CC;&#x663E;&#x793A;&#x5F53;&#x524D;&#x5728;&#x201C;&#x63A5;&#x53E3;&#x8BCA;&#x65AD;&#x201D;&#x9875;&#x9762;&#x586B;&#x5199;&#x7684;&#x63A5;&#x53E3;&#x4FE1;&#x606F;&#xFF0C;&#x540E;&#x7EED;&#x7684;&#x4E00;&#x952E;&#x5E94;&#x7528;&#x4F1A;&#x4EE5;&#x6B64;&#x4E3A;&#x57FA;&#x7840;&#x3002;" />
+                                   Text="后续一键应用会使用这里的接口信息" />
                     </StackPanel>
 
                     <Border Grid.Row="1"
@@ -248,7 +323,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5E94;&#x7528;&#x5230; Codex &#x7CFB;&#x5217;" />
+                            <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="应用到 Codex" />
                             <Button Grid.Column="1"
                                     Command="{Binding ApplyCurrentInterfaceToCodexAppsCommand}"
                                     Style="{StaticResource PrimaryActionButtonStyle}"
@@ -261,12 +336,19 @@
                                        TextWrapping="Wrap"
                                        Text="{Binding ApplicationCenterApplyTargetSummary, Mode=OneWay}" />
 
-                            <TextBox Grid.Row="2"
-                                     Grid.ColumnSpan="2"
-                                     Margin="0,8,0,0"
-                                     MinHeight="146"
-                                     Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
-                                     Text="{Binding ApplicationCenterApplyPreviewDetail, Mode=OneWay}" />
+                            <Expander Grid.Row="2"
+                                      Grid.ColumnSpan="2"
+                                      Margin="0,8,0,0"
+                                      IsExpanded="False">
+                                <Expander.Header>
+                                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                               Text="写入预览" />
+                                </Expander.Header>
+                                <TextBox Margin="0,6,0,0"
+                                         MinHeight="146"
+                                         Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                         Text="{Binding ApplicationCenterApplyPreviewDetail, Mode=OneWay}" />
+                            </Expander>
                         </Grid>
                     </Border>
 
@@ -278,7 +360,7 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x626B;&#x63CF;&#x6982;&#x89C8;&#x4E0E;&#x7EC6;&#x8282;" />
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="扫描结果" />
 
                         <TabControl Grid.Row="1"
                                     Margin="0,4,0,0">
@@ -292,10 +374,17 @@
                             </TabItem>
                         </TabControl>
 
-                        <TextBlock Grid.Row="2"
-                                   Margin="0,8,0,0"
-                                   Style="{StaticResource SectionHintTextStyle}"
-                                   Text="&#x76EE;&#x524D;&#x4F18;&#x5148;&#x652F;&#x6301; Codex CLI / Codex Desktop / VSCode Codex &#x7684;&#x5171;&#x7528; .codex &#x914D;&#x7F6E;&#x5199;&#x5165;&#x4E0E;&#x8FD8;&#x539F;&#x3002;Claude CLI / Antigravity &#x7B49;&#x5176;&#x4ED6;&#x5BA2;&#x6237;&#x7AEF;&#x4ECD;&#x4EE5;&#x68C0;&#x6D4B;&#x3001;Trace &#x548C;&#x8FD8;&#x539F;&#x80FD;&#x529B;&#x4E3A;&#x4E3B;&#x3002;" />
+                        <Expander Grid.Row="2"
+                                  Margin="0,8,0,0"
+                                  IsExpanded="False">
+                            <Expander.Header>
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                           Text="支持范围" />
+                            </Expander.Header>
+                            <TextBlock Margin="0,6,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="目前支持写入和还原 Codex 系列；其他应用以检测为主。" />
+                        </Expander>
                     </Grid>
                 </Grid>
             </Border>

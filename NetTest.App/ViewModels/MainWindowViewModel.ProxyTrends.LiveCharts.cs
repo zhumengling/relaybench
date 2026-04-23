@@ -640,8 +640,8 @@ public sealed partial class MainWindowViewModel
             new ProxyChartDialogSnapshot(
                 GetSingleProxyChartTitle(isLive: false),
                 GetActiveSingleExecutionPlan().Mode == ProxySingleExecutionMode.Deep
-                    ? "这里按基础能力、增强测试、深度测试分区展示本次深度单次诊断结果；如果你想看同一地址的多次波动趋势，可以切换到稳定趋势图。"
-                    : "这里按基础能力、增强测试、深度测试分区展示本次基础单次诊断结果；如果你想看同一地址的多次波动趋势，可以切换到稳定趋势图。",
+                    ? "这里按基础能力、增强测试、非聊天 API、深度测试分区展示本次深度单次诊断结果；如果你想看同一地址的多次波动趋势，可以切换到稳定趋势图。"
+                    : "这里按基础能力、增强测试、非聊天 API、深度测试分区展示本次基础单次诊断结果；如果你想看同一地址的多次波动趋势，可以切换到稳定趋势图。",
                 $"目标：{result.BaseUrl}\n" +
                 $"累计次数：{_proxySingleChartRuns.Count}\n" +
                 $"总判定：{result.Verdict ?? "待复核"}\n" +
@@ -650,7 +650,7 @@ public sealed partial class MainWindowViewModel
                 $"普通对话：{FormatMilliseconds(result.ChatLatency)} / 独立吞吐：{FormatTokensPerSecond(result.ThroughputBenchmarkResult?.MedianOutputTokensPerSecond, result.ThroughputBenchmarkResult?.OutputTokenCountEstimated == true, result.ThroughputBenchmarkResult?.CompletedSampleCount ?? 1)} / TTFT：{FormatMilliseconds(result.StreamFirstTokenLatency)}",
                 BuildDialogCapabilityMatrix(result),
                 BuildDialogCapabilityDetail(result),
-                "基础能力用于看核心 API 通断；增强测试用于看长流与内容完整性；深度测试用于看协议兼容、错误透传、缓存与官方对照。",
+                "基础能力用于看核心 API 通断；增强测试用于看长流与内容完整性；非聊天 API 用于看 embeddings / images / audio / moderation；深度测试用于看协议兼容、错误透传、缓存与官方对照。",
                 chartResult.Summary,
                 $"当前{GetSingleProxyExecutionDisplayName()}图表正在生成。",
                 chartResult.ChartImage),

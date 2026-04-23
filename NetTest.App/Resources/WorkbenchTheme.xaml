@@ -171,6 +171,37 @@
             <Setter Property="Padding" Value="7" />
             <Setter Property="CornerRadius" Value="12" />
         </Style>
+        <Style x:Key="DialogTagBorderStyle"
+               TargetType="Border">
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="#D0D5DD" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+        <Style x:Key="DialogAccentTagBorderStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource DialogTagBorderStyle}">
+            <Setter Property="Background" Value="#EEF4FF" />
+            <Setter Property="BorderBrush" Value="#C7DAFF" />
+        </Style>
+        <Style x:Key="DialogTagTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource SectionHintTextStyle}">
+            <Setter Property="FontSize" Value="10.1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="DialogMetaStripBorderStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource InsetPanelBorderStyle}">
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="#DCE6F8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
         <Style x:Key="ProxyBatchTabControlStyle" TargetType="TabControl">
             <Setter Property="Background" Value="{StaticResource InputBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />

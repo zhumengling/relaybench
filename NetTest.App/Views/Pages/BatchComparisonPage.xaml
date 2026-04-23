@@ -78,6 +78,34 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="BatchRankingUrlTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource SectionHintTextStyle}">
+            <Setter Property="FontSize" Value="9.8" />
+            <Setter Property="Foreground" Value="#667085" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style x:Key="BatchRankingMetricBorderStyle"
+               TargetType="Border">
+            <Setter Property="Margin" Value="0,3,0,0" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Background" Value="#F8FBFF" />
+            <Setter Property="BorderBrush" Value="#D6E4FF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+
+        <Style x:Key="BatchRankingMetricTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource SectionHintTextStyle}">
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="FontSize" Value="10.2" />
+            <Setter Property="Foreground" Value="#344054" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -94,10 +122,58 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0">
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="第 1 步：入口组与快速对比" />
-                    <TextBlock Margin="0,3,0,0"
-                               Style="{StaticResource SectionHintTextStyle}"
-                               Text="先维护入口组，再执行一次快速对比；图表区只读，候选站点只在排行榜列表里手动勾选，不会自动代你选择。" />
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="入口组" />
+                    <WrapPanel Margin="0,4,0,0">
+                        <Border Margin="0,0,6,0"
+                                Padding="8,2"
+                                Background="#F8FAFC"
+                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="999">
+                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                       FontWeight="SemiBold"
+                                       Text="入口组" />
+                        </Border>
+                        <TextBlock Margin="0,2,6,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="→" />
+                        <Border Margin="0,0,6,0"
+                                Padding="8,2"
+                                Background="#F8FAFC"
+                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="999">
+                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                       FontWeight="SemiBold"
+                                       Text="快测" />
+                        </Border>
+                        <TextBlock Margin="0,2,6,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="→" />
+                        <Border Margin="0,0,6,0"
+                                Padding="8,2"
+                                Background="#F8FAFC"
+                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="999">
+                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                       FontWeight="SemiBold"
+                                       Text="候选" />
+                        </Border>
+                        <TextBlock Margin="0,2,6,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="→" />
+                        <Border Padding="8,2"
+                                Background="#EEF4FF"
+                                BorderBrush="#C7DAFF"
+                                BorderThickness="1"
+                                CornerRadius="999">
+                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource AccentBrush}"
+                                       Text="深测" />
+                        </Border>
+                    </WrapPanel>
                 </StackPanel>
 
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
@@ -125,7 +201,7 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="第 2 步：排行榜图表（只读）" />
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="排行榜" />
                         <TextBlock Margin="0,2,0,0"
                                    Style="{StaticResource SectionHintTextStyle}"
                                    Text="{Binding BatchComparisonChartStatusSummary, Mode=OneWay}" />
@@ -166,7 +242,7 @@
 
                             <TextBlock HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
-                                       Text="完成快速对比后，这里会显示排行榜预览图；点击预览可放大。">
+                                       Text="快测后显示排行榜预览。">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
                                         <Setter Property="Visibility" Value="Visible" />
@@ -191,10 +267,10 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="第 3 步：排行榜列表（在这里勾选候选项）" />
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="候选列表" />
                         <TextBlock Margin="0,2,0,0"
                                    Style="{StaticResource SectionHintTextStyle}"
-                                   Text="快速对比后默认不会自动勾选任何站点；请只在这里勾选候选项，再继续做深度测试。" />
+                                   Text="在这里勾选候选项" />
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="1"
@@ -247,7 +323,7 @@
                                                                Style="{StaticResource SectionHintTextStyle}"
                                                                Text="{Binding Model, StringFormat=模型：{0}}" />
                                                 </DockPanel>
-                                                <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="{Binding BaseUrl}" />
+                                                <TextBlock Style="{StaticResource BatchRankingUrlTextStyle}" Text="{Binding BaseUrl}" />
                                                 <WrapPanel Margin="0,2,0,0">
                                                     <Border Margin="0,0,6,0"
                                                             Padding="6,1"
@@ -268,13 +344,24 @@
                                                                    Text="{Binding DeepStatus}" />
                                                     </Border>
                                                 </WrapPanel>
-                                                <TextBlock Margin="0,1,0,0"
-                                                           Style="{StaticResource SectionHintTextStyle}"
-                                                           Text="{Binding QuickMetrics}" />
-                                                <TextBlock Style="{StaticResource SectionHintTextStyle}" Text="{Binding CapabilitySummary}" />
-                                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                                           Text="{Binding DeepSummary}"
-                                                           TextWrapping="Wrap" />
+                                                <Border Style="{StaticResource BatchRankingMetricBorderStyle}">
+                                                    <TextBlock Style="{StaticResource BatchRankingMetricTextStyle}"
+                                                               Text="{Binding QuickMetrics}" />
+                                                </Border>
+                                                <Expander Margin="0,3,0,0"
+                                                          IsExpanded="False">
+                                                    <Expander.Header>
+                                                        <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                                   Text="详情" />
+                                                    </Expander.Header>
+                                                    <StackPanel Margin="0,6,0,0">
+                                                        <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                                   Text="{Binding CapabilitySummary}" />
+                                                        <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                                   Text="{Binding DeepSummary}"
+                                                                   TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                </Expander>
                                             </StackPanel>
 
                                             <Button Grid.Column="3"
@@ -337,10 +424,10 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="快速对比摘要" />
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="快测摘要" />
                         <TextBlock Margin="0,2,0,0"
                                    Style="{StaticResource SectionHintTextStyle}"
-                                   Text="这里保留本轮快速对比的结构化摘要，方便和排行榜图表、排行榜列表互相对照。" />
+                                   Text="保留本轮快测摘要，方便对照。" />
                     </StackPanel>
 
                     <TextBox Grid.Row="1"
@@ -367,7 +454,7 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0">
-                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="第 4 步：勾选候选项并做深度测试" />
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="深度测试" />
                             <TextBlock Margin="0,2,0,0"
                                        Style="{StaticResource SectionHintTextStyle}"
                                        Text="{Binding BatchSelectionSummary, Mode=OneWay}" />
@@ -378,13 +465,20 @@
                                 Command="{Binding RunSelectedBatchDeepTestsCommand}"
                                 Style="{StaticResource PrimaryActionButtonStyle}"
                                 IsEnabled="{Binding CanRunSelectedBatchDeepTests, Mode=OneWay}"
-                                Content="对勾选项做深度测试" />
+                                Content="开始深测" />
                     </Grid>
 
-                    <TextBlock Grid.Row="1"
-                               Margin="0,6,0,0"
-                               Style="{StaticResource SectionHintTextStyle}"
-                               Text="深度测试只复用已勾选候选站点的 BaseUrl / Key / Model，不会改写单站页当前配置，也不会替你新增候选项。" />
+                    <Expander Grid.Row="1"
+                              Margin="0,6,0,0"
+                              IsExpanded="False">
+                        <Expander.Header>
+                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                       Text="说明" />
+                        </Expander.Header>
+                        <TextBlock Margin="0,6,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="只复用已勾选项的 Base URL / Key / Model" />
+                    </Expander>
 
                     <TextBlock Grid.Row="2"
                                Margin="0,4,0,0"
@@ -397,7 +491,7 @@
                         <Grid>
                             <TextBlock HorizontalAlignment="Center"
                                        VerticalAlignment="Center"
-                                       Text="勾选排行榜列表项并开始深度测试后，这里会实时显示候选站点深度测试总览图。">
+                                       Text="开始深测后，这里会显示总览图。">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
                                         <Setter Property="Visibility" Value="Visible" />

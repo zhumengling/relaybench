@@ -8,10 +8,10 @@ namespace NetTest.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private readonly ExitIpRiskReviewService _exitIpRiskReviewService = new();
-    private string _ipRiskOverviewSummary = "运行 IP 风险复核后，这里会显示当前公网出口 IP、地区、ASN 与综合结论。";
-    private string _ipRiskAssessmentSummary = "尚未执行 IP 风险复核。";
-    private string _ipRiskSourceDetailSummary = "尚无多源复核明细。";
-    private string _ipRiskSummaryMetaText = "尚未执行 IP 风险复核。运行一次后，这里会显示检测时间、识别来源和当前出口信息。";
+    private string _ipRiskOverviewSummary = "运行后显示出口 IP、地区和 ASN。";
+    private string _ipRiskAssessmentSummary = "暂无风险结论。";
+    private string _ipRiskSourceDetailSummary = "暂无来源明细。";
+    private string _ipRiskSummaryMetaText = "运行后显示检测时间和识别来源。";
 
     public string IpRiskOverviewSummary
     {
@@ -141,30 +141,30 @@ public sealed partial class MainWindowViewModel
 
     private void ResetIpRiskPresentation()
     {
-        IpRiskOverviewSummary = "运行 IP 风险复核后，这里会显示当前公网出口 IP、地区、ASN 与综合结论。";
-        IpRiskAssessmentSummary = "尚未执行 IP 风险复核。";
-        IpRiskSourceDetailSummary = "尚无多源复核明细。";
-        IpRiskSummaryMetaText = "尚未执行 IP 风险复核。运行一次后，这里会显示检测时间、识别来源和当前出口信息。";
+        IpRiskOverviewSummary = "运行后显示出口 IP、地区和 ASN。";
+        IpRiskAssessmentSummary = "暂无风险结论。";
+        IpRiskSourceDetailSummary = "暂无来源明细。";
+        IpRiskSummaryMetaText = "运行后显示检测时间和识别来源。";
 
         ReplaceCollection(
             IpRiskSummaryBadges,
             [
-                new IpRiskSummaryBadgeViewModel("出口 IP", "未检测", "等待识别当前公网出口。", IpRiskToneViewModel.Info),
-                new IpRiskSummaryBadgeViewModel("地区", "未检测", "等待返回地区与城市。", IpRiskToneViewModel.Neutral),
-                new IpRiskSummaryBadgeViewModel("网络", "未检测", "等待返回 ASN 与组织。", IpRiskToneViewModel.Neutral),
-                new IpRiskSummaryBadgeViewModel("成功源", "0/0", "尚未发起来源查询。", IpRiskToneViewModel.Neutral),
-                new IpRiskSummaryBadgeViewModel("综合结论", "待检测", "运行后给出综合风险判断。", IpRiskToneViewModel.Warning)
+                new IpRiskSummaryBadgeViewModel("出口 IP", "未检测", "等待识别当前出口", IpRiskToneViewModel.Info),
+                new IpRiskSummaryBadgeViewModel("地区", "未检测", "等待返回地区信息", IpRiskToneViewModel.Neutral),
+                new IpRiskSummaryBadgeViewModel("网络", "未检测", "等待返回 ASN 与组织", IpRiskToneViewModel.Neutral),
+                new IpRiskSummaryBadgeViewModel("成功源", "0/0", "尚未查询来源", IpRiskToneViewModel.Neutral),
+                new IpRiskSummaryBadgeViewModel("综合结论", "待检测", "运行后给出结论", IpRiskToneViewModel.Warning)
             ]);
 
         ReplaceCollection(
             IpRiskIndicatorCards,
             [
-                new IpRiskIndicatorCardViewModel("机房 / 住宅", "等待检测", "运行后统计各来源是否把出口标记为机房 / hosting。", IpRiskToneViewModel.Neutral),
-                new IpRiskIndicatorCardViewModel("代理", "等待检测", "运行后统计各来源是否识别为代理。", IpRiskToneViewModel.Neutral),
-                new IpRiskIndicatorCardViewModel("VPN", "等待检测", "运行后统计各来源是否识别为 VPN。", IpRiskToneViewModel.Neutral),
-                new IpRiskIndicatorCardViewModel("Tor", "等待检测", "运行后统计各来源是否命中 Tor。", IpRiskToneViewModel.Neutral),
-                new IpRiskIndicatorCardViewModel("滥用", "等待检测", "运行后统计各来源是否命中滥用 / 威胁情报。", IpRiskToneViewModel.Neutral),
-                new IpRiskIndicatorCardViewModel("综合风险", "待检测", "运行后根据风险信号和正向信号做综合归类。", IpRiskToneViewModel.Warning)
+                new IpRiskIndicatorCardViewModel("机房 / 住宅", "等待检测", "统计是否被标记为机房", IpRiskToneViewModel.Neutral),
+                new IpRiskIndicatorCardViewModel("代理", "等待检测", "统计是否被标记为代理", IpRiskToneViewModel.Neutral),
+                new IpRiskIndicatorCardViewModel("VPN", "等待检测", "统计是否被标记为 VPN", IpRiskToneViewModel.Neutral),
+                new IpRiskIndicatorCardViewModel("Tor", "等待检测", "统计是否命中 Tor", IpRiskToneViewModel.Neutral),
+                new IpRiskIndicatorCardViewModel("滥用", "等待检测", "统计是否命中滥用情报", IpRiskToneViewModel.Neutral),
+                new IpRiskIndicatorCardViewModel("综合风险", "待检测", "根据风险和正向信号归类", IpRiskToneViewModel.Warning)
             ]);
 
         ReplaceCollection(IpRiskSourceRows, [CreatePlaceholderSourceRow()]);

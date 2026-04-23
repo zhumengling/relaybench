@@ -7,7 +7,7 @@ namespace NetTest.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private bool _proxyBatchQuickCompareCompleted;
-    private string _batchDeepTestSummary = "完成快速对比后，请在排行榜列表中勾选候选项，再发起深度测试。";
+    private string _batchDeepTestSummary = "先勾选候选项，再开始深测。";
 
     public bool ProxyBatchQuickCompareCompleted
     {
@@ -32,7 +32,7 @@ public sealed partial class MainWindowViewModel
         {
             if (!ProxyBatchQuickCompareCompleted || ProxyBatchRankingRows.Count == 0)
             {
-                return "先导入或选择入口组，再开始快速对比。";
+                return "先维护入口组，再开始快测。";
             }
 
             var selectedRows = GetSelectedBatchRankingRows();
@@ -40,8 +40,8 @@ public sealed partial class MainWindowViewModel
             if (selectedRows.Length == 0)
             {
                 return checkedRows > 0
-                    ? $"当前已勾选 {checkedRows} 个排行榜列表项，但它们现在都不能继续深度测试：{GetBatchSelectionBlockingReason() ?? "请先重新快速对比或重新勾选。"}"
-                    : $"快速对比已完成，共 {ProxyBatchRankingRows.Count} 个排行榜列表项；当前未勾选候选站点。";
+                    ? $"已勾选 {checkedRows} 项，但当前都不可深测：{GetBatchSelectionBlockingReason() ?? "请重新快测或重选。"}"
+                    : $"快测完成，共 {ProxyBatchRankingRows.Count} 项；当前未勾选候选项。";
             }
 
             var preview = string.Join("、", selectedRows.Take(3).Select(row => $"#{row.Rank} {row.EntryName}"));
@@ -51,8 +51,8 @@ public sealed partial class MainWindowViewModel
             }
 
             return checkedRows == selectedRows.Length
-                ? $"已勾选 {selectedRows.Length}/{ProxyBatchRankingRows.Count} 个排行榜列表项：{preview}。"
-                : $"已勾选 {checkedRows} 个排行榜列表项，其中 {selectedRows.Length} 个当前仍处于“加入测试”范围内：{preview}。";
+                ? $"已勾选 {selectedRows.Length}/{ProxyBatchRankingRows.Count} 项：{preview}"
+                : $"已勾选 {checkedRows} 项，其中 {selectedRows.Length} 项可继续深测：{preview}";
         }
     }
 
@@ -68,7 +68,7 @@ public sealed partial class MainWindowViewModel
     private void PrepareForProxyBatchQuickCompare()
     {
         ProxyBatchQuickCompareCompleted = false;
-        BatchDeepTestSummary = "正在执行快速对比；完成后请先在排行榜列表里勾选候选项，再继续做深度测试。";
+        BatchDeepTestSummary = "快测进行中；完成后再勾选候选项。";
         ResetBatchDeepComparisonState();
         RefreshBatchSelectionState();
     }
@@ -105,8 +105,8 @@ public sealed partial class MainWindowViewModel
         }
 
         BatchDeepTestSummary = aggregateRows.Count == 0
-            ? "当前没有可做深度测试的候选项。"
-            : "快速对比已完成。请在排行榜列表里勾选候选项，再执行深度测试。";
+            ? "暂无可深测候选项。"
+            : "快测完成，勾选候选项后可深测。";
         ResetBatchDeepComparisonState();
 
         RefreshBatchSelectionState();

@@ -12,8 +12,8 @@ public sealed partial class MainWindowViewModel
     private readonly ClientApiDiagnosticsService _clientApiDiagnosticsService = new();
     private readonly ClientApiConfigRestoreService _clientApiConfigRestoreService = new();
     private ClientApiDiagnosticsResult? _lastClientApiDiagnosticsResult;
-    private string _clientApiSummary = "运行客户端 API 联通鉴定后，这里会显示 Codex / VSCode / Antigravity / Claude 等客户端的安装状态、配置线索和底层 API 可达性。";
-    private string _clientApiDetail = "尚未执行客户端 API 联通鉴定。";
+    private string _clientApiSummary = "运行后显示已发现应用和接入状态。";
+    private string _clientApiDetail = "尚未扫描应用接入。";
 
     public ObservableCollection<OfficialApiStatusRowViewModel> ClientApiStatusRows { get; } = [];
 
@@ -75,7 +75,7 @@ public sealed partial class MainWindowViewModel
         }
 
         ClientApiDetail = builder.Length == 0
-            ? "尚未执行客户端 API 联通鉴定。"
+            ? "尚未扫描应用接入。"
             : builder.ToString().TrimEnd();
 
         RefreshClientApiStatusRows(result);

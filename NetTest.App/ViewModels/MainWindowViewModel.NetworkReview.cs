@@ -81,14 +81,14 @@ public sealed partial class MainWindowViewModel
     public string SelectedNetworkReviewToolDescription
         => SelectedNetworkReviewToolKey switch
         {
-            NetworkReviewToolOfficialApi => "确认官方网页入口与 API 目录是否可用，用来快速区分是你本地网络问题，还是网页端入口本身异常；这里不再包含客户端鉴定。",
-            NetworkReviewToolSpeed => "查看延迟、抖动、带宽和丢包，用来判断体感卡顿和 TTFT 偏高是不是链路问题。",
-            NetworkReviewToolRoute => "查看逐跳路径、丢包、绕路和地理路径，适合排查中间链路抖动与异常跳点。",
-            NetworkReviewToolSplitRouting => "查看出口地区、DNS 对比、分流命中和 HTTPS 可达性，适合排查地区与访问异常。",
-            NetworkReviewToolIpRisk => "自动识别当前出口 IP，并联合 ipapi.is、proxycheck.io、ip-api.com、ipwho.is、ipinfo.io、IP2Location.io、GreyNoise、Spamhaus DROP、Spamhaus ASN-DROP、AlienVault OTX、Shodan InternetDB、Feodo Tracker 与 Tor 列表做机房、代理、VPN、Tor、暴露面与威胁情报复核。",
-            NetworkReviewToolStun => "查看 NAT 类型、映射行为和打洞条件，适合继续确认边界网络限制。",
-            NetworkReviewToolPortScan => "查看目标端口可达性、服务指纹和边界封锁，适合进一步做连通性复核。",
-            _ => "先确认本机联网、DNS 与公网出口是否正常，再决定是不是接口自身不可用。"
+            NetworkReviewToolOfficialApi => "看网页入口和官方 API 是否可达",
+            NetworkReviewToolSpeed => "看延迟、抖动、带宽、丢包",
+            NetworkReviewToolRoute => "看逐跳路径和异常跳点",
+            NetworkReviewToolSplitRouting => "看出口、DNS 和分流命中",
+            NetworkReviewToolIpRisk => "看出口 IP、ASN 和风险标记",
+            NetworkReviewToolStun => "看 NAT 类型和打洞条件",
+            NetworkReviewToolPortScan => "看端口可达和服务指纹",
+            _ => "看本机网络、DNS 和公网出口"
         };
 
     public bool IsNetworkReviewBasicNetworkSelected
@@ -215,7 +215,7 @@ public sealed partial class MainWindowViewModel
     }
 
     private string BuildNetworkReviewSubtitle()
-        => $"{SelectedNetworkReviewToolGroupName} · 当前功能：{SelectedNetworkReviewToolDisplayName}。{SelectedNetworkReviewToolDescription}";
+        => $"{SelectedNetworkReviewToolGroupName} · {SelectedNetworkReviewToolDisplayName} · {SelectedNetworkReviewToolDescription}";
 
     private static string GetNetworkReviewIssueDisplayName(string key)
         => key switch

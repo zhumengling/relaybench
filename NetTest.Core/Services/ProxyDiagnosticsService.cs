@@ -216,7 +216,12 @@ public sealed partial class ProxyDiagnosticsService
             settings.ApiKey.Trim(),
             string.IsNullOrWhiteSpace(settings.Model) ? string.Empty : settings.Model.Trim(),
             settings.IgnoreTlsErrors,
-            Math.Clamp(settings.TimeoutSeconds, 5, 120));
+            Math.Clamp(settings.TimeoutSeconds, 5, 120),
+            string.IsNullOrWhiteSpace(settings.EmbeddingsModel) ? null : settings.EmbeddingsModel.Trim(),
+            string.IsNullOrWhiteSpace(settings.ImagesModel) ? null : settings.ImagesModel.Trim(),
+            string.IsNullOrWhiteSpace(settings.AudioTranscriptionModel) ? null : settings.AudioTranscriptionModel.Trim(),
+            string.IsNullOrWhiteSpace(settings.AudioSpeechModel) ? null : settings.AudioSpeechModel.Trim(),
+            string.IsNullOrWhiteSpace(settings.ModerationModel) ? null : settings.ModerationModel.Trim());
 
         return true;
     }

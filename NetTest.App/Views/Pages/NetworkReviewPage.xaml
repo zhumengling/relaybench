@@ -217,6 +217,24 @@
             <Setter Property="Margin" Value="0" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
+
+        <Style x:Key="IpRiskMetaStripBorderStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource InsetPanelBorderStyle}">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="#DCE6F8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+
+        <Style x:Key="IpRiskAssessmentPanelBorderStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource SectionPanelBorderStyle}">
+            <Setter Property="Background" Value="#F8FBFF" />
+            <Setter Property="BorderBrush" Value="#C7DAFF" />
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto"
@@ -235,7 +253,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x7F51;&#x7EDC;&#x590D;&#x6838;&#x5B50;&#x83DC;&#x5355;" />
+                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="工具" />
                     <ListBox Grid.Row="1"
                              Margin="0,6,0,0"
                              ItemsSource="{Binding NetworkReviewToolOptions}"
@@ -315,7 +333,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                           Text="&#x5148;&#x505A;&#x672C;&#x673A;&#x57FA;&#x7840;&#x7F51;&#x7EDC;&#x5FEB;&#x7167;&#xFF0C;&#x9002;&#x5408;&#x5FEB;&#x901F;&#x5224;&#x65AD;&#x662F;&#x4E0D;&#x662F;&#x4F60;&#x81EA;&#x5DF1;&#x7684;&#x7F51;&#x7EDC;&#x3001;DNS &#x6216;&#x516C;&#x7F51;&#x51FA;&#x53E3;&#x5148;&#x51FA;&#x4E86;&#x95EE;&#x9898;&#x3002;" />
+                                           Text="先看本机网络、DNS 和公网出口" />
                                 <Button Grid.Column="1"
                                         MinWidth="128"
                                         Command="{Binding RunNetworkCommand}"
@@ -390,8 +408,18 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                           Text="这里只保留网页 API 入口检测，用来确认官方网页入口与 API 目录是否可用；客户端接入、Trace 与还原已移到“应用接入”统一处理。" />
+                                <TextBlock Text="看网页入口和 API 目录是否可达">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasOfficialApiStatusRows}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <Button Grid.Column="1"
                                         MinWidth="128"
                                         Command="{Binding RunWebApiTraceCommand}"
@@ -423,7 +451,7 @@
                                                    Margin="12,0,0,0"
                                                    VerticalAlignment="Top"
                                                    Style="{StaticResource SectionHintTextStyle}"
-                                                   Text="可点击右侧查看原始网页 Trace" />
+                                                   Text="右侧可看原始 Trace" />
                                     </Grid>
                                 </Border>
 
@@ -443,78 +471,94 @@
                                             <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="网页入口 / API 列表" />
                                             <TextBlock Grid.Column="1"
                                                        Style="{StaticResource SectionHintTextStyle}"
-                                                       Text="点击按钮查看原始网页 Trace" />
+                                                       Text="点击按钮看原始 Trace" />
                                         </Grid>
 
-                                        <ScrollViewer Grid.Row="1"
-                                                      Margin="0,6,0,0"
-                                                      VerticalScrollBarVisibility="Auto"
-                                                      HorizontalScrollBarVisibility="Disabled"
-                                                      Background="Transparent">
-                                            <ItemsControl ItemsSource="{Binding OfficialApiStatusRows}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Border Padding="0,8"
-                                                                BorderBrush="#EAECF0"
-                                                                BorderThickness="0,0,0,1">
-                                                            <Grid>
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                </Grid.ColumnDefinitions>
+                                        <Grid Grid.Row="1"
+                                              Margin="0,6,0,0">
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                          HorizontalScrollBarVisibility="Disabled"
+                                                          Background="Transparent">
+                                                <ItemsControl ItemsSource="{Binding OfficialApiStatusRows}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Padding="0,8"
+                                                                    BorderBrush="#EAECF0"
+                                                                    BorderThickness="0,0,0,1">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
 
-                                                                <StackPanel Grid.Column="0">
-                                                                    <StackPanel Orientation="Horizontal">
-                                                                        <Border Padding="7,2"
-                                                                                Margin="0,0,8,0"
-                                                                                Background="#F5F7FA"
-                                                                                BorderBrush="#D0D5DD"
-                                                                                BorderThickness="1"
-                                                                                CornerRadius="999">
-                                                                            <TextBlock FontSize="10"
+                                                                    <StackPanel Grid.Column="0">
+                                                                        <StackPanel Orientation="Horizontal">
+                                                                            <Border Padding="7,2"
+                                                                                    Margin="0,0,8,0"
+                                                                                    Background="#F5F7FA"
+                                                                                    BorderBrush="#D0D5DD"
+                                                                                    BorderThickness="1"
+                                                                                    CornerRadius="999">
+                                                                                <TextBlock FontSize="10"
+                                                                                           FontWeight="SemiBold"
+                                                                                           Foreground="{StaticResource MutedBrush}"
+                                                                                           Text="{Binding Provider}" />
+                                                                            </Border>
+                                                                            <TextBlock VerticalAlignment="Center"
+                                                                                       FontSize="11.4"
                                                                                        FontWeight="SemiBold"
-                                                                                       Foreground="{StaticResource MutedBrush}"
-                                                                                       Text="{Binding Provider}" />
-                                                                        </Border>
-                                                                        <TextBlock VerticalAlignment="Center"
-                                                                                   FontSize="11.4"
-                                                                                   FontWeight="SemiBold"
-                                                                                   Foreground="{StaticResource TextBrush}"
-                                                                                   Text="{Binding Name}" />
+                                                                                       Foreground="{StaticResource TextBrush}"
+                                                                                       Text="{Binding Name}" />
+                                                                        </StackPanel>
+
+                                                                        <TextBlock Margin="0,4,0,0"
+                                                                                   TextWrapping="Wrap"
+                                                                                   Foreground="{StaticResource MutedBrush}"
+                                                                                   Text="{Binding Summary}" />
+
+                                                                        <TextBlock Margin="0,3,0,0"
+                                                                                   FontFamily="Consolas"
+                                                                                   FontSize="10.2"
+                                                                                   Foreground="#667085"
+                                                                                   Text="{Binding EndpointMetaText}" />
                                                                     </StackPanel>
 
-                                                                    <TextBlock Margin="0,4,0,0"
-                                                                               TextWrapping="Wrap"
-                                                                               Foreground="{StaticResource MutedBrush}"
-                                                                               Text="{Binding Summary}" />
+                                                                    <StackPanel Grid.Column="1"
+                                                                                Margin="12,0,0,0"
+                                                                                HorizontalAlignment="Right">
+                                                                        <Border Padding="8,3"
+                                                                                Background="{Binding StatusBackground}"
+                                                                                CornerRadius="999">
+                                                                            <TextBlock FontWeight="SemiBold"
+                                                                                       Foreground="{Binding StatusForeground}"
+                                                                                       Text="{Binding AvailabilityText}" />
+                                                                        </Border>
+                                                                        <Button Command="{Binding OpenRawTraceCommand}"
+                                                                                Style="{StaticResource OfficialApiTraceButtonStyle}"
+                                                                                Content="&#x539F;&#x59CB; Trace" />
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
 
-                                                                    <TextBlock Margin="0,3,0,0"
-                                                                               FontFamily="Consolas"
-                                                                               FontSize="10.2"
-                                                                               Foreground="#667085"
-                                                                               Text="{Binding EndpointMetaText}" />
-                                                                </StackPanel>
-
-                                                                <StackPanel Grid.Column="1"
-                                                                            Margin="12,0,0,0"
-                                                                            HorizontalAlignment="Right">
-                                                                    <Border Padding="8,3"
-                                                                            Background="{Binding StatusBackground}"
-                                                                            CornerRadius="999">
-                                                                        <TextBlock FontWeight="SemiBold"
-                                                                                   Foreground="{Binding StatusForeground}"
-                                                                                   Text="{Binding AvailabilityText}" />
-                                                                    </Border>
-                                                                    <Button Command="{Binding OpenRawTraceCommand}"
-                                                                            Style="{StaticResource OfficialApiTraceButtonStyle}"
-                                                                            Content="&#x539F;&#x59CB; Trace" />
-                                                                </StackPanel>
-                                                            </Grid>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </ScrollViewer>
+                                            <TextBlock HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Text="点击“开始检测”后显示结果。">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasOfficialApiStatusRows}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
                                     </Grid>
                                 </Border>
                             </Grid>
@@ -891,7 +935,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                               Text="自动识别当前公网出口 IP，并联合多个公开源做机房、代理、VPN、Tor 与滥用复核；当前页改为诊断工作台视图，先看总体，再看来源矩阵。" />
+                                               Text="先看总体，再看矩阵。" />
                                     <Button Grid.Column="1"
                                             MinWidth="128"
                                             Command="{Binding RunIpRiskReviewCommand}"
@@ -941,9 +985,10 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <TextBlock Margin="0,0,0,2"
-                                                   Style="{StaticResource SectionHintTextStyle}"
-                                                   Text="{Binding IpRiskSummaryMetaText}" />
+                                        <Border Style="{StaticResource IpRiskMetaStripBorderStyle}">
+                                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                       Text="{Binding IpRiskSummaryMetaText}" />
+                                        </Border>
                                     </StackPanel>
                                 </Border>
 
@@ -953,7 +998,7 @@
                                         <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="风险状态" />
                                         <TextBlock Margin="0,2,0,0"
                                                    Style="{StaticResource SectionHintTextStyle}"
-                                                   Text="把机房、代理、VPN、Tor、滥用与综合风险拆开显示，先看总体判断，再决定要不要继续看底部原始明细。" />
+                                                   Text="先看总体判断，再决定是否下钻" />
                                         <ItemsControl Margin="0,6,0,0"
                                                       ItemsSource="{Binding IpRiskIndicatorCards}">
                                             <ItemsControl.ItemsPanel>
@@ -1004,7 +1049,7 @@
                                         <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="多源矩阵" />
                                         <TextBlock Margin="0,2,0,0"
                                                    Style="{StaticResource SectionHintTextStyle}"
-                                                   Text="按来源拆开看结果是否一致；如果某一列有分歧，先看该行备注，再去底部原始明细核对返回内容。" />
+                                                   Text="按来源对照结果是否一致" />
                                         <Border Margin="0,6,0,0"
                                                 Background="{StaticResource InputBrush}"
                                                 BorderBrush="{StaticResource PanelBorderBrush}"
@@ -1163,18 +1208,35 @@
                                     </Grid.ColumnDefinitions>
 
                                     <Border Grid.Column="0"
-                                            Style="{StaticResource SectionPanelBorderStyle}">
+                                            Style="{StaticResource IpRiskAssessmentPanelBorderStyle}">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="*" />
                                             </Grid.RowDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="综合判断与建议" />
-                                                <TextBlock Margin="0,2,0,0"
-                                                           Style="{StaticResource SectionHintTextStyle}"
-                                                           Text="这里直接给出综合结论、风险信号、正向信号和建议，适合先看结论再决定要不要继续追原始返回。" />
-                                            </StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="综合判断与建议" />
+                                                    <TextBlock Margin="0,2,0,0"
+                                                               Style="{StaticResource SectionHintTextStyle}"
+                                                               Text="先看结论，再决定是否继续下钻" />
+                                                </StackPanel>
+                                                <Border Grid.Column="1"
+                                                        Padding="8,2"
+                                                        Background="#EEF4FF"
+                                                        BorderBrush="{StaticResource AccentBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="999">
+                                                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{StaticResource AccentBrush}"
+                                                               Text="&#x7ED3;&#x8BBA;" />
+                                                </Border>
+                                            </Grid>
                                             <TextBox Grid.Row="1"
                                                      Style="{StaticResource ReviewPaneTextBoxStyle}"
                                                      MinHeight="220"
@@ -1184,22 +1246,19 @@
 
                                     <Border Grid.Column="2"
                                             Style="{StaticResource SectionPanelBorderStyle}">
-                                        <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="*" />
-                                            </Grid.RowDefinitions>
-                                            <StackPanel>
+                                        <Expander IsExpanded="False">
+                                            <Expander.Header>
                                                 <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="原始明细" />
-                                                <TextBlock Margin="0,2,0,0"
-                                                           Style="{StaticResource SectionHintTextStyle}"
-                                                           Text="保留各来源摘要、详情和错误信息，便于排查某一来源为什么给出该结论。" />
+                                            </Expander.Header>
+                                            <StackPanel Margin="0,6,0,0">
+                                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                           Text="保留各来源摘要、详情和错误" />
+                                                <TextBox Margin="0,6,0,0"
+                                                         Style="{StaticResource ReviewPaneTextBoxStyle}"
+                                                         MinHeight="220"
+                                                         Text="{Binding IpRiskSourceDetailSummary, Mode=OneWay}" />
                                             </StackPanel>
-                                            <TextBox Grid.Row="1"
-                                                     Style="{StaticResource ReviewPaneTextBoxStyle}"
-                                                     MinHeight="220"
-                                                     Text="{Binding IpRiskSourceDetailSummary, Mode=OneWay}" />
-                                        </Grid>
+                                        </Expander>
                                     </Border>
                                 </Grid>
                             </StackPanel>
@@ -1216,7 +1275,7 @@
                             </Grid.RowDefinitions>
 
                             <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                       Text="&#x4F18;&#x5148;&#x786E;&#x8BA4;&#x516C;&#x7F51;&#x6620;&#x5C04;&#xFF1B;&#x82E5;&#x670D;&#x52A1;&#x5668;&#x652F;&#x6301; RFC 5780&#xFF0C;&#x53EF;&#x7EE7;&#x7EED;&#x5224;&#x65AD; NAT &#x884C;&#x4E3A;&#x548C;&#x6253;&#x6D1E;&#x6761;&#x4EF6;&#x3002;" />
+                                       Text="先确认公网映射；支持 RFC 5780 时可继续细分 NAT" />
 
                             <Grid Grid.Row="1" Margin="0,6,0,0">
                                 <Grid.ColumnDefinitions>
