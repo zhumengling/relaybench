@@ -1,12 +1,23 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace RelayBench.App.Infrastructure;
 
 public sealed class AppStateStore
 {
     private const string LegacyDefaultProxyModel = "gpt-4o-mini";
+    private static readonly HashSet<string> SecretPropertyNames = new(StringComparer.Ordinal)
+    {
+        nameof(AppStateSnapshot.ProxyApiKey),
+        nameof(AppStateSnapshot.ProxyCacheIsolationAlternateApiKey),
+        nameof(AppStateSnapshot.ProxyOfficialReferenceApiKey),
+        nameof(AppStateSnapshot.ProxyBatchTargetsText),
+        nameof(ProxyBatchConfigItemSnapshot.EntryApiKey),
+        nameof(ProxyBatchConfigItemSnapshot.SiteGroupApiKey)
+    };
+
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         WriteIndented = true
@@ -18,14 +29,22 @@ public sealed class AppStateStore
     private readonly string _configDirectory;
 
     public AppStateStore()
+        : this(RelayBenchPaths.RootDirectory)
     {
-        _dataDirectory = RelayBenchPaths.DataDirectory;
-        Directory.CreateDirectory(_dataDirectory);
-        _filePath = RelayBenchPaths.AppStatePath;
+    }
 
-        _configDirectory = RelayBenchPaths.ConfigDirectory;
+    public AppStateStore(string rootDirectory)
+    {
+        var normalizedRootDirectory = Path.GetFullPath(rootDirectory);
+        Directory.CreateDirectory(normalizedRootDirectory);
+
+        _dataDirectory = Path.Combine(normalizedRootDirectory, "data");
+        Directory.CreateDirectory(_dataDirectory);
+        _filePath = Path.Combine(_dataDirectory, "app-state.json");
+
+        _configDirectory = Path.Combine(normalizedRootDirectory, "config");
         Directory.CreateDirectory(_configDirectory);
-        _proxyRelayConfigPath = RelayBenchPaths.ProxyRelayConfigPath;
+        _proxyRelayConfigPath = Path.Combine(_configDirectory, "proxy-relay.json");
     }
 
     public AppStateSnapshot Load()
@@ -41,7 +60,7 @@ public sealed class AppStateStore
             else
             {
                 var json = File.ReadAllText(_filePath, Encoding.UTF8);
-                snapshot = JsonSerializer.Deserialize<AppStateSnapshot>(json, SerializerOptions) ?? new AppStateSnapshot();
+                snapshot = DeserializeWithUnprotectedSecrets<AppStateSnapshot>(json) ?? new AppStateSnapshot();
                 ApplyLegacyPortScanState(snapshot, json);
             }
         }
@@ -59,8 +78,8 @@ public sealed class AppStateStore
     public void Save(AppStateSnapshot snapshot)
     {
         EnsureDirectories();
-        var json = JsonSerializer.Serialize(snapshot, SerializerOptions);
-        File.WriteAllText(_filePath, json, Encoding.UTF8);
+        var json = SerializeWithProtectedSecrets(snapshot);
+        WriteAllTextAtomically(_filePath, json);
         SaveProxyRelayDirectoryConfig(snapshot);
     }
 
@@ -74,7 +93,7 @@ public sealed class AppStateStore
             }
 
             var json = File.ReadAllText(_proxyRelayConfigPath, Encoding.UTF8);
-            var config = JsonSerializer.Deserialize<ProxyRelayDirectoryConfig>(json, SerializerOptions);
+            var config = DeserializeWithUnprotectedSecrets<ProxyRelayDirectoryConfig>(json);
             if (config is null)
             {
                 return;
@@ -180,8 +199,8 @@ public sealed class AppStateStore
                 ProxyBatchDraft = CreateProxyBatchDraftSnapshot(snapshot.ProxyBatchDraft)
             };
 
-            var json = JsonSerializer.Serialize(config, SerializerOptions);
-            File.WriteAllText(_proxyRelayConfigPath, json, Encoding.UTF8);
+            var json = SerializeWithProtectedSecrets(config);
+            WriteAllTextAtomically(_proxyRelayConfigPath, json);
         }
         catch (Exception ex)
         {
@@ -193,6 +212,75 @@ public sealed class AppStateStore
     {
         Directory.CreateDirectory(_dataDirectory);
         Directory.CreateDirectory(_configDirectory);
+    }
+
+    private static string SerializeWithProtectedSecrets<T>(T value)
+    {
+        var node = JsonSerializer.SerializeToNode(value, SerializerOptions);
+        ProtectSecretNodes(node);
+        return node?.ToJsonString(SerializerOptions) ?? "{}";
+    }
+
+    private static T? DeserializeWithUnprotectedSecrets<T>(string json)
+    {
+        var node = JsonNode.Parse(json);
+        UnprotectSecretNodes(node);
+        return node is null ? default : node.Deserialize<T>(SerializerOptions);
+    }
+
+    private static void ProtectSecretNodes(JsonNode? node)
+        => TransformSecretNodes(node, SecretProtector.Protect);
+
+    private static void UnprotectSecretNodes(JsonNode? node)
+        => TransformSecretNodes(node, SecretProtector.Unprotect);
+
+    private static void TransformSecretNodes(JsonNode? node, Func<string?, string> transform)
+    {
+        switch (node)
+        {
+            case JsonObject jsonObject:
+                foreach (var property in jsonObject.ToArray())
+                {
+                    if (SecretPropertyNames.Contains(property.Key))
+                    {
+                        jsonObject[property.Key] = property.Value?.GetValue<string>() is { } secret
+                            ? transform(secret)
+                            : property.Value;
+                        continue;
+                    }
+
+                    TransformSecretNodes(property.Value, transform);
+                }
+
+                break;
+            case JsonArray jsonArray:
+                foreach (var item in jsonArray)
+                {
+                    TransformSecretNodes(item, transform);
+                }
+
+                break;
+        }
+    }
+
+    private static void WriteAllTextAtomically(string path, string content)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var temporaryPath = $"{path}.{Guid.NewGuid():N}.tmp";
+        File.WriteAllText(temporaryPath, content, Encoding.UTF8);
+
+        if (File.Exists(path))
+        {
+            File.Replace(temporaryPath, path, null);
+            return;
+        }
+
+        File.Move(temporaryPath, path);
     }
 
     private static void NormalizeProxyModelSelection(AppStateSnapshot snapshot)

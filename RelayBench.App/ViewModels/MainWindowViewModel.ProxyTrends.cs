@@ -108,6 +108,7 @@ public sealed partial class MainWindowViewModel
             if (SetProperty(ref _proxyChartDialogImage, value))
             {
                 OnPropertyChanged(nameof(HasProxyChartDialogImage));
+                OnPropertyChanged(nameof(IsBitmapProxyChartVisible));
             }
         }
     }

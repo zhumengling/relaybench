@@ -51,6 +51,9 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    public string ApplicationCenterProxyApiKeyPreview
+        => FormatPreviewApiKey(ProxyApiKey);
+
     private bool CanApplyCurrentInterfaceToCodexApps()
         => !IsBusy && GetApplicationCenterMissingContextFields().Count == 0;
 
@@ -148,6 +151,7 @@ public sealed partial class MainWindowViewModel
     {
         OnPropertyChanged(nameof(ApplicationCenterApplyTargetSummary));
         OnPropertyChanged(nameof(ApplicationCenterApplyPreviewDetail));
+        OnPropertyChanged(nameof(ApplicationCenterProxyApiKeyPreview));
         ApplyCurrentInterfaceToCodexAppsCommand?.RaiseCanExecuteChanged();
     }
 

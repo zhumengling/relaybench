@@ -61,6 +61,7 @@ public sealed partial class MainWindowViewModel
     {
         var settings = BuildProxySettings();
         SetProxyChartRetryMode(ProxyChartRetryMode.None, ProxyChartRetryButtonText);
+        ResetProxyTrendChartAutoOpenSuppression();
         ReplaceProxyConcurrencyStages(Array.Empty<ProxyConcurrencyPressureStageResult>());
         _lastProxyConcurrencyResult = null;
         ResetProxyConcurrencyChartSnapshot();
@@ -72,6 +73,15 @@ public sealed partial class MainWindowViewModel
             ProxyConcurrencyStages,
             "\u6B63\u5728\u7B49\u5F85\u7B2C 1 \u4E2A\u5E76\u53D1\u6863\u4F4D\u5B8C\u6210\u3002",
             null);
+        RefreshProxyConcurrencyChartSnapshot(
+            settings.BaseUrl,
+            settings.Model,
+            ProxyConcurrencyStages,
+            ProxyConcurrencySummary,
+            null,
+            activate: true,
+            includePendingPlan: true);
+        AutoOpenProxyTrendChartIfAllowed();
         UpdateGlobalTaskProgress("\u51C6\u5907\u4E2D", 8d);
 
         var stageProgress = new Progress<ProxyConcurrencyPressureStageResult>(stage =>
@@ -86,7 +96,14 @@ public sealed partial class MainWindowViewModel
                 ProxyConcurrencyStages,
                 $"\u6700\u8FD1\u5B8C\u6210\u6863\u4F4D\uFF1A{stage.Concurrency}\uFF0C{stage.Summary}",
                 null);
-            RefreshProxyConcurrencyChartSnapshot(settings.BaseUrl, settings.Model, ProxyConcurrencyStages, ProxyConcurrencySummary, null, activate: true);
+            RefreshProxyConcurrencyChartSnapshot(
+                settings.BaseUrl,
+                settings.Model,
+                ProxyConcurrencyStages,
+                ProxyConcurrencySummary,
+                null,
+                activate: true,
+                includePendingPlan: true);
             AutoOpenProxyTrendChartIfAllowed();
             UpdateGlobalTaskProgress(
                 ProxyConcurrencyStages.Count,
@@ -249,22 +266,29 @@ public sealed partial class MainWindowViewModel
         bool activate,
         int? stableConcurrencyLimit = null,
         int? rateLimitStartConcurrency = null,
-        int? highRiskConcurrency = null)
+        int? highRiskConcurrency = null,
+        bool includePendingPlan = false)
     {
         var stageArray = stages
             .OrderBy(static item => item.Concurrency)
             .ToArray();
 
-        if (stageArray.Length == 0)
+        if (stageArray.Length == 0 && !includePendingPlan)
         {
             return;
         }
 
-        var items = BuildProxyConcurrencyChartItems(
-            stageArray,
-            stableConcurrencyLimit,
-            rateLimitStartConcurrency,
-            highRiskConcurrency);
+        var items = includePendingPlan
+            ? BuildProxyConcurrencyLiveChartItems(
+                stageArray,
+                stableConcurrencyLimit,
+                rateLimitStartConcurrency,
+                highRiskConcurrency)
+            : BuildProxyConcurrencyChartItems(
+                stageArray,
+                stableConcurrencyLimit,
+                rateLimitStartConcurrency,
+                highRiskConcurrency);
         var chartResult = _proxyConcurrencyChartRenderService.Render(
             baseUrl ?? string.Empty,
             model,
@@ -296,8 +320,60 @@ public sealed partial class MainWindowViewModel
                 chartResult.Summary,
                 "\u6B63\u5728\u7B49\u5F85\u5E76\u53D1\u538B\u6D4B\u56FE\u8868\u6570\u636E...",
                 chartResult.ChartImage,
-                chartResult.HitRegions),
+                chartResult.HitRegions,
+                ConcurrencyItems: items),
             activate);
+    }
+
+    private static ProxyConcurrencyChartItem[] BuildProxyConcurrencyLiveChartItems(
+        IReadOnlyList<ProxyConcurrencyPressureStageResult> completedStages,
+        int? stableConcurrencyLimit,
+        int? rateLimitStartConcurrency,
+        int? highRiskConcurrency)
+    {
+        var completedItems = BuildProxyConcurrencyChartItems(
+            completedStages,
+            stableConcurrencyLimit,
+            rateLimitStartConcurrency,
+            highRiskConcurrency);
+        var completedConcurrencies = completedStages
+            .Select(static stage => stage.Concurrency)
+            .ToHashSet();
+        var pendingConcurrencies = DefaultProxyConcurrencyStagePlan
+            .Where(concurrency => !completedConcurrencies.Contains(concurrency))
+            .OrderBy(static concurrency => concurrency)
+            .ToArray();
+        if (pendingConcurrencies.Length == 0)
+        {
+            return completedItems;
+        }
+
+        var activeConcurrency = pendingConcurrencies[0];
+        var pendingItems = pendingConcurrencies
+            .Select(concurrency => new ProxyConcurrencyChartItem(
+                concurrency,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0d,
+                null,
+                null,
+                null,
+                concurrency == activeConcurrency ? "测试中" : "等待中",
+                concurrency == activeConcurrency
+                    ? "正在执行该并发档位，完成后会实时写入结果。"
+                    : "等待前序并发档位完成。",
+                false,
+                false,
+                false))
+            .ToArray();
+
+        return completedItems
+            .Concat(pendingItems)
+            .OrderBy(static item => item.Concurrency)
+            .ToArray();
     }
 
     private static ProxyConcurrencyChartItem[] BuildProxyConcurrencyChartItems(

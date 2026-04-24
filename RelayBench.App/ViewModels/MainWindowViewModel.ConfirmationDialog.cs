@@ -90,17 +90,14 @@ public sealed partial class MainWindowViewModel
         string actionLabel)
     {
         var targetLabel = CodexChatMergeService.BuildTargetDisplayName(target);
-        var sourceLabel = target == CodexChatMergeTarget.OfficialOpenAi
-            ? "第三方"
-            : "ChatGPT 官方";
 
         return ShowConfirmationDialogAsync(
-            "是否一起带上聊天记录",
-            $"{actionLabel}后，是否把已有 Codex 聊天一起整理到“{targetLabel}”下面继续查看？",
-            $"如果选择“是”，当前在“{sourceLabel}”下面显示的聊天会一起整理到“{targetLabel}”下面。\n" +
-            "如果选择“否”，只切换配置，不处理现有聊天。\n\n" +
-            "操作前会自动备份本地聊天索引和状态文件，不会直接覆盖聊天内容。",
-            "一起整理",
+            "是否合并所有 Codex 聊天记录",
+            $"{actionLabel}后，是否把本机 Codex 中官方、第三方、不同中转站/不同 provider 名称下的历史聊天统一整理到“{targetLabel}”下？",
+            "选择合并后，会修改本地 Codex 聊天索引和 session_meta 的 provider 归属，让不同入口、不同中转站和官方状态下产生的聊天集中显示在当前目标下。\n" +
+            "操作前会自动备份数据库和被修改的记录文件；不会改写聊天正文内容。\n\n" +
+            "如果只想切换接口配置，不整理历史聊天，请选择“仅切换配置”。",
+            "合并全部聊天",
             "仅切换配置");
     }
 }

@@ -58,6 +58,55 @@ public sealed partial class MainWindowViewModel
         return Task.CompletedTask;
     }
 
+    private Task OpenCurrentSingleStationChartAsync()
+        => SelectedSingleStationModeKey switch
+        {
+            SingleStationModeStability => OpenSelectedProxyChartAsync(
+                ProxyChartViewMode.StabilityTrend,
+                _proxyTrendChartSnapshot,
+                "当前还没有稳定性测试图表，请先运行稳定性测试。"),
+            SingleStationModeConcurrency => OpenSelectedProxyChartAsync(
+                ProxyChartViewMode.ConcurrencyPressure,
+                _proxyConcurrencyChartSnapshot,
+                ProxyConcurrencyChartStatusSummary),
+            _ => OpenProxySingleChartAsync()
+        };
+
+    private Task OpenSelectedProxyChartAsync(
+        ProxyChartViewMode mode,
+        ProxyChartDialogSnapshot? snapshot,
+        string emptyMessage)
+    {
+        if (snapshot?.Image is null)
+        {
+            StatusMessage = emptyMessage;
+            return Task.CompletedTask;
+        }
+
+        ActivateProxyChartView(mode);
+        ResetProxyTrendChartAutoOpenSuppression();
+        IsProxyTrendChartOpen = true;
+        RefreshProxyChartsForViewportContextChange();
+        return Task.CompletedTask;
+    }
+
+    private Task OpenProxySingleChartAsync()
+    {
+        if (_proxySingleChartSnapshot?.Image is null)
+        {
+            StatusMessage = string.IsNullOrWhiteSpace(ProxyChartDialogStatusSummary)
+                ? "当前还没有可查看的接口诊断图表。"
+                : ProxyChartDialogStatusSummary;
+            return Task.CompletedTask;
+        }
+
+        ActivateProxyChartView(ProxyChartViewMode.SingleLatency);
+        ResetProxyTrendChartAutoOpenSuppression();
+        IsProxyTrendChartOpen = true;
+        RefreshProxyChartsForViewportContextChange();
+        return Task.CompletedTask;
+    }
+
     private Task OpenProxyConcurrencyChartAsync()
     {
         if (_proxyConcurrencyChartSnapshot?.Image is null)

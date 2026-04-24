@@ -14,21 +14,21 @@ namespace RelayBench.App;
 
 public partial class MainWindow : Window
 {
-    private const int OverlayBackdropOpenDurationMs = 260;
-    private const int OverlayPanelOpenDurationMs = 360;
-    private const int OverlayCloseDurationMs = 230;
-    private const double OverlayOpenInitialScale = 0.915d;
-    private const double OverlayCloseTargetScale = 0.962d;
-    private const double OverlayOpenInitialOffsetY = 42d;
-    private const double OverlayCloseTargetOffsetY = 24d;
-    private const int WindowOpenDurationMs = 380;
-    private const double WindowOpenInitialScale = 0.956d;
-    private const double WindowOpenInitialOffsetY = 30d;
+    private const int OverlayBackdropOpenDurationMs = 180;
+    private const int OverlayPanelOpenDurationMs = 260;
+    private const int OverlayCloseDurationMs = 180;
+    private const double OverlayOpenInitialScale = 0.965d;
+    private const double OverlayCloseTargetScale = 0.985d;
+    private const double OverlayOpenInitialOffsetY = 18d;
+    private const double OverlayCloseTargetOffsetY = 12d;
+    private const int WindowOpenDurationMs = 300;
+    private const double WindowOpenInitialScale = 0.975d;
+    private const double WindowOpenInitialOffsetY = 18d;
     private const int WindowStateTransitionDurationMs = 280;
     private const double WindowStateMaximizedTransitionScale = 0.982d;
     private const double WindowStateRestoredTransitionScale = 1.018d;
-    private const int WorkbenchPageTransitionDurationMs = 300;
-    private const double WorkbenchPageTransitionOffsetX = 46d;
+    private const int WorkbenchPageTransitionDurationMs = 220;
+    private const double WorkbenchPageTransitionOffsetX = 18d;
     private const int GlobalTaskProgressOpenDurationMs = 320;
     private const int GlobalTaskProgressCloseDurationMs = 250;
     private const int GlobalTaskProgressFillDurationMs = 560;
@@ -91,6 +91,7 @@ public partial class MainWindow : Window
         StateChanged += (_, _) => AnimateShellStateTransition();
         Closed += (_, _) => DetachViewModel();
         ProxyChartImageScrollViewer.IsVisibleChanged += (_, _) => ScheduleProxyChartViewportWidthUpdate();
+        ProxyChartActivityOverlayCanvas.SizeChanged += (_, _) => ScheduleProxyChartActivityOverlayUpdate();
     }
 
     private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
@@ -125,6 +126,13 @@ public partial class MainWindow : Window
         {
             Dispatcher.BeginInvoke(AnimateGlobalTaskProgressFill, DispatcherPriority.Loaded);
             return;
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.ProxyChartDialogImage), StringComparison.Ordinal) ||
+            string.Equals(e.PropertyName, nameof(MainWindowViewModel.IsNativeSingleCapabilityChartVisible), StringComparison.Ordinal) ||
+            string.Equals(e.PropertyName, nameof(MainWindowViewModel.IsBusy), StringComparison.Ordinal))
+        {
+            ScheduleProxyChartActivityOverlayUpdate();
         }
 
         if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.SelectedWorkbenchPageKey), StringComparison.Ordinal))
@@ -600,6 +608,11 @@ public partial class MainWindow : Window
             UpdateProxyChartViewportWidth,
             DispatcherPriority.Loaded);
 
+    private void ScheduleProxyChartActivityOverlayUpdate()
+        => Dispatcher.BeginInvoke(
+            UpdateProxyChartActivityOverlay,
+            DispatcherPriority.Loaded);
+
     private void UpdateProxyChartViewportWidth()
     {
         if (DataContext is not MainWindowViewModel viewModel)
@@ -624,6 +637,96 @@ public partial class MainWindow : Window
         }
 
         viewModel.UpdateProxyChartViewportWidth(viewportWidth);
+        ScheduleProxyChartActivityOverlayUpdate();
+    }
+
+    private void UpdateProxyChartActivityOverlay()
+    {
+        ProxyChartActivityOverlayCanvas.Children.Clear();
+
+        if (DataContext is not MainWindowViewModel viewModel ||
+            !viewModel.IsBusy ||
+            viewModel.IsNativeSingleCapabilityChartVisible ||
+            viewModel.ProxyChartDialogImage is null ||
+            viewModel.CurrentProxyChartActivityRegions.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var region in viewModel.CurrentProxyChartActivityRegions)
+        {
+            if (region.Bounds.Width <= 0 || region.Bounds.Height <= 0)
+            {
+                continue;
+            }
+
+            ProxyChartActivityOverlayCanvas.Children.Add(CreateProxyChartActivityLine(region.Bounds));
+        }
+    }
+
+    private static UIElement CreateProxyChartActivityLine(Rect bounds)
+    {
+        var lineHeight = Math.Max(3d, bounds.Height);
+        var segmentWidth = Math.Min(190d, Math.Max(72d, bounds.Width * 0.24d));
+        var segmentTransform = new TranslateTransform(-segmentWidth, 0d);
+        var segment = new Border
+        {
+            Width = segmentWidth,
+            Height = lineHeight,
+            CornerRadius = new CornerRadius(lineHeight / 2d),
+            Background = CreateProxyChartActivityBrush(),
+            Opacity = 0.72d,
+            RenderTransform = segmentTransform
+        };
+
+        var host = new Grid
+        {
+            Width = bounds.Width,
+            Height = lineHeight,
+            ClipToBounds = true,
+            IsHitTestVisible = false
+        };
+        host.Children.Add(segment);
+        Canvas.SetLeft(host, bounds.X);
+        Canvas.SetTop(host, bounds.Y);
+
+        var flowAnimation = new DoubleAnimation
+        {
+            From = -segmentWidth,
+            To = bounds.Width,
+            Duration = TimeSpan.FromMilliseconds(1180),
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
+        segmentTransform.BeginAnimation(TranslateTransform.XProperty, flowAnimation, HandoffBehavior.SnapshotAndReplace);
+
+        var breathAnimation = new DoubleAnimation
+        {
+            From = 0.38d,
+            To = 0.92d,
+            Duration = TimeSpan.FromMilliseconds(680),
+            AutoReverse = true,
+            RepeatBehavior = RepeatBehavior.Forever,
+            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+        };
+        segment.BeginAnimation(UIElement.OpacityProperty, breathAnimation, HandoffBehavior.SnapshotAndReplace);
+
+        return host;
+    }
+
+    private static Brush CreateProxyChartActivityBrush()
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 0)
+        };
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 37, 99, 235), 0));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(165, 37, 99, 235), 0.38));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(205, 168, 85, 247), 0.58));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 37, 99, 235), 1));
+        brush.Freeze();
+        return brush;
     }
 
     private void HideProxyChartHitToolTip()

@@ -26,23 +26,60 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="ButtonBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="17"
-                                SnapsToDevicePixels="True">
+                        <Grid x:Name="ButtonChrome"
+                              RenderTransformOrigin="0.5,0.5"
+                              SnapsToDevicePixels="True">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="ButtonScale" ScaleX="1" ScaleY="1" />
+                            </Grid.RenderTransform>
+                            <Border x:Name="ButtonBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="17" />
                             <ContentPresenter Margin="{TemplateBinding Padding}"
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center"
                                               RecognizesAccessKey="True" />
-                        </Border>
+                        </Grid>
                         <ControlTemplate.Triggers>
+                            <EventTrigger RoutedEvent="Mouse.MouseEnter">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1.08" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1.08" Duration="0:0:0.12" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                            <EventTrigger RoutedEvent="Mouse.MouseLeave">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.16" />
+                                        <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.16" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ButtonBorder" Property="Background" Value="#EEF4FF" />
                                 <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#84ADFF" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="0.9" Duration="0:0:0.07" />
+                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="0.9" Duration="0:0:0.07" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1.08" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1.08" Duration="0:0:0.12" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                                 <Setter TargetName="ButtonBorder" Property="Background" Value="#DBEAFE" />
                                 <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#528BFF" />
                             </Trigger>
@@ -222,10 +259,11 @@
                                 </Border.InputBindings>
                                 <Grid>
                                     <Image Margin="4"
+                                           Style="{StaticResource AnimatedChartImageStyle}"
                                            HorizontalAlignment="Stretch"
                                            VerticalAlignment="Stretch"
                                            Stretch="Uniform"
-                                           Source="{Binding BatchComparisonChartImage, Mode=OneWay}" />
+                                           Source="{Binding BatchComparisonChartImage, Mode=OneWay, NotifyOnTargetUpdated=True}" />
                                     <Border HorizontalAlignment="Right"
                                             VerticalAlignment="Bottom"
                                             Margin="0,0,10,10"
@@ -349,6 +387,7 @@
                                                                Text="{Binding QuickMetrics}" />
                                                 </Border>
                                                 <Expander Margin="0,3,0,0"
+                                                          Visibility="Collapsed"
                                                           IsExpanded="False">
                                                     <Expander.Header>
                                                         <TextBlock Style="{StaticResource SectionHintTextStyle}"
@@ -469,6 +508,7 @@
                     </Grid>
 
                     <Expander Grid.Row="1"
+                              Visibility="Collapsed"
                               Margin="0,6,0,0"
                               IsExpanded="False">
                         <Expander.Header>
@@ -480,8 +520,8 @@
                                    Text="只复用已勾选项的 Base URL / Key / Model" />
                     </Expander>
 
-                    <TextBlock Grid.Row="2"
-                               Margin="0,4,0,0"
+                    <TextBlock Grid.Row="1"
+                               Margin="0,3,0,0"
                                Style="{StaticResource SectionHintTextStyle}"
                                Text="{Binding BatchDeepComparisonChartStatusSummary, Mode=OneWay}" />
 
@@ -516,10 +556,11 @@
                                 </Border.InputBindings>
                                 <Grid>
                                     <Image Margin="4"
+                                           Style="{StaticResource AnimatedChartImageStyle}"
                                            HorizontalAlignment="Stretch"
                                            VerticalAlignment="Stretch"
                                            Stretch="Uniform"
-                                           Source="{Binding BatchDeepComparisonChartImage, Mode=OneWay}" />
+                                           Source="{Binding BatchDeepComparisonChartImage, Mode=OneWay, NotifyOnTargetUpdated=True}" />
                                     <Border HorizontalAlignment="Right"
                                             VerticalAlignment="Bottom"
                                             Margin="0,0,10,10"

@@ -7,4 +7,5 @@ public sealed record ProxyTrendChartRenderResult(
     string Summary,
     BitmapSource? ChartImage,
     string? Error,
-    IReadOnlyList<ProxyChartHitRegion>? HitRegions = null);
+    IReadOnlyList<ProxyChartHitRegion>? HitRegions = null,
+    IReadOnlyList<ProxyChartActivityRegion>? ActivityRegions = null);

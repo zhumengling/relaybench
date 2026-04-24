@@ -65,7 +65,9 @@ public sealed partial class MainWindowViewModel
                 "基础能力实时推进；增强与深度项会先显示待执行，最终完成后会统一补齐到图表里。",
                 $"{GetSingleProxyExecutionDisplayName()}已启动，正在等待 /models 返回。",
                 $"正在初始化{GetSingleProxyExecutionDisplayName()}实时图表...",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                ActivityRegions: chartResult.ActivityRegions,
+                SingleCapabilityItems: items),
             activate: true);
         AutoOpenProxyTrendChartIfAllowed();
     }
@@ -113,7 +115,9 @@ public sealed partial class MainWindowViewModel
                 "实时阶段先刷新基础能力；补充探针和长流简测开始后，图表也会切换到对应分区状态。",
                 $"{progress.CurrentScenarioResult.DisplayName} 已返回：{progress.CurrentScenarioResult.Summary}",
                 $"正在等待{GetSingleProxyExecutionDisplayName()}图表数据...",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                ActivityRegions: chartResult.ActivityRegions,
+                SingleCapabilityItems: items),
             activate: true);
         AutoOpenProxyTrendChartIfAllowed();
     }
@@ -148,7 +152,9 @@ public sealed partial class MainWindowViewModel
                 "基础能力先完成，随后继续跑协议兼容、错误透传、官方对照或长流简测等补充项。",
                 phaseStatus,
                 $"正在等待{GetSingleProxyExecutionDisplayName()}图表数据...",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                ActivityRegions: chartResult.ActivityRegions,
+                SingleCapabilityItems: items),
             activate: true);
         AutoOpenProxyTrendChartIfAllowed();
     }
@@ -653,7 +659,9 @@ public sealed partial class MainWindowViewModel
                 "基础能力用于看核心 API 通断；增强测试用于看长流与内容完整性；非聊天 API 用于看 embeddings / images / audio / moderation；深度测试用于看协议兼容、错误透传、缓存与官方对照。",
                 chartResult.Summary,
                 $"当前{GetSingleProxyExecutionDisplayName()}图表正在生成。",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                ActivityRegions: chartResult.ActivityRegions,
+                SingleCapabilityItems: items),
             activate: true);
         AutoOpenProxyTrendChartIfAllowed();
     }
@@ -680,7 +688,10 @@ public sealed partial class MainWindowViewModel
                 "每完成一轮，图里会立刻加一个样本点，方便你观察延迟和 TTFT 是否抖动。",
                 $"稳定性巡检已启动，计划 {requestedRounds} 轮。",
                 "正在等待第 1 轮结果...",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                StabilityTrendItems: placeholderRecords,
+                StabilityTrendRequestedRounds: requestedRounds,
+                IsStabilityTrendRunning: true),
             activate: true);
         AutoOpenProxyTrendChartIfAllowed();
     }
@@ -726,7 +737,10 @@ public sealed partial class MainWindowViewModel
                     ? $"稳定性巡检已启动，计划 {requestedRounds} 轮。"
                     : $"已完成 {rounds.Count}/{requestedRounds} 轮，最近一轮结论：{latestRound.Verdict ?? latestRound.Summary}",
                 "正在等待稳定性巡检图表数据...",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                StabilityTrendItems: chartEntries,
+                StabilityTrendRequestedRounds: requestedRounds,
+                IsStabilityTrendRunning: rounds.Count < requestedRounds),
             activate: true);
         AutoOpenProxyTrendChartIfAllowed();
     }
@@ -757,7 +771,10 @@ public sealed partial class MainWindowViewModel
                 "图里每个点都是一轮巡检结果，适合看这一批轮次内部是否波动。",
                 $"稳定性巡检完成：健康度 {result.HealthScore}/100（{result.HealthLabel}）。",
                 "当前稳定性巡检图表正在生成。",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                StabilityTrendItems: chartEntries,
+                StabilityTrendRequestedRounds: result.RequestedRounds,
+                IsStabilityTrendRunning: false),
             activate: true);
         AutoOpenProxyTrendChartIfAllowed();
     }
@@ -792,7 +809,8 @@ public sealed partial class MainWindowViewModel
                 "实时图适合看：当前推荐项有没有切换、平均延迟、独立吞吐和 TTFT 会不会被新一轮结果拉偏、基础能力与长流增强项是否同步变差。",
                 $"入口组检测已启动，当前第 {currentRunNumber} 轮整组，共 {entries.Count} 个 URL；尚未轮到的同组入口会先显示等待占位。",
                 "正在等待入口组结果返回...",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                BatchComparisonItems: chartItems),
             activate: true);
         AutoOpenProxyTrendChartIfAllowed();
     }
@@ -833,7 +851,8 @@ public sealed partial class MainWindowViewModel
                 "如果排行榜前几名频繁互换，通常说明入口组存在波动，或者基础能力与增强长流在不同轮次表现不一致。",
                 $"入口组检测进行中：第 {currentRunNumber} 轮已有 {visibleTargets}/{totalTargets} 个入口出现结果，整条完成 {completedTargets}/{totalTargets}，当前推荐 {best.Entry.Name}。",
                 "正在等待入口组累计图表数据...",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                BatchComparisonItems: chartItems),
             activate: true);
         AutoOpenProxyTrendChartIfAllowed();
     }

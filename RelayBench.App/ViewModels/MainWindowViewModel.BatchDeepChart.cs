@@ -268,7 +268,8 @@ public sealed partial class MainWindowViewModel
                     : chartResult.Error ?? chartResult.Summary,
                 "正在等待候选站点深度测试总览图...",
                 chartResult.ChartImage,
-                chartResult.HitRegions),
+                chartResult.HitRegions,
+                chartResult.ActivityRegions),
             activate: activate);
 
         if (activate)

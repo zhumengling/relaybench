@@ -170,11 +170,11 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
 
-                        <TextBlock HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Text="暂无历史记录。">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                        <StackPanel Width="260"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding HasHistoryRunItems}" Value="False">
@@ -182,8 +182,21 @@
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                            </StackPanel.Style>
+                            <Image Height="128"
+                                   Source="/Assets/Images/history-reports-empty.png"
+                                   Stretch="Uniform" />
+                            <TextBlock Margin="0,8,0,0"
+                                       HorizontalAlignment="Center"
+                                       FontWeight="SemiBold"
+                                       Text="暂无历史记录" />
+                            <TextBlock Margin="0,4,0,0"
+                                       HorizontalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="完成一次诊断后，这里会显示报告和导出信息。"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
                     </Grid>
                 </Border>
             </Grid>

@@ -51,19 +51,22 @@ public sealed class CodexChatMergeService
                 Error: "missing-state-db");
         }
 
-        var (sourceProvider, targetProvider) = ResolveProviders(target);
+        var targetProvider = ResolveTargetProvider(target);
         var backupFiles = new List<string>();
         var changedFiles = new List<string>();
 
         try
         {
-            var threadRecords = await LoadThreadRecordsAsync(stateDatabasePath, sourceProvider, cancellationToken);
+            var threadRecords = await LoadThreadRecordsToMergeAsync(
+                stateDatabasePath,
+                targetProvider,
+                cancellationToken);
             if (threadRecords.Count == 0)
             {
                 return new CodexChatMergeResult(
                     true,
                     target,
-                    $"当前没有需要从“{BuildProviderDisplayName(sourceProvider)}”整理过来的聊天记录。",
+                    $"当前没有需要合并到“{BuildTargetDisplayName(target)}”的其它来源聊天记录，已保持现状。",
                     0,
                     0,
                     [],
@@ -73,16 +76,14 @@ public sealed class CodexChatMergeService
             }
 
             BackupStateDatabaseArtifacts(stateDatabasePath, backupFiles);
-            var rebuckettedThreadCount = await RebucketThreadsAsync(
+            var rebuckettedThreadCount = await RebucketAllThreadsAsync(
                 stateDatabasePath,
-                sourceProvider,
                 targetProvider,
                 cancellationToken);
             changedFiles.Add(stateDatabasePath);
 
             var updatedSessionFileCount = UpdateSessionFiles(
                 threadRecords,
-                sourceProvider,
                 targetProvider,
                 backupFiles,
                 changedFiles);
@@ -90,11 +91,11 @@ public sealed class CodexChatMergeService
             string? warning = null;
             if (updatedSessionFileCount < threadRecords.Count)
             {
-                warning = $"已整理 {rebuckettedThreadCount} 条聊天，但只同步更新了 {updatedSessionFileCount}/{threadRecords.Count} 份本地记录文件。";
+                warning = $"已合并 {rebuckettedThreadCount} 条聊天索引，但只同步更新了 {updatedSessionFileCount}/{threadRecords.Count} 份本地记录文件；未更新的文件可能不存在、为空或不包含 session_meta。";
             }
 
             var summary =
-                $"已整理 {rebuckettedThreadCount} 条聊天记录，现在可在“{BuildTargetDisplayName(target)}”下面继续查看；同时更新了 {updatedSessionFileCount} 份本地记录文件。";
+                $"已将 {rebuckettedThreadCount} 条历史 Codex 聊天统一整理到“{BuildTargetDisplayName(target)}”下；同时更新了 {updatedSessionFileCount} 份本地记录文件。";
 
             return new CodexChatMergeResult(
                 true,
@@ -122,9 +123,9 @@ public sealed class CodexChatMergeService
         }
     }
 
-    private async Task<IReadOnlyList<CodexThreadRecord>> LoadThreadRecordsAsync(
+    private async Task<IReadOnlyList<CodexThreadRecord>> LoadThreadRecordsToMergeAsync(
         string stateDatabasePath,
-        string sourceProvider,
+        string targetProvider,
         CancellationToken cancellationToken)
     {
         await using var connection = new SqliteConnection(BuildConnectionString(stateDatabasePath));
@@ -139,11 +140,11 @@ public sealed class CodexChatMergeService
         await using var command = connection.CreateCommand();
         command.CommandText =
             """
-            SELECT id, rollout_path
+            SELECT id, rollout_path, model_provider
             FROM threads
-            WHERE model_provider = $sourceProvider
+            WHERE COALESCE(model_provider, '') <> $targetProvider
             """;
-        command.Parameters.AddWithValue("$sourceProvider", sourceProvider);
+        command.Parameters.AddWithValue("$targetProvider", targetProvider);
 
         List<CodexThreadRecord> records = [];
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -151,15 +152,15 @@ public sealed class CodexChatMergeService
         {
             records.Add(new CodexThreadRecord(
                 reader.GetString(0),
-                reader.IsDBNull(1) ? null : reader.GetString(1)));
+                reader.IsDBNull(1) ? null : reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2)));
         }
 
         return records;
     }
 
-    private async Task<int> RebucketThreadsAsync(
+    private async Task<int> RebucketAllThreadsAsync(
         string stateDatabasePath,
-        string sourceProvider,
         string targetProvider,
         CancellationToken cancellationToken)
     {
@@ -179,10 +180,9 @@ public sealed class CodexChatMergeService
             """
             UPDATE threads
             SET model_provider = $targetProvider
-            WHERE model_provider = $sourceProvider
+            WHERE COALESCE(model_provider, '') <> $targetProvider
             """;
         command.Parameters.AddWithValue("$targetProvider", targetProvider);
-        command.Parameters.AddWithValue("$sourceProvider", sourceProvider);
 
         var affected = await command.ExecuteNonQueryAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -191,15 +191,18 @@ public sealed class CodexChatMergeService
 
     private int UpdateSessionFiles(
         IReadOnlyList<CodexThreadRecord> threadRecords,
-        string sourceProvider,
         string targetProvider,
         List<string> backupFiles,
         List<string> changedFiles)
     {
         var updatedCount = 0;
+        var processedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var thread in threadRecords)
         {
-            if (string.IsNullOrWhiteSpace(thread.RolloutPath) || !_environment.FileExists(thread.RolloutPath))
+            if (string.IsNullOrWhiteSpace(thread.RolloutPath) ||
+                !processedPaths.Add(thread.RolloutPath) ||
+                !_environment.FileExists(thread.RolloutPath))
             {
                 continue;
             }
@@ -210,7 +213,7 @@ public sealed class CodexChatMergeService
                 continue;
             }
 
-            if (!TryRewriteSessionMetaProvider(originalContent, sourceProvider, targetProvider, out var updatedContent))
+            if (!TryRewriteSessionMetaProvider(originalContent, targetProvider, out var updatedContent))
             {
                 continue;
             }
@@ -228,7 +231,6 @@ public sealed class CodexChatMergeService
 
     private static bool TryRewriteSessionMetaProvider(
         string content,
-        string sourceProvider,
         string targetProvider,
         out string updatedContent)
     {
@@ -242,7 +244,7 @@ public sealed class CodexChatMergeService
         for (var index = 0; index < lines.Length; index++)
         {
             var line = lines[index];
-            if (string.IsNullOrWhiteSpace(line) || !line.Contains("\"type\":\"session_meta\"", StringComparison.Ordinal))
+            if (string.IsNullOrWhiteSpace(line))
             {
                 continue;
             }
@@ -252,19 +254,20 @@ public sealed class CodexChatMergeService
             {
                 rootNode = JsonNode.Parse(line);
             }
-            catch
+            catch (JsonException)
             {
                 continue;
             }
 
             if (rootNode is not JsonObject rootObject ||
+                !string.Equals(rootObject["type"]?.GetValue<string>(), "session_meta", StringComparison.Ordinal) ||
                 rootObject["payload"] is not JsonObject payloadObject)
             {
                 continue;
             }
 
             var currentProvider = payloadObject["model_provider"]?.GetValue<string>();
-            if (!string.Equals(currentProvider, sourceProvider, StringComparison.Ordinal))
+            if (string.Equals(currentProvider, targetProvider, StringComparison.Ordinal))
             {
                 continue;
             }
@@ -309,23 +312,16 @@ public sealed class CodexChatMergeService
         => new SqliteConnectionStringBuilder
         {
             DataSource = stateDatabasePath,
-            Mode = SqliteOpenMode.ReadWrite
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false
         }.ToString();
 
-    private static (string SourceProvider, string TargetProvider) ResolveProviders(CodexChatMergeTarget target)
+    private static string ResolveTargetProvider(CodexChatMergeTarget target)
         => target switch
         {
-            CodexChatMergeTarget.OfficialOpenAi => (CustomProvider, OpenAiProvider),
-            CodexChatMergeTarget.ThirdPartyCustom => (OpenAiProvider, CustomProvider),
-            _ => (CustomProvider, OpenAiProvider)
-        };
-
-    private static string BuildProviderDisplayName(string provider)
-        => provider switch
-        {
-            OpenAiProvider => "ChatGPT 官方",
-            CustomProvider => "第三方",
-            _ => provider
+            CodexChatMergeTarget.OfficialOpenAi => OpenAiProvider,
+            CodexChatMergeTarget.ThirdPartyCustom => CustomProvider,
+            _ => CustomProvider
         };
 
     public static string BuildTargetDisplayName(CodexChatMergeTarget target)
@@ -336,5 +332,5 @@ public sealed class CodexChatMergeService
             _ => "当前"
         };
 
-    private sealed record CodexThreadRecord(string ThreadId, string? RolloutPath);
+    private sealed record CodexThreadRecord(string ThreadId, string? RolloutPath, string? SourceProvider);
 }

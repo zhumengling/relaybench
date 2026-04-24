@@ -61,6 +61,7 @@ public sealed class ProxySingleCapabilityChartRenderService
             rowHeights.Sum() +
             (sectionCount * SectionHeaderHeight));
         var metricMax = PickMetricMax(ordered);
+        List<ProxyChartActivityRegion> activityRegions = [];
 
         DrawingVisual visual = new();
         using (var context = visual.RenderOpen())
@@ -82,7 +83,7 @@ public sealed class ProxySingleCapabilityChartRenderService
                     currentTop += SectionHeaderHeight;
                 }
 
-                DrawRow(context, item, index, currentTop, rowHeights[index], metricMax);
+                DrawRow(context, item, index, currentTop, rowHeights[index], metricMax, activityRegions);
                 currentTop += rowHeights[index];
             }
 
@@ -101,7 +102,7 @@ public sealed class ProxySingleCapabilityChartRenderService
         var summary = string.IsNullOrWhiteSpace(sectionSummary)
             ? $"单次诊断图表已生成：已完成 {completedCount}/{totalCount} 项。"
             : $"单次诊断图表已生成：{sectionSummary}；已完成 {completedCount}/{totalCount} 项。";
-        return new ProxyTrendChartRenderResult(true, summary, bitmap, null);
+        return new ProxyTrendChartRenderResult(true, summary, bitmap, null, ActivityRegions: activityRegions);
     }
 
     private void DrawHeader(
@@ -157,7 +158,8 @@ public sealed class ProxySingleCapabilityChartRenderService
         int index,
         double top,
         double rowHeight,
-        double metricMax)
+        double metricMax,
+        ICollection<ProxyChartActivityRegion> activityRegions)
     {
         var rect = new Rect(HorizontalPadding, top, _chartWidth - (HorizontalPadding * 2), rowHeight - 4);
         var background = index % 2 == 0
@@ -221,6 +223,29 @@ public sealed class ProxySingleCapabilityChartRenderService
             CreateBrush(102, 112, 133),
             previewColumnWidth,
             MaxPreviewLines);
+
+        DrawRowActivityTrack(context, rect, item, activityRegions);
+    }
+
+    private static void DrawRowActivityTrack(
+        DrawingContext context,
+        Rect rowRect,
+        ProxySingleCapabilityChartItem item,
+        ICollection<ProxyChartActivityRegion> activityRegions)
+    {
+        var lineLeft = NameColumnX + 8;
+        var lineRight = MetricColumnX + MetricBarWidth - 8;
+        var lineWidth = Math.Max(80, lineRight - lineLeft);
+        var lineTop = rowRect.Bottom - 6;
+        var trackRect = new Rect(lineLeft, lineTop, lineWidth, 2);
+        context.DrawRoundedRectangle(CreateBrush(219, 234, 254, 120), null, trackRect, 1, 1);
+
+        if (item.IsCompleted)
+        {
+            return;
+        }
+
+        activityRegions.Add(new ProxyChartActivityRegion(new Rect(lineLeft, lineTop - 0.5, lineWidth, 3)));
     }
 
     private static void DrawStatusBadge(DrawingContext context, ProxySingleCapabilityChartItem item, double top)

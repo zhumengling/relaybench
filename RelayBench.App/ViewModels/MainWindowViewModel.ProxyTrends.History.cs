@@ -264,7 +264,8 @@ public sealed partial class MainWindowViewModel
                 "蓝条：平均普通对话延迟，越长代表越快。\n紫条：独立吞吐 tok/s，越长代表生成越快。\n橙条：平均 TTFT，越长代表首字响应越快。\n绿条：综合分。",
                 chartResult.HasChart ? chartResult.Summary : chartResult.Error ?? chartResult.Summary,
                 "正在等待入口组累计图表生成。",
-                chartResult.ChartImage),
+                chartResult.ChartImage,
+                BatchComparisonItems: chartItems),
             activate: true);
     }
     private static bool IsMatchingChartDialogTarget(string? sourceBaseUrl, string? trendTarget)

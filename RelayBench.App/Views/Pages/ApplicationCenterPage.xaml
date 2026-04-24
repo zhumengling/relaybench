@@ -305,7 +305,7 @@
                                 <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="API Key" />
                                 <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
                                          IsReadOnly="True"
-                                         Text="{Binding ProxyApiKey, Mode=OneWay}" />
+                                         Text="{Binding ApplicationCenterProxyApiKeyPreview, Mode=OneWay}" />
                             </StackPanel>
                         </Grid>
                     </Border>

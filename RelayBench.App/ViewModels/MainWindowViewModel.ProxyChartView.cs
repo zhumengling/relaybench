@@ -1,4 +1,5 @@
 using System.Windows.Media.Imaging;
+using RelayBench.App.Infrastructure;
 using RelayBench.App.Services;
 
 namespace RelayBench.App.ViewModels;
@@ -23,7 +24,14 @@ internal sealed record ProxyChartDialogSnapshot(
     string StatusSummary,
     string EmptyStateText,
     BitmapSource? Image,
-    IReadOnlyList<ProxyChartHitRegion>? HitRegions = null);
+    IReadOnlyList<ProxyChartHitRegion>? HitRegions = null,
+    IReadOnlyList<ProxyChartActivityRegion>? ActivityRegions = null,
+    IReadOnlyList<ProxySingleCapabilityChartItem>? SingleCapabilityItems = null,
+    IReadOnlyList<ProxyBatchComparisonChartItem>? BatchComparisonItems = null,
+    IReadOnlyList<ProxyTrendEntry>? StabilityTrendItems = null,
+    int StabilityTrendRequestedRounds = 0,
+    bool IsStabilityTrendRunning = false,
+    IReadOnlyList<ProxyConcurrencyChartItem>? ConcurrencyItems = null);
 
 public sealed partial class MainWindowViewModel
 {
@@ -34,6 +42,17 @@ public sealed partial class MainWindowViewModel
     private ProxyChartDialogSnapshot? _proxyBatchChartSnapshot;
     private ProxyChartDialogSnapshot? _proxyBatchDeepChartSnapshot;
     private IReadOnlyList<ProxyChartHitRegion> _proxyChartDialogHitRegions = Array.Empty<ProxyChartHitRegion>();
+    private IReadOnlyList<ProxyChartActivityRegion> _proxyChartDialogActivityRegions = Array.Empty<ProxyChartActivityRegion>();
+    private IReadOnlyList<ProxySingleCapabilityChartRowViewModel> _proxyChartDialogSingleCapabilityRows =
+        Array.Empty<ProxySingleCapabilityChartRowViewModel>();
+    private IReadOnlyList<ProxyBatchComparisonChartRowViewModel> _proxyChartDialogBatchComparisonRows =
+        Array.Empty<ProxyBatchComparisonChartRowViewModel>();
+    private IReadOnlyList<ProxyStabilityTrendChartRowViewModel> _proxyChartDialogStabilityTrendRows =
+        Array.Empty<ProxyStabilityTrendChartRowViewModel>();
+    private IReadOnlyList<ProxyConcurrencyChartRowViewModel> _proxyChartDialogConcurrencyRows =
+        Array.Empty<ProxyConcurrencyChartRowViewModel>();
+    private readonly HashSet<string> _revealedSingleCapabilityMetricKeys = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _revealedBatchComparisonRowKeys = new(StringComparer.Ordinal);
 
     public bool CanToggleProxyChartView
         => !IsBusy &&
@@ -75,6 +94,44 @@ public sealed partial class MainWindowViewModel
 
     internal IReadOnlyList<ProxyChartHitRegion> CurrentProxyChartHitRegions
         => _proxyChartDialogHitRegions;
+
+    internal IReadOnlyList<ProxyChartActivityRegion> CurrentProxyChartActivityRegions
+        => _proxyChartDialogActivityRegions;
+
+    public IReadOnlyList<ProxySingleCapabilityChartRowViewModel> ProxyChartDialogSingleCapabilityRows
+        => _proxyChartDialogSingleCapabilityRows;
+
+    public IReadOnlyList<ProxyBatchComparisonChartRowViewModel> ProxyChartDialogBatchComparisonRows
+        => _proxyChartDialogBatchComparisonRows;
+
+    public IReadOnlyList<ProxyStabilityTrendChartRowViewModel> ProxyChartDialogStabilityTrendRows
+        => _proxyChartDialogStabilityTrendRows;
+
+    public IReadOnlyList<ProxyConcurrencyChartRowViewModel> ProxyChartDialogConcurrencyRows
+        => _proxyChartDialogConcurrencyRows;
+
+    public bool IsNativeSingleCapabilityChartVisible
+        => _activeProxyChartViewMode == ProxyChartViewMode.SingleLatency &&
+           _proxyChartDialogSingleCapabilityRows.Count > 0;
+
+    public bool IsNativeBatchComparisonChartVisible
+        => _activeProxyChartViewMode == ProxyChartViewMode.BatchComparison &&
+           _proxyChartDialogBatchComparisonRows.Count > 0;
+
+    public bool IsNativeStabilityTrendChartVisible
+        => _activeProxyChartViewMode == ProxyChartViewMode.StabilityTrend &&
+           _proxyChartDialogStabilityTrendRows.Count > 0;
+
+    public bool IsNativeConcurrencyChartVisible
+        => _activeProxyChartViewMode == ProxyChartViewMode.ConcurrencyPressure &&
+           _proxyChartDialogConcurrencyRows.Count > 0;
+
+    public bool IsBitmapProxyChartVisible
+        => HasProxyChartDialogImage &&
+           !IsNativeSingleCapabilityChartVisible &&
+           !IsNativeBatchComparisonChartVisible &&
+           !IsNativeStabilityTrendChartVisible &&
+           !IsNativeConcurrencyChartVisible;
 
     private bool CanToggleProxyChartViewAction()
         => CanToggleProxyChartView;
@@ -196,12 +253,93 @@ public sealed partial class MainWindowViewModel
         ProxyChartDialogEmptyStateText = snapshot.EmptyStateText;
         ProxyChartDialogImage = snapshot.Image;
         _proxyChartDialogHitRegions = snapshot.HitRegions ?? Array.Empty<ProxyChartHitRegion>();
+        _proxyChartDialogActivityRegions = snapshot.ActivityRegions ?? Array.Empty<ProxyChartActivityRegion>();
+        _proxyChartDialogSingleCapabilityRows = snapshot.SingleCapabilityItems is null
+            ? Array.Empty<ProxySingleCapabilityChartRowViewModel>()
+            : ProxySingleCapabilityChartRowViewModel.CreateRows(
+                snapshot.SingleCapabilityItems,
+                ResolveNewSingleCapabilityMetricRevealKeys(snapshot.SingleCapabilityItems));
+        _proxyChartDialogBatchComparisonRows = snapshot.BatchComparisonItems is null
+            ? Array.Empty<ProxyBatchComparisonChartRowViewModel>()
+            : ProxyBatchComparisonChartRowViewModel.CreateRows(
+                snapshot.BatchComparisonItems,
+                ResolveNewBatchComparisonRevealKeys(snapshot.BatchComparisonItems));
+        _proxyChartDialogStabilityTrendRows = snapshot.StabilityTrendItems is null
+            ? Array.Empty<ProxyStabilityTrendChartRowViewModel>()
+            : ProxyStabilityTrendChartRowViewModel.CreateRows(
+                snapshot.StabilityTrendItems,
+                snapshot.StabilityTrendRequestedRounds,
+                snapshot.IsStabilityTrendRunning);
+        _proxyChartDialogConcurrencyRows = snapshot.ConcurrencyItems is null
+            ? Array.Empty<ProxyConcurrencyChartRowViewModel>()
+            : ProxyConcurrencyChartRowViewModel.CreateRows(snapshot.ConcurrencyItems);
         RefreshProxyChartViewState();
+    }
+
+    private IReadOnlySet<string> ResolveNewSingleCapabilityMetricRevealKeys(
+        IReadOnlyList<ProxySingleCapabilityChartItem> items)
+    {
+        if (items.Count == 0)
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        var newKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var item in items)
+        {
+            if (!item.IsCompleted || item.MetricValueMs is not > 0)
+            {
+                continue;
+            }
+
+            var key = ProxySingleCapabilityChartRowViewModel.CreateMetricRevealKey(item);
+            if (_revealedSingleCapabilityMetricKeys.Add(key))
+            {
+                newKeys.Add(key);
+            }
+        }
+
+        return newKeys;
+    }
+
+    private IReadOnlySet<string> ResolveNewBatchComparisonRevealKeys(
+        IReadOnlyList<ProxyBatchComparisonChartItem> items)
+    {
+        if (items.Count == 0)
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        var newKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var item in items)
+        {
+            if (item.RunCount <= 0)
+            {
+                continue;
+            }
+
+            var key = ProxyBatchComparisonChartRowViewModel.CreateRevealKey(item);
+            if (_revealedBatchComparisonRowKeys.Add(key))
+            {
+                newKeys.Add(key);
+            }
+        }
+
+        return newKeys;
     }
 
     private void RefreshProxyChartViewState()
     {
         OnPropertyChanged(nameof(IsProxyChartImageOnlyMode));
+        OnPropertyChanged(nameof(ProxyChartDialogSingleCapabilityRows));
+        OnPropertyChanged(nameof(ProxyChartDialogBatchComparisonRows));
+        OnPropertyChanged(nameof(ProxyChartDialogStabilityTrendRows));
+        OnPropertyChanged(nameof(ProxyChartDialogConcurrencyRows));
+        OnPropertyChanged(nameof(IsNativeSingleCapabilityChartVisible));
+        OnPropertyChanged(nameof(IsNativeBatchComparisonChartVisible));
+        OnPropertyChanged(nameof(IsNativeStabilityTrendChartVisible));
+        OnPropertyChanged(nameof(IsNativeConcurrencyChartVisible));
+        OnPropertyChanged(nameof(IsBitmapProxyChartVisible));
         OnPropertyChanged(nameof(CanToggleProxyChartView));
         OnPropertyChanged(nameof(CanToggleProxyChartImageOnlyMode));
         OnPropertyChanged(nameof(ProxyChartToggleButtonText));

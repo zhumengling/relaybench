@@ -99,6 +99,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         FetchProxyBatchTemplateRowModelsCommand = new AsyncRelayCommand<ProxyBatchEditorItemViewModel?>(FetchProxyBatchTemplateRowModelsAsync, item => CanRun() && item is not null, onError: HandleNonFatalCommandException);
         CloseProxyModelPickerCommand = new AsyncRelayCommand(CloseProxyModelPickerAsync);
         OpenProxyTrendChartCommand = new AsyncRelayCommand(OpenProxyTrendChartAsync);
+        OpenProxySingleChartCommand = new AsyncRelayCommand(OpenCurrentSingleStationChartAsync);
         OpenProxyConcurrencyChartCommand = new AsyncRelayCommand(OpenProxyConcurrencyChartAsync);
         OpenBatchComparisonChartCommand = new AsyncRelayCommand(OpenBatchComparisonChartAsync);
         OpenBatchDeepComparisonChartCommand = new AsyncRelayCommand(OpenBatchDeepComparisonChartAsync);

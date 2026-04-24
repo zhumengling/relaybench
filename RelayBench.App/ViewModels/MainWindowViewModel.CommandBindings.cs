@@ -149,6 +149,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand OpenProxyTrendChartCommand { get; }
 
+    public AsyncRelayCommand OpenProxySingleChartCommand { get; }
+
     public AsyncRelayCommand OpenProxyConcurrencyChartCommand { get; }
 
     public AsyncRelayCommand OpenBatchComparisonChartCommand { get; }

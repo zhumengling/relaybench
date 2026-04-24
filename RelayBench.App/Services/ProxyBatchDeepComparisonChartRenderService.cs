@@ -44,6 +44,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         _chartWidth = ResolveChartWidth(preferredWidth);
         var chartHeight = (int)Math.Ceiling(HeaderHeight + TableHeaderHeight + FooterHeight + (ordered.Length * RowHeight) + 18);
         List<ProxyChartHitRegion> hitRegions = [];
+        List<ProxyChartActivityRegion> activityRegions = [];
 
         DrawingVisual visual = new();
         using (var context = visual.RenderOpen())
@@ -54,7 +55,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
 
             for (var index = 0; index < ordered.Length; index++)
             {
-                DrawRow(context, ordered[index], index, HeaderHeight + TableHeaderHeight + (index * RowHeight), hitRegions);
+                DrawRow(context, ordered[index], index, HeaderHeight + TableHeaderHeight + (index * RowHeight), hitRegions, activityRegions);
             }
 
             DrawFooter(context, chartHeight);
@@ -71,7 +72,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
             ? $"候选站点深度测试总览图已生成：共 {ordered.Length} 个候选项，已完成 {completedCount}/{ordered.Length}，当前 TOP 1 为 {best.Name}。"
             : $"候选站点深度测试进行中：已完成 {completedCount}/{ordered.Length}，当前执行 {running.Name}，排行榜保留 TOP 1 {best.Name}。";
 
-        return new ProxyTrendChartRenderResult(true, summary, bitmap, null, hitRegions);
+        return new ProxyTrendChartRenderResult(true, summary, bitmap, null, hitRegions, activityRegions);
     }
 
     private void DrawHeader(DrawingContext context, IReadOnlyList<ProxyBatchDeepComparisonChartItem> items)
@@ -135,7 +136,8 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         ProxyBatchDeepComparisonChartItem item,
         int index,
         double top,
-        ICollection<ProxyChartHitRegion> hitRegions)
+        ICollection<ProxyChartHitRegion> hitRegions,
+        ICollection<ProxyChartActivityRegion> activityRegions)
     {
         var rect = new Rect(HorizontalPadding, top, _chartWidth - (HorizontalPadding * 2), RowHeight - 5);
         var background = index % 2 == 0
@@ -172,6 +174,28 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         DrawStageBlock(context, item, top + 10);
         DrawBadgeMatrix(context, item.Badges, top + 8, hitRegions);
         DrawVerdictBlock(context, item, top + 10);
+        DrawRowActivityTrack(context, rect, item, activityRegions);
+    }
+
+    private void DrawRowActivityTrack(
+        DrawingContext context,
+        Rect rowRect,
+        ProxyBatchDeepComparisonChartItem item,
+        ICollection<ProxyChartActivityRegion> activityRegions)
+    {
+        var lineLeft = ScaleX(EntryColumnX) + 8;
+        var lineRight = ScaleX(StageColumnX + StageColumnWidth) - 8;
+        var lineWidth = Math.Max(120, lineRight - lineLeft);
+        var lineTop = rowRect.Bottom - 6;
+        var trackRect = new Rect(lineLeft, lineTop, lineWidth, 2);
+        context.DrawRoundedRectangle(CreateBrush(219, 234, 254, 120), null, trackRect, 1, 1);
+
+        if (!item.IsRunning)
+        {
+            return;
+        }
+
+        activityRegions.Add(new ProxyChartActivityRegion(new Rect(lineLeft, lineTop - 0.5, lineWidth, 3)));
     }
 
     private void DrawRankBadge(DrawingContext context, int rank, double top)
