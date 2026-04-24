@@ -302,12 +302,23 @@ public sealed partial class ProxyDiagnosticsService
         {
             if (choice.TryGetProperty("message", out var message))
             {
-                if (message.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
+                if (TryGetNonEmptyString(message, "content") is { } textContent)
                 {
-                    return content.GetString();
+                    return textContent;
                 }
 
-                if (message.TryGetProperty("content", out content) && content.ValueKind == JsonValueKind.Array)
+                if (TryGetNonEmptyString(message, "reasoning_content") is { } reasoningContent)
+                {
+                    return reasoningContent;
+                }
+
+                if (TryGetNonEmptyString(message, "reasoning") is { } reasoning)
+                {
+                    return reasoning;
+                }
+
+
+                if (message.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var item in content.EnumerateArray())
                     {

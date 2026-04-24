@@ -490,7 +490,8 @@ public sealed partial class ProxyDiagnosticsService
                     TraceId: traceId);
             }
 
-            var semanticMatch = (semanticMatcher ?? MatchProbeExpectation)(streamOutcome.Preview);
+            var semanticMatch = (semanticMatcher ?? MatchProbeExpectation)(streamOutcome.FullText) ||
+                (semanticMatcher ?? MatchProbeExpectation)(streamOutcome.Preview);
             ProxyFailureKind? failureKind = null;
             string? error = null;
 

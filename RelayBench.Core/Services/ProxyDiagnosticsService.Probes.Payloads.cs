@@ -91,12 +91,12 @@ public sealed partial class ProxyDiagnosticsService
                 new
                 {
                     role = "system",
-                    content = "You are a connectivity probe. Reply with a very short plain-text answer."
+                    content = "You are a connectivity probe. Reply with a very short plain-text answer. Do not include reasoning, analysis, markdown, or thinking."
                 },
                 new
                 {
                     role = "user",
-                    content = "Reply with exactly: proxy-ok"
+                    content = "/no_think\nReply with exactly: proxy-ok"
                 }
             }
         };
@@ -110,8 +110,8 @@ public sealed partial class ProxyDiagnosticsService
         {
             model,
             max_output_tokens = 24,
-            instructions = "You are a connectivity probe. Reply with a very short plain-text answer.",
-            input = "Reply with exactly: proxy-ok"
+            instructions = "You are a connectivity probe. Reply with a very short plain-text answer. Do not include reasoning, analysis, markdown, or thinking.",
+            input = "/no_think\nReply with exactly: proxy-ok"
         };
 
         return JsonSerializer.Serialize(payload);
@@ -165,13 +165,13 @@ public sealed partial class ProxyDiagnosticsService
                 new
                 {
                     role = "system",
-                    content = "You are a streaming stability probe. Follow the numbering format exactly and do not skip any segment."
+                    content = "You are a streaming stability probe. Follow the numbering format exactly and do not skip any segment. Do not include reasoning, analysis, markdown, or thinking."
                 },
                 new
                 {
                     role = "user",
                     content =
-                        $"请输出 {normalizedSegmentCount} 行文本。每一行必须以 [001] 到 [{normalizedSegmentCount:000}] 的编号开头，" +
+                        $"/no_think\n请输出 {normalizedSegmentCount} 行文本。每一行必须以 [001] 到 [{normalizedSegmentCount:000}] 的编号开头，" +
                         "每行补充一小段 20 到 40 个中文字符的自然语言内容。不要跳号，不要合并多行，不要额外解释。"
                 }
             }
@@ -578,12 +578,21 @@ public sealed partial class ProxyDiagnosticsService
                 continue;
             }
 
-            if (delta.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
+            if (TryGetNonEmptyString(delta, "content") is { } textContent)
             {
-                return content.GetString();
+                return textContent;
             }
 
-            if (delta.TryGetProperty("content", out content) && content.ValueKind == JsonValueKind.Array)
+            if (TryGetNonEmptyString(delta, "reasoning_content") is { } reasoningContent)
+            {
+                return reasoningContent;
+            }
+
+            if (TryGetNonEmptyString(delta, "reasoning") is { } reasoning)
+            {
+                return reasoning;
+            }
+            if (delta.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
             {
                 StringBuilder builder = new();
                 foreach (var item in content.EnumerateArray())
@@ -608,6 +617,15 @@ public sealed partial class ProxyDiagnosticsService
         }
 
         return null;
+    }
+
+    private static string? TryGetNonEmptyString(JsonElement element, string propertyName)
+    {
+        return element.TryGetProperty(propertyName, out var value) &&
+               value.ValueKind == JsonValueKind.String &&
+               !string.IsNullOrEmpty(value.GetString())
+            ? value.GetString()
+            : null;
     }
 
     private static string? ParseResponsesPreview(string json)
