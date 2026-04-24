@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using RelayBench.App.Infrastructure;
 using RelayBench.Core.Models;
@@ -24,6 +25,52 @@ public sealed partial class MainWindowViewModel
         Dictionary<string, ProxyBatchProbeRow> liveRows = new(StringComparer.OrdinalIgnoreCase);
         StartProxyBatchChartLiveSession(plan.Targets);
         UpdateGlobalTaskProgress("\u51C6\u5907\u4E2D", 8d);
+        var liveChartUpdateInterval = TimeSpan.FromMilliseconds(220);
+        var liveChartUpdateStopwatch = Stopwatch.StartNew();
+        var lastLiveChartUpdateAt = TimeSpan.Zero;
+        var liveChartUpdateScheduled = false;
+        IReadOnlyList<ProxyBatchProbeRow>? pendingLiveChartRows = null;
+
+        void ApplyLiveChartRows(IReadOnlyList<ProxyBatchProbeRow> orderedRows)
+        {
+            UpdateProxyBatchChartLive(orderedRows, plan.Targets.Count);
+            UpdateGlobalTaskProgress(CountCompletedLiveBatchRows(orderedRows), plan.Targets.Count, "\u8BF7\u6C42\u4E2D");
+            lastLiveChartUpdateAt = liveChartUpdateStopwatch.Elapsed;
+        }
+
+        async void SchedulePendingLiveChartUpdate()
+        {
+            if (liveChartUpdateScheduled)
+            {
+                return;
+            }
+
+            liveChartUpdateScheduled = true;
+            var elapsedSinceLastUpdate = liveChartUpdateStopwatch.Elapsed - lastLiveChartUpdateAt;
+            var delay = liveChartUpdateInterval - elapsedSinceLastUpdate;
+            if (delay > TimeSpan.Zero)
+            {
+                try
+                {
+                    await Task.Delay(delay, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    liveChartUpdateScheduled = false;
+                    return;
+                }
+            }
+
+            liveChartUpdateScheduled = false;
+            if (pendingLiveChartRows is not { } rowsToApply)
+            {
+                return;
+            }
+
+            pendingLiveChartRows = null;
+            ApplyLiveChartRows(rowsToApply);
+        }
+
         var progress = new Progress<string>(message =>
         {
             StatusMessage = message;
@@ -33,8 +80,17 @@ public sealed partial class MainWindowViewModel
         {
             liveRows[BuildBatchTargetKey(row.Entry)] = row;
             var orderedRows = MaterializeLiveBatchRows(liveRows, plan.Targets);
-            UpdateProxyBatchChartLive(orderedRows, plan.Targets.Count);
-            UpdateGlobalTaskProgress(CountCompletedLiveBatchRows(orderedRows), plan.Targets.Count, "\u8BF7\u6C42\u4E2D");
+            pendingLiveChartRows = orderedRows;
+            var shouldUpdateImmediately = row.Stage == ProxyBatchProbeStage.Completed ||
+                liveChartUpdateStopwatch.Elapsed - lastLiveChartUpdateAt >= liveChartUpdateInterval;
+            if (shouldUpdateImmediately)
+            {
+                pendingLiveChartRows = null;
+                ApplyLiveChartRows(orderedRows);
+                return;
+            }
+
+            SchedulePendingLiveChartUpdate();
         });
         var rows = await ProbeBatchEntriesAsync(
             plan.Targets,
