@@ -30,6 +30,13 @@ public sealed class ClientApiConfigRestoreService
         var codexState = isCodexClient
             ? CodexRestoreStateStorage.TryLoad(_environment)
             : null;
+        if (isCodexClient)
+        {
+            RelayBenchBackupRetention.PruneAllUnderDirectory(
+                _environment,
+                Path.Combine(_environment.UserProfilePath, ".codex"));
+        }
+
         List<string> changedFiles = [];
         List<string> backupFiles = [];
 
@@ -52,6 +59,7 @@ public sealed class ClientApiConfigRestoreService
                 var backupPath = $"{filePath}.relaybench-backup-{DateTime.Now:yyyyMMddHHmmss}";
                 _environment.WriteFileText(backupPath, original);
                 backupFiles.Add(backupPath);
+                RelayBenchBackupRetention.PruneForOriginalFile(_environment, filePath);
             }
 
             if (action.DeleteFile)

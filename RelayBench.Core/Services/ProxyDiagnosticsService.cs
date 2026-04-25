@@ -89,7 +89,8 @@ public sealed partial class ProxyDiagnosticsService
             edgeObservation.CdnSummary,
             traceability.RequestId,
             traceability.TraceId,
-            traceability.Summary);
+            traceability.Summary,
+            modelsProbe.ModelItems);
     }
 
     public async Task<ProxyStabilityResult> RunSeriesAsync(

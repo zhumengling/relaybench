@@ -7,7 +7,7 @@ namespace RelayBench.Core.Services;
 public sealed class CodexFamilyConfigApplyService
 {
     private const string CodexProviderKey = "custom";
-    private const string CodexProviderName = "Custom OpenAI-Compatible";
+    private const string CodexProviderName = "OpenAI";
     private const string CodexWireApi = "responses";
 
     private readonly IClientApiConfigMutationEnvironment _environment;
@@ -22,6 +22,7 @@ public sealed class CodexFamilyConfigApplyService
         string apiKey,
         string model,
         string? displayName = null,
+        int? modelContextWindow = null,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -30,6 +31,8 @@ public sealed class CodexFamilyConfigApplyService
         var normalizedApiKey = apiKey?.Trim() ?? string.Empty;
         var normalizedModel = model?.Trim() ?? string.Empty;
         var normalizedDisplayName = NormalizeCodexProviderName(displayName);
+        var resolvedContextWindow = ModelContextWindowCatalog.ResolveContextWindow(normalizedModel, modelContextWindow);
+        var autoCompactTokenLimit = ModelContextWindowCatalog.CalculateAutoCompactTokenLimit(resolvedContextWindow);
 
         if (string.IsNullOrWhiteSpace(normalizedBaseUrl))
         {
@@ -71,13 +74,21 @@ public sealed class CodexFamilyConfigApplyService
 
         _environment.EnsureDirectoryExists(codexRoot);
         CodexRestoreStateStorage.EnsureOriginalStateCaptured(_environment, configPath, authPath, settingsPath);
+        RelayBenchBackupRetention.PruneAllUnderDirectory(_environment, codexRoot);
 
         List<string> changedFiles = [];
         List<string> backupFiles = [];
 
         ApplyFile(
             configPath,
-            existing => UpsertCodexConfig(existing, normalizedBaseUrl, normalizedModel, normalizedApiKey, normalizedDisplayName),
+            existing => UpsertCodexConfig(
+                existing,
+                normalizedBaseUrl,
+                normalizedModel,
+                normalizedApiKey,
+                normalizedDisplayName,
+                resolvedContextWindow,
+                autoCompactTokenLimit),
             changedFiles,
             backupFiles);
         ApplyFile(
@@ -127,6 +138,7 @@ public sealed class CodexFamilyConfigApplyService
             var backupPath = $"{path}.relaybench-backup-{DateTime.Now:yyyyMMddHHmmss}";
             _environment.WriteFileText(backupPath, original);
             backupFiles.Add(backupPath);
+            RelayBenchBackupRetention.PruneForOriginalFile(_environment, path);
         }
 
         _environment.WriteFileText(path, updated);
@@ -147,12 +159,16 @@ public sealed class CodexFamilyConfigApplyService
         string baseUrl,
         string model,
         string apiKey,
-        string displayName)
+        string displayName,
+        int? contextWindow,
+        int? autoCompactTokenLimit)
     {
         List<string> lines = SplitLines(existingContent);
 
         UpsertTopLevelString(lines, "model_provider", CodexProviderKey);
         UpsertTopLevelString(lines, "model", model);
+        UpsertOptionalTopLevelInteger(lines, "model_context_window", contextWindow);
+        UpsertOptionalTopLevelInteger(lines, "model_auto_compact_token_limit", autoCompactTokenLimit);
         UpsertSectionString(lines, "model_providers.custom", "name", displayName);
         UpsertSectionString(lines, "model_providers.custom", "base_url", baseUrl);
         UpsertSectionString(lines, "model_providers.custom", "wire_api", CodexWireApi);
@@ -164,6 +180,28 @@ public sealed class CodexFamilyConfigApplyService
     private static void UpsertTopLevelString(List<string> lines, string key, string value)
     {
         var lineContent = $"{key} = {SerializeTomlString(value)}";
+        var firstSectionIndex = FindNextSectionHeader(lines, 0);
+        var searchEnd = firstSectionIndex < 0 ? lines.Count : firstSectionIndex;
+        var existingIndex = FindKeyAssignment(lines, key, 0, searchEnd);
+
+        if (existingIndex >= 0)
+        {
+            lines[existingIndex] = lineContent;
+            return;
+        }
+
+        lines.Insert(searchEnd, lineContent);
+    }
+
+    private static void UpsertOptionalTopLevelInteger(List<string> lines, string key, int? value)
+    {
+        if (value is null)
+        {
+            RemoveTopLevelAssignment(lines, key);
+            return;
+        }
+
+        var lineContent = $"{key} = {value.Value}";
         var firstSectionIndex = FindNextSectionHeader(lines, 0);
         var searchEnd = firstSectionIndex < 0 ? lines.Count : firstSectionIndex;
         var existingIndex = FindKeyAssignment(lines, key, 0, searchEnd);
@@ -209,6 +247,17 @@ public sealed class CodexFamilyConfigApplyService
         }
 
         lines.Insert(sectionEnd, lineContent);
+    }
+
+    private static void RemoveTopLevelAssignment(List<string> lines, string key)
+    {
+        var firstSectionIndex = FindNextSectionHeader(lines, 0);
+        var searchEnd = firstSectionIndex < 0 ? lines.Count : firstSectionIndex;
+        var existingIndex = FindKeyAssignment(lines, key, 0, searchEnd);
+        if (existingIndex >= 0)
+        {
+            lines.RemoveAt(existingIndex);
+        }
     }
 
     private static int FindSectionHeader(List<string> lines, string header)
@@ -302,13 +351,5 @@ public sealed class CodexFamilyConfigApplyService
     }
 
     private static string NormalizeCodexProviderName(string? value)
-    {
-        var normalized = new string((value ?? string.Empty)
-            .Where(ch => !char.IsControl(ch))
-            .ToArray()).Trim();
-
-        return string.IsNullOrWhiteSpace(normalized)
-            ? CodexProviderName
-            : normalized;
-    }
+        => CodexProviderName;
 }

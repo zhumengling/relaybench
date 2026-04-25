@@ -56,13 +56,16 @@ public sealed partial class ProxyDiagnosticsService
                         RequestId: requestId,
                         TraceId: traceId),
                     0,
-                    Array.Empty<string>());
+                    Array.Empty<string>(),
+                    Array.Empty<ProxyModelCatalogItem>());
             }
 
+            IReadOnlyList<ProxyModelCatalogItem> modelItems;
             IReadOnlyList<string> sampleModels;
             try
             {
-                sampleModels = ParseModelIds(content);
+                modelItems = ParseModelCatalogItems(content);
+                sampleModels = modelItems.Select(static item => item.Id).ToArray();
             }
             catch (Exception ex)
             {
@@ -87,7 +90,8 @@ public sealed partial class ProxyDiagnosticsService
                         error,
                         headers),
                     0,
-                    Array.Empty<string>());
+                    Array.Empty<string>(),
+                    Array.Empty<ProxyModelCatalogItem>());
             }
 
             var preview = sampleModels.Count == 0
@@ -124,7 +128,8 @@ public sealed partial class ProxyDiagnosticsService
                         RequestId: requestId,
                         TraceId: traceId),
                 sampleModels.Count,
-                sampleModels);
+                sampleModels,
+                modelItems);
         }
         catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
         {
@@ -151,7 +156,8 @@ public sealed partial class ProxyDiagnosticsService
                     RequestId: null,
                     TraceId: null),
                 0,
-                Array.Empty<string>());
+                Array.Empty<string>(),
+                Array.Empty<ProxyModelCatalogItem>());
         }
     }
 

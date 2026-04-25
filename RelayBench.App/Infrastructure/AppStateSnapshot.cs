@@ -103,6 +103,81 @@ public sealed class AppStateSnapshot
     public string SplitRoutingHostsText { get; set; } = "chatgpt.com\napi.openai.com\ngithub.com\ncloudflare.com\nspeed.cloudflare.com";
 
     public List<RunHistoryEntry> HistoryEntries { get; set; } = [];
+
+    public List<ProxyEndpointHistoryEntrySnapshot> ProxyEndpointHistoryEntries { get; set; } = [];
+
+    public ProxyBatchRankingStateSnapshot ProxyBatchRankingState { get; set; } = new();
+}
+
+public sealed class ProxyEndpointHistoryEntrySnapshot
+{
+    public string BaseUrl { get; set; } = string.Empty;
+
+    public string ApiKey { get; set; } = string.Empty;
+
+    public string Model { get; set; } = string.Empty;
+
+    public DateTimeOffset FirstSeenAt { get; set; } = DateTimeOffset.Now;
+
+    public DateTimeOffset LastUsedAt { get; set; } = DateTimeOffset.Now;
+
+    public int UseCount { get; set; } = 1;
+}
+
+public sealed class ProxyBatchRankingStateSnapshot
+{
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.MinValue;
+
+    public string Summary { get; set; } = string.Empty;
+
+    public string Detail { get; set; } = string.Empty;
+
+    public string ChartStatusSummary { get; set; } = string.Empty;
+
+    public List<ProxyBatchRankingRowSnapshot> Rows { get; set; } = [];
+}
+
+public sealed class ProxyBatchRankingRowSnapshot
+{
+    public bool IsSelected { get; set; }
+
+    public int Rank { get; set; }
+
+    public string EntryName { get; set; } = string.Empty;
+
+    public string BaseUrl { get; set; } = string.Empty;
+
+    public string ApiKey { get; set; } = string.Empty;
+
+    public string Model { get; set; } = string.Empty;
+
+    public string QuickVerdict { get; set; } = string.Empty;
+
+    public string QuickMetrics { get; set; } = string.Empty;
+
+    public string CapabilitySummary { get; set; } = string.Empty;
+
+    public string DeepStatus { get; set; } = string.Empty;
+
+    public string DeepSummary { get; set; } = string.Empty;
+
+    public string DeepCheckedAt { get; set; } = string.Empty;
+
+    public double CompositeScore { get; set; }
+
+    public double StabilityRatio { get; set; }
+
+    public double? TtftMs { get; set; }
+
+    public double? ChatLatencyMs { get; set; }
+
+    public double? TokensPerSecond { get; set; }
+
+    public string Verdict { get; set; } = string.Empty;
+
+    public string SecondaryText { get; set; } = string.Empty;
+
+    public int RunCount { get; set; }
 }
 
 public sealed class ProxyBatchConfigItemSnapshot

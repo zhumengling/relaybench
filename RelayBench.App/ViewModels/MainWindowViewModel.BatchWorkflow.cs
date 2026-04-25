@@ -97,6 +97,14 @@ public sealed partial class MainWindowViewModel
                 DeepStatus = "未开始",
                 DeepSummary = string.Empty,
                 DeepCheckedAt = "--",
+                CompositeScore = ResolveBatchComparisonCompositeScore(item.Row),
+                StabilityRatio = ResolveBatchAggregateStabilityRatio(item.Row),
+                TtftMs = item.Row.AverageTtftMs,
+                ChatLatencyMs = item.Row.AverageChatLatencyMs,
+                TokensPerSecond = item.Row.AverageBenchmarkTokensPerSecond,
+                Verdict = BuildBatchComparisonVerdict(item.Row),
+                SecondaryText = BuildProxyBatchAggregateSecondaryText(item.Row),
+                RunCount = item.Row.RunCount,
                 ApiKey = item.Row.Entry.ApiKey
             };
 

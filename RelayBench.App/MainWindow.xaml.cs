@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -39,6 +40,8 @@ public partial class MainWindow : Window
     private const int WindowCloseDurationMs = 280;
     private const double WindowCloseTargetScale = 0.958d;
     private const double WindowCloseTargetOffsetY = 32d;
+    private const int DwmWindowCornerPreference = 33;
+    private const int DwmWindowCornerPreferenceRound = 2;
 
     private sealed class OverlayAnimationState(
         Grid overlay,
@@ -74,6 +77,13 @@ public partial class MainWindow : Window
     private string _lastWorkbenchPageKey = string.Empty;
     private int _globalTaskProgressAnimationVersion;
 
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(
+        IntPtr hwnd,
+        int attribute,
+        ref int attributeValue,
+        int attributeSize);
+
     public MainWindow()
     {
         Opacity = 0;
@@ -96,11 +106,30 @@ public partial class MainWindow : Window
 
     private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
     {
+        ApplyRoundedWindowCorners();
         ApplyOverlayStates(immediate: true);
         UpdateGlobalTaskProgressVisual(immediate: true);
         _lastWorkbenchPageKey = _viewModel?.SelectedWorkbenchPageKey ?? string.Empty;
         ScheduleProxyChartViewportWidthUpdate();
         PlayWindowOpenAnimation();
+    }
+
+    private void ApplyRoundedWindowCorners()
+    {
+        try
+        {
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            var preference = DwmWindowCornerPreferenceRound;
+            DwmSetWindowAttribute(
+                helper.Handle,
+                DwmWindowCornerPreference,
+                ref preference,
+                Marshal.SizeOf<int>());
+        }
+        catch
+        {
+            // DWM rounded corner preference is best-effort on supported Windows versions.
+        }
     }
 
     private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -300,6 +329,8 @@ public partial class MainWindow : Window
             new OverlayAnimationState(ConfirmationDialogOverlay, ConfirmationDialogOverlayPanel, static viewModel => viewModel.IsConfirmationDialogOpen);
         _overlayAnimations[nameof(MainWindowViewModel.IsAboutDialogOpen)] =
             new OverlayAnimationState(AboutDialogOverlay, AboutDialogOverlayPanel, static viewModel => viewModel.IsAboutDialogOpen);
+        _overlayAnimations[nameof(MainWindowViewModel.IsProxyEndpointHistoryOpen)] =
+            new OverlayAnimationState(ProxyEndpointHistoryOverlay, ProxyEndpointHistoryOverlayPanel, static viewModel => viewModel.IsProxyEndpointHistoryOpen);
         _overlayAnimations[nameof(MainWindowViewModel.IsProxyBatchEditorOpen)] =
             new OverlayAnimationState(ProxyBatchEditorOverlay, ProxyBatchEditorOverlayPanel, static viewModel => viewModel.IsProxyBatchEditorOpen);
     }

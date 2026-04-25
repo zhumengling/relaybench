@@ -22,7 +22,8 @@ public sealed partial class ProxyDiagnosticsService
     private sealed record ModelsProbeOutcome(
         ProxyProbeScenarioResult ScenarioResult,
         int ModelCount,
-        IReadOnlyList<string> SampleModels);
+        IReadOnlyList<string> SampleModels,
+        IReadOnlyList<ProxyModelCatalogItem> ModelItems);
 
     private sealed record JsonProbeOutcome(
         ProxyProbeScenarioResult ScenarioResult,

@@ -54,11 +54,16 @@ public sealed partial class ProxyDiagnosticsService
     }
 
     private static IReadOnlyList<string> ParseModelIds(string json)
+        => ParseModelCatalogItems(json)
+            .Select(static item => item.Id)
+            .ToArray();
+
+    private static IReadOnlyList<ProxyModelCatalogItem> ParseModelCatalogItems(string json)
     {
         using var document = JsonDocument.Parse(json);
         if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
         {
-            return Array.Empty<string>();
+            return Array.Empty<ProxyModelCatalogItem>();
         }
 
         return data.EnumerateArray()
@@ -66,16 +71,124 @@ public sealed partial class ProxyDiagnosticsService
             {
                 if (element.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.String)
                 {
-                    return idElement.GetString();
+                    var id = idElement.GetString();
+                    return string.IsNullOrWhiteSpace(id)
+                        ? null
+                        : new ProxyModelCatalogItem(id, TryExtractModelContextWindow(element));
                 }
 
                 return null;
             })
-            .Where(static id => !string.IsNullOrWhiteSpace(id))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(static id => id, StringComparer.OrdinalIgnoreCase)
-            .Cast<string>()
+            .Where(static item => item is not null)
+            .DistinctBy(static item => item!.Id, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static item => item!.Id, StringComparer.OrdinalIgnoreCase)
+            .Cast<ProxyModelCatalogItem>()
             .ToArray();
+    }
+
+    private static int? TryExtractModelContextWindow(JsonElement element)
+    {
+        string[] contextFieldNames =
+        [
+            "context_window",
+            "context_length",
+            "max_context_window",
+            "max_context_length",
+            "max_model_len",
+            "max_sequence_length",
+            "max_seq_len",
+            "max_position_embeddings",
+            "max_total_tokens",
+            "input_token_limit",
+            "max_input_tokens",
+            "n_ctx",
+            "ctx_size"
+        ];
+
+        return TryExtractModelContextWindow(element, contextFieldNames);
+    }
+
+    private static int? TryExtractModelContextWindow(JsonElement element, IReadOnlyCollection<string> contextFieldNames)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (contextFieldNames.Contains(property.Name) &&
+                TryReadPositiveInt(property.Value, out var value))
+            {
+                return value;
+            }
+        }
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (property.Value.ValueKind is JsonValueKind.Object)
+            {
+                var nested = TryExtractModelContextWindow(property.Value, contextFieldNames);
+                if (nested is not null)
+                {
+                    return nested;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool TryReadPositiveInt(JsonElement element, out int value)
+    {
+        value = 0;
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Number:
+                if (!element.TryGetInt64(out var longValue))
+                {
+                    return false;
+                }
+
+                return TryNormalizeContextWindow(longValue, out value);
+            case JsonValueKind.String:
+                var raw = element.GetString();
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    return false;
+                }
+
+                var normalized = raw.Trim().Replace("_", string.Empty, StringComparison.Ordinal);
+                if (normalized.EndsWith('k') || normalized.EndsWith('K'))
+                {
+                    return double.TryParse(normalized[..^1], out var thousands) &&
+                           TryNormalizeContextWindow((long)Math.Round(thousands * 1000d), out value);
+                }
+
+                if (normalized.EndsWith('m') || normalized.EndsWith('M'))
+                {
+                    return double.TryParse(normalized[..^1], out var millions) &&
+                           TryNormalizeContextWindow((long)Math.Round(millions * 1_000_000d), out value);
+                }
+
+                normalized = normalized.Replace(",", string.Empty, StringComparison.Ordinal);
+                return long.TryParse(normalized, out var parsed) &&
+                       TryNormalizeContextWindow(parsed, out value);
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryNormalizeContextWindow(long rawValue, out int value)
+    {
+        value = 0;
+        if (rawValue is < 1024 or > 20_000_000)
+        {
+            return false;
+        }
+
+        value = (int)rawValue;
+        return true;
     }
 
     private static string BuildChatPayload(string model, bool stream)

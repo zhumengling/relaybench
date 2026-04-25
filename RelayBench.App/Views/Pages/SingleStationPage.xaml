@@ -76,6 +76,10 @@
                            VerticalAlignment="Center">
                     <Button Margin="0,0,8,0"
                             Padding="12,6"
+                            Command="{Binding OpenProxyEndpointHistoryCommand}"
+                            Content="历史接口" />
+                    <Button Margin="0,0,8,0"
+                            Padding="12,6"
                             Command="{Binding OpenProxySingleChartCommand}"
                             Content="查看图表" />
                     <Button Command="{Binding RunSelectedSingleStationModeCommand}"

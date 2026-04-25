@@ -24,18 +24,18 @@
         ResizeMode="CanResize">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="0"
-                            CornerRadius="0"
+                            CornerRadius="16"
                             GlassFrameThickness="0"
                             ResizeBorderThickness="6"
                             UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
 
-    <Grid Margin="3">
+    <Grid Margin="0">
         <Border x:Name="MainShellBorder"
                 Background="{StaticResource PanelBrush}"
                 BorderBrush="{StaticResource PanelBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="14">
+                BorderThickness="0"
+                CornerRadius="16">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="44" />
@@ -1882,6 +1882,231 @@
                                     Margin="12,0,0,0"
                                     Command="{Binding CloseOfficialApiTraceDialogCommand}"
                                     Content="&#x5173;&#x95ED;" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ProxyEndpointHistoryOverlay"
+              Panel.ZIndex="20"
+              Background="#660F172A"
+              Visibility="Collapsed">
+            <Border x:Name="ProxyEndpointHistoryOverlayPanel"
+                    Width="980"
+                    MaxHeight="700"
+                    Padding="14"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="10" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="430" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="3">
+                        <TextBlock Style="{StaticResource DialogTitleTextStyle}"
+                                   Text="历史接口" />
+                        <WrapPanel Margin="0,6,0,0">
+                            <Border Style="{StaticResource DialogAccentTagBorderStyle}">
+                                <TextBlock Style="{StaticResource DialogTagTextStyle}"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Text="接口记录" />
+                            </Border>
+                            <Border Margin="6,0,0,0"
+                                    Style="{StaticResource DialogAccentTagBorderStyle}">
+                                <TextBlock Style="{StaticResource DialogTagTextStyle}"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           Text="点击回填主页" />
+                            </Border>
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="0"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding ProxyEndpointHistorySummary, Mode=OneWay}" />
+
+                            <Grid Grid.Row="2">
+                                <ListBox ItemsSource="{Binding ProxyEndpointHistoryItems}"
+                                         SelectedItem="{Binding SelectedProxyEndpointHistoryItem, Mode=TwoWay}"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         HorizontalContentAlignment="Stretch"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="0" />
+                                            <Setter Property="Margin" Value="0,0,0,8" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="10"
+                                                    Background="{StaticResource PanelBrush}"
+                                                    BorderBrush="{StaticResource PanelBorderBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="12">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="12"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Text="{Binding DisplayTitle}" />
+                                                        <TextBlock Margin="0,4,0,0"
+                                                                   FontSize="10.2"
+                                                                   Foreground="{StaticResource MutedBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Text="{Binding KeyPreview}" />
+                                                        <TextBlock Margin="0,4,0,0"
+                                                                   FontSize="10.2"
+                                                                   Foreground="{StaticResource MutedBrush}"
+                                                                   Text="{Binding DisplayMeta}" />
+                                                    </StackPanel>
+                                                    <Button Grid.Column="1"
+                                                            MinWidth="62"
+                                                            Margin="10,0,0,0"
+                                                            Padding="10,4"
+                                                            VerticalAlignment="Center"
+                                                            Command="{Binding DataContext.ApplyProxyEndpointHistoryItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Content="使用" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Text="暂无历史接口。填写接口并运行或保存后会自动记录。">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasProxyEndpointHistoryItems}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2"
+                            Grid.Column="2"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="10" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="10" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                           Text="选中接口" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Text="这里仅展示 Key 的掩码；回填时会使用加密状态里保存的完整 Key。" />
+                            </StackPanel>
+
+                            <Border Grid.Row="2"
+                                    Padding="12"
+                                    Background="{StaticResource PanelBrush}"
+                                    BorderBrush="{StaticResource PanelBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="14">
+                                <StackPanel>
+                                    <TextBlock FontSize="12.8"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextBrush}"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding SelectedProxyEndpointHistoryItem.DisplayTitle, TargetNullValue=请选择左侧接口}" />
+                                    <TextBlock Margin="0,10,0,0"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding SelectedProxyEndpointHistoryItem.BaseUrlPreview, TargetNullValue=接口地址：--}" />
+                                    <TextBlock Margin="0,6,0,0"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding SelectedProxyEndpointHistoryItem.ModelPreview, TargetNullValue=模型：--}" />
+                                    <TextBlock Margin="0,6,0,0"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding SelectedProxyEndpointHistoryItem.KeyPreview, StringFormat=Key：{0}, TargetNullValue=Key：--}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Row="4"
+                                    Style="{StaticResource DialogMetaStripBorderStyle}">
+                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Text="点击“使用选中项”后，会把接口地址、API Key、模型同时填回接口诊断主页输入框，方便在不同中转站、官方接口之间快速切换。" />
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            Grid.ColumnSpan="3"
+                            Margin="0,10,0,0"
+                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="记录会随应用状态一起保存；敏感 Key 仍走本地保护存储。" />
+                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
+                                <Button MinWidth="88"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding ClearProxyEndpointHistoryCommand}"
+                                        Content="清空记录" />
+                                <Button MinWidth="116"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding ApplyProxyEndpointHistoryItemCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="使用选中项" />
+                                <Button MinWidth="88"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding CloseProxyEndpointHistoryCommand}"
+                                        Content="关闭" />
+                            </WrapPanel>
                         </Grid>
                     </Border>
                 </Grid>

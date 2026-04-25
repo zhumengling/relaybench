@@ -157,6 +157,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand OpenBatchDeepComparisonChartCommand { get; }
 
+    public AsyncRelayCommand OpenProxyEndpointHistoryCommand { get; }
+
+    public AsyncRelayCommand CloseProxyEndpointHistoryCommand { get; }
+
+    public AsyncRelayCommand<ProxyEndpointHistoryItemViewModel?> ApplyProxyEndpointHistoryItemCommand { get; }
+
+    public AsyncRelayCommand ClearProxyEndpointHistoryCommand { get; }
+
     public AsyncRelayCommand CloseProxyTrendChartCommand { get; }
 
     public AsyncRelayCommand StopCurrentProxyTestCommand { get; }

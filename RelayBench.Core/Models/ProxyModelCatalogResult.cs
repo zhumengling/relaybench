@@ -17,4 +17,5 @@ public sealed record ProxyModelCatalogResult(
     string? CdnSummary = null,
     string? RequestId = null,
     string? TraceId = null,
-    string? TraceabilitySummary = null);
+    string? TraceabilitySummary = null,
+    IReadOnlyList<ProxyModelCatalogItem>? ModelItems = null);

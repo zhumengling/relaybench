@@ -1,5 +1,6 @@
 using System.Text;
 using RelayBench.Core.Models;
+using RelayBench.Core.Services;
 
 namespace RelayBench.App.ViewModels;
 
@@ -8,6 +9,20 @@ public sealed partial class MainWindowViewModel
     private void ApplyProxyModelCatalogResult(ProxyModelCatalogResult result)
     {
         var recommendedModel = result.Models.FirstOrDefault();
+        var modelItems = result.ModelItems is { Count: > 0 }
+            ? result.ModelItems
+            : result.Models.Select(static model => new ProxyModelCatalogItem(model)).ToArray();
+
+        _proxyModelContextWindows.Clear();
+        foreach (var item in modelItems)
+        {
+            var contextWindow = ModelContextWindowCatalog.ResolveContextWindow(item.Id, item.ContextWindow);
+            if (contextWindow is not null)
+            {
+                _proxyModelContextWindows[item.Id] = contextWindow.Value;
+            }
+        }
+
         ProxyCatalogModels.Clear();
         foreach (var model in result.Models)
         {
@@ -24,6 +39,7 @@ public sealed partial class MainWindowViewModel
             $"状态：{(result.Success ? "拉取成功" : "拉取失败")}\n" +
             $"状态码：{result.StatusCode?.ToString() ?? "--"}\n" +
             $"模型数量：{result.ModelCount}\n" +
+            $"已识别上下文：{_proxyModelContextWindows.Count}\n" +
             $"弹窗可见模型：{VisibleProxyCatalogModels.Count}\n" +
             $"耗时：{FormatMilliseconds(result.Latency)}\n" +
             $"推荐模型：{recommendedModel ?? "未识别"}\n" +
@@ -41,7 +57,9 @@ public sealed partial class MainWindowViewModel
         {
             foreach (var model in result.Models)
             {
-                builder.AppendLine(model);
+                builder.AppendLine(_proxyModelContextWindows.TryGetValue(model, out var contextWindow)
+                    ? $"{model}  |  context {contextWindow}  |  auto compact {ModelContextWindowCatalog.CalculateAutoCompactTokenLimit(contextWindow)}"
+                    : model);
             }
         }
 
@@ -71,5 +89,17 @@ public sealed partial class MainWindowViewModel
 
         AppendModuleOutput("接口模型列表返回", ProxyModelCatalogSummary, ProxyModelCatalogDetail);
         SaveState();
+    }
+
+    private int? ResolveProxyModelContextWindow(string? model)
+    {
+        var normalized = model?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalized) &&
+            _proxyModelContextWindows.TryGetValue(normalized, out var contextWindow))
+        {
+            return contextWindow;
+        }
+
+        return ModelContextWindowCatalog.ResolveContextWindow(normalized);
     }
 }

@@ -5,6 +5,8 @@ namespace RelayBench.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    private const string CodexOpenAiProviderDisplayName = "OpenAI";
+
     public string ApplicationCenterApplyTargetSummary
     {
         get
@@ -92,7 +94,8 @@ public sealed partial class MainWindowViewModel
                     ProxyBaseUrl,
                     ProxyApiKey,
                     ProxyModel,
-                    ResolveCurrentProxyDisplayName());
+                    ResolveCurrentProxyDisplayName(),
+                    ResolveProxyModelContextWindow(ProxyModel));
 
                 StringBuilder detailBuilder = new();
                 detailBuilder.AppendLine(BuildApplicationCenterApplyDetail(result));
@@ -177,16 +180,8 @@ public sealed partial class MainWindowViewModel
         return missing;
     }
 
-    private string? ResolveCurrentProxyDisplayName()
-    {
-        if (Uri.TryCreate(ProxyBaseUrl?.Trim(), UriKind.Absolute, out var uri) &&
-            !string.IsNullOrWhiteSpace(uri.Host))
-        {
-            return uri.Host;
-        }
-
-        return null;
-    }
+    private static string ResolveCurrentProxyDisplayName()
+        => CodexOpenAiProviderDisplayName;
 
     private static string FormatPreviewValue(string? value)
         => string.IsNullOrWhiteSpace(value)

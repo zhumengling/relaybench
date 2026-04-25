@@ -830,6 +830,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ProxySeriesRoundsText = string.IsNullOrWhiteSpace(snapshot.ProxySeriesRoundsText) ? "5" : snapshot.ProxySeriesRoundsText;
         ProxySeriesDelayMsText = string.IsNullOrWhiteSpace(snapshot.ProxySeriesDelayMsText) ? "1200" : snapshot.ProxySeriesDelayMsText;
         LoadProxyBatchState(snapshot);
+        LoadProxyEndpointHistoryState(snapshot);
+        LoadProxyBatchRankingState(snapshot);
 
         _historyEntries.Clear();
         _historyEntries.AddRange(snapshot.HistoryEntries ?? []);
@@ -852,6 +854,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         };
 
         ApplyProxyBatchStateToSnapshot(snapshot);
+        ApplyProxyEndpointHistoryStateToSnapshot(snapshot);
+        ApplyProxyBatchRankingStateToSnapshot(snapshot);
         ApplyProxyAdvancedStateToSnapshot(snapshot);
         ApplyProxyCapabilityMatrixStateToSnapshot(snapshot);
         ApplyWorkbenchStateToSnapshot(snapshot);

@@ -45,7 +45,12 @@ public sealed partial class MainWindowViewModel
             $"正在应用“{row.EntryName}”...",
             async () =>
             {
-                var result = await _codexFamilyConfigApplyService.ApplyAsync(row.BaseUrl, row.ApiKey, row.Model, row.EntryName);
+                var result = await _codexFamilyConfigApplyService.ApplyAsync(
+                    row.BaseUrl,
+                    row.ApiKey,
+                    row.Model,
+                    CodexOpenAiProviderDisplayName,
+                    ResolveProxyModelContextWindow(row.Model));
                 CodexChatMergeResult? mergeResult = null;
                 if (result.Succeeded)
                 {

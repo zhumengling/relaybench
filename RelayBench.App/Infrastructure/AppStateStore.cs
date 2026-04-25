@@ -14,6 +14,8 @@ public sealed class AppStateStore
         nameof(AppStateSnapshot.ProxyCacheIsolationAlternateApiKey),
         nameof(AppStateSnapshot.ProxyOfficialReferenceApiKey),
         nameof(AppStateSnapshot.ProxyBatchTargetsText),
+        nameof(ProxyEndpointHistoryEntrySnapshot.ApiKey),
+        nameof(ProxyBatchRankingRowSnapshot.ApiKey),
         nameof(ProxyBatchConfigItemSnapshot.EntryApiKey),
         nameof(ProxyBatchConfigItemSnapshot.SiteGroupApiKey)
     };

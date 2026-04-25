@@ -103,6 +103,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OpenProxyConcurrencyChartCommand = new AsyncRelayCommand(OpenProxyConcurrencyChartAsync);
         OpenBatchComparisonChartCommand = new AsyncRelayCommand(OpenBatchComparisonChartAsync);
         OpenBatchDeepComparisonChartCommand = new AsyncRelayCommand(OpenBatchDeepComparisonChartAsync);
+        OpenProxyEndpointHistoryCommand = new AsyncRelayCommand(OpenProxyEndpointHistoryAsync);
+        CloseProxyEndpointHistoryCommand = new AsyncRelayCommand(CloseProxyEndpointHistoryAsync);
+        ApplyProxyEndpointHistoryItemCommand = new AsyncRelayCommand<ProxyEndpointHistoryItemViewModel?>(ApplyProxyEndpointHistoryItemAsync);
+        ClearProxyEndpointHistoryCommand = new AsyncRelayCommand(ClearProxyEndpointHistoryAsync);
         CloseProxyTrendChartCommand = new AsyncRelayCommand(CloseProxyTrendChartAsync);
         StopCurrentProxyTestCommand = new AsyncRelayCommand(StopCurrentProxyTestAsync, CanStopCurrentProxyTestAction);
         CloseOfficialApiTraceDialogCommand = new AsyncRelayCommand(CloseOfficialApiTraceDialogAsync);

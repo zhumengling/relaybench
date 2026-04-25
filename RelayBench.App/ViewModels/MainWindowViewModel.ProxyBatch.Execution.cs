@@ -248,6 +248,7 @@ public sealed partial class MainWindowViewModel
         RefreshProxyOverviewSummary();
         RefreshProxyUnifiedOutput();
         AppendModuleOutput("接口入口组返回", ProxyBatchSummary, ProxyBatchDetail);
+        SaveState();
     }
 
     private static IReadOnlyList<ProxyBatchProbeRow> MaterializeLiveBatchRows(

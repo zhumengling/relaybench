@@ -36,6 +36,7 @@ public sealed class CodexChatMergeService
                 [],
                 Error: "missing-codex-root");
         }
+        RelayBenchBackupRetention.PruneAllUnderDirectory(_environment, codexRoot);
 
         var stateDatabasePath = Path.Combine(codexRoot, "state_5.sqlite");
         if (!_environment.FileExists(stateDatabasePath))
@@ -221,6 +222,7 @@ public sealed class CodexChatMergeService
             var backupPath = $"{thread.RolloutPath}.relaybench-backup-{DateTime.Now:yyyyMMddHHmmss}";
             _environment.CopyFile(thread.RolloutPath, backupPath, overwrite: true);
             backupFiles.Add(backupPath);
+            RelayBenchBackupRetention.PruneForOriginalFile(_environment, thread.RolloutPath);
             _environment.WriteFileText(thread.RolloutPath, updatedContent);
             changedFiles.Add(thread.RolloutPath);
             updatedCount++;
@@ -298,6 +300,7 @@ public sealed class CodexChatMergeService
             var backupPath = $"{path}.relaybench-backup-{DateTime.Now:yyyyMMddHHmmss}";
             _environment.CopyFile(path, backupPath, overwrite: true);
             backupFiles.Add(backupPath);
+            RelayBenchBackupRetention.PruneForOriginalFile(_environment, path);
         }
     }
 
