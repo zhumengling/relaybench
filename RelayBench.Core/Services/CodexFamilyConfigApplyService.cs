@@ -7,7 +7,7 @@ namespace RelayBench.Core.Services;
 public sealed class CodexFamilyConfigApplyService
 {
     private const string CodexProviderKey = "custom";
-    private const string CodexProviderName = "OpenAI";
+    private const string CodexProviderName = "RelayBench Custom";
     private const string CodexResponsesWireApi = "responses";
     private const string CodexChatWireApi = "chat";
 
@@ -186,10 +186,14 @@ public sealed class CodexFamilyConfigApplyService
             RemoveTopLevelAssignment(lines, "model_reasoning_effort");
             RemoveTopLevelAssignment(lines, "model_reasoning_summary");
         }
-
         UpsertSectionString(lines, "model_providers.custom", "name", displayName);
         UpsertSectionString(lines, "model_providers.custom", "base_url", baseUrl);
         UpsertSectionString(lines, "model_providers.custom", "wire_api", wireApi);
+        UpsertSectionRawValue(
+            lines,
+            "model_providers.custom",
+            "http_headers",
+            "{ \"Content-Type\" = \"application/json\" }");
         UpsertSectionString(lines, "model_providers.custom", "experimental_bearer_token", apiKey);
 
         return JoinLines(lines);
@@ -234,9 +238,12 @@ public sealed class CodexFamilyConfigApplyService
     }
 
     private static void UpsertSectionString(List<string> lines, string sectionName, string key, string value)
+        => UpsertSectionRawValue(lines, sectionName, key, SerializeTomlString(value));
+
+    private static void UpsertSectionRawValue(List<string> lines, string sectionName, string key, string rawValue)
     {
         var header = $"[{sectionName}]";
-        var lineContent = $"{key} = {SerializeTomlString(value)}";
+        var lineContent = $"{key} = {rawValue}";
         var sectionIndex = FindSectionHeader(lines, header);
 
         if (sectionIndex < 0)
@@ -375,9 +382,21 @@ public sealed class CodexFamilyConfigApplyService
             return "DeepSeek";
         }
 
-        return string.IsNullOrWhiteSpace(value)
+        return string.IsNullOrWhiteSpace(value) || IsOpenAiProviderName(value)
             ? CodexProviderName
             : value.Trim();
+    }
+
+    private static bool IsOpenAiProviderName(string value)
+    {
+        var normalized = value
+            .Trim()
+            .Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace("_", string.Empty, StringComparison.Ordinal)
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToLowerInvariant();
+
+        return normalized is "openai" or "openaicompatible";
     }
 
     public static string ResolveCodexWireApiPreference(
@@ -385,14 +404,13 @@ public sealed class CodexFamilyConfigApplyService
         string? model,
         string? preferredWireApi = null)
     {
-        if (TryNormalizeCodexWireApi(preferredWireApi, out var normalizedPreferredWireApi))
+        if (TryNormalizeCodexWireApi(preferredWireApi, out var normalizedPreferredWireApi) &&
+            string.Equals(normalizedPreferredWireApi, CodexResponsesWireApi, StringComparison.Ordinal))
         {
             return normalizedPreferredWireApi;
         }
 
-        return IsChatPreferredModel(model) || IsChatPreferredEndpoint(baseUrl)
-            ? CodexChatWireApi
-            : CodexResponsesWireApi;
+        return CodexResponsesWireApi;
     }
 
     public static bool IsCodexSupportedChatGptModel(string? model)
@@ -440,12 +458,6 @@ public sealed class CodexFamilyConfigApplyService
         if (string.IsNullOrWhiteSpace(text))
         {
             return false;
-        }
-
-        if (string.Equals(text, CodexChatWireApi, StringComparison.OrdinalIgnoreCase))
-        {
-            normalized = CodexChatWireApi;
-            return true;
         }
 
         if (string.Equals(text, CodexResponsesWireApi, StringComparison.OrdinalIgnoreCase))

@@ -14,12 +14,7 @@ public sealed partial class MainWindowViewModel
             var missing = GetApplicationCenterMissingContextFields();
             if (missing.Count == 0)
             {
-                if (!CanApplyModelToCodexApps(ProxyModel))
-                {
-                    return BuildCodexUnsupportedModelMessage(ProxyModel);
-                }
-
-                return "当前接口信息已齐全，可以直接应用到 Codex 系列。";
+                return "当前接口信息已齐全；点击应用时会先检测 Responses API 支持，检测通过后继续确认。";
             }
 
             return $"还缺 {string.Join("、", missing)}，补齐后再应用。";
@@ -53,10 +48,10 @@ public sealed partial class MainWindowViewModel
                 builder.AppendLine();
                 builder.AppendLine($"待补全：{string.Join("、", missing)}");
             }
-            else if (!CanApplyModelToCodexApps(ProxyModel))
+            else if (!CanApplyEndpointToCodexApps(ProxyBaseUrl, ProxyApiKey, ProxyModel))
             {
                 builder.AppendLine();
-                builder.AppendLine(BuildCodexUnsupportedModelMessage(ProxyModel));
+                builder.AppendLine("点击应用时会先检测该接口是否支持 Codex 需要的 Responses API。");
             }
 
             return builder.ToString().TrimEnd();
@@ -68,8 +63,7 @@ public sealed partial class MainWindowViewModel
 
     private bool CanApplyCurrentInterfaceToCodexApps()
         => !IsBusy &&
-           GetApplicationCenterMissingContextFields().Count == 0 &&
-           CanApplyModelToCodexApps(ProxyModel);
+           GetApplicationCenterMissingContextFields().Count == 0;
 
     private async Task ApplyCurrentInterfaceToCodexAppsAsync()
     {
@@ -80,9 +74,9 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        if (!CanApplyModelToCodexApps(ProxyModel))
+        var settings = BuildProxySettings();
+        if (!await ProbeCodexResponsesCompatibilityBeforeApplyAsync(settings))
         {
-            StatusMessage = BuildCodexUnsupportedModelMessage(ProxyModel);
             return;
         }
 
@@ -108,7 +102,6 @@ public sealed partial class MainWindowViewModel
             "正在应用当前接口...",
             async () =>
             {
-                await DetectAndCacheProxyWireApiAsync(BuildProxySettings());
                 var cachedApplyInfo = await ResolveCachedCodexApplyInfoAsync(
                     ProxyBaseUrl,
                     ProxyApiKey,

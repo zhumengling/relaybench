@@ -13,8 +13,7 @@ public sealed partial class MainWindowViewModel
            row is not null &&
            !string.IsNullOrWhiteSpace(row.BaseUrl) &&
            !string.IsNullOrWhiteSpace(row.ApiKey) &&
-           !string.IsNullOrWhiteSpace(row.Model) &&
-           CanApplyModelToCodexApps(row.Model);
+           !string.IsNullOrWhiteSpace(row.Model);
 
     private async Task ApplyRankingRowToCodexAppsAsync(ProxyBatchRankingRowViewModel? row)
     {
@@ -24,9 +23,17 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        if (!CanApplyModelToCodexApps(row.Model))
+        if (string.IsNullOrWhiteSpace(row.BaseUrl) ||
+            string.IsNullOrWhiteSpace(row.ApiKey) ||
+            string.IsNullOrWhiteSpace(row.Model))
         {
-            StatusMessage = BuildCodexUnsupportedModelMessage(row.EntryName, row.Model);
+            StatusMessage = $"“{row.EntryName}”缺少地址、密钥或模型，暂时不能应用。";
+            return;
+        }
+
+        var settings = BuildProxySettings(row.BaseUrl, row.ApiKey, row.Model);
+        if (!await ProbeCodexResponsesCompatibilityBeforeApplyAsync(settings, row.EntryName))
+        {
             return;
         }
 
@@ -52,8 +59,6 @@ public sealed partial class MainWindowViewModel
             $"正在应用“{row.EntryName}”...",
             async () =>
             {
-                var settings = BuildProxySettings(row.BaseUrl, row.ApiKey, row.Model);
-                await DetectAndCacheProxyWireApiAsync(settings);
                 var cachedApplyInfo = await ResolveCachedCodexApplyInfoAsync(
                     row.BaseUrl,
                     row.ApiKey,

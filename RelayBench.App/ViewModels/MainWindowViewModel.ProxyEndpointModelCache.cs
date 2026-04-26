@@ -28,6 +28,14 @@ public sealed partial class MainWindowViewModel
         try
         {
             await _proxyEndpointModelCacheService.SaveDiagnosticsAsync(settings, result, cancellationToken);
+            var responsesSupported = result.ScenarioResults?
+                .FirstOrDefault(static item => item.Scenario == ProxyProbeScenarioKind.Responses)?
+                .Success == true;
+            RememberCodexResponsesCompatibility(
+                settings.BaseUrl,
+                settings.ApiKey,
+                FirstNonEmpty(result.EffectiveModel, result.RequestedModel, settings.Model),
+                responsesSupported);
         }
         catch (Exception ex)
         {
@@ -37,27 +45,45 @@ public sealed partial class MainWindowViewModel
 
     private async Task DetectAndCacheProxyWireApiAsync(
         ProxyEndpointSettings settings,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool forceProbe = false)
     {
         try
         {
-            var cachedWireApi = await _proxyEndpointModelCacheService.TryResolvePreferredWireApiAsync(
-                settings.BaseUrl,
-                settings.ApiKey,
-                settings.Model,
-                cancellationToken);
-            if (!string.IsNullOrWhiteSpace(cachedWireApi))
+            if (!forceProbe)
             {
-                StatusMessage = $"已使用缓存的接口链接方式：{cachedWireApi}。";
-                return;
+                var cached = await _proxyEndpointModelCacheService.TryResolveAsync(
+                    settings.BaseUrl,
+                    settings.ApiKey,
+                    settings.Model,
+                    cancellationToken);
+                if (cached is not null)
+                {
+                    RememberCodexResponsesCompatibility(
+                        settings.BaseUrl,
+                        settings.ApiKey,
+                        settings.Model,
+                        cached.ResponsesSupported == true);
+                }
+
+                if (!string.IsNullOrWhiteSpace(cached?.PreferredWireApi))
+                {
+                    StatusMessage = $"已使用缓存的 Codex 接口链接方式：{cached.PreferredWireApi}。";
+                    return;
+                }
             }
 
             StatusMessage = "正在检测接口链接方式（chat / responses）...";
             var result = await _proxyDiagnosticsService.ProbeProtocolAsync(settings, cancellationToken);
             await _proxyEndpointModelCacheService.SaveProtocolProbeAsync(settings, result, cancellationToken);
+            RememberCodexResponsesCompatibility(
+                settings.BaseUrl,
+                settings.ApiKey,
+                settings.Model,
+                result.ResponsesSupported);
             if (!string.IsNullOrWhiteSpace(result.PreferredWireApi))
             {
-                StatusMessage = $"已识别接口链接方式：{result.PreferredWireApi}。";
+                StatusMessage = $"已识别 Codex 接口链接方式：{result.PreferredWireApi}。";
             }
             else if (!string.IsNullOrWhiteSpace(result.Error))
             {
@@ -91,7 +117,7 @@ public sealed partial class MainWindowViewModel
 
         return new CodexApplyCachedModelInfo(
             cached?.ContextWindow ?? ResolveProxyModelContextWindow(model),
-            cached?.PreferredWireApi);
+            cached?.ResponsesSupported == true ? cached.PreferredWireApi : null);
     }
 
     private sealed record CodexApplyCachedModelInfo(

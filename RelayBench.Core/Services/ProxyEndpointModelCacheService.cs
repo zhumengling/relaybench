@@ -107,7 +107,7 @@ public sealed class ProxyEndpointModelCacheService
             return;
         }
 
-        var preferredWireApi = NormalizeWireApi(result.PreferredWireApi) ??
+        var preferredWireApi = NormalizeWireApi(result.PreferredWireApi, result.ResponsesSupported) ??
             ResolvePreferredWireApi(
                 result.BaseUrl,
                 model,
@@ -278,7 +278,7 @@ public sealed class ProxyEndpointModelCacheService
         CancellationToken cancellationToken = default)
     {
         var cached = await TryResolveAsync(baseUrl, apiKey, model, cancellationToken);
-        return NormalizeWireApi(cached?.PreferredWireApi);
+        return NormalizeWireApi(cached?.PreferredWireApi, cached?.ResponsesSupported == true);
     }
 
     private async Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken)
@@ -404,9 +404,11 @@ public sealed class ProxyEndpointModelCacheService
 
         var cachedModel = reader.GetString(0);
         var contextWindow = reader.IsDBNull(1) ? null : (int?)reader.GetInt32(1);
-        var preferredWireApi = reader.IsDBNull(2) ? null : reader.GetString(2);
         var chatSupported = reader.IsDBNull(3) ? (bool?)null : reader.GetInt32(3) == 1;
         var responsesSupported = reader.IsDBNull(4) ? (bool?)null : reader.GetInt32(4) == 1;
+        var preferredWireApi = NormalizeWireApi(
+            reader.IsDBNull(2) ? null : reader.GetString(2),
+            responsesSupported == true);
         var checkedAtText = reader.GetString(5);
         var checkedAt = DateTimeOffset.TryParse(checkedAtText, out var parsed)
             ? parsed
@@ -433,35 +435,19 @@ public sealed class ProxyEndpointModelCacheService
         bool chatSupported,
         bool responsesSupported)
     {
-        if (chatSupported && !responsesSupported)
-        {
-            return "chat";
-        }
-
-        if (responsesSupported && !chatSupported)
-        {
-            return "responses";
-        }
-
-        if (chatSupported && responsesSupported)
-        {
-            return CodexFamilyConfigApplyService.ResolveCodexWireApiPreference(baseUrl, model);
-        }
-
-        return null;
+        _ = baseUrl;
+        _ = model;
+        _ = chatSupported;
+        return responsesSupported ? "responses" : null;
     }
 
     private static string FirstNonEmpty(params string?[] values)
         => values.FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? string.Empty;
 
-    private static string? NormalizeWireApi(string? value)
+    private static string? NormalizeWireApi(string? value, bool responsesSupported)
     {
-        if (string.Equals(value?.Trim(), "chat", StringComparison.OrdinalIgnoreCase))
-        {
-            return "chat";
-        }
-
-        if (string.Equals(value?.Trim(), "responses", StringComparison.OrdinalIgnoreCase))
+        if (responsesSupported &&
+            string.Equals(value?.Trim(), "responses", StringComparison.OrdinalIgnoreCase))
         {
             return "responses";
         }

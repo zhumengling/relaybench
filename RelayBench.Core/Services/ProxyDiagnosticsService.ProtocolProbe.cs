@@ -150,22 +150,10 @@ public sealed partial class ProxyDiagnosticsService
         bool chatSupported,
         bool responsesSupported)
     {
-        if (chatSupported && !responsesSupported)
-        {
-            return "chat";
-        }
-
-        if (responsesSupported && !chatSupported)
-        {
-            return "responses";
-        }
-
-        if (chatSupported && responsesSupported)
-        {
-            return CodexFamilyConfigApplyService.ResolveCodexWireApiPreference(baseUrl, model);
-        }
-
-        return null;
+        _ = baseUrl;
+        _ = model;
+        _ = chatSupported;
+        return responsesSupported ? "responses" : null;
     }
 
     private static string BuildProtocolProbeSummary(
@@ -177,8 +165,8 @@ public sealed partial class ProxyDiagnosticsService
         var chatText = chatSupported ? "chat 可用" : "chat 不可用";
         var responsesText = responsesSupported ? "responses 可用" : "responses 不可用";
         var preferredText = string.IsNullOrWhiteSpace(preferredWireApi)
-            ? "暂未判断写入协议"
-            : $"建议写入 wire_api={preferredWireApi}";
+            ? "Codex 需要 responses，暂不可应用"
+            : $"Codex 可写入 wire_api={preferredWireApi}";
         return $"协议探测模型：{model}；{chatText}，{responsesText}；{preferredText}。";
     }
 
