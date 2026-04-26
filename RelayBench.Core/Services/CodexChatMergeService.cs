@@ -225,28 +225,36 @@ public sealed class CodexChatMergeService
                 continue;
             }
 
-            var originalContent = _environment.ReadFileText(thread.RolloutPath);
-            if (string.IsNullOrWhiteSpace(originalContent))
+            try
             {
-                continue;
-            }
+                var originalContent = _environment.ReadFileText(thread.RolloutPath);
+                if (string.IsNullOrWhiteSpace(originalContent))
+                {
+                    continue;
+                }
 
-            if (!TryRewriteSessionMetaProviderAndModel(
-                    originalContent,
-                    targetProvider,
-                    targetModel,
-                    out var updatedContent))
+                if (!TryRewriteSessionMetaProviderAndModel(
+                        originalContent,
+                        targetProvider,
+                        targetModel,
+                        out var updatedContent))
+                {
+                    continue;
+                }
+
+                var backupPath = $"{thread.RolloutPath}.relaybench-backup-{DateTime.Now:yyyyMMddHHmmss}";
+                _environment.CopyFile(thread.RolloutPath, backupPath, overwrite: true);
+                backupFiles.Add(backupPath);
+                RelayBenchBackupRetention.PruneForOriginalFile(_environment, thread.RolloutPath);
+                _environment.WriteFileText(thread.RolloutPath, updatedContent);
+                changedFiles.Add(thread.RolloutPath);
+                updatedCount++;
+            }
+            catch
             {
-                continue;
+                // Codex may keep the active session JSONL locked. The SQLite index is authoritative
+                // for the sidebar, so skip locked files instead of aborting the whole merge.
             }
-
-            var backupPath = $"{thread.RolloutPath}.relaybench-backup-{DateTime.Now:yyyyMMddHHmmss}";
-            _environment.CopyFile(thread.RolloutPath, backupPath, overwrite: true);
-            backupFiles.Add(backupPath);
-            RelayBenchBackupRetention.PruneForOriginalFile(_environment, thread.RolloutPath);
-            _environment.WriteFileText(thread.RolloutPath, updatedContent);
-            changedFiles.Add(thread.RolloutPath);
-            updatedCount++;
         }
 
         return updatedCount;
