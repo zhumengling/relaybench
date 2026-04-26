@@ -13,13 +13,20 @@ public sealed partial class MainWindowViewModel
            row is not null &&
            !string.IsNullOrWhiteSpace(row.BaseUrl) &&
            !string.IsNullOrWhiteSpace(row.ApiKey) &&
-           !string.IsNullOrWhiteSpace(row.Model);
+           !string.IsNullOrWhiteSpace(row.Model) &&
+           CanApplyModelToCodexApps(row.Model);
 
     private async Task ApplyRankingRowToCodexAppsAsync(ProxyBatchRankingRowViewModel? row)
     {
         if (row is null)
         {
             StatusMessage = "没有可应用的软件入口。";
+            return;
+        }
+
+        if (!CanApplyModelToCodexApps(row.Model))
+        {
+            StatusMessage = BuildCodexUnsupportedModelMessage(row.EntryName, row.Model);
             return;
         }
 

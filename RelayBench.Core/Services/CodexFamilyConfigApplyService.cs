@@ -395,8 +395,43 @@ public sealed class CodexFamilyConfigApplyService
             : CodexResponsesWireApi;
     }
 
+    public static bool IsCodexSupportedChatGptModel(string? model)
+    {
+        var normalized = NormalizeCodexModelIdentity(model);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return false;
+        }
+
+        string[] allowedPrefixes =
+        [
+            "gpt-",
+            "chatgpt-",
+            "o1",
+            "o3",
+            "o4",
+            "codex-"
+        ];
+
+        return string.Equals(normalized, "chatgpt", StringComparison.Ordinal) ||
+               string.Equals(normalized, "codex", StringComparison.Ordinal) ||
+               allowedPrefixes.Any(prefix => normalized.StartsWith(prefix, StringComparison.Ordinal));
+    }
+
     private static bool IsDeepSeekModel(string model)
         => model.Contains("deepseek", StringComparison.OrdinalIgnoreCase);
+
+    private static string NormalizeCodexModelIdentity(string? model)
+    {
+        var normalized = (model ?? string.Empty).Trim().ToLowerInvariant();
+        var slashIndex = normalized.LastIndexOf('/');
+        if (slashIndex >= 0 && slashIndex < normalized.Length - 1)
+        {
+            normalized = normalized[(slashIndex + 1)..];
+        }
+
+        return normalized;
+    }
 
     private static bool TryNormalizeCodexWireApi(string? value, out string normalized)
     {

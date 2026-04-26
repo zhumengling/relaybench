@@ -14,6 +14,11 @@ public sealed partial class MainWindowViewModel
             var missing = GetApplicationCenterMissingContextFields();
             if (missing.Count == 0)
             {
+                if (!CanApplyModelToCodexApps(ProxyModel))
+                {
+                    return BuildCodexUnsupportedModelMessage(ProxyModel);
+                }
+
                 return "当前接口信息已齐全，可以直接应用到 Codex 系列。";
             }
 
@@ -48,6 +53,11 @@ public sealed partial class MainWindowViewModel
                 builder.AppendLine();
                 builder.AppendLine($"待补全：{string.Join("、", missing)}");
             }
+            else if (!CanApplyModelToCodexApps(ProxyModel))
+            {
+                builder.AppendLine();
+                builder.AppendLine(BuildCodexUnsupportedModelMessage(ProxyModel));
+            }
 
             return builder.ToString().TrimEnd();
         }
@@ -57,7 +67,9 @@ public sealed partial class MainWindowViewModel
         => FormatPreviewApiKey(ProxyApiKey);
 
     private bool CanApplyCurrentInterfaceToCodexApps()
-        => !IsBusy && GetApplicationCenterMissingContextFields().Count == 0;
+        => !IsBusy &&
+           GetApplicationCenterMissingContextFields().Count == 0 &&
+           CanApplyModelToCodexApps(ProxyModel);
 
     private async Task ApplyCurrentInterfaceToCodexAppsAsync()
     {
@@ -65,6 +77,12 @@ public sealed partial class MainWindowViewModel
         if (missing.Count > 0)
         {
             StatusMessage = $"还缺 {string.Join("、", missing)}，暂时不能应用。";
+            return;
+        }
+
+        if (!CanApplyModelToCodexApps(ProxyModel))
+        {
+            StatusMessage = BuildCodexUnsupportedModelMessage(ProxyModel);
             return;
         }
 
