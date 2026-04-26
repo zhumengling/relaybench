@@ -189,6 +189,20 @@ public sealed class ClientApiConfigRestoreService
         }
 
         var restoredContent = entry.Content ?? string.Empty;
+        var officialLikeContent = CodexOfficialConfigTools.RewriteToOfficialLike(filePath, restoredContent);
+        if (officialLikeContent.Changed)
+        {
+            if (officialLikeContent.DeleteFile)
+            {
+                action = fileExists
+                    ? RestoreAction.Delete()
+                    : RestoreAction.NoChange;
+                return true;
+            }
+
+            restoredContent = officialLikeContent.UpdatedContent ?? string.Empty;
+        }
+
         action = fileExists && string.Equals(currentContent, restoredContent, StringComparison.Ordinal)
             ? RestoreAction.NoChange
             : RestoreAction.Write(restoredContent);

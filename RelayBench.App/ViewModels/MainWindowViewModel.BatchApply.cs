@@ -82,6 +82,10 @@ public sealed partial class MainWindowViewModel
 
                 if (result.Succeeded)
                 {
+                    ProxyBaseUrl = row.BaseUrl;
+                    ProxyApiKey = row.ApiKey;
+                    ProxyModel = row.Model;
+                    SaveState();
                     ShowBatchRankingApplyToast(BuildBatchRankingApplyToastMessage(result, mergeResult));
                 }
             });

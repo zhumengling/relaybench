@@ -131,6 +131,7 @@ public sealed partial class MainWindowViewModel
 
                 if (result.Succeeded)
                 {
+                    SaveState();
                     await RunClientApiDiagnosticsCoreAsync();
                 }
             });
