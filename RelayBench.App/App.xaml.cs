@@ -8,7 +8,7 @@ namespace RelayBench.App;
 
 public partial class App : Application
 {
-    private static readonly string StartupLogPath = RelayBenchPaths.StartupLogPath;
+    private static string StartupLogPath => RelayBenchPaths.StartupLogPath;
 
     public App()
     {
@@ -38,7 +38,7 @@ public partial class App : Application
         {
             WriteStartupLog(BuildExceptionText("启动失败。", ex));
             MessageBox.Show(
-                $"RelayBench 启动失败，请查看日志：{StartupLogPath}",
+                $"RelayBench 启动失败，请查看日志：{TryGetStartupLogPath()}",
                 "RelayBench",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
@@ -56,7 +56,7 @@ public partial class App : Application
     {
         WriteStartupLog(BuildExceptionText("UI 线程未处理异常。", e.Exception));
         MessageBox.Show(
-            $"RelayBench 运行中出现未处理异常，请查看日志：{StartupLogPath}",
+            $"RelayBench 运行中出现未处理异常，请查看日志：{TryGetStartupLogPath()}",
             "RelayBench",
             MessageBoxButton.OK,
             MessageBoxImage.Error);
@@ -84,23 +84,49 @@ public partial class App : Application
 
     private static void ResetStartupLog()
     {
-        EnsureStartupLogDirectory();
-        File.WriteAllText(StartupLogPath, string.Empty, new UTF8Encoding(false));
+        TryWriteStartupLog(path => File.WriteAllText(path, string.Empty, new UTF8Encoding(false)));
     }
 
     private static void WriteStartupLog(string message)
     {
-        EnsureStartupLogDirectory();
-        var line = $"[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}] {message}{Environment.NewLine}";
-        File.AppendAllText(StartupLogPath, line, new UTF8Encoding(false));
+        TryWriteStartupLog(path =>
+        {
+            var line = $"[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}] {message}{Environment.NewLine}";
+            File.AppendAllText(path, line, new UTF8Encoding(false));
+        });
     }
 
-    private static void EnsureStartupLogDirectory()
+    private static void TryWriteStartupLog(Action<string> write)
     {
-        var directory = Path.GetDirectoryName(StartupLogPath);
+        try
+        {
+            var path = StartupLogPath;
+            EnsureStartupLogDirectory(path);
+            write(path);
+        }
+        catch
+        {
+        }
+    }
+
+    private static void EnsureStartupLogDirectory(string startupLogPath)
+    {
+        var directory = Path.GetDirectoryName(startupLogPath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
             Directory.CreateDirectory(directory);
+        }
+    }
+
+    private static string TryGetStartupLogPath()
+    {
+        try
+        {
+            return StartupLogPath;
+        }
+        catch
+        {
+            return "startup log unavailable";
         }
     }
 

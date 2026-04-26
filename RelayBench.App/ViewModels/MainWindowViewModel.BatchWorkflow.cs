@@ -8,6 +8,11 @@ public sealed partial class MainWindowViewModel
 {
     private const int BatchDeepMaxParallelism = 5;
 
+    private sealed record BatchDeepExecutionCandidate(
+        ProxyBatchRankingRowViewModel Row,
+        int Index,
+        string SiteKey);
+
     private bool _proxyBatchQuickCompareCompleted;
     private string _batchDeepTestSummary = "先勾选候选项，再开始深测。";
 
@@ -149,7 +154,8 @@ public sealed partial class MainWindowViewModel
                 Verdict = BuildBatchComparisonVerdict(item.Row),
                 SecondaryText = BuildProxyBatchAggregateSecondaryText(item.Row),
                 RunCount = item.Row.RunCount,
-                ApiKey = item.Row.Entry.ApiKey
+                ApiKey = item.Row.Entry.ApiKey,
+                SiteGroupName = ResolveBatchDeepSiteGroupName(item.Row.Entry.SiteGroupName, item.Row.Entry.Name)
             };
 
             row.PropertyChanged += OnProxyBatchRankingRowPropertyChanged;
@@ -180,43 +186,11 @@ public sealed partial class MainWindowViewModel
             $"正在对 {selectedRows.Length} 个候选站点执行深度测试（最多 {BatchDeepMaxParallelism} 线程，同站点排队）...",
             async cancellationToken =>
         {
-            var executionPlan = BuildDeepProxySingleExecutionPlan();
+            var executionPlan = BuildBatchDeepProxySingleExecutionPlan();
             StartBatchDeepComparisonLiveSession(selectedRows, executionPlan);
             UpdateGlobalTaskProgress("\u51C6\u5907\u4E2D", 8d);
 
-            var maxParallelism = Math.Min(BatchDeepMaxParallelism, selectedRows.Length);
-            var completedRows = 0;
-            using SemaphoreSlim parallelGate = new(maxParallelism, maxParallelism);
-            var siteGates = selectedRows
-                .GroupBy(BuildBatchDeepSiteQueueKey, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(
-                    group => group.Key,
-                    _ => new SemaphoreSlim(1, 1),
-                    StringComparer.OrdinalIgnoreCase);
-
-            try
-            {
-                var tasks = selectedRows
-                    .Select((row, index) => RunBatchDeepCandidateAsync(
-                        row,
-                        index,
-                        selectedRows.Length,
-                        executionPlan,
-                        parallelGate,
-                        siteGates[BuildBatchDeepSiteQueueKey(row)],
-                        () => Interlocked.Increment(ref completedRows),
-                        cancellationToken))
-                    .ToArray();
-
-                await Task.WhenAll(tasks);
-            }
-            finally
-            {
-                foreach (var siteGate in siteGates.Values)
-                {
-                    siteGate.Dispose();
-                }
-            }
+            await RunBatchDeepCandidatesWithSiteQueueAsync(selectedRows, executionPlan, cancellationToken);
 
             BatchDeepTestSummary = BuildBatchDeepTestSummary(_batchDeepChartStates);
             RefreshBatchDeepComparisonDialog(activate: true);
@@ -229,65 +203,147 @@ public sealed partial class MainWindowViewModel
         6d);
     }
 
+    private async Task RunBatchDeepCandidatesWithSiteQueueAsync(
+        ProxyBatchRankingRowViewModel[] selectedRows,
+        ProxySingleExecutionPlan executionPlan,
+        CancellationToken cancellationToken)
+    {
+        var maxParallelism = Math.Min(BatchDeepMaxParallelism, selectedRows.Length);
+        if (maxParallelism == 0)
+        {
+            return;
+        }
+
+        var pendingCandidates = selectedRows
+            .Select((row, index) => new BatchDeepExecutionCandidate(row, index, BuildBatchDeepSiteQueueKey(row)))
+            .ToList();
+        var pendingSiteKeys = pendingCandidates
+            .Select(static candidate => candidate.SiteKey)
+            .ToList();
+        HashSet<string> activeSiteKeys = new(StringComparer.OrdinalIgnoreCase);
+        object schedulerLock = new();
+        using SemaphoreSlim availabilitySignal = new(0);
+        var completedRows = 0;
+
+        async Task RunWorkerAsync()
+        {
+            while (true)
+            {
+                BatchDeepExecutionCandidate? candidate = null;
+                lock (schedulerLock)
+                {
+                    var nextIndex = FindNextBatchDeepCandidateIndex(pendingSiteKeys, activeSiteKeys);
+                    if (nextIndex >= 0)
+                    {
+                        candidate = pendingCandidates[nextIndex];
+                        pendingCandidates.RemoveAt(nextIndex);
+                        pendingSiteKeys.RemoveAt(nextIndex);
+                        activeSiteKeys.Add(candidate.SiteKey);
+                    }
+                    else if (pendingCandidates.Count == 0)
+                    {
+                        return;
+                    }
+                }
+
+                if (candidate is null)
+                {
+                    await availabilitySignal.WaitAsync(cancellationToken);
+                    continue;
+                }
+
+                try
+                {
+                    await RunBatchDeepCandidateAsync(
+                        candidate.Row,
+                        candidate.Index,
+                        selectedRows.Length,
+                        executionPlan,
+                        () => Interlocked.Increment(ref completedRows),
+                        cancellationToken);
+                }
+                finally
+                {
+                    lock (schedulerLock)
+                    {
+                        activeSiteKeys.Remove(candidate.SiteKey);
+                    }
+
+                    availabilitySignal.Release();
+                }
+            }
+        }
+
+        var workers = Enumerable
+            .Range(0, maxParallelism)
+            .Select(_ => RunWorkerAsync())
+            .ToArray();
+
+        await Task.WhenAll(workers);
+    }
+
     private async Task RunBatchDeepCandidateAsync(
         ProxyBatchRankingRowViewModel row,
         int index,
         int totalRows,
         ProxySingleExecutionPlan executionPlan,
-        SemaphoreSlim parallelGate,
-        SemaphoreSlim siteGate,
         Func<int> markCompleted,
         CancellationToken cancellationToken)
     {
-        await siteGate.WaitAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        PrepareBatchDeepRowForExecution(row, index, totalRows);
+        StatusMessage = $"正在执行候选深度测试 {index + 1}/{totalRows}（最多 {BatchDeepMaxParallelism} 线程，同站点排队）：{row.EntryName}";
+        UpdateGlobalTaskProgress(
+            "\u6DF1\u6D4B\u4E2D",
+            8d + (Math.Clamp(index, 0, Math.Max(totalRows - 1, 1)) / Math.Max(totalRows, 1d) * 72d));
+
         try
         {
-            await parallelGate.WaitAsync(cancellationToken);
-            try
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                PrepareBatchDeepRowForExecution(row, index, totalRows);
-                StatusMessage = $"正在执行候选深度测试 {index + 1}/{totalRows}（最多 {BatchDeepMaxParallelism} 线程，同站点排队）：{row.EntryName}";
-                UpdateGlobalTaskProgress(
-                    "\u6DF1\u6D4B\u4E2D",
-                    8d + (Math.Clamp(index, 0, Math.Max(totalRows - 1, 1)) / Math.Max(totalRows, 1d) * 72d));
-
-                try
-                {
-                    var progress = new Progress<ProxyDiagnosticsLiveProgress>(value => UpdateBatchDeepChartLive(row, value));
-                    var result = await RunSingleProxyDiagnosticsAsync(
-                        BuildBatchProxySettings(row),
-                        progress,
-                        executionPlan,
-                        updateSingleChartPhases: false,
-                        cancellationToken: cancellationToken);
-                    ApplyBatchDeepTestResult(row, result, executionPlan);
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    ApplyBatchDeepChartFailure(row, ex);
-                }
-
-                var completed = markCompleted();
-                UpdateGlobalTaskProgress(completed, totalRows, $"\u5DF2\u5B8C\u6210 {completed}/{totalRows}");
-            }
-            finally
-            {
-                parallelGate.Release();
-            }
+            var progress = new Progress<ProxyDiagnosticsLiveProgress>(value => UpdateBatchDeepChartLive(row, value));
+            var result = await RunSingleProxyDiagnosticsAsync(
+                BuildBatchProxySettings(row),
+                progress,
+                executionPlan,
+                updateSingleChartPhases: false,
+                cancellationToken: cancellationToken);
+            ApplyBatchDeepTestResult(row, result, executionPlan);
         }
-        finally
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            siteGate.Release();
+            throw;
         }
+        catch (Exception ex)
+        {
+            ApplyBatchDeepChartFailure(row, ex);
+        }
+
+        var completed = markCompleted();
+        UpdateGlobalTaskProgress(completed, totalRows, $"\u5DF2\u5B8C\u6210 {completed}/{totalRows}");
+    }
+
+    private static int FindNextBatchDeepCandidateIndex(
+        IReadOnlyList<string> pendingSiteKeys,
+        IReadOnlySet<string> activeSiteKeys)
+    {
+        for (var index = 0; index < pendingSiteKeys.Count; index++)
+        {
+            if (!activeSiteKeys.Contains(pendingSiteKeys[index]))
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private static string BuildBatchDeepSiteQueueKey(ProxyBatchRankingRowViewModel row)
     {
+        var siteGroupName = ResolveBatchDeepSiteGroupName(row.SiteGroupName, row.EntryName);
+        if (!string.IsNullOrWhiteSpace(siteGroupName))
+        {
+            return $"group:{siteGroupName}".ToLowerInvariant();
+        }
+
         var baseUrl = row.BaseUrl?.Trim() ?? string.Empty;
         if (Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri))
         {
@@ -295,6 +351,37 @@ public sealed partial class MainWindowViewModel
         }
 
         return baseUrl.TrimEnd('/').ToLowerInvariant();
+    }
+
+    private static string? ResolveBatchDeepSiteGroupName(string? explicitSiteGroupName, string? displayName)
+    {
+        if (!string.IsNullOrWhiteSpace(explicitSiteGroupName))
+        {
+            return explicitSiteGroupName.Trim();
+        }
+
+        return TryExtractBatchDisplaySiteGroupName(displayName);
+    }
+
+    private static string? TryExtractBatchDisplaySiteGroupName(string? displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            return null;
+        }
+
+        const string separator = " / ";
+        var separatorIndex = displayName.IndexOf(separator, StringComparison.Ordinal);
+        if (separatorIndex <= 0)
+        {
+            return null;
+        }
+
+        var siteGroupName = displayName[..separatorIndex].Trim();
+        var entryName = displayName[(separatorIndex + separator.Length)..].Trim();
+        return siteGroupName.Length > 0 && entryName.Length > 0
+            ? siteGroupName
+            : null;
     }
 
     private ProxyEndpointSettings BuildBatchProxySettings(ProxyBatchRankingRowViewModel row)

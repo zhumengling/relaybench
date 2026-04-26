@@ -262,7 +262,7 @@ public sealed partial class MainWindowViewModel
                 BuildBatchDeepDialogSummaryText(orderedStates, top, running),
                 BuildBatchDeepCapabilitySummaryText(orderedStates, _currentBatchDeepExecutionPlan),
                 BuildBatchDeepCapabilityDetailText(orderedStates, _currentBatchDeepExecutionPlan),
-                "左侧保留快速对比基线；中部显示当前阶段与实时进度；右侧矩阵依次展示 B5、System Prompt、Function Calling、错误透传、流式完整性、官方对照、多模态、缓存命中、缓存隔离。",
+                "左侧保留快速对比基线；中部显示当前阶段与实时进度；右侧矩阵依次展示 B5、System Prompt、Function Calling、错误透传、流式完整性、多模态、缓存命中。",
                 chartResult.HasChart
                     ? $"{chartResult.Summary} 已完成 {completedCount}/{orderedStates.Length}。"
                     : chartResult.Error ?? chartResult.Summary,
@@ -311,10 +311,8 @@ public sealed partial class MainWindowViewModel
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.FunctionCalling, "Fn", executionPlan.EnableProtocolCompatibilityTest),
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.ErrorTransparency, "Err", executionPlan.EnableErrorTransparencyTest),
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.StreamingIntegrity, "Str", executionPlan.EnableStreamingIntegrityTest),
-            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.OfficialReferenceIntegrity, "Ref", executionPlan.EnableOfficialReferenceIntegrityTest),
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.MultiModal, "MM", executionPlan.EnableMultiModalTest),
-            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CacheMechanism, "Cch", executionPlan.EnableCacheMechanismTest),
-            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CacheIsolation, "Iso", executionPlan.EnableCacheIsolationTest)
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CacheMechanism, "Cch", executionPlan.EnableCacheMechanismTest)
         ];
 
         return badges;
@@ -470,10 +468,8 @@ public sealed partial class MainWindowViewModel
            (executionPlan.EnableProtocolCompatibilityTest ? 2 : 0) +
            (executionPlan.EnableErrorTransparencyTest ? 1 : 0) +
            (executionPlan.EnableStreamingIntegrityTest ? 1 : 0) +
-           (executionPlan.EnableOfficialReferenceIntegrityTest ? 1 : 0) +
            (executionPlan.EnableMultiModalTest ? 1 : 0) +
-           (executionPlan.EnableCacheMechanismTest ? 1 : 0) +
-           (executionPlan.EnableCacheIsolationTest ? 1 : 0);
+           (executionPlan.EnableCacheMechanismTest ? 1 : 0);
 
     private static int CountCompletedBatchDeepScenarioCount(ProxyDiagnosticsResult result, ProxySingleExecutionPlan executionPlan)
         => GetBatchDeepBaselineScenarioKinds().Count(kind => FindScenario(GetScenarioResults(result), kind) is not null) +
@@ -508,11 +504,6 @@ public sealed partial class MainWindowViewModel
             kinds.Add(ProxyProbeScenarioKind.StreamingIntegrity);
         }
 
-        if (executionPlan.EnableOfficialReferenceIntegrityTest)
-        {
-            kinds.Add(ProxyProbeScenarioKind.OfficialReferenceIntegrity);
-        }
-
         if (executionPlan.EnableMultiModalTest)
         {
             kinds.Add(ProxyProbeScenarioKind.MultiModal);
@@ -521,11 +512,6 @@ public sealed partial class MainWindowViewModel
         if (executionPlan.EnableCacheMechanismTest)
         {
             kinds.Add(ProxyProbeScenarioKind.CacheMechanism);
-        }
-
-        if (executionPlan.EnableCacheIsolationTest)
-        {
-            kinds.Add(ProxyProbeScenarioKind.CacheIsolation);
         }
 
         return kinds;
@@ -658,10 +644,8 @@ public sealed partial class MainWindowViewModel
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.FunctionCalling, "Fn", executionPlan.EnableProtocolCompatibilityTest),
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.ErrorTransparency, "Err", executionPlan.EnableErrorTransparencyTest),
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.StreamingIntegrity, "Str", executionPlan.EnableStreamingIntegrityTest),
-            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.OfficialReferenceIntegrity, "Ref", executionPlan.EnableOfficialReferenceIntegrityTest),
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.MultiModal, "MM", executionPlan.EnableMultiModalTest),
-            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CacheMechanism, "Cch", executionPlan.EnableCacheMechanismTest),
-            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CacheIsolation, "Iso", executionPlan.EnableCacheIsolationTest)
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CacheMechanism, "Cch", executionPlan.EnableCacheMechanismTest)
         };
 
         return string.Join(" | ", badges.Select(item => $"{item.Label} {item.Value}"));
@@ -875,10 +859,8 @@ public sealed partial class MainWindowViewModel
         AddIfEnabled(executionPlan.EnableProtocolCompatibilityTest, ProxyProbeScenarioKind.FunctionCalling, "Fn");
         AddIfEnabled(executionPlan.EnableErrorTransparencyTest, ProxyProbeScenarioKind.ErrorTransparency, "Err");
         AddIfEnabled(executionPlan.EnableStreamingIntegrityTest, ProxyProbeScenarioKind.StreamingIntegrity, "Str");
-        AddIfEnabled(executionPlan.EnableOfficialReferenceIntegrityTest, ProxyProbeScenarioKind.OfficialReferenceIntegrity, "Ref");
         AddIfEnabled(executionPlan.EnableMultiModalTest, ProxyProbeScenarioKind.MultiModal, "MM");
         AddIfEnabled(executionPlan.EnableCacheMechanismTest, ProxyProbeScenarioKind.CacheMechanism, "Cch");
-        AddIfEnabled(executionPlan.EnableCacheIsolationTest, ProxyProbeScenarioKind.CacheIsolation, "Iso");
 
         if (!string.IsNullOrWhiteSpace(result.PrimaryIssue))
         {

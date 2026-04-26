@@ -24,6 +24,7 @@ public sealed class ProxyBatchRankingRowViewModel : ObservableObject
     private string _verdict = string.Empty;
     private string _secondaryText = string.Empty;
     private int _runCount;
+    private string? _siteGroupName;
 
     public bool IsSelected
     {
@@ -210,6 +211,12 @@ public sealed class ProxyBatchRankingRowViewModel : ObservableObject
                 OnPropertyChanged(nameof(RunCountText));
             }
         }
+    }
+
+    public string? SiteGroupName
+    {
+        get => _siteGroupName;
+        set => SetProperty(ref _siteGroupName, value);
     }
 
     public string RankText
@@ -399,7 +406,7 @@ public sealed class ProxyBatchRankingRowViewModel : ObservableObject
             totalCount += 5;
         }
 
-        foreach (Match match in Regex.Matches(DeepSummary, @"\b(Sys|Fn|Err|Str|Ref|MM|Cch|Iso)\s+(OK|RV|CFG|SK|NO|ER)\b"))
+        foreach (Match match in Regex.Matches(DeepSummary, @"\b(Sys|Fn|Err|Str|MM|Cch)\s+(OK|RV|CFG|SK|NO|ER)\b"))
         {
             totalCount++;
             if (string.Equals(match.Groups[2].Value, "OK", StringComparison.Ordinal))

@@ -57,7 +57,7 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
         => SelectedProxyDiagnosticPresetKey switch
         {
             "custom" => "自定义：按需勾选专项能力，只补测你关心的深度项。",
-            _ => "标准深测：默认开启协议兼容、错误透传、流式完整性、官方对照、多模态、缓存机制和缓存隔离。"
+            _ => "标准深测：默认开启协议兼容、错误透传、流式完整性、多模态和缓存机制。"
         };
 
     public bool ProxyEnableLongStreamingTest
@@ -247,10 +247,8 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
                 $"协议兼容：{(ProxyEnableProtocolCompatibilityTest ? "开启" : "关闭")}；" +
                 $"错误透传：{(ProxyEnableErrorTransparencyTest ? "开启" : "关闭")}；" +
                 $"流式完整性：{(ProxyEnableStreamingIntegrityTest ? "开启" : "关闭")}；" +
-                $"官方对照：{DescribeOfficialReferenceExecutionState()}；" +
                 $"多模态：{(ProxyEnableMultiModalTest ? "开启" : "关闭")}；" +
                 $"缓存机制：{(ProxyEnableCacheMechanismTest ? "开启" : "关闭")}；" +
-                $"缓存隔离：{DescribeCacheIsolationExecutionState()}；" +
                 $"\u591A\u6A21\u578B tok/s\uff1A{DescribeProxyMultiModelExecutionState()}\u3002";
         }
     }
@@ -322,8 +320,8 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
                 _proxyEnableStreamingIntegrityTest = snapshot.ProxyEnableStreamingIntegrityTest;
                 _proxyEnableMultiModalTest = snapshot.ProxyEnableMultiModalTest;
                 _proxyEnableCacheMechanismTest = snapshot.ProxyEnableCacheMechanismTest;
-                _proxyEnableCacheIsolationTest = snapshot.ProxyEnableCacheIsolationTest;
-                _proxyEnableOfficialReferenceIntegrityTest = snapshot.ProxyEnableOfficialReferenceIntegrityTest;
+                _proxyEnableCacheIsolationTest = false;
+                _proxyEnableOfficialReferenceIntegrityTest = false;
             }
             else
             {
@@ -383,9 +381,9 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
         snapshot.ProxyEnableStreamingIntegrityTest = ProxyEnableStreamingIntegrityTest;
         snapshot.ProxyEnableMultiModalTest = ProxyEnableMultiModalTest;
         snapshot.ProxyEnableCacheMechanismTest = ProxyEnableCacheMechanismTest;
-        snapshot.ProxyEnableCacheIsolationTest = ProxyEnableCacheIsolationTest;
+        snapshot.ProxyEnableCacheIsolationTest = false;
         snapshot.ProxyCacheIsolationAlternateApiKey = ProxyCacheIsolationAlternateApiKey;
-        snapshot.ProxyEnableOfficialReferenceIntegrityTest = ProxyEnableOfficialReferenceIntegrityTest;
+        snapshot.ProxyEnableOfficialReferenceIntegrityTest = false;
         snapshot.ProxyOfficialReferenceBaseUrl = ProxyOfficialReferenceBaseUrl;
         snapshot.ProxyOfficialReferenceApiKey = ProxyOfficialReferenceApiKey;
         snapshot.ProxyOfficialReferenceModel = ProxyOfficialReferenceModel;

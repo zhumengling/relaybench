@@ -653,15 +653,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ProxyEnableProtocolCompatibilityTest,
             ProxyEnableErrorTransparencyTest,
             ProxyEnableStreamingIntegrityTest,
-            ProxyEnableOfficialReferenceIntegrityTest,
-            ProxyOfficialReferenceBaseUrl,
-            ProxyOfficialReferenceApiKey,
-            ProxyOfficialReferenceModel,
+            false,
+            string.Empty,
+            string.Empty,
+            string.Empty,
             ProxyEnableMultiModalTest,
             ProxyEnableCacheMechanismTest,
-            ProxyEnableCacheIsolationTest,
-            ProxyCacheIsolationAlternateApiKey,
+            false,
+            string.Empty,
             GetSelectedProxyMultiModelNames());
+
+    private ProxySingleExecutionPlan BuildBatchDeepProxySingleExecutionPlan()
+        => BuildDeepProxySingleExecutionPlan();
 
     private ProxySingleExecutionPlan BuildProxySingleExecutionPlan(ProxySingleExecutionMode mode)
         => mode == ProxySingleExecutionMode.Deep

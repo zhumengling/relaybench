@@ -162,8 +162,6 @@
                             <CheckBox Content="&#x6D41;&#x5F0F;&#x5B8C;&#x6574;&#x6027;" IsChecked="{Binding ProxyEnableStreamingIntegrityTest, Mode=TwoWay}" />
                             <CheckBox Content="&#x591A;&#x6A21;&#x6001;" IsChecked="{Binding ProxyEnableMultiModalTest, Mode=TwoWay}" />
                             <CheckBox Content="&#x7F13;&#x5B58;&#x673A;&#x5236;" IsChecked="{Binding ProxyEnableCacheMechanismTest, Mode=TwoWay}" />
-                            <CheckBox Content="&#x7F13;&#x5B58;&#x9694;&#x79BB;" IsChecked="{Binding ProxyEnableCacheIsolationTest, Mode=TwoWay}" />
-                            <CheckBox Content="&#x5B98;&#x65B9;&#x5BF9;&#x7167;" IsChecked="{Binding ProxyEnableOfficialReferenceIntegrityTest, Mode=TwoWay}" />
                             <Button Margin="8,0,0,0"
                                     Padding="10,2"
                                     Command="{Binding OpenProxyMultiModelPickerCommand}"
@@ -181,59 +179,6 @@
                                        Style="{StaticResource SectionHintTextStyle}"
                                        Text="{Binding ProxyCapabilityModelConfigSummary, Mode=OneWay}" />
                         </WrapPanel>
-
-                        <Border Margin="0,6,0,0"
-                                Style="{StaticResource InsetPanelBorderStyle}"
-                                Visibility="{Binding ProxyEnableCacheIsolationTest, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="备用 Key" />
-                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                           Text="用于 A/B 隔离验证，不要与主 Key 相同。" />
-                                <PasswordBox Style="{StaticResource CompactSecretInputPasswordBoxStyle}"
-                                             infra:PasswordBoxAssistant.BoundPassword="{Binding ProxyCacheIsolationAlternateApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Margin="0,6,0,0"
-                                Style="{StaticResource InsetPanelBorderStyle}"
-                                Visibility="{Binding ProxyEnableOfficialReferenceIntegrityTest, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="6" />
-                                    <ColumnDefinition Width="1.2*" />
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Row="0" Grid.ColumnSpan="3">
-                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="对照接口" />
-                                    <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                               Text="填写 Base URL 和 API Key；模型可选。" />
-                                </StackPanel>
-
-                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,6,0,0">
-                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x53C2;&#x8003; Base URL" />
-                                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                             Text="{Binding ProxyOfficialReferenceBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-
-                                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,6,0,0">
-                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x53C2;&#x8003; API Key" />
-                                    <PasswordBox Style="{StaticResource CompactSecretInputPasswordBoxStyle}"
-                                                 infra:PasswordBoxAssistant.BoundPassword="{Binding ProxyOfficialReferenceApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-
-                                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,6,0,0">
-                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x53C2;&#x8003;&#x6A21;&#x578B;&#xFF08;&#x53EF;&#x9009;&#xFF09;" />
-                                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                             Text="{Binding ProxyOfficialReferenceModel, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
 
                         <Border Margin="0,6,0,0"
                                 Style="{StaticResource InsetPanelBorderStyle}"
