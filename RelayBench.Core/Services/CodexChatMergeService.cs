@@ -23,6 +23,8 @@ public sealed class CodexChatMergeService
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        // Keep historical model metadata intact; only provider buckets are merged.
+        _ = targetModel;
 
         var codexRoot = Path.Combine(_environment.UserProfilePath, ".codex");
         if (!_environment.DirectoryExists(codexRoot))
@@ -54,7 +56,6 @@ public sealed class CodexChatMergeService
         }
 
         var targetProvider = ResolveTargetProvider(target);
-        var normalizedTargetModel = NormalizeTargetModel(targetModel);
         var backupFiles = new List<string>();
         var changedFiles = new List<string>();
 
@@ -63,7 +64,6 @@ public sealed class CodexChatMergeService
             var threadRecords = await LoadThreadRecordsToMergeAsync(
                 stateDatabasePath,
                 targetProvider,
-                normalizedTargetModel,
                 cancellationToken);
             if (threadRecords.Count == 0)
             {
@@ -83,14 +83,12 @@ public sealed class CodexChatMergeService
             var rebuckettedThreadCount = await RebucketAllThreadsAsync(
                 stateDatabasePath,
                 targetProvider,
-                normalizedTargetModel,
                 cancellationToken);
             changedFiles.Add(stateDatabasePath);
 
             var updatedSessionFileCount = UpdateSessionFiles(
                 threadRecords,
                 targetProvider,
-                normalizedTargetModel,
                 backupFiles,
                 changedFiles);
 
@@ -132,7 +130,6 @@ public sealed class CodexChatMergeService
     private async Task<IReadOnlyList<CodexThreadRecord>> LoadThreadRecordsToMergeAsync(
         string stateDatabasePath,
         string targetProvider,
-        string? targetModel,
         CancellationToken cancellationToken)
     {
         await using var connection = new SqliteConnection(BuildConnectionString(stateDatabasePath));
@@ -150,10 +147,8 @@ public sealed class CodexChatMergeService
             SELECT id, rollout_path, model_provider, model
             FROM threads
             WHERE COALESCE(model_provider, '') <> $targetProvider
-               OR ($targetModel <> '' AND COALESCE(model, '') <> $targetModel)
             """;
         command.Parameters.AddWithValue("$targetProvider", targetProvider);
-        command.Parameters.AddWithValue("$targetModel", targetModel ?? string.Empty);
 
         List<CodexThreadRecord> records = [];
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -172,7 +167,6 @@ public sealed class CodexChatMergeService
     private async Task<int> RebucketAllThreadsAsync(
         string stateDatabasePath,
         string targetProvider,
-        string? targetModel,
         CancellationToken cancellationToken)
     {
         await using var connection = new SqliteConnection(BuildConnectionString(stateDatabasePath));
@@ -190,16 +184,10 @@ public sealed class CodexChatMergeService
         command.CommandText =
             """
             UPDATE threads
-            SET model_provider = $targetProvider,
-                model = CASE
-                    WHEN $targetModel <> '' THEN $targetModel
-                    ELSE model
-                END
+            SET model_provider = $targetProvider
             WHERE COALESCE(model_provider, '') <> $targetProvider
-               OR ($targetModel <> '' AND COALESCE(model, '') <> $targetModel)
             """;
         command.Parameters.AddWithValue("$targetProvider", targetProvider);
-        command.Parameters.AddWithValue("$targetModel", targetModel ?? string.Empty);
 
         var affected = await command.ExecuteNonQueryAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -209,7 +197,6 @@ public sealed class CodexChatMergeService
     private int UpdateSessionFiles(
         IReadOnlyList<CodexThreadRecord> threadRecords,
         string targetProvider,
-        string? targetModel,
         List<string> backupFiles,
         List<string> changedFiles)
     {
@@ -233,10 +220,9 @@ public sealed class CodexChatMergeService
                     continue;
                 }
 
-                if (!TryRewriteSessionMetaProviderAndModel(
+                if (!TryRewriteSessionMetaProvider(
                         originalContent,
                         targetProvider,
-                        targetModel,
                         out var updatedContent))
                 {
                     continue;
@@ -260,10 +246,9 @@ public sealed class CodexChatMergeService
         return updatedCount;
     }
 
-    private static bool TryRewriteSessionMetaProviderAndModel(
+    private static bool TryRewriteSessionMetaProvider(
         string content,
         string targetProvider,
-        string? targetModel,
         out string updatedContent)
     {
         updatedContent = content;
@@ -299,20 +284,12 @@ public sealed class CodexChatMergeService
             }
 
             var currentProvider = payloadObject["model_provider"]?.GetValue<string>();
-            var currentModel = payloadObject["model"]?.GetValue<string>();
-            var providerMatches = string.Equals(currentProvider, targetProvider, StringComparison.Ordinal);
-            var modelMatches = targetModel is null ||
-                               string.Equals(currentModel, targetModel, StringComparison.Ordinal);
-            if (providerMatches && modelMatches)
+            if (string.Equals(currentProvider, targetProvider, StringComparison.Ordinal))
             {
                 continue;
             }
 
             payloadObject["model_provider"] = targetProvider;
-            if (targetModel is not null)
-            {
-                payloadObject["model"] = targetModel;
-            }
             lines[index] = rootObject.ToJsonString();
             changed = true;
         }
@@ -364,12 +341,6 @@ public sealed class CodexChatMergeService
             CodexChatMergeTarget.ThirdPartyCustom => CustomProvider,
             _ => CustomProvider
         };
-
-    private static string? NormalizeTargetModel(string? targetModel)
-    {
-        var normalized = targetModel?.Trim();
-        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
-    }
 
     public static string BuildTargetDisplayName(CodexChatMergeTarget target)
         => target switch
