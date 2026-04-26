@@ -97,7 +97,7 @@ public sealed class CodexFamilyConfigApplyService
             backupFiles);
         ApplyFile(
             authPath,
-            existing => UpsertCodexAuth(existing, normalizedApiKey),
+            RemoveCodexApiKeyAuthOverrides,
             changedFiles,
             backupFiles);
 
@@ -149,11 +149,18 @@ public sealed class CodexFamilyConfigApplyService
         changedFiles.Add(path);
     }
 
-    private static string UpsertCodexAuth(string existingContent, string apiKey)
+    private static string RemoveCodexApiKeyAuthOverrides(string existingContent)
     {
         var root = ClientApiConfigPatterns.TryParseJsonObject(existingContent) ?? new JsonObject();
-        root["auth_mode"] = "apikey";
-        root["OPENAI_API_KEY"] = apiKey;
+        if (root.TryGetPropertyValue("auth_mode", out var authModeNode) &&
+            authModeNode is JsonValue authModeValue &&
+            authModeValue.TryGetValue<string>(out var authMode) &&
+            string.Equals(authMode, "apikey", StringComparison.OrdinalIgnoreCase))
+        {
+            root.Remove("auth_mode");
+        }
+
+        root.Remove("OPENAI_API_KEY");
 
         return ClientApiConfigPatterns.SerializeJson(root);
     }

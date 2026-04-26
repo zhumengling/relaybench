@@ -33,7 +33,7 @@ public sealed partial class MainWindowViewModel
             builder.AppendLine();
             builder.AppendLine("将会更新：");
             builder.AppendLine("- ~/.codex/config.toml");
-            builder.AppendLine("- ~/.codex/auth.json");
+            builder.AppendLine("- ~/.codex/auth.json（仅清理旧版 API Key 接管，保留登录态）");
             builder.AppendLine();
             builder.AppendLine("适用软件：");
             builder.AppendLine("- Codex CLI");
@@ -71,7 +71,7 @@ public sealed partial class MainWindowViewModel
         var confirmed = await ShowConfirmationDialogAsync(
             "确认应用到软件",
             "确定要把当前接口应用到 Codex 系列吗？",
-            "当前地址、密钥和模型会写入 Codex CLI、Codex Desktop、VSCode Codex 共用配置。\n" +
+            "当前地址、密钥和模型会写入 Codex CLI、Codex Desktop、VSCode Codex 共用配置；不会把 Codex 登录态切换成 API Key 模式。\n" +
             "修改前会自动创建备份。",
             "应用到软件",
             "取消");
