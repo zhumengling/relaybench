@@ -11,6 +11,7 @@ public sealed partial class MainWindowViewModel
     private async Task<CodexChatMergeResult?> MergeCodexChatsIfRequestedAsync(
         bool shouldMerge,
         CodexChatMergeTarget target,
+        string? targetModel = null,
         StringBuilder? detailBuilder = null)
     {
         if (!shouldMerge)
@@ -19,7 +20,7 @@ public sealed partial class MainWindowViewModel
             return null;
         }
 
-        var mergeResult = await _codexChatMergeService.MergeAsync(target);
+        var mergeResult = await _codexChatMergeService.MergeAsync(target, targetModel);
         detailBuilder?.AppendLine("聊天记录：");
         detailBuilder?.AppendLine(BuildCodexChatMergeDetail(mergeResult));
         return mergeResult;

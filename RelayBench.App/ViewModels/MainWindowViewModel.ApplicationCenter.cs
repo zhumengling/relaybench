@@ -112,6 +112,7 @@ public sealed partial class MainWindowViewModel
                     mergeResult = await MergeCodexChatsIfRequestedAsync(
                         shouldMergeChats,
                         CodexChatMergeTarget.ThirdPartyCustom,
+                        ProxyModel,
                         detailBuilder);
                 }
 

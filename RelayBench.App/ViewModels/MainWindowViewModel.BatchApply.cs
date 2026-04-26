@@ -63,7 +63,8 @@ public sealed partial class MainWindowViewModel
                 {
                     mergeResult = await MergeCodexChatsIfRequestedAsync(
                         shouldMergeChats,
-                        CodexChatMergeTarget.ThirdPartyCustom);
+                        CodexChatMergeTarget.ThirdPartyCustom,
+                        row.Model);
                 }
 
                 StatusMessage = result.Succeeded
