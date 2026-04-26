@@ -43,6 +43,10 @@ public sealed partial class MainWindowViewModel
             if (SetProperty(ref _selectedSingleStationModeKey, normalized))
             {
                 NotifySingleStationModeStateChanged();
+                if (!IsBusy)
+                {
+                    RefreshSingleStationInlineChartPlaceholder();
+                }
                 OnPropertyChanged(nameof(CurrentPageSubtitle));
             }
         }

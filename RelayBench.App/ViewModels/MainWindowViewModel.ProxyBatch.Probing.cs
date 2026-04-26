@@ -78,12 +78,15 @@ public sealed partial class MainWindowViewModel
             rowProgress?.Report(BuildLiveProxyBatchProbeRow(entry, liveProgress));
         });
 
+        progress?.Report($"正在探测 {entry.Name}：检测链接方式...");
+        await DetectAndCacheProxyWireApiAsync(settings, cancellationToken);
         progress?.Report($"正在探测 {entry.Name}：基础兼容性诊断...");
         var result = await _proxyDiagnosticsService.RunAsync(
             settings,
             baselineProgress,
             cancellationToken,
             streamThroughputSampleCount: 3);
+        await CacheProxyDiagnosticsResultAsync(settings, result, cancellationToken);
         progress?.Report($"正在探测 {entry.Name}：独立吞吐测试（3 轮）...");
         var throughputSettings = string.IsNullOrWhiteSpace(result.EffectiveModel)
             ? settings

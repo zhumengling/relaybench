@@ -45,6 +45,9 @@ public sealed partial class MainWindowViewModel
     private IReadOnlyList<ProxyChartActivityRegion> _proxyChartDialogActivityRegions = Array.Empty<ProxyChartActivityRegion>();
     private IReadOnlyList<ProxySingleCapabilityChartRowViewModel> _proxyChartDialogSingleCapabilityRows =
         Array.Empty<ProxySingleCapabilityChartRowViewModel>();
+    private IReadOnlyList<ProxySingleCapabilityChartRowViewModel> _singleStationInlineChartRows =
+        Array.Empty<ProxySingleCapabilityChartRowViewModel>();
+    private string _singleStationInlineChartStatusSummary = "当前接口图表已就绪，开始测试后会实时刷新。";
     private IReadOnlyList<ProxyBatchComparisonChartRowViewModel> _proxyChartDialogBatchComparisonRows =
         Array.Empty<ProxyBatchComparisonChartRowViewModel>();
     private IReadOnlyList<ProxyStabilityTrendChartRowViewModel> _proxyChartDialogStabilityTrendRows =
@@ -100,6 +103,15 @@ public sealed partial class MainWindowViewModel
 
     public IReadOnlyList<ProxySingleCapabilityChartRowViewModel> ProxyChartDialogSingleCapabilityRows
         => _proxyChartDialogSingleCapabilityRows;
+
+    public IReadOnlyList<ProxySingleCapabilityChartRowViewModel> SingleStationInlineChartRows
+        => _singleStationInlineChartRows;
+
+    public string SingleStationInlineChartStatusSummary
+        => _singleStationInlineChartStatusSummary;
+
+    public bool HasSingleStationInlineChartRows
+        => _singleStationInlineChartRows.Count > 0;
 
     public IReadOnlyList<ProxyBatchComparisonChartRowViewModel> ProxyChartDialogBatchComparisonRows
         => _proxyChartDialogBatchComparisonRows;
@@ -169,6 +181,10 @@ public sealed partial class MainWindowViewModel
         {
             case ProxyChartViewMode.SingleLatency:
                 _proxySingleChartSnapshot = snapshot;
+                if (snapshot.SingleCapabilityItems is not null)
+                {
+                    SetSingleStationInlineChartRows(snapshot.SingleCapabilityItems, snapshot.StatusSummary);
+                }
                 break;
             case ProxyChartViewMode.StabilityTrend:
                 _proxyTrendChartSnapshot = snapshot;
@@ -346,5 +362,16 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(ProxyChartImageOnlyModeButtonText));
         ToggleProxyChartViewCommand.RaiseCanExecuteChanged();
         ToggleProxyChartImageOnlyModeCommand.RaiseCanExecuteChanged();
+    }
+
+    private void SetSingleStationInlineChartRows(
+        IReadOnlyList<ProxySingleCapabilityChartItem> items,
+        string statusSummary)
+    {
+        _singleStationInlineChartRows = ProxySingleCapabilityChartRowViewModel.CreateRows(items);
+        _singleStationInlineChartStatusSummary = statusSummary;
+        OnPropertyChanged(nameof(SingleStationInlineChartRows));
+        OnPropertyChanged(nameof(SingleStationInlineChartStatusSummary));
+        OnPropertyChanged(nameof(HasSingleStationInlineChartRows));
     }
 }

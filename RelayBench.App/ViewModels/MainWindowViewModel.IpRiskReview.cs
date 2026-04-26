@@ -8,10 +8,17 @@ namespace RelayBench.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private readonly ExitIpRiskReviewService _exitIpRiskReviewService = new();
+    private string _ipRiskTargetAddress = string.Empty;
     private string _ipRiskOverviewSummary = "运行后显示出口 IP、地区和 ASN。";
     private string _ipRiskAssessmentSummary = "暂无风险结论。";
     private string _ipRiskSourceDetailSummary = "暂无来源明细。";
     private string _ipRiskSummaryMetaText = "运行后显示检测时间和识别来源。";
+
+    public string IpRiskTargetAddress
+    {
+        get => _ipRiskTargetAddress;
+        set => SetProperty(ref _ipRiskTargetAddress, value);
+    }
 
     public string IpRiskOverviewSummary
     {
@@ -46,11 +53,15 @@ public sealed partial class MainWindowViewModel
             UpdateGlobalTaskProgressForIpRiskMessage(message);
         });
 
-        var result = await _exitIpRiskReviewService.RunAsync(progress);
+        var targetAddress = string.IsNullOrWhiteSpace(IpRiskTargetAddress) ? null : IpRiskTargetAddress.Trim();
+        var result = await _exitIpRiskReviewService.RunAsync(targetAddress, progress);
         UpdateGlobalTaskProgress("汇总中", 94d);
         ApplyIpRiskReviewResult(result);
         StatusMessage = result.Summary;
-        AppendHistory("IP风险", "当前出口 IP 风险复核", $"{IpRiskOverviewSummary}\n\n{IpRiskAssessmentSummary}");
+        AppendHistory(
+            "IP风险",
+            string.IsNullOrWhiteSpace(targetAddress) ? "当前出口 IP 风险复核" : $"指定 IP 风险复核：{targetAddress}",
+            $"{IpRiskOverviewSummary}\n\n{IpRiskAssessmentSummary}");
     }
 
     private void ApplyIpRiskReviewResult(ExitIpRiskReviewResult result)
@@ -66,9 +77,10 @@ public sealed partial class MainWindowViewModel
         var warnCount = result.Sources.Count(source => string.Equals(source.Verdict, "注意", StringComparison.Ordinal));
         var passCount = result.Sources.Count(source => string.Equals(source.Verdict, "通过", StringComparison.Ordinal));
 
+        var subjectLabel = IsSpecifiedIpRiskResult(result) ? "目标 IP" : "当前出口 IP";
         IpRiskOverviewSummary =
             $"检测时间：{result.CheckedAt:yyyy-MM-dd HH:mm:ss}\n" +
-            $"当前出口 IP：{result.PublicIp ?? "--"}\n" +
+            $"{subjectLabel}：{result.PublicIp ?? "--"}\n" +
             $"识别来源：{result.DetectSource}\n" +
             $"地区：{JoinText(" / ", result.Country, result.City) ?? "--"}\n" +
             $"网络：{JoinText(" / ", result.Asn, result.Organization) ?? "--"}\n" +
@@ -204,6 +216,7 @@ public sealed partial class MainWindowViewModel
 
     private static IReadOnlyList<IpRiskSummaryBadgeViewModel> BuildIpRiskSummaryBadges(ExitIpRiskReviewResult result, int successfulSources)
     {
+        var subjectLabel = IsSpecifiedIpRiskResult(result) ? "目标 IP" : "出口 IP";
         var locationText = JoinText(" / ", result.Country, result.City) ?? "--";
         var networkText = JoinText(" / ", result.Asn, result.Organization) ?? "--";
         var totalSources = result.Sources.Count;
@@ -224,7 +237,7 @@ public sealed partial class MainWindowViewModel
         return
         [
             new IpRiskSummaryBadgeViewModel(
-                "出口 IP",
+                subjectLabel,
                 FormatOptional(result.PublicIp, "未识别"),
                 $"来源：{result.DetectSource}",
                 string.IsNullOrWhiteSpace(result.PublicIp) ? IpRiskToneViewModel.Warning : IpRiskToneViewModel.Info),
@@ -478,6 +491,10 @@ public sealed partial class MainWindowViewModel
 
     private static string FormatOptional(string? value, string fallback)
         => string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+    private static bool IsSpecifiedIpRiskResult(ExitIpRiskReviewResult result)
+        => string.Equals(result.DetectSource, "用户指定 IP", StringComparison.Ordinal) ||
+           string.Equals(result.DetectSource, "用户输入", StringComparison.Ordinal);
 
     private static void ReplaceCollection<T>(ObservableCollection<T> target, IEnumerable<T> items)
     {

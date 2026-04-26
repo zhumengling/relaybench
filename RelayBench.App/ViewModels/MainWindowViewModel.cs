@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using RelayBench.App.Infrastructure;
 using RelayBench.App.Services;
 using RelayBench.Core.Models;
@@ -14,6 +15,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly WebApiTraceService _webApiTraceService = new();
     private readonly StunProbeService _stunProbeService = new();
     private readonly ProxyDiagnosticsService _proxyDiagnosticsService = new();
+    private readonly ProxyEndpointModelCacheService _proxyEndpointModelCacheService =
+        new(Path.Combine(RelayBenchPaths.DataDirectory, "endpoint-model-cache.sqlite"));
     private readonly CloudflareSpeedTestService _cloudflareSpeedTestService = new();
     private readonly RouteDiagnosticsService _routeDiagnosticsService = new();
     private readonly PortScanDiagnosticsService _portScanDiagnosticsService = new();

@@ -8,7 +8,8 @@ public sealed class CodexFamilyConfigApplyService
 {
     private const string CodexProviderKey = "custom";
     private const string CodexProviderName = "OpenAI";
-    private const string CodexWireApi = "responses";
+    private const string CodexResponsesWireApi = "responses";
+    private const string CodexChatWireApi = "chat";
 
     private readonly IClientApiConfigMutationEnvironment _environment;
 
@@ -23,6 +24,7 @@ public sealed class CodexFamilyConfigApplyService
         string model,
         string? displayName = null,
         int? modelContextWindow = null,
+        string? preferredWireApi = null,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -30,9 +32,10 @@ public sealed class CodexFamilyConfigApplyService
         var normalizedBaseUrl = NormalizeCodexBaseUrl(baseUrl);
         var normalizedApiKey = apiKey?.Trim() ?? string.Empty;
         var normalizedModel = model?.Trim() ?? string.Empty;
-        var normalizedDisplayName = NormalizeCodexProviderName(displayName);
+        var normalizedDisplayName = NormalizeCodexProviderName(displayName, normalizedModel);
         var resolvedContextWindow = ModelContextWindowCatalog.ResolveContextWindow(normalizedModel, modelContextWindow);
         var autoCompactTokenLimit = ModelContextWindowCatalog.CalculateAutoCompactTokenLimit(resolvedContextWindow);
+        var wireApi = ResolveCodexWireApiPreference(normalizedBaseUrl, normalizedModel, preferredWireApi);
 
         if (string.IsNullOrWhiteSpace(normalizedBaseUrl))
         {
@@ -88,7 +91,8 @@ public sealed class CodexFamilyConfigApplyService
                 normalizedApiKey,
                 normalizedDisplayName,
                 resolvedContextWindow,
-                autoCompactTokenLimit),
+                autoCompactTokenLimit,
+                wireApi),
             changedFiles,
             backupFiles);
         ApplyFile(
@@ -161,7 +165,8 @@ public sealed class CodexFamilyConfigApplyService
         string apiKey,
         string displayName,
         int? contextWindow,
-        int? autoCompactTokenLimit)
+        int? autoCompactTokenLimit,
+        string wireApi)
     {
         List<string> lines = SplitLines(existingContent);
 
@@ -169,9 +174,15 @@ public sealed class CodexFamilyConfigApplyService
         UpsertTopLevelString(lines, "model", model);
         UpsertOptionalTopLevelInteger(lines, "model_context_window", contextWindow);
         UpsertOptionalTopLevelInteger(lines, "model_auto_compact_token_limit", autoCompactTokenLimit);
+        if (string.Equals(wireApi, CodexChatWireApi, StringComparison.Ordinal))
+        {
+            RemoveTopLevelAssignment(lines, "model_reasoning_effort");
+            RemoveTopLevelAssignment(lines, "model_reasoning_summary");
+        }
+
         UpsertSectionString(lines, "model_providers.custom", "name", displayName);
         UpsertSectionString(lines, "model_providers.custom", "base_url", baseUrl);
-        UpsertSectionString(lines, "model_providers.custom", "wire_api", CodexWireApi);
+        UpsertSectionString(lines, "model_providers.custom", "wire_api", wireApi);
         UpsertSectionString(lines, "model_providers.custom", "experimental_bearer_token", apiKey);
 
         return JoinLines(lines);
@@ -350,6 +361,132 @@ public sealed class CodexFamilyConfigApplyService
         return builder.Uri.ToString().TrimEnd('/');
     }
 
-    private static string NormalizeCodexProviderName(string? value)
-        => CodexProviderName;
+    private static string NormalizeCodexProviderName(string? value, string model)
+    {
+        if (IsDeepSeekModel(model))
+        {
+            return "DeepSeek";
+        }
+
+        return string.IsNullOrWhiteSpace(value)
+            ? CodexProviderName
+            : value.Trim();
+    }
+
+    public static string ResolveCodexWireApiPreference(
+        string? baseUrl,
+        string? model,
+        string? preferredWireApi = null)
+    {
+        if (TryNormalizeCodexWireApi(preferredWireApi, out var normalizedPreferredWireApi))
+        {
+            return normalizedPreferredWireApi;
+        }
+
+        return IsChatPreferredModel(model) || IsChatPreferredEndpoint(baseUrl)
+            ? CodexChatWireApi
+            : CodexResponsesWireApi;
+    }
+
+    private static bool IsDeepSeekModel(string model)
+        => model.Contains("deepseek", StringComparison.OrdinalIgnoreCase);
+
+    private static bool TryNormalizeCodexWireApi(string? value, out string normalized)
+    {
+        normalized = string.Empty;
+        var text = value?.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        if (string.Equals(text, CodexChatWireApi, StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = CodexChatWireApi;
+            return true;
+        }
+
+        if (string.Equals(text, CodexResponsesWireApi, StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = CodexResponsesWireApi;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsChatPreferredModel(string? model)
+    {
+        var normalized = model?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return false;
+        }
+
+        string[] markers =
+        [
+            "deepseek",
+            "qwen",
+            "qwq",
+            "qvq",
+            "kimi",
+            "moonshot",
+            "glm",
+            "chatglm",
+            "zhipu",
+            "yi-",
+            "yi_",
+            "baichuan",
+            "minimax",
+            "abab",
+            "doubao",
+            "hunyuan",
+            "ernie",
+            "wenxin",
+            "spark",
+            "xunfei",
+            "step-",
+            "step_",
+            "internlm",
+            "sensechat",
+            "telechat"
+        ];
+
+        return markers.Any(marker => normalized.Contains(marker, StringComparison.Ordinal));
+    }
+
+    private static bool IsChatPreferredEndpoint(string? baseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate(ClientApiConfigPatterns.NormalizeEndpoint(baseUrl), UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        var signature = $"{uri.Host}{uri.AbsolutePath}".ToLowerInvariant();
+        string[] markers =
+        [
+            "dashscope.aliyuncs.com",
+            "bigmodel.cn",
+            "moonshot.cn",
+            "deepseek.com",
+            "volces.com",
+            "volcengineapi.com",
+            "siliconflow.cn",
+            "minimax.chat",
+            "baichuan-ai.com",
+            "lingyiwanwu.com",
+            "hunyuan.cloud.tencent.com",
+            "xf-yun.com",
+            "sensenova.cn",
+            "stepfun.com",
+            "compatible-mode"
+        ];
+
+        return markers.Any(marker => signature.Contains(marker, StringComparison.Ordinal));
+    }
 }

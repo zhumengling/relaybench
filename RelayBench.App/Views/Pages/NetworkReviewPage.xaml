@@ -295,7 +295,6 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="132" />
                         </Grid.ColumnDefinitions>
 
                         <StackPanel>
@@ -316,15 +315,6 @@
                                        Text="{Binding SelectedNetworkReviewToolGroupName}" />
                         </Border>
 
-                        <Border Grid.Column="2"
-                                Width="116"
-                                Height="76"
-                                Margin="12,-4,0,-6"
-                                CornerRadius="18"
-                                ClipToBounds="True">
-                            <Image Source="/Assets/Images/network-review-empty.png"
-                                   Stretch="UniformToFill" />
-                        </Border>
                     </Grid>
 
                     <Border Grid.Row="1"
@@ -944,14 +934,42 @@
                         <Grid Visibility="{Binding IsNetworkReviewIpRiskSelected, Converter={StaticResource BoolToVisibilityConverter}}">
                             <StackPanel>
                                 <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="220" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Style="{StaticResource SectionHintTextStyle}"
                                                Text="先看总体，再看矩阵。" />
-                                    <Button Grid.Column="1"
+                                    <TextBlock Grid.Row="1"
+                                               Grid.Column="1"
+                                               Grid.ColumnSpan="2"
+                                               Margin="12,6,0,4"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               Text="不输入任何内容检测本机 IP" />
+                                    <TextBlock Grid.Row="2"
+                                               Grid.Column="1"
+                                               Margin="12,0,0,0"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource FieldLabelTextStyle}"
+                                               Text="IP 地址" />
+                                    <TextBox Grid.Row="2"
+                                             Grid.Column="2"
+                                             Margin="8,0,0,0"
+                                             Style="{StaticResource CompactInputTextBoxStyle}"
+                                             Text="{Binding IpRiskTargetAddress, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="留空检测本机当前出口；填写 IPv4 或 IPv6 后检测指定 IP。" />
+                                    <Button Grid.Row="2"
+                                            Grid.Column="3"
                                             MinWidth="128"
+                                            Margin="8,0,0,0"
                                             Command="{Binding RunIpRiskReviewCommand}"
                                             Style="{StaticResource PrimaryActionButtonStyle}"
                                             Content="开始检测" />

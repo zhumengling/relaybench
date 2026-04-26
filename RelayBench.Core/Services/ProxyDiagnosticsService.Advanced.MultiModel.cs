@@ -73,7 +73,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_tokens = 128,
+            max_tokens = GetChatProbeMaxTokens(model),
             temperature = 0,
             stream = true,
             messages = new[]

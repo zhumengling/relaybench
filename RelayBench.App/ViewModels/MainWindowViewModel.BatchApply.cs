@@ -45,12 +45,19 @@ public sealed partial class MainWindowViewModel
             $"正在应用“{row.EntryName}”...",
             async () =>
             {
+                var settings = BuildProxySettings(row.BaseUrl, row.ApiKey, row.Model);
+                await DetectAndCacheProxyWireApiAsync(settings);
+                var cachedApplyInfo = await ResolveCachedCodexApplyInfoAsync(
+                    row.BaseUrl,
+                    row.ApiKey,
+                    row.Model);
                 var result = await _codexFamilyConfigApplyService.ApplyAsync(
                     row.BaseUrl,
                     row.ApiKey,
                     row.Model,
                     CodexOpenAiProviderDisplayName,
-                    ResolveProxyModelContextWindow(row.Model));
+                    cachedApplyInfo.ContextWindow,
+                    cachedApplyInfo.PreferredWireApi);
                 CodexChatMergeResult? mergeResult = null;
                 if (result.Succeeded)
                 {

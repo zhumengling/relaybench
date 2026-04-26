@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <Resource Include="Assets\Images\*.png" />
+    <Resource Include="Assets\Brand\relaybench.ico" />
+    <Resource Include="Assets\Brand\relaybench-logo.png" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -17,6 +19,7 @@
     <UseAppHost>true</UseAppHost>
     <SelfContained>false</SelfContained>
     <AssemblyName>RelayBench</AssemblyName>
+    <ApplicationIcon>Assets\Brand\relaybench.ico</ApplicationIcon>
     <RootNamespace>RelayBench.App</RootNamespace>
     <Product>RelayBench</Product>
     <AssemblyTitle>RelayBench</AssemblyTitle>

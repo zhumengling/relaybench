@@ -436,12 +436,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
             UpdateGlobalTaskProgress("\u8BF7\u6C42\u4E2D", 12d);
         }
 
+        await DetectAndCacheProxyWireApiAsync(settings, cancellationToken);
+
         var streamThroughputSampleCount = 1;
         var result = await _proxyDiagnosticsService.RunAsync(
             settings,
             progress,
             cancellationToken,
             streamThroughputSampleCount: streamThroughputSampleCount);
+        await CacheProxyDiagnosticsResultAsync(settings, result, cancellationToken);
 
         if (updateGlobalTaskProgressPhases)
         {
@@ -667,8 +670,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private async Task FetchProxyModelsCoreAsync()
     {
-        var result = await _proxyDiagnosticsService.FetchModelsAsync(BuildProxySettings());
+        var settings = BuildProxySettings();
+        var result = await _proxyDiagnosticsService.FetchModelsAsync(settings);
         ApplyProxyModelCatalogResult(result);
+        await CacheProxyModelCatalogResultAsync(settings, result);
         IsProxyModelPickerOpen = true;
         IsProxyMultiModelPickerOpen = false;
         DashboardCards[3].Status = result.Success ? "模型已拉取" : "模型拉取失败";
@@ -706,8 +711,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             UpdateGlobalTaskProgress(liveRounds.Count, rounds, $"\u7B2C {liveRounds.Count}/{rounds} \u8F6E");
         });
 
+        var settings = BuildProxySettings();
+        await DetectAndCacheProxyWireApiAsync(settings, cancellationToken);
         var result = await _proxyDiagnosticsService.RunSeriesAsync(
-            BuildProxySettings(),
+            settings,
             rounds,
             delayMilliseconds,
             progress,

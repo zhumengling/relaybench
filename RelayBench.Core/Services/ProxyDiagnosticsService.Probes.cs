@@ -25,6 +25,13 @@ public sealed partial class ProxyDiagnosticsService
         IReadOnlyList<string> SampleModels,
         IReadOnlyList<ProxyModelCatalogItem> ModelItems);
 
+    private sealed record ProtocolWireProbeOutcome(
+        string ProbeModel,
+        bool ChatCompletionsSupported,
+        bool ResponsesSupported,
+        string? PreferredWireApi,
+        string Summary);
+
     private sealed record JsonProbeOutcome(
         ProxyProbeScenarioResult ScenarioResult,
         string? Preview);

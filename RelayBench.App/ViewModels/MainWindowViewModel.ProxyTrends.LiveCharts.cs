@@ -72,6 +72,22 @@ public sealed partial class MainWindowViewModel
         AutoOpenProxyTrendChartIfAllowed();
     }
 
+    private void RefreshSingleStationInlineChartPlaceholder()
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(ProxyBaseUrl) ? "（未填写）" : ProxyBaseUrl.Trim();
+        var model = string.IsNullOrWhiteSpace(ProxyModel) ? "（待选择）" : ProxyModel.Trim();
+        var items = BuildLiveSingleCapabilityChartItems(
+            Array.Empty<ProxyProbeScenarioResult>(),
+            modelCount: 0,
+            sampleModels: Array.Empty<string>(),
+            completedBaselineCount: 0,
+            totalBaselineCount: 0);
+
+        SetSingleStationInlineChartRows(
+            items,
+            $"接口地址：{baseUrl}  |  模型：{model}  |  等待测试，运行后实时刷新可用性、延迟、TTFT 与 tok/s。");
+    }
+
     private void UpdateSingleProxyChartLive(ProxyDiagnosticsLiveProgress progress)
     {
         var items = BuildLiveSingleCapabilityChartItems(

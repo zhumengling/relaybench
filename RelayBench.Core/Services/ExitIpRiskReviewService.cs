@@ -16,9 +16,25 @@ public sealed class ExitIpRiskReviewService
     public async Task<ExitIpRiskReviewResult> RunAsync(
         IProgress<string>? progress = null,
         CancellationToken cancellationToken = default)
+        => await RunAsync(null, progress, cancellationToken);
+
+    public async Task<ExitIpRiskReviewResult> RunAsync(
+        string? targetIp,
+        IProgress<string>? progress = null,
+        CancellationToken cancellationToken = default)
     {
-        progress?.Report("正在识别当前出口 IP...");
-        var origin = await ResolveCurrentOriginAsync(cancellationToken);
+        if (!TryNormalizeTargetIp(targetIp, out var normalizedTargetIp, out var targetError))
+        {
+            return BuildInvalidTargetResult(targetIp, targetError);
+        }
+
+        var hasTargetIp = !string.IsNullOrWhiteSpace(normalizedTargetIp);
+        progress?.Report(hasTargetIp
+            ? $"正在准备复核指定 IP：{normalizedTargetIp}..."
+            : "正在识别当前出口 IP...");
+        var origin = hasTargetIp
+            ? ResolveSpecifiedOrigin(normalizedTargetIp!)
+            : await ResolveCurrentOriginAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(origin.PublicIp))
         {
             return new ExitIpRiskReviewResult(
@@ -75,7 +91,7 @@ public sealed class ExitIpRiskReviewService
     private static ExitIpRiskReviewResult BuildResult(ResolvedOrigin origin, IReadOnlyList<ExitIpRiskSourceResult> sources)
     {
         var successfulSources = sources.Count(source => source.Succeeded);
-        var successfulRiskSources = sources.Count(source => source.Succeeded && !string.Equals(source.Key, "current-origin", StringComparison.Ordinal));
+        var successfulRiskSources = sources.Count(source => source.Succeeded && IsRiskProbeSource(source));
 
         var country = FirstNonEmpty(origin.Country, sources.Select(source => source.Country).ToArray());
         var city = FirstNonEmpty(origin.City, sources.Select(source => source.City).ToArray());
@@ -180,8 +196,9 @@ public sealed class ExitIpRiskReviewService
             ? null
             : $"边缘节点 {origin.CloudflareColo}";
 
+        var subjectLabel = IsSpecifiedOrigin(origin) ? "目标 IP" : "当前出口";
         var summary =
-            $"当前出口 {origin.PublicIp}，来源 {origin.DetectSource}，成功查询 {successfulSources}/{sources.Count} 个源。" +
+            $"{subjectLabel} {origin.PublicIp}，来源 {origin.DetectSource}，成功查询 {successfulSources}/{sources.Count} 个源。" +
             $"{(string.IsNullOrWhiteSpace(locationText) ? string.Empty : $" 地区 {locationText}。")}" +
             $"{(string.IsNullOrWhiteSpace(networkText) ? string.Empty : $" 网络 {networkText}。")}" +
             $"{(string.IsNullOrWhiteSpace(coloText) ? string.Empty : $" {coloText}。")}" +
@@ -203,6 +220,67 @@ public sealed class ExitIpRiskReviewService
             summary,
             null);
     }
+
+    private static bool TryNormalizeTargetIp(string? targetIp, out string? normalizedTargetIp, out string? error)
+    {
+        normalizedTargetIp = null;
+        error = null;
+        if (string.IsNullOrWhiteSpace(targetIp))
+        {
+            return true;
+        }
+
+        var trimmed = targetIp.Trim();
+        if (trimmed.StartsWith("[", StringComparison.Ordinal) &&
+            trimmed.EndsWith("]", StringComparison.Ordinal) &&
+            trimmed.Length > 2)
+        {
+            trimmed = trimmed[1..^1];
+        }
+
+        if (!IPAddress.TryParse(trimmed, out var address))
+        {
+            error = "请输入有效的 IPv4 或 IPv6 地址；留空则检测本机当前出口。";
+            return false;
+        }
+
+        normalizedTargetIp = address.ToString();
+        return true;
+    }
+
+    private static ExitIpRiskReviewResult BuildInvalidTargetResult(string? targetIp, string? error)
+        => new(
+            DateTimeOffset.Now,
+            string.IsNullOrWhiteSpace(targetIp) ? null : targetIp.Trim(),
+            "用户输入",
+            null,
+            null,
+            null,
+            null,
+            null,
+            Array.Empty<ExitIpRiskSourceResult>(),
+            ["目标 IP 格式无效，未发起多源查询。"],
+            Array.Empty<string>(),
+            "待复核",
+            error ?? "目标 IP 格式无效。",
+            error ?? "目标 IP 格式无效。");
+
+    private static ResolvedOrigin ResolveSpecifiedOrigin(string ip)
+        => new(
+            ip,
+            "用户指定 IP",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    private static bool IsSpecifiedOrigin(ResolvedOrigin origin)
+        => string.Equals(origin.DetectSource, "用户指定 IP", StringComparison.Ordinal);
+
+    private static bool IsRiskProbeSource(ExitIpRiskSourceResult source)
+        => !string.Equals(source.Key, "current-origin", StringComparison.Ordinal);
 
     private static async Task<ResolvedOrigin> ResolveCurrentOriginAsync(CancellationToken cancellationToken)
     {

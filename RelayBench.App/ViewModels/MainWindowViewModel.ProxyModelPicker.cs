@@ -72,6 +72,7 @@ public sealed partial class MainWindowViewModel
     {
         var result = await _proxyDiagnosticsService.FetchModelsAsync(settings);
         ApplyProxyModelCatalogResult(result);
+        await CacheProxyModelCatalogResultAsync(settings, result);
         IsProxyModelPickerOpen = true;
         IsProxyMultiModelPickerOpen = false;
         DashboardCards[3].Status = result.Success ? "模型已拉取" : "模型拉取失败";

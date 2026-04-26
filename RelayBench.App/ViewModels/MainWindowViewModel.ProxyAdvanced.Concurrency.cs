@@ -83,6 +83,7 @@ public sealed partial class MainWindowViewModel
             includePendingPlan: true);
         AutoOpenProxyTrendChartIfAllowed();
         UpdateGlobalTaskProgress("\u51C6\u5907\u4E2D", 8d);
+        await DetectAndCacheProxyWireApiAsync(settings, cancellationToken);
 
         var stageProgress = new Progress<ProxyConcurrencyPressureStageResult>(stage =>
         {

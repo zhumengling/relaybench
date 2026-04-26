@@ -118,6 +118,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RunProxySeriesCommand = new AsyncRelayCommand(RunProxySeriesWithValidationAsync, CanRun);
         RunSelectedSingleStationModeCommand = new AsyncRelayCommand(RunSelectedSingleStationModeAsync, CanRun);
         RunProxyBatchCommand = new AsyncRelayCommand(RunProxyBatchWithValidationAsync, CanRun);
+        ToggleBatchDeepSelectionCommand = new AsyncRelayCommand(ToggleBatchDeepSelectionAsync, CanToggleBatchDeepSelectionAction);
         RunSelectedBatchDeepTestsCommand = new AsyncRelayCommand(RunSelectedBatchDeepTestsAsync, CanRunSelectedBatchDeepTestsAction);
         ApplyRankingRowToCodexAppsCommand = new AsyncRelayCommand<ProxyBatchRankingRowViewModel?>(ApplyRankingRowToCodexAppsAsync, CanApplyRankingRowToCodexApps, onError: HandleNonFatalCommandException);
         RunSpeedTestCommand = new AsyncRelayCommand(RunSpeedTestWithGlobalProgressAsync, CanRun);
@@ -139,6 +140,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         ResetIpRiskPresentation();
         LoadState();
+        RefreshSingleStationInlineChartPlaceholder();
         RefreshFilteredPortScanFindings();
         RefreshPortScanBatchSummary();
         RefreshPortScanExportSummary();

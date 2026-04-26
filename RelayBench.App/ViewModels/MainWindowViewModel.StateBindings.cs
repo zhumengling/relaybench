@@ -37,9 +37,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 RunProxySeriesCommand.RaiseCanExecuteChanged();
                 RunSelectedSingleStationModeCommand.RaiseCanExecuteChanged();
                 RunProxyBatchCommand.RaiseCanExecuteChanged();
+                ToggleBatchDeepSelectionCommand.RaiseCanExecuteChanged();
                 RunSelectedBatchDeepTestsCommand.RaiseCanExecuteChanged();
                 ApplyRankingRowToCodexAppsCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(CanRunSelectedBatchDeepTests));
+                OnPropertyChanged(nameof(CanToggleBatchDeepSelection));
+                OnPropertyChanged(nameof(BatchDeepSelectionToggleText));
                 StopCurrentProxyTestCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(CanStopCurrentProxyTest));
                 RetryProxyChartCommand.RaiseCanExecuteChanged();
@@ -161,6 +164,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             {
                 RefreshProxyTrendView(value);
                 NotifyApplicationCenterProxyContextChanged();
+                if (!IsBusy)
+                {
+                    RefreshSingleStationInlineChartPlaceholder();
+                }
             }
         }
     }
@@ -185,6 +192,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (SetProperty(ref _proxyModel, value))
             {
                 NotifyApplicationCenterProxyContextChanged();
+                if (!IsBusy)
+                {
+                    RefreshSingleStationInlineChartPlaceholder();
+                }
                 if (_proxyModelPickerTarget == ProxyModelPickerTarget.DefaultModel)
                 {
                     SyncSelectedProxyCatalogModel(value);

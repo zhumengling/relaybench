@@ -185,6 +185,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand RunProxyBatchCommand { get; }
 
+    public AsyncRelayCommand ToggleBatchDeepSelectionCommand { get; }
+
     public AsyncRelayCommand RunSelectedBatchDeepTestsCommand { get; }
 
     public AsyncRelayCommand<ProxyBatchRankingRowViewModel?> ApplyRankingRowToCodexAppsCommand { get; }

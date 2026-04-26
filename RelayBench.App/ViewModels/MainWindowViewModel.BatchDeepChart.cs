@@ -540,13 +540,13 @@ public sealed partial class MainWindowViewModel
 
         var ordered = states.OrderBy(item => item.Rank).ToArray();
         var completed = ordered.Count(item => item.IsCompleted);
-        var running = ordered.FirstOrDefault(item => item.IsRunning);
+        var runningStates = ordered.Where(item => item.IsRunning).ToArray();
 
         StringBuilder builder = new();
         builder.AppendLine($"候选站点深度测试：已完成 {completed}/{ordered.Length}（{DateTime.Now:yyyy-MM-dd HH:mm:ss}）。");
-        builder.AppendLine(running is null
+        builder.AppendLine(runningStates.Length == 0
             ? $"当前没有正在执行的候选项；排行榜保留 TOP 1：#{ordered[0].Rank} {ordered[0].EntryName}。"
-            : $"当前执行：#{running.Rank} {running.EntryName}，进度 {running.CompletedCount}/{running.DeepTotalCount}，阶段 {running.StageText}。");
+            : $"当前并发 {runningStates.Length} 项：{string.Join("、", runningStates.Take(5).Select(item => $"#{item.Rank} {item.EntryName} {item.CompletedCount}/{item.DeepTotalCount}"))}。");
         builder.AppendLine();
 
         foreach (var state in ordered)
@@ -568,10 +568,11 @@ public sealed partial class MainWindowViewModel
         BatchDeepChartRowState? running)
     {
         var completed = states.Count(item => item.IsCompleted);
+        var runningStates = states.Where(item => item.IsRunning).ToArray();
         return
             $"候选总数：{states.Count}\n" +
             $"已完成：{completed}/{states.Count}\n" +
-            $"当前执行：{(running is null ? "无" : $"#{running.Rank} {running.EntryName} ({running.CompletedCount}/{running.DeepTotalCount})")}\n" +
+            $"当前执行：{(runningStates.Length == 0 ? "无" : string.Join("、", runningStates.Take(5).Select(item => $"#{item.Rank} {item.EntryName} ({item.CompletedCount}/{item.DeepTotalCount})")))}\n" +
             $"排行榜 TOP 1：#{top.Rank} {top.EntryName}\n" +
             $"快速基线：普通 {FormatMillisecondsValue(top.QuickChatLatencyMs)} / TTFT {FormatMillisecondsValue(top.QuickTtftMs)} / {top.QuickCapabilityText}";
     }

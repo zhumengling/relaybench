@@ -426,13 +426,229 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="测试结果" />
 
                 <Border Grid.Row="1"
+                        Margin="0,6,0,0"
+                        Padding="10,8"
+                        Background="#F8FBFF"
+                        BorderBrush="#D6E4FF"
+                        BorderThickness="1"
+                        CornerRadius="14">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <DockPanel LastChildFill="True">
+                            <Button DockPanel.Dock="Right"
+                                    MinWidth="88"
+                                    Height="28"
+                                    Padding="10,3"
+                                    Command="{Binding OpenProxySingleChartCommand}"
+                                    Content="放大图表" />
+                            <StackPanel>
+                                <TextBlock FontSize="12.2"
+                                           FontWeight="SemiBold"
+                                           Text="接口实时图表" />
+                                <TextBlock Margin="0,2,18,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           Text="{Binding SingleStationInlineChartStatusSummary, Mode=OneWay}" />
+                            </StackPanel>
+                        </DockPanel>
+
+                        <Border Grid.Row="1"
+                                Margin="0,7,0,0"
+                                Padding="6"
+                                Background="#FFFFFF"
+                                BorderBrush="#E3ECF7"
+                                BorderThickness="1"
+                                CornerRadius="12">
+                            <Grid MinHeight="178">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Border Padding="10,4"
+                                        Background="#F8FBFF"
+                                        BorderBrush="#E3ECF7"
+                                        BorderThickness="0,0,0,1"
+                                        CornerRadius="8,8,0,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2.0*" />
+                                            <ColumnDefinition Width="112" />
+                                            <ColumnDefinition Width="70" />
+                                            <ColumnDefinition Width="1.45*" />
+                                            <ColumnDefinition Width="2.6*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="检测项" />
+                                        <TextBlock Grid.Column="1" Style="{StaticResource FieldLabelTextStyle}" Text="状态" />
+                                        <TextBlock Grid.Column="2" Style="{StaticResource FieldLabelTextStyle}" Text="HTTP" />
+                                        <TextBlock Grid.Column="3" Style="{StaticResource FieldLabelTextStyle}" Text="指标" />
+                                        <TextBlock Grid.Column="4" Style="{StaticResource FieldLabelTextStyle}" Text="结果" />
+                                    </Grid>
+                                </Border>
+
+                                <ScrollViewer Grid.Row="1"
+                                              Margin="0,6,0,0"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                              MaxHeight="214"
+                                              Visibility="{Binding HasSingleStationInlineChartRows, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <ItemsControl ItemsSource="{Binding SingleStationInlineChartRows}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border x:Name="InlineSingleChartRow"
+                                                        Margin="0,0,0,6"
+                                                        Padding="10,7"
+                                                        Background="#FBFDFF"
+                                                        BorderBrush="#D9E6F7"
+                                                        BorderThickness="1"
+                                                        CornerRadius="13"
+                                                        Opacity="0"
+                                                        RenderTransformOrigin="0.5,0.5">
+                                                    <Border.RenderTransform>
+                                                        <TranslateTransform Y="6" />
+                                                    </Border.RenderTransform>
+                                                    <Border.Triggers>
+                                                        <EventTrigger RoutedEvent="Loaded">
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.18" />
+                                                                    <DoubleAnimation Storyboard.TargetProperty="(Border.RenderTransform).(TranslateTransform.Y)" To="0" Duration="0:0:0.22">
+                                                                        <DoubleAnimation.EasingFunction>
+                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                        </DoubleAnimation.EasingFunction>
+                                                                    </DoubleAnimation>
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </EventTrigger>
+                                                    </Border.Triggers>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="2.0*" />
+                                                            <ColumnDefinition Width="112" />
+                                                            <ColumnDefinition Width="70" />
+                                                            <ColumnDefinition Width="1.45*" />
+                                                            <ColumnDefinition Width="2.6*" />
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <StackPanel Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center">
+                                                            <TextBlock FontSize="12.5"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource TextBrush}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Text="{Binding Name}" />
+                                                            <TextBlock Margin="0,3,0,0"
+                                                                       FontSize="10.3"
+                                                                       Foreground="{StaticResource MutedBrush}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       Text="{Binding SectionName}" />
+                                                        </StackPanel>
+
+                                                        <Border x:Name="InlineSingleStatusBadge"
+                                                                Grid.Column="1"
+                                                                Margin="0,0,12,0"
+                                                                Padding="8,3"
+                                                                HorizontalAlignment="Left"
+                                                                VerticalAlignment="Center"
+                                                                Background="#EFF6FF"
+                                                                BorderBrush="#BFDBFE"
+                                                                BorderThickness="1"
+                                                                CornerRadius="999">
+                                                            <TextBlock x:Name="InlineSingleStatusText"
+                                                                       FontSize="10.5"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource AccentBrush}"
+                                                                       Text="{Binding StatusText}" />
+                                                        </Border>
+
+                                                        <StackPanel Grid.Column="2" Margin="0,0,12,0" VerticalAlignment="Center">
+                                                            <TextBlock FontSize="11.2"
+                                                                       FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource TextBrush}"
+                                                                       Text="{Binding StatusCodeText}" />
+                                                            <TextBlock Margin="0,3,0,0"
+                                                                       FontSize="10"
+                                                                       Foreground="{StaticResource MutedBrush}"
+                                                                       Text="{Binding ReceivedDoneText}" />
+                                                        </StackPanel>
+
+                                                        <StackPanel Grid.Column="3" Margin="0,0,16,0" VerticalAlignment="Center">
+                                                            <DockPanel LastChildFill="True">
+                                                                <TextBlock DockPanel.Dock="Left" FontSize="10.5" Foreground="{StaticResource MutedBrush}" Text="指标" />
+                                                                <TextBlock HorizontalAlignment="Right"
+                                                                           FontSize="12"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="{StaticResource TextBrush}"
+                                                                           Text="{Binding MetricText}" />
+                                                            </DockPanel>
+                                                            <ProgressBar Margin="0,5,0,0"
+                                                                         Height="5"
+                                                                         Maximum="1"
+                                                                         Value="{Binding MetricRatio, Mode=OneWay}"
+                                                                         Foreground="{StaticResource AccentBrush}"
+                                                                         Background="#E7EDF5"
+                                                                         BorderThickness="0" />
+                                                        </StackPanel>
+
+                                                        <TextBlock Grid.Column="4"
+                                                                   VerticalAlignment="Center"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource TextBrush}"
+                                                                   TextWrapping="Wrap"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   MaxHeight="38"
+                                                                   Text="{Binding PreviewText}" />
+                                                    </Grid>
+                                                </Border>
+                                                <DataTemplate.Triggers>
+                                                    <DataTrigger Binding="{Binding StatusTone}" Value="Success">
+                                                        <Setter TargetName="InlineSingleStatusBadge" Property="Background" Value="#ECFDF3" />
+                                                        <Setter TargetName="InlineSingleStatusBadge" Property="BorderBrush" Value="#A6F4C5" />
+                                                        <Setter TargetName="InlineSingleStatusText" Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding StatusTone}" Value="Error">
+                                                        <Setter TargetName="InlineSingleChartRow" Property="BorderBrush" Value="#FECACA" />
+                                                        <Setter TargetName="InlineSingleStatusBadge" Property="Background" Value="#FEF2F2" />
+                                                        <Setter TargetName="InlineSingleStatusBadge" Property="BorderBrush" Value="#FECACA" />
+                                                        <Setter TargetName="InlineSingleStatusText" Property="Foreground" Value="#DC2626" />
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+
+                                <TextBlock Grid.RowSpan="2"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Text="填写接口地址后，这里会常驻显示当前接口的测试图表。">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasSingleStationInlineChartRows}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="2"
                         Margin="0,4,0,0"
                         Padding="10,8"
                         Style="{StaticResource InsetPanelBorderStyle}"
@@ -615,13 +831,13 @@
                     </Grid>
                 </Border>
 
-                <TextBox Grid.Row="2"
-                         Margin="0,4,0,0"
-                         MinHeight="104"
+                <TextBox Grid.Row="3"
+                         Margin="0,8,0,0"
+                         MinHeight="188"
                          Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
                          Text="{Binding SingleStationResultSummary, Mode=OneWay}" />
-                <Border Grid.Row="3"
-                        Margin="0,4,0,0">
+                <Border Grid.Row="4"
+                        Margin="0,8,0,0">
                     <Border.Style>
                         <Style TargetType="Border" BasedOn="{StaticResource InsetPanelBorderStyle}">
                             <Setter Property="Visibility" Value="Collapsed" />
@@ -744,11 +960,6 @@
                         </Grid>
                     </Grid>
                 </Border>
-                <TextBox Grid.Row="4"
-                         Margin="0,4,0,0"
-                         Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
-                         Text="{Binding ProxyUnifiedOutput, Mode=OneWay}"
-                         TextChanged="LiveOutputTextBox_OnTextChanged" />
             </Grid>
         </Border>
     </Grid>

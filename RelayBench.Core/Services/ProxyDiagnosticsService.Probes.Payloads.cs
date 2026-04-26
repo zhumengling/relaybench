@@ -191,12 +191,19 @@ public sealed partial class ProxyDiagnosticsService
         return true;
     }
 
+    private const int GlobalChatProbeMaxTokens = 128;
+    private const int GlobalResponsesProbeMaxOutputTokens = 128;
+    private const int GlobalStructuredOutputProbeMaxOutputTokens = 256;
+    private const int LongStreamingProbeTokensPerSegment = 40;
+    private const int LongStreamingProbeMinMaxTokens = 1200;
+    private const int LongStreamingProbeMaxMaxTokens = 4096;
+
     private static string BuildChatPayload(string model, bool stream)
     {
         var payload = new
         {
             model,
-            max_tokens = 24,
+            max_tokens = GetChatProbeMaxTokens(model),
             temperature = 0,
             stream,
             messages = new[]
@@ -222,7 +229,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_output_tokens = 24,
+            max_output_tokens = GetResponsesProbeMaxOutputTokens(model),
             instructions = "You are a connectivity probe. Reply with a very short plain-text answer. Do not include reasoning, analysis, markdown, or thinking.",
             input = "/no_think\nReply with exactly: proxy-ok"
         };
@@ -235,7 +242,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_output_tokens = 64,
+            max_output_tokens = GetStructuredOutputProbeMaxOutputTokens(model),
             instructions = "You are a connectivity probe. Return JSON that matches the schema exactly.",
             input = "Return a JSON object where ok is true and source is 'proxy-ok'.",
             text = new
@@ -263,10 +270,25 @@ public sealed partial class ProxyDiagnosticsService
         return JsonSerializer.Serialize(payload);
     }
 
+    private static int GetChatProbeMaxTokens(string model)
+        => GlobalChatProbeMaxTokens;
+
+    private static int GetResponsesProbeMaxOutputTokens(string model)
+        => GlobalResponsesProbeMaxOutputTokens;
+
+    private static int GetStructuredOutputProbeMaxOutputTokens(string model)
+        => GlobalStructuredOutputProbeMaxOutputTokens;
+
+    private static int GetLongStreamingProbeMaxTokens(int normalizedSegmentCount)
+        => Math.Clamp(
+            normalizedSegmentCount * LongStreamingProbeTokensPerSegment,
+            LongStreamingProbeMinMaxTokens,
+            LongStreamingProbeMaxMaxTokens);
+
     private static string BuildLongStreamingPayload(string model, int segmentCount)
     {
         var normalizedSegmentCount = Math.Clamp(segmentCount, 24, 240);
-        var maxTokens = Math.Clamp(normalizedSegmentCount * 40, 1200, 4096);
+        var maxTokens = GetLongStreamingProbeMaxTokens(normalizedSegmentCount);
         var payload = new
         {
             model,
@@ -298,7 +320,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_tokens = 24,
+            max_tokens = GetChatProbeMaxTokens(model),
             temperature = 0,
             messages = new object[]
             {
@@ -323,7 +345,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_tokens = 96,
+            max_tokens = GetChatProbeMaxTokens(model),
             temperature = 0,
             tool_choice = new
             {
@@ -396,7 +418,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_tokens = 48,
+            max_tokens = GetChatProbeMaxTokens(model),
             temperature = 0,
             messages = new object[]
             {
@@ -443,7 +465,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_tokens = 96,
+            max_tokens = GetChatProbeMaxTokens(model),
             temperature = 0,
             stream,
             messages = new object[]
@@ -472,7 +494,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_tokens = 128,
+            max_tokens = GetChatProbeMaxTokens(model),
             temperature = 0,
             messages = new object[]
             {
@@ -499,7 +521,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_tokens = 32,
+            max_tokens = GetChatProbeMaxTokens(model),
             temperature = 0,
             messages = new object[]
             {
@@ -552,7 +574,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_tokens = 24,
+            max_tokens = GetChatProbeMaxTokens(model),
             temperature = 0,
             stream = true,
             messages = new object[]
@@ -578,7 +600,7 @@ public sealed partial class ProxyDiagnosticsService
         var payload = new
         {
             model,
-            max_tokens = 32,
+            max_tokens = GetChatProbeMaxTokens(model),
             temperature = 0,
             messages = new object[]
             {

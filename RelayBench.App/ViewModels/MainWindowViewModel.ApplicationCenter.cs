@@ -90,12 +90,18 @@ public sealed partial class MainWindowViewModel
             "正在应用当前接口...",
             async () =>
             {
+                await DetectAndCacheProxyWireApiAsync(BuildProxySettings());
+                var cachedApplyInfo = await ResolveCachedCodexApplyInfoAsync(
+                    ProxyBaseUrl,
+                    ProxyApiKey,
+                    ProxyModel);
                 var result = await _codexFamilyConfigApplyService.ApplyAsync(
                     ProxyBaseUrl,
                     ProxyApiKey,
                     ProxyModel,
                     ResolveCurrentProxyDisplayName(),
-                    ResolveProxyModelContextWindow(ProxyModel));
+                    cachedApplyInfo.ContextWindow,
+                    cachedApplyInfo.PreferredWireApi);
 
                 StringBuilder detailBuilder = new();
                 detailBuilder.AppendLine(BuildApplicationCenterApplyDetail(result));

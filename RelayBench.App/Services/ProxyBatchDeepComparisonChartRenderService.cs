@@ -10,10 +10,10 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
     private const int DefaultChartWidth = 1560;
     private const int MinChartWidth = 1180;
     private const double HorizontalPadding = 20;
-    private const double HeaderHeight = 134;
-    private const double FooterHeight = 40;
-    private const double TableHeaderHeight = 30;
-    private const double RowHeight = 78;
+    private const double HeaderHeight = 92;
+    private const double FooterHeight = 30;
+    private const double TableHeaderHeight = 28;
+    private const double RowHeight = 70;
     private const double RankColumnX = 28;
     private const double EntryColumnX = 90;
     private const double QuickColumnX = 366;
@@ -66,54 +66,58 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         bitmap.Freeze();
 
         var completedCount = ordered.Count(item => item.IsCompleted);
-        var running = ordered.FirstOrDefault(item => item.IsRunning);
+        var runningCount = ordered.Count(item => item.IsRunning);
         var best = ordered[0];
-        var summary = running is null
+        var summary = runningCount == 0
             ? $"候选站点深度测试总览图已生成：共 {ordered.Length} 个候选项，已完成 {completedCount}/{ordered.Length}，当前 TOP 1 为 {best.Name}。"
-            : $"候选站点深度测试进行中：已完成 {completedCount}/{ordered.Length}，当前执行 {running.Name}，排行榜保留 TOP 1 {best.Name}。";
+            : $"候选站点深度测试进行中：已完成 {completedCount}/{ordered.Length}，当前并发执行 {runningCount} 个候选项，排行榜保留 TOP 1 {best.Name}。";
 
         return new ProxyTrendChartRenderResult(true, summary, bitmap, null, hitRegions, activityRegions);
     }
 
     private void DrawHeader(DrawingContext context, IReadOnlyList<ProxyBatchDeepComparisonChartItem> items)
     {
-        var headerRect = new Rect(ScaleX(14), 12, _chartWidth - (ScaleX(14) * 2), HeaderHeight - 18);
-        context.DrawRoundedRectangle(CreateBrush(247, 249, 252), new Pen(CreateBrush(224, 231, 239), 1), headerRect, 16, 16);
-
-        DrawText(context, "候选站点深度测试总览图", new Point(ScaleX(30), 22), 21, FontWeights.SemiBold, CreateBrush(23, 23, 23));
-        DrawText(
-            context,
-            "参考 benchmark 结果页的高密度组织方式：左侧保留快速对比基线，中间显示实时进度与阶段，右侧矩阵聚合深度探针结果。",
-            new Point(ScaleX(30), 49),
-            11.5,
-            FontWeights.Normal,
-            CreateBrush(64, 64, 64));
-
         var completed = items.Count(item => item.IsCompleted);
-        var running = items.FirstOrDefault(item => item.IsRunning);
+        var runningCount = items.Count(item => item.IsRunning);
         var healthyCount = items.Count(item => item.IsCompleted && IsHealthyVerdict(item.Verdict));
         var reviewCount = items.Count(item => item.IsCompleted && !IsHealthyVerdict(item.Verdict));
+        var headerRect = new Rect(ScaleX(14), 10, _chartWidth - (ScaleX(14) * 2), HeaderHeight - 12);
+        context.DrawRoundedRectangle(CreateBrush(247, 249, 252), new Pen(CreateBrush(224, 231, 239), 1), headerRect, 14, 14);
+
+        DrawText(context, "候选站点深度测试总览图", new Point(ScaleX(28), 18), 21, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+
         var tiles = new[]
         {
-            new MetricTile("候选总数", items.Count.ToString(CultureInfo.InvariantCulture)),
             new MetricTile("已完成", $"{completed}/{items.Count}"),
-            new MetricTile("当前执行", running is null ? "无" : $"#{running.Rank}"),
-            new MetricTile("当前 TOP 1", $"#{items[0].Rank}"),
+            new MetricTile("并发执行", runningCount == 0 ? "无" : runningCount.ToString(CultureInfo.InvariantCulture)),
             new MetricTile("可用 / 稳定", healthyCount.ToString(CultureInfo.InvariantCulture)),
-            new MetricTile("待复核 / 异常", reviewCount.ToString(CultureInfo.InvariantCulture))
+            new MetricTile("复核 / 异常", reviewCount.ToString(CultureInfo.InvariantCulture))
         };
 
-        var tileWidth = ScaleWidth(170);
-        var tileGap = ScaleWidth(10);
-        var startX = ScaleX(28);
-        var top = 72d;
+        var tileWidth = ScaleWidth(118);
+        var tileGap = ScaleWidth(8);
+        var top = 23d;
+        var startX = Math.Max(ScaleX(620), _chartWidth - ScaleWidth(28 + (tiles.Length * 118) + ((tiles.Length - 1) * 8)));
+        var subtitleWidth = Math.Max(260, startX - ScaleX(30) - ScaleWidth(22));
+        var subtitle =
+            $"共 {items.Count} 个候选项，TOP 1 #{items[0].Rank}；快速基线、实时进度和深度探针矩阵合并展示。";
+        DrawWrappedText(
+            context,
+            subtitle,
+            new Point(ScaleX(30), 46),
+            11.2,
+            FontWeights.Normal,
+            CreateBrush(102, 112, 133),
+            subtitleWidth,
+            18);
+
         for (var index = 0; index < tiles.Length; index++)
         {
             var x = startX + (index * (tileWidth + tileGap));
-            var tileRect = new Rect(x, top, tileWidth, 38);
+            var tileRect = new Rect(x, top, tileWidth, 40);
             context.DrawRoundedRectangle(CreateBrush(255, 255, 255), new Pen(CreateBrush(220, 226, 234), 1), tileRect, 12, 12);
-            DrawText(context, tiles[index].Label, new Point(x + 10, top + 7), 10.2, FontWeights.Normal, CreateBrush(102, 112, 133));
-            DrawText(context, tiles[index].Value, new Point(x + 10, top + 20), 12.8, FontWeights.SemiBold, CreateBrush(23, 23, 23));
+            DrawText(context, tiles[index].Label, new Point(x + ScaleWidth(10), top + 7), 10, FontWeights.Normal, CreateBrush(102, 112, 133));
+            DrawText(context, tiles[index].Value, new Point(x + ScaleWidth(10), top + 21), 13.2, FontWeights.SemiBold, CreateBrush(16, 24, 40));
         }
     }
 
@@ -122,13 +126,13 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         var rect = new Rect(HorizontalPadding, top, _chartWidth - (HorizontalPadding * 2), TableHeaderHeight);
         context.DrawRoundedRectangle(CreateBrush(245, 247, 250), new Pen(CreateBrush(226, 232, 240), 1), rect, 8, 8);
 
-        DrawText(context, "排行", new Point(ScaleX(RankColumnX), top + 7), 11.2, FontWeights.SemiBold, CreateBrush(23, 23, 23));
-        DrawText(context, "站点 / URL", new Point(ScaleX(EntryColumnX), top + 7), 11.2, FontWeights.SemiBold, CreateBrush(23, 23, 23));
-        DrawText(context, "快速基线", new Point(ScaleX(QuickColumnX), top + 7), 11.2, FontWeights.SemiBold, CreateBrush(23, 23, 23));
-        DrawText(context, "进度", new Point(ScaleX(ProgressColumnX), top + 7), 11.2, FontWeights.SemiBold, CreateBrush(23, 23, 23));
-        DrawText(context, "当前阶段 / 摘要", new Point(ScaleX(StageColumnX), top + 7), 11.2, FontWeights.SemiBold, CreateBrush(23, 23, 23));
-        DrawText(context, "深测矩阵", new Point(ScaleX(MatrixColumnX), top + 7), 11.2, FontWeights.SemiBold, CreateBrush(23, 23, 23));
-        DrawText(context, "结论", new Point(ScaleX(VerdictColumnX + 12), top + 7), 11.2, FontWeights.SemiBold, CreateBrush(23, 23, 23));
+        DrawText(context, "排行", new Point(ScaleX(RankColumnX), top + 6), 11.2, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "站点 / URL", new Point(ScaleX(EntryColumnX), top + 6), 11.2, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "快速基线", new Point(ScaleX(QuickColumnX), top + 6), 11.2, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "进度", new Point(ScaleX(ProgressColumnX), top + 6), 11.2, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "当前阶段 / 摘要", new Point(ScaleX(StageColumnX), top + 6), 11.2, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "深测矩阵", new Point(ScaleX(MatrixColumnX), top + 6), 11.2, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, "结论", new Point(ScaleX(VerdictColumnX + 12), top + 6), 11.2, FontWeights.SemiBold, CreateBrush(16, 24, 40));
     }
 
     private void DrawRow(
@@ -140,40 +144,49 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         ICollection<ProxyChartActivityRegion> activityRegions)
     {
         var rect = new Rect(HorizontalPadding, top, _chartWidth - (HorizontalPadding * 2), RowHeight - 5);
-        var background = index % 2 == 0
+        var background = item.IsRunning
+            ? CreateBrush(248, 251, 255)
+            : index % 2 == 0
             ? CreateBrush(255, 255, 255)
             : CreateBrush(250, 251, 253);
-        context.DrawRoundedRectangle(background, new Pen(CreateBrush(229, 231, 235), 1), rect, 10, 10);
+        var border = item.IsRunning
+            ? CreateBrush(147, 197, 253)
+            : CreateBrush(229, 231, 235);
+        context.DrawRoundedRectangle(background, new Pen(border, 1), rect, 11, 11);
+        if (item.IsRunning)
+        {
+            context.DrawRoundedRectangle(CreateBrush(37, 99, 235), null, new Rect(rect.X, rect.Y + 9, 3, rect.Height - 18), 2, 2);
+        }
 
-        DrawRankBadge(context, item.Rank, top + 10);
+        DrawRankBadge(context, item.Rank, top + 12);
 
-        DrawText(context, TrimText(item.Name, 24), new Point(ScaleX(EntryColumnX), top + 10), 13, FontWeights.SemiBold, CreateBrush(23, 23, 23));
-        DrawText(context, TrimMiddle(item.BaseUrl, 40), new Point(ScaleX(EntryColumnX), top + 30), 10.2, FontWeights.Normal, CreateBrush(82, 82, 82));
-        DrawText(context, item.UpdatedAtText, new Point(ScaleX(EntryColumnX), top + 47), 9.8, FontWeights.Normal, CreateBrush(120, 120, 120));
+        DrawText(context, TrimText(item.Name, 24), new Point(ScaleX(EntryColumnX), top + 8), 12.8, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+        DrawText(context, TrimMiddle(item.BaseUrl, 40), new Point(ScaleX(EntryColumnX), top + 27), 10.2, FontWeights.Normal, CreateBrush(102, 112, 133));
+        DrawText(context, item.UpdatedAtText, new Point(ScaleX(EntryColumnX), top + 44), 9.6, FontWeights.Normal, CreateBrush(148, 163, 184));
 
         DrawWrappedText(
             context,
             $"普通 {FormatMilliseconds(item.QuickChatLatencyMs)} / TTFT {FormatMilliseconds(item.QuickTtftMs)}",
-            new Point(ScaleX(QuickColumnX), top + 10),
+            new Point(ScaleX(QuickColumnX), top + 9),
             11.1,
             FontWeights.SemiBold,
-            CreateBrush(23, 23, 23),
+            CreateBrush(16, 24, 40),
             ScaleWidth(246),
             18);
         DrawWrappedText(
             context,
             item.QuickCapabilityText,
-            new Point(ScaleX(QuickColumnX), top + 31),
+            new Point(ScaleX(QuickColumnX), top + 29),
             10.1,
             FontWeights.Normal,
-            CreateBrush(82, 82, 82),
+            CreateBrush(102, 112, 133),
             ScaleWidth(246),
-            30);
+            28);
 
-        DrawProgressBlock(context, item, top + 11);
-        DrawStageBlock(context, item, top + 10);
+        DrawProgressBlock(context, item, top + 10);
+        DrawStageBlock(context, item, top + 8);
         DrawBadgeMatrix(context, item.Badges, top + 8, hitRegions);
-        DrawVerdictBlock(context, item, top + 10);
+        DrawVerdictBlock(context, item, top + 11);
         DrawRowActivityTrack(context, rect, item, activityRegions);
     }
 
@@ -186,16 +199,16 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         var lineLeft = ScaleX(EntryColumnX) + 8;
         var lineRight = ScaleX(StageColumnX + StageColumnWidth) - 8;
         var lineWidth = Math.Max(120, lineRight - lineLeft);
-        var lineTop = rowRect.Bottom - 6;
-        var trackRect = new Rect(lineLeft, lineTop, lineWidth, 2);
-        context.DrawRoundedRectangle(CreateBrush(219, 234, 254, 120), null, trackRect, 1, 1);
+        var lineTop = rowRect.Bottom - 5;
+        var trackRect = new Rect(lineLeft, lineTop, lineWidth, 2.5);
+        context.DrawRoundedRectangle(CreateBrush(219, 234, 254, 150), null, trackRect, 2, 2);
 
         if (!item.IsRunning)
         {
             return;
         }
 
-        activityRegions.Add(new ProxyChartActivityRegion(new Rect(lineLeft, lineTop - 0.5, lineWidth, 3)));
+        activityRegions.Add(new ProxyChartActivityRegion(new Rect(lineLeft, lineTop - 0.5, lineWidth, 3.5)));
     }
 
     private void DrawRankBadge(DrawingContext context, int rank, double top)
@@ -223,24 +236,31 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
     private void DrawProgressBlock(DrawingContext context, ProxyBatchDeepComparisonChartItem item, double top)
     {
         var label = $"{item.CompletedCount}/{Math.Max(item.TotalCount, 1)}";
-        DrawText(context, label, new Point(ScaleX(ProgressColumnX), top), 12.3, FontWeights.SemiBold, CreateBrush(23, 23, 23));
+        DrawText(context, label, new Point(ScaleX(ProgressColumnX), top), 12.3, FontWeights.SemiBold, CreateBrush(16, 24, 40));
 
-        var barRect = new Rect(ScaleX(ProgressColumnX), top + 22, ScaleWidth(ProgressColumnWidth), 10);
-        context.DrawRoundedRectangle(CreateBrush(234, 236, 240), null, barRect, 5, 5);
+        var barRect = new Rect(ScaleX(ProgressColumnX), top + 22, ScaleWidth(ProgressColumnWidth), 7);
+        context.DrawRoundedRectangle(CreateBrush(226, 234, 246), null, barRect, 4, 4);
         var ratio = item.TotalCount <= 0 ? 0 : Math.Clamp((double)item.CompletedCount / item.TotalCount, 0d, 1d);
         if (ratio > 0)
         {
-            var fill = item.IsCompleted
-                ? CreateBrush(16, 185, 129)
-                : CreateBrush(59, 130, 246);
             var fillRect = new Rect(barRect.X, barRect.Y, barRect.Width * ratio, barRect.Height);
-            context.DrawRoundedRectangle(fill, null, fillRect, 5, 5);
+            var fill = item.IsCompleted
+                ? CreateGradientBrush(Color.FromRgb(16, 185, 129), Color.FromRgb(6, 182, 212))
+                : CreateGradientBrush(Color.FromRgb(37, 99, 235), Color.FromRgb(6, 182, 212));
+            context.DrawRoundedRectangle(fill, null, fillRect, 4, 4);
+
+            if (item.IsRunning)
+            {
+                var sheenWidth = Math.Min(ScaleWidth(24), Math.Max(8, fillRect.Width * 0.45));
+                var sheenRect = new Rect(Math.Max(fillRect.X, fillRect.Right - sheenWidth), fillRect.Y, sheenWidth, fillRect.Height);
+                context.DrawRoundedRectangle(CreateProgressSheenBrush(), null, sheenRect, 4, 4);
+            }
         }
 
         DrawText(
             context,
             item.IsCompleted ? "已结束" : item.IsRunning ? "实时刷新" : "待执行",
-            new Point(ScaleX(ProgressColumnX), top + 38),
+            new Point(ScaleX(ProgressColumnX), top + 36),
             9.8,
             FontWeights.Normal,
             CreateBrush(102, 112, 133));
@@ -254,18 +274,18 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
             new Point(ScaleX(StageColumnX), top),
             11.2,
             FontWeights.SemiBold,
-            CreateBrush(23, 23, 23),
+            CreateBrush(16, 24, 40),
             ScaleWidth(StageColumnWidth),
             18);
         DrawWrappedText(
             context,
             item.IssueText,
-            new Point(ScaleX(StageColumnX), top + 20),
+            new Point(ScaleX(StageColumnX), top + 19),
             9.9,
             FontWeights.Normal,
-            CreateBrush(82, 82, 82),
+            CreateBrush(102, 112, 133),
             ScaleWidth(StageColumnWidth),
-            34);
+            30);
     }
 
     private void DrawBadgeMatrix(
@@ -282,12 +302,12 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
 
         for (var rowIndex = 0; rowIndex < rows.Length; rowIndex++)
         {
-            var y = top + (rowIndex * 23);
+            var y = top + (rowIndex * 22);
             for (var index = 0; index < rows[rowIndex].Length; index++)
             {
                 var badge = rows[rowIndex][index];
                 var x = ScaleX(MatrixColumnX + (index * 76));
-                DrawMatrixBadge(context, badge, x, y, ScaleWidth(72), 18, hitRegions);
+                DrawMatrixBadge(context, badge, x, y, ScaleWidth(72), 17, hitRegions);
             }
         }
     }
@@ -308,9 +328,9 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
             out var foreground);
 
         var rect = new Rect(x, y, width, height);
-        context.DrawRoundedRectangle(background, new Pen(border, 1), rect, 7, 7);
-        DrawText(context, badge.Label, new Point(x + 6, y + 2), 9.4, FontWeights.SemiBold, foreground);
-        DrawText(context, badge.Value, new Point(x + width - 24, y + 2), 9.2, FontWeights.SemiBold, foreground);
+        context.DrawRoundedRectangle(background, new Pen(border, 1), rect, 8, 8);
+        DrawText(context, badge.Label, new Point(x + 6, y + 1.5), 9.2, FontWeights.SemiBold, foreground);
+        DrawText(context, badge.Value, new Point(x + width - ScaleWidth(24), y + 1.5), 9, FontWeights.SemiBold, foreground);
         hitRegions.Add(new ProxyChartHitRegion(
             rect,
             $"{badge.Title} ({badge.Label} {badge.Value})",
@@ -334,25 +354,25 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         DrawWrappedText(
             context,
             item.IsRunning ? "当前执行中" : item.IsCompleted ? "本轮已结束" : "尚未开始",
-            new Point(ScaleX(VerdictColumnX), top + 30),
+            new Point(ScaleX(VerdictColumnX), top + 29),
             9.8,
             FontWeights.Normal,
             CreateBrush(102, 112, 133),
             ScaleWidth(VerdictColumnWidth),
-            26);
+            24);
     }
 
     private void DrawFooter(DrawingContext context, int chartHeight)
     {
         DrawWrappedText(
             context,
-            "读图说明：B5=基础 5 项，Sys=System Prompt，Fn=Function Calling，Err=错误透传，Str=流式完整性，Ref=官方对照，MM=多模态，Cch=缓存命中，Iso=缓存隔离；蓝色表示进行中，绿色表示通过，橙色表示跳过/待复核，红色表示异常。",
-            new Point(20, chartHeight - 26),
-            10,
+            "图例：B5 基础项；Sys/Fn/Err/Str/Ref/MM/Cch/Iso 为深度探针。蓝=运行，绿=通过，橙=待复核，红=异常。",
+            new Point(20, chartHeight - 22),
+            9.8,
             FontWeights.Normal,
-            CreateBrush(82, 82, 82),
+            CreateBrush(102, 112, 133),
             _chartWidth - 40,
-            22);
+            18);
     }
 
     private int ResolveChartWidth(int? preferredWidth)
@@ -552,6 +572,33 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         }
 
         return (CreateBrush(248, 250, 252), CreateBrush(203, 213, 225), CreateBrush(71, 85, 105));
+    }
+
+    private static LinearGradientBrush CreateGradientBrush(Color start, Color end)
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 0)
+        };
+        brush.GradientStops.Add(new GradientStop(start, 0));
+        brush.GradientStops.Add(new GradientStop(end, 1));
+        brush.Freeze();
+        return brush;
+    }
+
+    private static LinearGradientBrush CreateProgressSheenBrush()
+    {
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 0)
+        };
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 255, 255), 0));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(180, 255, 255, 255), 0.5));
+        brush.GradientStops.Add(new GradientStop(Color.FromArgb(0, 255, 255, 255), 1));
+        brush.Freeze();
+        return brush;
     }
 
     private static SolidColorBrush CreateBrush(byte r, byte g, byte b, byte a = 255)
