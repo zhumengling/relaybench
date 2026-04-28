@@ -30,6 +30,8 @@ public static class RelayBenchPaths
 
     public static string GeoIpCachePath => Path.Combine(DataDirectory, "geoip-cache.json");
 
+    public static string ChatSessionsPath => Path.Combine(DataDirectory, "chat-sessions.json");
+
     public static string StartupLogPath => Path.Combine(RootDirectory, "app-startup.log");
 
     private static string EnsureDirectory(string path)

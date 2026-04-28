@@ -1,0 +1,634 @@
+<UserControl x:Class="RelayBench.App.Views.Pages.ModelChatPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:RelayBench.App.Controls"
+             xmlns:infra="clr-namespace:RelayBench.App.Infrastructure"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Padding="10,8" Style="{StaticResource SectionPanelBorderStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Grid VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#101828"
+                               Text="{Binding ChatModeSummary}" />
+                    <TextBlock Grid.Column="2"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               Text="{Binding ChatSelectedModelsSummary}"
+                               TextTrimming="CharacterEllipsis" />
+                </Grid>
+
+                <Button Grid.Column="1"
+                        Padding="12,5"
+                        Command="{Binding ToggleChatSettingsPanelCommand}"
+                        Content="&#x53C2;&#x6570;" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="0,4,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="250" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource SectionPanelBorderStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="8" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="6" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x4F1A;&#x8BDD;" />
+                        <Button Grid.Column="1"
+                                Padding="9,4"
+                                Command="{Binding NewChatSessionCommand}"
+                                Content="&#x65B0;&#x5EFA;" />
+                        <Button Grid.Column="3"
+                                Padding="9,4"
+                                Command="{Binding DeleteChatSessionCommand}"
+                                Content="&#x5220;&#x9664;" />
+                    </Grid>
+
+                    <ListBox Grid.Row="2"
+                             ItemsSource="{Binding ChatSessions}"
+                             SelectedItem="{Binding SelectedChatSession, Mode=TwoWay}"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             Padding="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,6"
+                                        Padding="8,7"
+                                        Background="#F8FAFC"
+                                        BorderBrush="#E4E7EC"
+                                        BorderThickness="1"
+                                        CornerRadius="8">
+                                    <StackPanel>
+                                        <TextBlock FontSize="11.5"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#101828"
+                                                   Text="{Binding Title}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,3,0,0"
+                                                   FontSize="10"
+                                                   Foreground="{StaticResource MutedBrush}"
+                                                   Text="{Binding Summary}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource SectionPanelBorderStyle}">
+                <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding ChatMessages}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="{Binding BubbleColumn}"
+                                            MaxWidth="720"
+                                            Padding="10"
+                                            HorizontalAlignment="{Binding BubbleHorizontalAlignment}"
+                                            Background="{Binding BubbleBackground}"
+                                            BorderBrush="{Binding BubbleBorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Visibility="{Binding IsStandardMessage, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#101828"
+                                                               Text="{Binding DisplayRole}" />
+                                                    <Button Margin="8,0,0,0"
+                                                            Padding="7,1"
+                                                            Command="{Binding DataContext.EditChatMessageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Content="&#x7F16;&#x8F91;"
+                                                            Visibility="{Binding IsUser, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1"
+                                                           Foreground="{StaticResource MutedBrush}"
+                                                           FontSize="10.5"
+                                                           Text="{Binding CreatedAtLabel}" />
+                                            </Grid>
+
+                                            <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding Attachments}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Margin="0,0,6,6"
+                                                                Padding="8,5"
+                                                                Background="#EEF4FF"
+                                                                BorderBrush="#B2CCFF"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock FontSize="10.5"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="#175CD3"
+                                                                           Text="{Binding KindLabel}" />
+                                                                <TextBlock Margin="6,0,0,0"
+                                                                           FontSize="10.5"
+                                                                           Foreground="#344054"
+                                                                           Text="{Binding FileName}" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+
+                                            <controls:MarkdownViewer Margin="0,6,0,0"
+                                                                     Markdown="{Binding Content}"
+                                                                     Visibility="{Binding HasContent, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                                            <TextBlock Margin="0,6,0,0"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       FontSize="10.5"
+                                                       Text="{Binding MetricsSummary}" />
+                                            <TextBlock Margin="0,6,0,0"
+                                                       Foreground="#B42318"
+                                                       FontSize="11"
+                                                       TextWrapping="Wrap"
+                                                       Text="{Binding Error}"
+                                                       Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.ColumnSpan="3"
+                                            Padding="10"
+                                            Background="#F8FAFC"
+                                            BorderBrush="#D0D5DD"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Visibility="{Binding IsMultiModelAnswer, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#101828"
+                                                           Text="&#x591A;&#x6A21;&#x578B;&#x56DE;&#x7B54;" />
+                                                <TextBlock Grid.Column="1"
+                                                           Foreground="{StaticResource MutedBrush}"
+                                                           FontSize="10.5"
+                                                           Text="{Binding CreatedAtLabel}" />
+                                            </Grid>
+
+                                            <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding ModelAnswers}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <UniformGrid Columns="{Binding AnswerColumnCount}" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Margin="0,0,8,0"
+                                                                Padding="9"
+                                                                Background="White"
+                                                                BorderBrush="#E4E7EC"
+                                                                BorderThickness="1"
+                                                                CornerRadius="7">
+                                                            <StackPanel>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock FontSize="11.5"
+                                                                               FontWeight="SemiBold"
+                                                                               Foreground="#101828"
+                                                                               Text="{Binding Header}"
+                                                                               TextTrimming="CharacterEllipsis" />
+                                                                    <TextBlock Grid.Column="1"
+                                                                               Margin="8,0,0,0"
+                                                                               FontSize="10.5"
+                                                                               Foreground="#175CD3"
+                                                                               Text="{Binding StatusText}" />
+                                                                </Grid>
+
+                                                                <controls:MarkdownViewer Margin="0,6,0,0"
+                                                                                         Markdown="{Binding Content}"
+                                                                                         Visibility="{Binding HasContent, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                                                                <TextBlock Margin="0,6,0,0"
+                                                                           Foreground="{StaticResource MutedBrush}"
+                                                                           FontSize="10.5"
+                                                                           Text="{Binding MetricsSummary}" />
+                                                                <TextBlock Margin="0,6,0,0"
+                                                                           Foreground="#B42318"
+                                                                           FontSize="11"
+                                                                           TextWrapping="Wrap"
+                                                                           Text="{Binding Error}"
+                                                                           Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <Border Grid.Column="4" Style="{StaticResource SectionPanelBorderStyle}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x8BF7;&#x6C42;&#x72B6;&#x6001;" />
+                    <TextBlock Margin="0,6,0,0"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               TextWrapping="Wrap"
+                               Text="{Binding ChatStatusMessage}" />
+                    <Border Margin="0,10,0,0" Style="{StaticResource InsetPanelBorderStyle}">
+                        <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ChatMetricsSummary}" />
+                    </Border>
+                    <Border Margin="0,8,0,0" Style="{StaticResource InsetPanelBorderStyle}">
+                        <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ChatReasoningEffortSummary}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Style="{StaticResource SectionPanelBorderStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="6" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <ItemsControl ItemsSource="{Binding PendingChatAttachments}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,8,8"
+                                    Padding="8"
+                                    Background="#F9FAFB"
+                                    BorderBrush="#D0D5DD"
+                                    BorderThickness="1"
+                                    CornerRadius="7">
+                                <Grid Width="180">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock FontSize="10.5"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#101828"
+                                                   Text="{Binding FileName}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,2,0,0"
+                                                   FontSize="10"
+                                                   Foreground="{StaticResource MutedBrush}"
+                                                   Text="{Binding KindLabel}" />
+                                        <TextBlock FontSize="10"
+                                                   Foreground="{StaticResource MutedBrush}"
+                                                   Text="{Binding SizeLabel}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Padding="6,2"
+                                            Command="{Binding DataContext.RemoveChatAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Content="&#x5220;" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Grid Grid.Row="1"
+                      Margin="0,0,0,6"
+                      Visibility="{Binding IsEditingChatMessage, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               Text="{Binding ChatEditStatusText}"
+                               TextWrapping="Wrap" />
+                    <Button Grid.Column="1"
+                            Margin="8,0,0,0"
+                            Padding="10,4"
+                            Command="{Binding CancelChatEditCommand}"
+                            Content="&#x53D6;&#x6D88;&#x7F16;&#x8F91;" />
+                </Grid>
+
+                <Grid Grid.Row="3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox MinHeight="74"
+                             MaxHeight="150"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             Style="{StaticResource CompactInputTextBoxStyle}"
+                             Text="{Binding ChatInputText, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                        <WrapPanel HorizontalAlignment="Right">
+                            <Button Margin="0,0,6,0"
+                                    Padding="10,5"
+                                    Command="{Binding AddChatImageAttachmentCommand}"
+                                    Content="&#x56FE;&#x7247;" />
+                            <Button Margin="0,0,6,0"
+                                    Padding="10,5"
+                                    Command="{Binding AddChatTextFileAttachmentCommand}"
+                                    Content="&#x6587;&#x4EF6;" />
+                            <Button Padding="14,6"
+                                    Command="{Binding SendChatMessageCommand}"
+                                    Style="{StaticResource PrimaryActionButtonStyle}"
+                                    Content="{Binding ChatSendButtonText}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <Grid Grid.RowSpan="3"
+              Panel.ZIndex="30"
+              Background="#220F172A"
+              Visibility="{Binding IsChatSettingsPanelOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Width="460"
+                    MaxHeight="720"
+                    Margin="0,8,8,8"
+                    Padding="14"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Background="White"
+                    BorderBrush="#D0D5DD"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x5BF9;&#x8BDD;&#x53C2;&#x6570;" />
+                                <TextBlock Margin="0,3,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           Text="{Binding ChatModeSummary}" />
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Padding="10,4"
+                                    Command="{Binding CloseChatSettingsPanelCommand}"
+                                    Content="&#x5173;&#x95ED;" />
+                        </Grid>
+
+                        <Border Margin="0,12,0,0" Style="{StaticResource InsetPanelBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x63A5;&#x53E3;&#x914D;&#x7F6E;" />
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource FieldLabelTextStyle}" Text="&#x63A5;&#x53E3;&#x5730;&#x5740;" />
+                                <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                         Text="{Binding ProxyBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource FieldLabelTextStyle}" Text="API Key" />
+                                <PasswordBox Style="{StaticResource CompactSecretInputPasswordBoxStyle}"
+                                             infra:PasswordBoxAssistant.BoundPassword="{Binding ProxyApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource FieldLabelTextStyle}" Text="&#x5F53;&#x524D;&#x6A21;&#x578B;" />
+                                <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                         Text="{Binding ProxyModel, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <Button Margin="0,10,0,0"
+                                        Padding="10,5"
+                                        HorizontalAlignment="Left"
+                                        Command="{Binding FetchProxyModelsCommand}"
+                                        Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,10,0,0" Style="{StaticResource InsetPanelBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x9884;&#x8BBE;" />
+                                <ComboBox Margin="0,8,0,0"
+                                          ItemsSource="{Binding ChatPresets}"
+                                          SelectedItem="{Binding SelectedChatPreset, Mode=TwoWay}"
+                                          Style="{StaticResource CompactComboBoxStyle}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock FontSize="11.1" FontWeight="SemiBold" Text="{Binding Name}" />
+                                                <TextBlock Grid.Column="1" Margin="8,0,0,0" FontSize="10.5" Foreground="{StaticResource MutedBrush}" Text="{Binding KindLabel}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <WrapPanel Margin="0,8,0,0">
+                                    <Button Margin="0,0,6,0" Padding="10,5" Command="{Binding ApplyChatPresetCommand}" Content="&#x5E94;&#x7528;" />
+                                    <Button Margin="0,0,6,0" Padding="10,5" Command="{Binding SaveChatPresetCommand}" Content="&#x4FDD;&#x5B58;&#x5F53;&#x524D;" />
+                                    <Button Padding="10,5" Command="{Binding DeleteChatPresetCommand}" Content="&#x5220;&#x9664;" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,10,0,0" Style="{StaticResource InsetPanelBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x751F;&#x6210;&#x53C2;&#x6570;" />
+
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource FieldLabelTextStyle}" Text="System Prompt" />
+                                <TextBox Height="92"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         Style="{StaticResource CompactInputTextBoxStyle}"
+                                         Text="{Binding ChatSystemPrompt, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Temperature" />
+                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding ChatTemperatureText, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Max Tokens" />
+                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding ChatMaxTokensText, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x601D;&#x8003;&#x5F3A;&#x5EA6;" />
+                                        <ComboBox ItemsSource="{Binding ChatReasoningEffortOptions}"
+                                                  SelectedValuePath="Key"
+                                                  TextSearch.TextPath="DisplayName"
+                                                  SelectedValue="{Binding SelectedChatReasoningEffortKey, Mode=TwoWay}"
+                                                  Style="{StaticResource CompactComboBoxStyle}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock FontSize="11.1"
+                                                               FontWeight="SemiBold"
+                                                               Text="{Binding DisplayName}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,10,0,0" Style="{StaticResource InsetPanelBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x591A;&#x6A21;&#x578B;&#x5BF9;&#x6BD4;" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ChatSelectedModelsSummary}" />
+
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox ItemsSource="{Binding ProxyCatalogModels}"
+                                              SelectedItem="{Binding ChatCandidateModel, Mode=TwoWay}"
+                                              Style="{StaticResource CompactComboBoxStyle}" />
+                                    <WrapPanel Grid.Column="2">
+                                        <Button Margin="0,0,6,0"
+                                                Padding="10,5"
+                                                Command="{Binding AddChatSelectedModelCommand}"
+                                                Content="&#x52A0;&#x5165;" />
+                                        <Button Padding="10,5"
+                                                Command="{Binding ClearChatSelectedModelsCommand}"
+                                                Content="&#x6E05;&#x7A7A;" />
+                                    </WrapPanel>
+                                </Grid>
+
+                                <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding ChatSelectedModels}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,6,6"
+                                                    Padding="7,3"
+                                                    Background="#ECFDF3"
+                                                    BorderBrush="#ABEFC6"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock FontSize="10.5"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#067647"
+                                                               Text="{Binding DisplayName}" />
+                                                    <Button Margin="6,0,0,0"
+                                                            Padding="5,0"
+                                                            Command="{Binding DataContext.RemoveChatSelectedModelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Content="&#x5220;" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Margin="0,10,0,0" Style="{StaticResource InsetPanelBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x4F1A;&#x8BDD;&#x64CD;&#x4F5C;" />
+                                <WrapPanel Margin="0,8,0,0">
+                                    <Button Margin="0,0,6,0"
+                                            Padding="10,5"
+                                            Command="{Binding StopChatStreamingCommand}"
+                                            Content="&#x505C;&#x6B62;&#x751F;&#x6210;" />
+                                    <Button Padding="10,5"
+                                            Command="{Binding ClearChatSessionCommand}"
+                                            Content="&#x6E05;&#x7A7A;&#x4F1A;&#x8BDD;" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -127,7 +127,8 @@
 
                     <Grid Grid.Row="1"
                           Margin="0,6,0,0">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                        <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
+                                      VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding ClientApiStatusRows}">
                                 <ItemsControl.ItemTemplate>

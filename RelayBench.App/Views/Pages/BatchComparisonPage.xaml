@@ -545,6 +545,7 @@
                                 </Grid>
 
                                 <ScrollViewer Grid.Row="1"
+                                              Style="{StaticResource WorkbenchScrollViewerStyle}"
                                               VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Disabled"
                                               CanContentScroll="False">
@@ -723,6 +724,7 @@
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="1"
+                                  Style="{StaticResource WorkbenchScrollViewerStyle}"
                                   Margin="0,6,0,0"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
@@ -978,6 +980,7 @@
                             </Grid>
 
                             <ScrollViewer Grid.Row="1"
+                                          Style="{StaticResource WorkbenchScrollViewerStyle}"
                                           VerticalScrollBarVisibility="Auto"
                                           HorizontalScrollBarVisibility="Disabled"
                                           CanContentScroll="False">

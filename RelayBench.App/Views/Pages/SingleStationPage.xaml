@@ -443,6 +443,7 @@
                                 </Border>
 
                                 <ScrollViewer Grid.Row="1"
+                                              Style="{StaticResource WorkbenchScrollViewerStyle}"
                                               Margin="0,6,0,0"
                                               VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Disabled"
@@ -629,7 +630,8 @@
                                 BorderThickness="1"
                                 CornerRadius="10">
                             <Grid MinHeight="250">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
+                                              VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Disabled"
                                               MaxHeight="326"
                                               Visibility="{Binding IsNativeConcurrencyChartVisible, Converter={StaticResource BoolToVisibilityConverter}}">

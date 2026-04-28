@@ -19,11 +19,11 @@
         <SolidColorBrush x:Key="SuccessBrush" Color="#059669" />
         <SolidColorBrush x:Key="TextBrush" Color="#0F172A" />
         <SolidColorBrush x:Key="MutedBrush" Color="#64748B" />
-        <SolidColorBrush x:Key="ScrollBarTrackBrush" Color="#EEF2F7" />
-        <SolidColorBrush x:Key="ScrollBarTrackHoverBrush" Color="#E4EAF4" />
-        <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#C2CBD9" />
-        <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#98A6BA" />
-        <SolidColorBrush x:Key="ScrollBarThumbPressedBrush" Color="#6B7D98" />
+        <SolidColorBrush x:Key="ScrollBarTrackBrush" Color="#E5ECF5" />
+        <SolidColorBrush x:Key="ScrollBarTrackHoverBrush" Color="#DCE5F0" />
+        <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#A8B3C4" />
+        <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#8F9DB2" />
+        <SolidColorBrush x:Key="ScrollBarThumbPressedBrush" Color="#76869D" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <Style x:Key="ScrollBarPageButtonStyle" TargetType="RepeatButton">
             <Setter Property="OverridesDefaultStyle" Value="True" />
@@ -46,35 +46,19 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Thumb">
                         <Border x:Name="ThumbBorder"
-                                Margin="1"
+                                Margin="1.5"
                                 Background="{StaticResource ScrollBarThumbBrush}"
-                                CornerRadius="999"
-                                RenderTransformOrigin="0.5,0.5">
-                            <Border.RenderTransform>
-                                <ScaleTransform ScaleX="1"
-                                                ScaleY="1" />
-                            </Border.RenderTransform>
-                        </Border>
+                                CornerRadius="999" />
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ThumbBorder"
                                         Property="Background"
                                         Value="{StaticResource ScrollBarThumbHoverBrush}" />
-                                <Setter TargetName="ThumbBorder" Property="RenderTransform">
-                                    <Setter.Value>
-                                        <ScaleTransform ScaleX="1.08" ScaleY="1.08" />
-                                    </Setter.Value>
-                                </Setter>
                             </Trigger>
                             <Trigger Property="IsDragging" Value="True">
                                 <Setter TargetName="ThumbBorder"
                                         Property="Background"
                                         Value="{StaticResource ScrollBarThumbPressedBrush}" />
-                                <Setter TargetName="ThumbBorder" Property="RenderTransform">
-                                    <Setter.Value>
-                                        <ScaleTransform ScaleX="1.12" ScaleY="1.12" />
-                                    </Setter.Value>
-                                </Setter>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="ThumbBorder" Property="Opacity" Value="0.45" />
@@ -84,7 +68,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style TargetType="ScrollBar">
+        <Style x:Key="WorkbenchScrollBarStyle" TargetType="ScrollBar">
             <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="OverridesDefaultStyle" Value="True" />
             <Setter Property="Stylus.IsFlicksEnabled" Value="False" />
@@ -104,8 +88,7 @@
                         <Setter.Value>
                             <ControlTemplate TargetType="ScrollBar">
                                 <Grid Width="{TemplateBinding Width}"
-                                      Background="Transparent"
-                                      Margin="1,0,1,0">
+                                      Background="Transparent">
                                     <Border x:Name="TrackBackground"
                                             Width="8"
                                             HorizontalAlignment="Center"
@@ -119,7 +102,7 @@
                                                           Style="{StaticResource ScrollBarPageButtonStyle}" />
                                         </Track.DecreaseRepeatButton>
                                         <Track.Thumb>
-                                            <Thumb MinHeight="28"
+                                            <Thumb MinHeight="120"
                                                    Style="{StaticResource ScrollBarThumbStyle}" />
                                         </Track.Thumb>
                                         <Track.IncreaseRepeatButton>
@@ -149,8 +132,7 @@
                         <Setter.Value>
                             <ControlTemplate TargetType="ScrollBar">
                                 <Grid Height="{TemplateBinding Height}"
-                                      Background="Transparent"
-                                      Margin="0,1,0,1">
+                                      Background="Transparent">
                                     <Border x:Name="TrackBackground"
                                             Height="8"
                                             VerticalAlignment="Center"
@@ -163,7 +145,7 @@
                                                           Style="{StaticResource ScrollBarPageButtonStyle}" />
                                         </Track.DecreaseRepeatButton>
                                         <Track.Thumb>
-                                            <Thumb MinWidth="28"
+                                            <Thumb MinWidth="120"
                                                    Style="{StaticResource ScrollBarThumbStyle}" />
                                         </Track.Thumb>
                                         <Track.IncreaseRepeatButton>
@@ -188,6 +170,53 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style TargetType="ScrollBar" BasedOn="{StaticResource WorkbenchScrollBarStyle}" />
+        <Style x:Key="WorkbenchScrollViewerStyle" TargetType="ScrollViewer">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="PanningMode" Value="Both" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid Background="{TemplateBinding Background}"
+                              SnapsToDevicePixels="True">
+                            <ScrollContentPresenter x:Name="PART_ScrollContentPresenter"
+                                                    CanContentScroll="{TemplateBinding CanContentScroll}"
+                                                    CanHorizontallyScroll="False"
+                                                    CanVerticallyScroll="False"
+                                                    Content="{TemplateBinding Content}"
+                                                    ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                                    ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                    ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                                                    Margin="{TemplateBinding Padding}" />
+                            <ScrollBar x:Name="PART_VerticalScrollBar"
+                                       Panel.ZIndex="2"
+                                       HorizontalAlignment="Right"
+                                       VerticalAlignment="Stretch"
+                                       Margin="0,2,1,2"
+                                       Orientation="Vertical"
+                                       Style="{StaticResource WorkbenchScrollBarStyle}"
+                                       Maximum="{TemplateBinding ScrollableHeight}"
+                                       ViewportSize="NaN"
+                                       Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                            <ScrollBar x:Name="PART_HorizontalScrollBar"
+                                       Panel.ZIndex="2"
+                                       HorizontalAlignment="Stretch"
+                                       VerticalAlignment="Bottom"
+                                       Margin="2,0,2,1"
+                                       Orientation="Horizontal"
+                                       Style="{StaticResource WorkbenchScrollBarStyle}"
+                                       Maximum="{TemplateBinding ScrollableWidth}"
+                                       ViewportSize="NaN"
+                                       Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ScrollViewer" BasedOn="{StaticResource WorkbenchScrollViewerStyle}" />
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="FontSize" Value="10.4" />
@@ -381,6 +410,9 @@
                                     IsHitTestVisible="False"
                                     Opacity="0" />
                             <ScrollViewer x:Name="PART_ContentHost"
+                                          Style="{StaticResource WorkbenchScrollViewerStyle}"
+                                          HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
+                                          VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}"
                                           Margin="{TemplateBinding Padding}" />
                         </Grid>
                         <ControlTemplate.Triggers>
@@ -488,6 +520,7 @@
                                     IsHitTestVisible="False"
                                     Opacity="0" />
                             <ScrollViewer x:Name="PART_ContentHost"
+                                          Style="{StaticResource WorkbenchScrollViewerStyle}"
                                           Margin="{TemplateBinding Padding}" />
                         </Grid>
                         <ControlTemplate.Triggers>
@@ -789,6 +822,10 @@
             </Setter>
         </Style>
         <Style TargetType="ListBox">
+            <Style.Resources>
+                <Style TargetType="ScrollBar" BasedOn="{StaticResource WorkbenchScrollBarStyle}" />
+                <Style TargetType="ScrollViewer" BasedOn="{StaticResource WorkbenchScrollViewerStyle}" />
+            </Style.Resources>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="{StaticResource InputBrush}" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
@@ -1307,6 +1344,7 @@
                                     </Border.RenderTransform>
                                     <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                                   CanContentScroll="True"
+                                                  Style="{StaticResource WorkbenchScrollViewerStyle}"
                                                   VerticalScrollBarVisibility="Auto">
                                         <ItemsPresenter />
                                     </ScrollViewer>
@@ -1566,6 +1604,10 @@
             </Setter>
         </Style>
         <Style TargetType="DataGrid">
+            <Style.Resources>
+                <Style TargetType="ScrollBar" BasedOn="{StaticResource WorkbenchScrollBarStyle}" />
+                <Style TargetType="ScrollViewer" BasedOn="{StaticResource WorkbenchScrollViewerStyle}" />
+            </Style.Resources>
             <Setter Property="Background" Value="#FFFFFF" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
@@ -1758,6 +1800,10 @@
     </Style>
 
     <Style x:Key="NavigationListBoxStyle" TargetType="ListBox">
+        <Style.Resources>
+            <Style TargetType="ScrollBar" BasedOn="{StaticResource WorkbenchScrollBarStyle}" />
+            <Style TargetType="ScrollViewer" BasedOn="{StaticResource WorkbenchScrollViewerStyle}" />
+        </Style.Resources>
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="0" />

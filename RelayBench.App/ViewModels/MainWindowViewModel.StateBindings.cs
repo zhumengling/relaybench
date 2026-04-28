@@ -200,6 +200,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 {
                     SyncSelectedProxyCatalogModel(value);
                 }
+                OnPropertyChanged(nameof(ChatModeSummary));
             }
         }
     }

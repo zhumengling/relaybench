@@ -22,6 +22,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly PortScanDiagnosticsService _portScanDiagnosticsService = new();
     private readonly SplitRoutingDiagnosticsService _splitRoutingDiagnosticsService = new();
     private readonly DiagnosticReportService _diagnosticReportService = new();
+    private readonly ChatConversationService _chatConversationService = new();
+    private readonly ChatAttachmentImportService _chatAttachmentImportService = new();
+    private readonly ChatSessionStore _chatSessionStore = new();
+    private ChatSessionsDocument _chatSessionsDocument = new();
     private readonly AppStateStore _appStateStore = new();
     private readonly List<RunHistoryEntry> _historyEntries = [];
     private UnlockCatalogResult? _lastUnlockCatalogResult;
@@ -36,9 +40,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly List<BatchDeepChartRowState> _batchDeepChartStates = [];
     private IReadOnlyList<ProxyTrendEntry> _lastProxyTrendRecords = Array.Empty<ProxyTrendEntry>();
     private PortScanResult? _lastPortScanResult;
+    private CancellationTokenSource? _currentChatCancellationSource;
+    private bool _isLoadingChatSession;
+    private string _activeChatSessionId = string.Empty;
+    private string? _chatEditingMessageId;
 
     private bool _isBusy;
+    private bool _isChatStreaming;
     private string _statusMessage = "准备就绪，随时可以开始诊断。";
+    private string _chatInputText = string.Empty;
+    private string _chatSystemPrompt = string.Empty;
+    private string _chatTemperatureText = "0.7";
+    private string _chatMaxTokensText = "2048";
+    private string _selectedChatReasoningEffortKey = "auto";
+    private string _chatCandidateModel = string.Empty;
+    private bool _isChatSettingsPanelOpen;
+    private string _chatStatusMessage = "\u586b\u597d\u63a5\u53e3\u548c\u6a21\u578b\u540e\u5373\u53ef\u8fdb\u884c\u771f\u5b9e\u5bf9\u8bdd\u5b9e\u6d4b\u3002";
+    private string _chatMetricsSummary = "\u5c1a\u672a\u53d1\u9001\u5bf9\u8bdd\u8bf7\u6c42\u3002";
+    private string _chatReasoningEffortSummary = "\u81ea\u52a8\u6a21\u5f0f\u4e0b\u9ed8\u8ba4\u4e0d\u53d1\u9001 reasoning \u53c2\u6570\u3002";
+    private ChatSessionListItemViewModel? _selectedChatSession;
+    private ChatPromptPresetViewModel? _selectedChatPreset;
     private bool _isBatchRankingApplyToastVisible;
     private string _batchRankingApplyToastMessage = string.Empty;
     private CancellationTokenSource? _batchRankingApplyToastCancellationSource;

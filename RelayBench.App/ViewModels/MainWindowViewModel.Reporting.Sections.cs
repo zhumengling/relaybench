@@ -23,6 +23,7 @@ public sealed partial class MainWindowViewModel
             new("单站测试（并发压测）", $"{ProxyConcurrencySummary}\n\n{ProxyConcurrencyDetail}"),
             new("批量对比", $"{ProxyBatchRecommendationSummary}\n\n{ProxyBatchSummary}\n\n{ProxyBatchDetail}"),
             new("接口趋势", $"{ProxyTrendSummary}\n\n{ProxyTrendDetail}"),
+            new("大模型对话实测", BuildModelChatReportSection()),
             new("测速", $"{SpeedTestSummary}\n\n{SpeedTestLatencyDetail}\n\n{SpeedTestTransferDetail}\n\n{SpeedTestPacketLossDetail}"),
             new("路由与 MTR", $"{RouteSummary}\n\n{RouteMapSummary}\n\n{RouteGeoSummary}\n\n{RouteHopSummary}\n\n原始输出：\n{RouteRawOutput}"),
             new("IP 与分流检测", $"{SplitRoutingSummary}\n\n{SplitRoutingIpInsightSummary}\n\n{SplitRoutingAdapterSummary}\n\n{SplitRoutingExitSummary}\n\n{SplitRoutingDnsSummary}\n\n{SplitRoutingReachabilitySummary}"),
@@ -46,6 +47,7 @@ public sealed partial class MainWindowViewModel
             new("raw/proxy-concurrency.txt", NormalizeArtifactContent($"{ProxyConcurrencySummary}\n\n{ProxyConcurrencyDetail}"), "单站测试并发压测原始结果"),
             new("raw/proxy-batch.txt", NormalizeArtifactContent($"{ProxyBatchRecommendationSummary}\n\n{ProxyBatchSummary}\n\n{ProxyBatchDetail}"), "批量对比原始结果"),
             new("raw/proxy-trends.txt", NormalizeArtifactContent($"{ProxyTrendSummary}\n\n{ProxyTrendDetail}"), "接口趋势原始结果"),
+            new("raw/model-chat.txt", NormalizeArtifactContent(BuildModelChatReportSection()), "大模型对话实测原始结果"),
             new("raw/route-output.txt", NormalizeArtifactContent($"{RouteSummary}\n\n{RouteMapSummary}\n\n{RouteGeoSummary}\n\n{RouteHopSummary}\n\n{RouteRawOutput}"), "网络复核 / 路由与 MTR 原始输出"),
             new("raw/port-scan-output.txt", NormalizeArtifactContent($"{PortScanSummary}\n\n{PortScanBatchSummary}\n\n{PortScanExportSummary}\n\n{PortScanDetail}\n\n{PortScanRawOutput}"), "端口扫描原始输出")
         ];

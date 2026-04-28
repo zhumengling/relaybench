@@ -26,6 +26,7 @@ public partial class App : Application
 
         try
         {
+            ScrollChromeStyleEnforcer.Register();
             base.OnStartup(e);
 
             ShutdownMode = ShutdownMode.OnMainWindowClose;

@@ -369,7 +369,7 @@
                         <TextBlock Grid.Row="1"
                                        Margin="0,3,0,0"
                                        Style="{StaticResource SectionHintTextStyle}"
-                                       Text="&#x6309;&#x4EFB;&#x52A1;&#x5207;&#x6362;&#x9875;&#x9762;&#xFF1A;&#x5148;&#x505A;&#x63A5;&#x53E3;&#x8BCA;&#x65AD;&#xFF0C;&#x518D;&#x505A;&#x6279;&#x91CF;&#x8BC4;&#x6D4B;&#x3001;&#x5E94;&#x7528;&#x63A5;&#x5165;&#x4E0E;&#x7F51;&#x7EDC;&#x590D;&#x6838;&#x3002;" />
+                                       Text="&#x6309;&#x4EFB;&#x52A1;&#x5207;&#x6362;&#x9875;&#x9762;&#xFF1A;&#x5148;&#x505A;&#x5355;&#x7AD9;&#x6D4B;&#x8BD5;&#xFF0C;&#x518D;&#x505A;&#x5BF9;&#x8BDD;&#x5B9E;&#x6D4B;&#x3001;&#x6279;&#x91CF;&#x8BC4;&#x6D4B;&#x3001;&#x5E94;&#x7528;&#x63A5;&#x5165;&#x4E0E;&#x7F51;&#x7EDC;&#x590D;&#x6838;&#x3002;" />
 
                             <ListBox Grid.Row="2"
                                      Margin="0,8,0,0"
@@ -457,6 +457,7 @@
                               Grid.Row="1"
                               Margin="0,4,0,0">
                             <pages:SingleStationPage Visibility="{Binding IsInterfaceDiagnosticsPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <pages:ModelChatPage Visibility="{Binding IsModelChatPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <pages:BatchComparisonPage Visibility="{Binding IsBatchEvaluationPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <pages:ApplicationCenterPage Visibility="{Binding IsApplicationCenterPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <pages:NetworkReviewPage Visibility="{Binding IsNetworkReviewPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
@@ -646,7 +647,8 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                        <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
+                                      HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto"
                                       CanContentScroll="False"
                                       Visibility="{Binding IsNativeSingleCapabilityChartVisible, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -882,7 +884,8 @@
                             </ItemsControl>
                         </ScrollViewer>
 
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                        <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
+                                      HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto"
                                       CanContentScroll="False"
                                       Visibility="{Binding IsNativeStabilityTrendChartVisible, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -1032,7 +1035,8 @@
                             </ItemsControl>
                         </ScrollViewer>
 
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                        <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
+                                      HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto"
                                       CanContentScroll="False"
                                       Visibility="{Binding IsNativeBatchComparisonChartVisible, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -1301,7 +1305,8 @@
                             </ItemsControl>
                         </ScrollViewer>
 
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                        <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
+                                      HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto"
                                       CanContentScroll="False"
                                       Visibility="{Binding IsNativeConcurrencyChartVisible, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -1427,6 +1432,7 @@
                         </ScrollViewer>
 
                         <ScrollViewer x:Name="ProxyChartImageScrollViewer"
+                                      Style="{StaticResource WorkbenchScrollViewerStyle}"
                                       HorizontalScrollBarVisibility="Auto"
                                       VerticalScrollBarVisibility="Auto"
                                       SizeChanged="ProxyChartImageScrollViewer_OnSizeChanged"

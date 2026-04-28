@@ -5,6 +5,7 @@ namespace RelayBench.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private const string WorkbenchPageInterfaceDiagnostics = "interface-diagnostics";
+    private const string WorkbenchPageModelChat = "model-chat";
     private const string WorkbenchPageBatchEvaluation = "batch-evaluation";
     private const string WorkbenchPageApplicationCenter = "application-center";
     private const string WorkbenchPageNetworkReview = "network-review";
@@ -61,6 +62,9 @@ public sealed partial class MainWindowViewModel
     public bool IsBatchEvaluationPageActive
         => string.Equals(SelectedWorkbenchPageKey, WorkbenchPageBatchEvaluation, StringComparison.Ordinal);
 
+    public bool IsModelChatPageActive
+        => string.Equals(SelectedWorkbenchPageKey, WorkbenchPageModelChat, StringComparison.Ordinal);
+
     public bool IsBatchComparisonPageActive
         => IsBatchEvaluationPageActive;
 
@@ -76,16 +80,18 @@ public sealed partial class MainWindowViewModel
     public string CurrentPageTitle
         => SelectedWorkbenchPageKey switch
         {
+            WorkbenchPageModelChat => "\u5927\u6a21\u578b\u5bf9\u8bdd",
             WorkbenchPageBatchEvaluation => "\u6279\u91cf\u8bc4\u6d4b",
             WorkbenchPageApplicationCenter => "\u5e94\u7528\u63a5\u5165",
             WorkbenchPageNetworkReview => "\u7f51\u7edc\u590d\u6838",
             WorkbenchPageHistoryReports => "\u5386\u53f2\u62a5\u544a",
-            _ => "\u63a5\u53e3\u8bca\u65ad"
+            _ => "\u5355\u7ad9\u6d4b\u8bd5"
         };
 
     public string CurrentPageSubtitle
         => SelectedWorkbenchPageKey switch
         {
+            WorkbenchPageModelChat => "\u590d\u7528\u5f53\u524d\u63a5\u53e3\u8fdb\u884c\u771f\u5b9e\u591a\u8f6e\u5bf9\u8bdd\uff0c\u89c2\u5bdf\u6d41\u5f0f\u8f93\u51fa\u3001\u4ee3\u7801\u5757\u3001\u56fe\u7247\u8f93\u5165\u3001\u6587\u672c\u9644\u4ef6\u548c reasoning \u53c2\u6570\u517c\u5bb9\u6027\u3002",
             WorkbenchPageBatchEvaluation => "\u5148\u5bfc\u5165\u6216\u7ef4\u62a4\u63a5\u53e3\u7ec4\uff0c\u518d\u505a\u6279\u91cf\u5feb\u901f\u8bc4\u6d4b\uff1b\u4ece\u6392\u884c\u699c\u91cc\u624b\u52a8\u7b5b\u9009\u4e3b\u7528\u3001\u5907\u7528\u4e0e\u5019\u9009\u63a5\u53e3\u3002",
             WorkbenchPageApplicationCenter => "\u626b\u63cf Codex / VSCode / Antigravity / Claude \u7b49\u672c\u673a\u5e94\u7528\u7684\u5b89\u88c5\u4e0e\u63a5\u5165\u72b6\u6001\uff0c\u5e76\u5728\u6b64\u76f4\u63a5\u5b8c\u6210 Codex \u7cfb\u5217\u7684\u63a5\u53e3\u5199\u5165\u3001\u8fd8\u539f\u4e0e Trace \u590d\u6838\u3002",
             WorkbenchPageNetworkReview => BuildNetworkReviewSubtitle(),
@@ -111,6 +117,7 @@ public sealed partial class MainWindowViewModel
     private static string NormalizeWorkbenchPageKey(string? value)
         => value switch
         {
+            WorkbenchPageModelChat => WorkbenchPageModelChat,
             WorkbenchPageBatchEvaluation or WorkbenchPageBatchComparisonLegacy => WorkbenchPageBatchEvaluation,
             WorkbenchPageApplicationCenter => WorkbenchPageApplicationCenter,
             WorkbenchPageNetworkReview => WorkbenchPageNetworkReview,
@@ -141,6 +148,7 @@ public sealed partial class MainWindowViewModel
     {
         OnPropertyChanged(nameof(IsInterfaceDiagnosticsPageActive));
         OnPropertyChanged(nameof(IsSingleStationPageActive));
+        OnPropertyChanged(nameof(IsModelChatPageActive));
         OnPropertyChanged(nameof(IsBatchEvaluationPageActive));
         OnPropertyChanged(nameof(IsBatchComparisonPageActive));
         OnPropertyChanged(nameof(IsApplicationCenterPageActive));

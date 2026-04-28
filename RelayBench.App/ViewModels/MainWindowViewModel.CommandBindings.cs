@@ -34,6 +34,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<IpRiskSourceRowViewModel> IpRiskSourceRows { get; } = [];
 
+    public ObservableCollection<ChatMessageViewModel> ChatMessages { get; } = [];
+
+    public ObservableCollection<ChatSessionListItemViewModel> ChatSessions { get; } = [];
+
+    public ObservableCollection<ChatPromptPresetViewModel> ChatPresets { get; } = [];
+
+    public ObservableCollection<ChatModelSelectionViewModel> ChatSelectedModels { get; } = [];
+
+    public ObservableCollection<ChatAttachmentViewModel> PendingChatAttachments { get; } = [];
+
+    public ObservableCollection<SelectionOption> ChatReasoningEffortOptions { get; } =
+    [
+        new("auto", "\u81ea\u52a8"),
+        new("low", "\u4f4e"),
+        new("medium", "\u4e2d"),
+        new("high", "\u9ad8")
+    ];
+
     public ObservableCollection<SelectionOption> StunTransportOptions { get; } =
         new(StunServerPresetCatalog.BuildTransportOptions());
 
@@ -41,7 +59,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<SelectionOption> WorkbenchPageOptions { get; } =
     [
-        new("interface-diagnostics", "接口诊断"),
+        new("interface-diagnostics", "\u5355\u7ad9\u6d4b\u8bd5"),
+        new("model-chat", "\u5927\u6a21\u578b\u5bf9\u8bdd"),
         new("batch-evaluation", "批量评测"),
         new("application-center", "应用接入"),
         new("network-review", "网络复核"),
@@ -222,4 +241,42 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand CloseAboutDialogCommand { get; }
 
     public AsyncRelayCommand OpenProjectHomepageCommand { get; }
+
+    public AsyncRelayCommand SendChatMessageCommand { get; }
+
+    public AsyncRelayCommand StopChatStreamingCommand { get; }
+
+    public AsyncRelayCommand ClearChatSessionCommand { get; }
+
+    public AsyncRelayCommand NewChatSessionCommand { get; }
+
+    public AsyncRelayCommand DeleteChatSessionCommand { get; }
+
+    public AsyncRelayCommand AddChatImageAttachmentCommand { get; }
+
+    public AsyncRelayCommand AddChatTextFileAttachmentCommand { get; }
+
+    public AsyncRelayCommand ToggleChatSettingsPanelCommand { get; }
+
+    public AsyncRelayCommand CloseChatSettingsPanelCommand { get; }
+
+    public AsyncRelayCommand AddChatSelectedModelCommand { get; }
+
+    public AsyncRelayCommand ClearChatSelectedModelsCommand { get; }
+
+    public AsyncRelayCommand<ChatModelSelectionViewModel?> RemoveChatSelectedModelCommand { get; }
+
+    public AsyncRelayCommand<ChatAttachmentViewModel?> RemoveChatAttachmentCommand { get; }
+
+    public AsyncRelayCommand<ChatMessageViewModel?> EditChatMessageCommand { get; }
+
+    public AsyncRelayCommand CancelChatEditCommand { get; }
+
+    public AsyncRelayCommand ApplyChatPresetCommand { get; }
+
+    public AsyncRelayCommand SaveChatPresetCommand { get; }
+
+    public AsyncRelayCommand DeleteChatPresetCommand { get; }
+
+    public AsyncRelayCommand<ChatContentBlockViewModel?> CopyChatCodeBlockCommand { get; }
 }
