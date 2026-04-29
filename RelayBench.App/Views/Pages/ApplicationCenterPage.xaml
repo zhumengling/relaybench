@@ -269,12 +269,27 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="当前接口" />
-                        <TextBlock Margin="0,2,0,0"
-                                   Style="{StaticResource SectionHintTextStyle}"
-                                   Text="后续一键应用会使用这里的接口信息" />
-                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="当前接口" />
+                            <TextBlock Margin="0,2,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="后续一键应用会使用这里的接口信息" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                MinWidth="88"
+                                Margin="10,0,0,0"
+                                Padding="12,5"
+                                VerticalAlignment="Top"
+                                Command="{Binding OpenProxyEndpointHistoryCommand}"
+                                Content="&#x5386;&#x53F2;&#x63A5;&#x53E3;" />
+                    </Grid>
 
                     <Border Grid.Row="1"
                             Margin="0,6,0,0"
@@ -293,13 +308,31 @@
                                          Text="{Binding ProxyBaseUrl, Mode=OneWay}" />
                             </StackPanel>
 
-                            <StackPanel Grid.Row="1"
-                                        Margin="0,6,0,0">
+                            <Grid Grid.Row="1"
+                                  Margin="0,6,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
                                 <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5F53;&#x524D;&#x6A21;&#x578B;" />
-                                <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                <TextBox Grid.Row="1"
+                                         Grid.Column="0"
+                                         Style="{StaticResource CompactInputTextBoxStyle}"
                                          IsReadOnly="True"
                                          Text="{Binding ProxyModel, Mode=OneWay}" />
-                            </StackPanel>
+                                <Button Grid.Row="1"
+                                        Grid.Column="2"
+                                        MinWidth="86"
+                                        Padding="10,4"
+                                        Command="{Binding FetchProxyModelsCommand}"
+                                        Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                            </Grid>
 
                             <StackPanel Grid.Row="2"
                                         Margin="0,6,0,0">
