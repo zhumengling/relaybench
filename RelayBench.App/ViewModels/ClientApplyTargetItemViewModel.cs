@@ -14,9 +14,10 @@ public sealed class ClientApplyTargetItemViewModel : ObservableObject
         Protocol = target.Protocol;
         IsInstalled = target.IsInstalled;
         IsSelectable = target.IsSelectable;
+        IsProtocolSupported = target.IsProtocolSupported;
         ConfigSummary = target.ConfigSummary;
         DisabledReason = target.DisabledReason ?? string.Empty;
-        _isSelected = target.IsSelectable && target.IsDefaultSelected;
+        _isSelected = target.IsSelectable && target.IsProtocolSupported && target.IsDefaultSelected;
     }
 
     public string TargetId { get; }
@@ -28,6 +29,11 @@ public sealed class ClientApplyTargetItemViewModel : ObservableObject
     public bool IsInstalled { get; }
 
     public bool IsSelectable { get; }
+
+    public bool IsProtocolSupported { get; }
+
+    public bool RequiresCompatibilityConfirmation
+        => IsSelectable && !IsProtocolSupported;
 
     public string ConfigSummary { get; }
 
@@ -48,6 +54,9 @@ public sealed class ClientApplyTargetItemViewModel : ObservableObject
             SetProperty(ref _isSelected, value);
         }
     }
+
+    public void RefreshSelectionState()
+        => OnPropertyChanged(nameof(IsSelected));
 
     public string ProtocolText
         => Protocol switch

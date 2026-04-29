@@ -169,13 +169,6 @@ public sealed class ClientApiDiagnosticsService
                 GetMethod,
                 environment => DetectVsCodeCodex(environment, roamingAppData, localAppData, userProfile)),
             new(
-                "Antigravity",
-                "Google",
-                "桌面端",
-                new Uri("https://generativelanguage.googleapis.com/v1beta/models"),
-                GetMethod,
-                environment => DetectAntigravity(environment, userProfile, roamingAppData, localAppData)),
-            new(
                 "Claude CLI",
                 "Anthropic",
                 "CLI",
@@ -419,104 +412,6 @@ public sealed class ClientApiDiagnosticsService
                 ? string.Join("；", installEvidenceParts)
                 : "未在 PATH 或用户目录中发现 Claude CLI 线索",
             configSource: BuildConfigSource(configFiles, envVars, ".claude"),
-            proxySource: BuildProxySource(environment),
-            profile: profile);
-    }
-
-    private static LocalClientState DetectAntigravity(
-        IClientApiDiagnosticEnvironment environment,
-        string userProfile,
-        string roamingAppData,
-        string localAppData)
-    {
-        var antigravityRoamingRoot = Path.Combine(roamingAppData, "Antigravity");
-        var antigravityUserDir = Path.Combine(antigravityRoamingRoot, "User");
-        var antigravitySettingsPath = Path.Combine(antigravityUserDir, "settings.json");
-        var antigravityLogsDir = Path.Combine(antigravityRoamingRoot, "logs");
-        var geminiRoot = Path.Combine(userProfile, ".gemini");
-        var antigravityGeminiDir = Path.Combine(geminiRoot, "antigravity");
-        var installationIdPath = Path.Combine(antigravityGeminiDir, "installation_id");
-        var mcpConfigPath = Path.Combine(antigravityGeminiDir, "mcp_config.json");
-        var conversationsDir = Path.Combine(antigravityGeminiDir, "conversations");
-        var tempProfileDir = Path.Combine(localAppData, "Temp", "antigravity-stable-user-x64");
-        var processHits = environment.GetRunningProcessNames()
-            .Where(name => name.Contains("antigravity", StringComparison.OrdinalIgnoreCase))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        var configFiles = ReadExistingFiles(
-            environment,
-            antigravitySettingsPath,
-            installationIdPath,
-            mcpConfigPath,
-            Path.Combine(geminiRoot, ".env"));
-        var envVars = ReadExistingEnvironmentVariables(
-            environment,
-            "GEMINI_API_KEY",
-            "GOOGLE_API_KEY",
-            "GOOGLE_GEMINI_BASE_URL",
-            "GOOGLE_API_BASE_URL");
-        List<string> installEvidenceParts = [];
-
-        if (environment.DirectoryExists(antigravityRoamingRoot))
-        {
-            installEvidenceParts.Add($"命中数据目录：{antigravityRoamingRoot}");
-        }
-
-        if (environment.DirectoryExists(antigravityGeminiDir))
-        {
-            installEvidenceParts.Add($"命中工作目录：{antigravityGeminiDir}");
-        }
-
-        if (environment.DirectoryExists(tempProfileDir))
-        {
-            installEvidenceParts.Add($"命中临时配置目录：{tempProfileDir}");
-        }
-
-        if (processHits.Length > 0)
-        {
-            installEvidenceParts.Add($"发现运行进程：{string.Join("、", processHits)}");
-        }
-
-        List<string> configSources = [];
-        if (configFiles.Count > 0)
-        {
-            configSources.Add($"命中文件：{string.Join("；", configFiles.Select(file => file.Path).Take(3))}");
-        }
-
-        if (environment.DirectoryExists(conversationsDir))
-        {
-            configSources.Add($"发现会话目录：{conversationsDir}");
-        }
-
-        if (environment.DirectoryExists(antigravityLogsDir))
-        {
-            configSources.Add($"发现日志目录：{antigravityLogsDir}");
-        }
-
-        if (envVars.Count > 0)
-        {
-            configSources.Add($"命中环境变量：{string.Join("、", envVars.Select(entry => entry.Name))}");
-        }
-
-        var profile = ResolveAccessProfile(
-            "https://generativelanguage.googleapis.com",
-            configFiles,
-            envVars,
-            hasOfficialOAuth: false,
-            restoreHint: "支持还原 Antigravity / .gemini 配置中的代理接管或自定义 Google API 入口。");
-
-        return BuildState(
-            installed: environment.DirectoryExists(antigravityRoamingRoot) ||
-                       environment.DirectoryExists(antigravityGeminiDir) ||
-                       environment.DirectoryExists(tempProfileDir) ||
-                       processHits.Length > 0,
-            configDetected: configSources.Count > 0,
-            installEvidence: installEvidenceParts.Count > 0
-                ? string.Join("；", installEvidenceParts)
-                : "未发现 Antigravity 本机安装线索",
-            configSource: configSources.Count > 0
-                ? string.Join("；", configSources)
-                : "未在 .gemini/antigravity、Roaming/Antigravity 或环境变量中发现配置",
             proxySource: BuildProxySource(environment),
             profile: profile);
     }

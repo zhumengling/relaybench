@@ -2252,7 +2252,9 @@
                                                     </Grid.ColumnDefinitions>
                                                     <CheckBox VerticalAlignment="Top"
                                                               IsEnabled="{Binding IsSelectable}"
-                                                              IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                              IsChecked="{Binding IsSelected, Mode=OneWay}"
+                                                              Command="{Binding DataContext.ToggleClientApplyTargetSelectionCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                                              CommandParameter="{Binding}" />
                                                     <StackPanel Grid.Column="1"
                                                                 Margin="10,0,0,0">
                                                         <TextBlock FontSize="12.2"

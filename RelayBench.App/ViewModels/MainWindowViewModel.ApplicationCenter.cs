@@ -96,11 +96,6 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        var shouldMergeChats = ContainsCodexApplyTarget(selectedTargets) &&
-            await ConfirmCodexChatMergeAsync(
-                CodexChatMergeTarget.ThirdPartyCustom,
-                "切到第三方");
-
         await ExecuteBusyActionAsync(
             "正在应用当前接口...",
             async () =>
@@ -119,8 +114,11 @@ public sealed partial class MainWindowViewModel
                 var result = await _clientAppConfigApplyService.ApplyAsync(endpoint, selectedTargets);
 
                 CodexChatMergeResult? mergeResult = null;
-                if (HasSucceededCodexTarget(result))
+                if (ShouldAskCodexChatMerge(selectedTargets, result))
                 {
+                    var shouldMergeChats = await ConfirmCodexChatMergeAsync(
+                        CodexChatMergeTarget.ThirdPartyCustom,
+                        "切到第三方");
                     mergeResult = await MergeCodexChatsIfRequestedAsync(
                         shouldMergeChats,
                         CodexChatMergeTarget.ThirdPartyCustom);

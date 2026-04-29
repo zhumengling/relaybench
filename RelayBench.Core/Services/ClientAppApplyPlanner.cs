@@ -25,7 +25,8 @@ public sealed class ClientAppApplyPlanner
                 !string.IsNullOrWhiteSpace(context.BaseUrl) &&
                 !string.IsNullOrWhiteSpace(context.ApiKey) &&
                 !string.IsNullOrWhiteSpace(context.Model);
-            var selectable = installed && protocolSupported && hasRequiredFields;
+            var selectable = installed && hasRequiredFields;
+            var defaultSelected = selectable && protocolSupported;
 
             targets.Add(new ClientApplyTarget(
                 definition.Id,
@@ -33,7 +34,8 @@ public sealed class ClientAppApplyPlanner
                 definition.Protocol,
                 installed,
                 selectable,
-                selectable,
+                protocolSupported,
+                defaultSelected,
                 definition.ConfigSummary,
                 BuildDisabledReason(installed, protocolSupported, hasRequiredFields, definition.Protocol)));
         }

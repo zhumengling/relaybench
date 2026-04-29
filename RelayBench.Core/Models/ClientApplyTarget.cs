@@ -6,6 +6,7 @@ public sealed record ClientApplyTarget(
     ClientApplyProtocolKind Protocol,
     bool IsInstalled,
     bool IsSelectable,
+    bool IsProtocolSupported,
     bool IsDefaultSelected,
     string ConfigSummary,
     string? DisabledReason);

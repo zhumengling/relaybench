@@ -36,15 +36,18 @@ public sealed partial class MainWindowViewModel
         var targets = BuildClientApplyTargets(settings, protocolProbeResult);
         var summary =
             BuildProtocolProbeDetail(protocolProbeResult) +
-            "\n\n请选择本次要写入配置的软件。不可选项目表示本机未发现该软件，或当前模型不支持它需要的接口格式。";
+            "\n\n\u8bf7\u9009\u62e9\u672c\u6b21\u8981\u5199\u5165\u914d\u7f6e\u7684\u8f6f\u4ef6\u3002\u672a\u53d1\u73b0\u8f6f\u4ef6\u6216\u7f3a\u5c11\u63a5\u53e3\u4fe1\u606f\u65f6\u4f1a\u7981\u6b62\u52fe\u9009\uff1b\u4ec5\u534f\u8bae\u4e0d\u4e00\u5b9a\u517c\u5bb9\u7684\u8f6f\u4ef6\u53ef\u4ee5\u52fe\u9009\uff0c\u4f46\u9700\u8981\u4f60\u518d\u786e\u8ba4\u4e00\u6b21\u3002";
         return await ShowClientApplyTargetDialogAsync(title, summary, targets);
     }
 
-    private static bool ContainsCodexApplyTarget(IReadOnlyList<ClientApplyTargetSelection> selectedTargets)
-        => selectedTargets.Any(target => target.Protocol == ClientApplyProtocolKind.Responses);
-
     private static bool HasSucceededCodexTarget(ClientAppApplyResult result)
         => result.TargetResults.Any(target => target.Protocol == ClientApplyProtocolKind.Responses && target.Succeeded);
+
+    private static bool ShouldAskCodexChatMerge(
+        IReadOnlyList<ClientApplyTargetSelection> selectedTargets,
+        ClientAppApplyResult result)
+        => selectedTargets.Any(target => target.Protocol == ClientApplyProtocolKind.Responses) &&
+           HasSucceededCodexTarget(result);
 
     private static bool HasSucceededTarget(ClientAppApplyResult result)
         => result.TargetResults.Any(target => target.Succeeded) || result.AppliedTargets.Count > 0;

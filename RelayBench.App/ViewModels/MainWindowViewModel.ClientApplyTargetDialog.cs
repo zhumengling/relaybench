@@ -67,24 +67,107 @@ public sealed partial class MainWindowViewModel
 
     private Task SelectAllClientApplyTargetsAsync()
     {
-        foreach (var item in ClientApplyTargetItems.Where(item => item.IsSelectable))
+        return SelectAllClientApplyTargetsCoreAsync();
+    }
+
+    private async Task SelectAllClientApplyTargetsCoreAsync()
+    {
+        var selectableItems = ClientApplyTargetItems
+            .Where(item => item.IsSelectable)
+            .ToArray();
+        var warningItems = selectableItems
+            .Where(item => item.RequiresCompatibilityConfirmation && !item.IsSelected)
+            .ToArray();
+
+        if (warningItems.Length > 0 && !await ConfirmClientApplyCompatibilityOverrideAsync(warningItems))
+        {
+            return;
+        }
+
+        foreach (var item in selectableItems)
         {
             item.IsSelected = true;
         }
 
         RefreshClientApplyTargetDialogState();
-        return Task.CompletedTask;
     }
 
     private Task InvertClientApplyTargetsAsync()
     {
-        foreach (var item in ClientApplyTargetItems.Where(item => item.IsSelectable))
+        return InvertClientApplyTargetsCoreAsync();
+    }
+
+    private async Task InvertClientApplyTargetsCoreAsync()
+    {
+        var selectableItems = ClientApplyTargetItems
+            .Where(item => item.IsSelectable)
+            .ToArray();
+        var warningItems = selectableItems
+            .Where(item => !item.IsSelected && item.RequiresCompatibilityConfirmation)
+            .ToArray();
+
+        if (warningItems.Length > 0 && !await ConfirmClientApplyCompatibilityOverrideAsync(warningItems))
+        {
+            return;
+        }
+
+        foreach (var item in selectableItems)
         {
             item.IsSelected = !item.IsSelected;
         }
 
         RefreshClientApplyTargetDialogState();
-        return Task.CompletedTask;
+    }
+
+    private async Task ToggleClientApplyTargetSelectionAsync(ClientApplyTargetItemViewModel? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        if (item.IsSelected)
+        {
+            item.IsSelected = false;
+            return;
+        }
+
+        if (!item.IsSelectable)
+        {
+            item.IsSelected = false;
+            item.RefreshSelectionState();
+            return;
+        }
+
+        if (item.RequiresCompatibilityConfirmation &&
+            !await ConfirmClientApplyCompatibilityOverrideAsync(new[] { item }))
+        {
+            item.IsSelected = false;
+            item.RefreshSelectionState();
+            return;
+        }
+
+        item.IsSelected = true;
+    }
+
+    private Task<bool> ConfirmClientApplyCompatibilityOverrideAsync(
+        IReadOnlyCollection<ClientApplyTargetItemViewModel> items)
+    {
+        var targetLines = string.Join(
+            "\n",
+            items.Select(item => $"- {item.DisplayName}: {item.DisabledReason}"));
+        var message = items.Count == 1
+            ? $"\u201c{items.First().DisplayName}\u201d\u4e0e\u5f53\u524d\u6a21\u578b\u6216\u63a5\u53e3\u63a2\u6d4b\u7ed3\u679c\u4e0d\u4e00\u5b9a\u517c\u5bb9\u3002"
+            : $"\u5c06\u52fe\u9009 {items.Count} \u4e2a\u4e0e\u5f53\u524d\u6a21\u578b\u6216\u63a5\u53e3\u63a2\u6d4b\u7ed3\u679c\u4e0d\u4e00\u5b9a\u517c\u5bb9\u7684\u8f6f\u4ef6\u3002";
+
+        return ShowConfirmationDialogAsync(
+            "\u517c\u5bb9\u6027\u63d0\u793a",
+            message,
+            "\u7ee7\u7eed\u5e94\u7528\u53ef\u80fd\u5bfc\u81f4\u8be5\u8f6f\u4ef6\u65e0\u6cd5\u6b63\u5e38\u8c03\u7528\u5f53\u524d\u6a21\u578b\u3002\n\n" +
+            targetLines +
+            "\n\n\u662f\u5426\u4ecd\u7136\u8981\u52fe\u9009\uff1f",
+            "\u662f\uff0c\u7ee7\u7eed",
+            "\u5426\uff0c\u53d6\u6d88");
     }
 
     private Task ConfirmClientApplyTargetDialogAsync()

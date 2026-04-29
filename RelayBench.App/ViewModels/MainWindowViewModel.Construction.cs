@@ -138,6 +138,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CancelConfirmationDialogCommand = new AsyncRelayCommand(CancelConfirmationDialogAsync);
         SelectAllClientApplyTargetsCommand = new AsyncRelayCommand(SelectAllClientApplyTargetsAsync, CanEditClientApplyTargetSelection);
         InvertClientApplyTargetsCommand = new AsyncRelayCommand(InvertClientApplyTargetsAsync, CanEditClientApplyTargetSelection);
+        ToggleClientApplyTargetSelectionCommand = new AsyncRelayCommand<ClientApplyTargetItemViewModel?>(ToggleClientApplyTargetSelectionAsync);
         ConfirmClientApplyTargetDialogCommand = new AsyncRelayCommand(ConfirmClientApplyTargetDialogAsync, CanConfirmClientApplyTargetDialog);
         CancelClientApplyTargetDialogCommand = new AsyncRelayCommand(CancelClientApplyTargetDialogAsync);
         OpenAboutDialogCommand = new AsyncRelayCommand(OpenAboutDialogAsync);

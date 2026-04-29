@@ -244,6 +244,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand InvertClientApplyTargetsCommand { get; }
 
+    public AsyncRelayCommand<ClientApplyTargetItemViewModel?> ToggleClientApplyTargetSelectionCommand { get; }
+
     public AsyncRelayCommand ConfirmClientApplyTargetDialogCommand { get; }
 
     public AsyncRelayCommand CancelClientApplyTargetDialogCommand { get; }
