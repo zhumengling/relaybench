@@ -1873,7 +1873,7 @@
                                     Style="{StaticResource DialogAccentTagBorderStyle}">
                                 <TextBlock Style="{StaticResource DialogTagTextStyle}"
                                            Foreground="{StaticResource AccentBrush}"
-                                           Text="点击回填主页" />
+                                           Text="{Binding ProxyEndpointHistoryTargetDisplayName, StringFormat=回填{0}}" />
                             </Border>
                         </WrapPanel>
                     </StackPanel>
@@ -2020,7 +2020,7 @@
                                     Style="{StaticResource DialogMetaStripBorderStyle}">
                                 <TextBlock Style="{StaticResource SectionHintTextStyle}"
                                            TextWrapping="Wrap"
-                                           Text="点击“使用选中项”后，会把接口地址、API Key、模型同时填回接口诊断主页输入框，方便在不同中转站、官方接口之间快速切换。" />
+                                           Text="{Binding ProxyEndpointHistoryApplyHint, Mode=OneWay}" />
                             </Border>
                         </Grid>
                     </Border>
@@ -2184,6 +2184,136 @@
                                         Margin="8,0,0,0"
                                         Command="{Binding CloseAboutDialogCommand}"
                                         Content="关闭" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ClientApplyTargetOverlay"
+              Panel.ZIndex="20"
+              Background="#660F172A"
+              Visibility="Collapsed">
+            <Border x:Name="ClientApplyTargetOverlayPanel"
+                    Width="760"
+                    MaxHeight="680"
+                    Padding="14"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="18"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource DialogTitleTextStyle}"
+                                   Text="{Binding ClientApplyTargetDialogTitle, Mode=OneWay}" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding ClientApplyTargetDialogSummary, Mode=OneWay}" />
+                    </StackPanel>
+
+                    <Border Grid.Row="2"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="8" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                       Text="待应用软件" />
+                            <ScrollViewer Grid.Row="2"
+                                          Style="{StaticResource WorkbenchScrollViewerStyle}"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding ClientApplyTargetItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,0,8"
+                                                    Padding="10"
+                                                    Background="{StaticResource PanelBrush}"
+                                                    BorderBrush="{StaticResource PanelBorderBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <CheckBox VerticalAlignment="Top"
+                                                              IsEnabled="{Binding IsSelectable}"
+                                                              IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <StackPanel Grid.Column="1"
+                                                                Margin="10,0,0,0">
+                                                        <TextBlock FontSize="12.2"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextBrush}"
+                                                                   Text="{Binding DisplayName}" />
+                                                        <WrapPanel Margin="0,5,0,0">
+                                                            <Border Style="{StaticResource DialogTagBorderStyle}">
+                                                                <TextBlock Style="{StaticResource DialogTagTextStyle}"
+                                                                           Text="{Binding ProtocolText}" />
+                                                            </Border>
+                                                            <Border Margin="6,0,0,0"
+                                                                    Style="{StaticResource DialogAccentTagBorderStyle}">
+                                                                <TextBlock Style="{StaticResource DialogTagTextStyle}"
+                                                                           Foreground="{StaticResource AccentBrush}"
+                                                                           Text="{Binding ConfigSummary}" />
+                                                            </Border>
+                                                        </WrapPanel>
+                                                        <TextBlock Margin="0,5,0,0"
+                                                                   Foreground="#B54708"
+                                                                   TextWrapping="Wrap"
+                                                                   Text="{Binding DisabledReason}" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="3"
+                            Margin="0,12,0,0"
+                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="只会写入勾选的软件；修改前会自动备份配置。" />
+                            <WrapPanel Grid.Column="1"
+                                       HorizontalAlignment="Right">
+                                <Button MinWidth="88"
+                                        Command="{Binding SelectAllClientApplyTargetsCommand}"
+                                        Content="全选" />
+                                <Button MinWidth="88"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding InvertClientApplyTargetsCommand}"
+                                        Content="反选" />
+                                <Button MinWidth="112"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding ConfirmClientApplyTargetDialogCommand}"
+                                        Style="{StaticResource PrimaryActionButtonStyle}"
+                                        Content="应用到所选" />
+                                <Button MinWidth="88"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding CancelClientApplyTargetDialogCommand}"
+                                        Content="取消" />
                             </WrapPanel>
                         </Grid>
                     </Border>

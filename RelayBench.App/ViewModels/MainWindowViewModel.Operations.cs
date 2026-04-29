@@ -835,6 +835,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ProxyBaseUrl = snapshot.ProxyBaseUrl;
         ProxyApiKey = snapshot.ProxyApiKey;
         ProxyModel = snapshot.ProxyModel ?? string.Empty;
+        ApplicationCenterBaseUrl = string.IsNullOrWhiteSpace(snapshot.ApplicationCenterBaseUrl)
+            ? snapshot.ProxyBaseUrl
+            : snapshot.ApplicationCenterBaseUrl;
+        ApplicationCenterApiKey = string.IsNullOrWhiteSpace(snapshot.ApplicationCenterApiKey)
+            ? snapshot.ProxyApiKey
+            : snapshot.ApplicationCenterApiKey;
+        ApplicationCenterModel = string.IsNullOrWhiteSpace(snapshot.ApplicationCenterModel)
+            ? snapshot.ProxyModel ?? string.Empty
+            : snapshot.ApplicationCenterModel;
         ProxyTimeoutSecondsText = string.IsNullOrWhiteSpace(snapshot.ProxyTimeoutSecondsText) ? "20" : snapshot.ProxyTimeoutSecondsText;
         ProxyIgnoreTlsErrors = snapshot.ProxyIgnoreTlsErrors;
         ProxySeriesRoundsText = string.IsNullOrWhiteSpace(snapshot.ProxySeriesRoundsText) ? "5" : snapshot.ProxySeriesRoundsText;
@@ -856,6 +865,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ProxyApiKey = ProxyApiKey,
             ProxyModel = ProxyModel,
             ProxyModelWasExplicitlySet = !string.IsNullOrWhiteSpace(ProxyModel),
+            ApplicationCenterBaseUrl = ApplicationCenterBaseUrl,
+            ApplicationCenterApiKey = ApplicationCenterApiKey,
+            ApplicationCenterModel = ApplicationCenterModel,
             ProxyTimeoutSecondsText = ProxyTimeoutSecondsText,
             ProxyIgnoreTlsErrors = ProxyIgnoreTlsErrors,
             ProxySeriesRoundsText = ProxySeriesRoundsText,

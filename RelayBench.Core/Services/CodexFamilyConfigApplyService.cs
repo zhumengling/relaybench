@@ -25,6 +25,7 @@ public sealed class CodexFamilyConfigApplyService
         string? displayName = null,
         int? modelContextWindow = null,
         string? preferredWireApi = null,
+        IReadOnlyList<ClientApplyTargetSelection>? targetSelections = null,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -101,27 +102,76 @@ public sealed class CodexFamilyConfigApplyService
             changedFiles,
             backupFiles);
 
-        IReadOnlyList<string> appliedTargets = ["Codex CLI", "Codex Desktop", "VSCode Codex"];
+        IReadOnlyList<ClientAppTargetApplyResult> targetResults = BuildCodexTargetResults(
+            targetSelections,
+            true,
+            changedFiles,
+            backupFiles,
+            null);
+        IReadOnlyList<string> appliedTargets = targetResults.Select(target => target.DisplayName).ToArray();
 
         if (changedFiles.Count == 0)
         {
             return Task.FromResult(new ClientAppApplyResult(
                 true,
-                "Codex CLI / Codex Desktop / VSCode Codex 共用配置已与当前入口一致，无需改动。",
+                $"{FormatAppliedTargets(appliedTargets)} 共用配置已与当前入口一致，无需改动。",
                 [],
                 [],
                 appliedTargets,
-                null));
+                null)
+            {
+                TargetResults = targetResults
+            });
         }
 
         return Task.FromResult(new ClientAppApplyResult(
             true,
-            $"已将当前入口应用到 Codex CLI / Codex Desktop / VSCode Codex 共用配置，共处理 {changedFiles.Count} 个文件。",
+            $"已将当前入口应用到 {FormatAppliedTargets(appliedTargets)} 共用配置，共处理 {changedFiles.Count} 个文件。",
             changedFiles,
             backupFiles,
             appliedTargets,
-            null));
+            null)
+        {
+            TargetResults = targetResults
+        });
     }
+
+    private static IReadOnlyList<ClientAppTargetApplyResult> BuildCodexTargetResults(
+        IReadOnlyList<ClientApplyTargetSelection>? targetSelections,
+        bool succeeded,
+        IReadOnlyList<string> changedFiles,
+        IReadOnlyList<string> backupFiles,
+        string? error)
+    {
+        var selectedIds = targetSelections?
+            .Where(target => target.Protocol == ClientApplyProtocolKind.Responses)
+            .Select(target => target.TargetId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        (string Id, string Name)[] knownTargets =
+        [
+            ("codex-cli", "Codex CLI"),
+            ("codex-desktop", "Codex Desktop"),
+            ("vscode-codex", "VSCode Codex")
+        ];
+
+        return knownTargets
+            .Where(target => selectedIds is null || selectedIds.Count == 0 || selectedIds.Contains(target.Id))
+            .Select(target => new ClientAppTargetApplyResult(
+                target.Id,
+                target.Name,
+                ClientApplyProtocolKind.Responses,
+                succeeded,
+                changedFiles,
+                backupFiles,
+                error))
+            .ToArray();
+    }
+
+    private static string FormatAppliedTargets(IReadOnlyList<string> appliedTargets)
+        => appliedTargets.Count == 0
+            ? "Codex 系列"
+            : string.Join(" / ", appliedTargets);
 
     private void ApplyFile(
         string path,

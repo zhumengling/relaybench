@@ -170,6 +170,10 @@ public sealed partial class MainWindowViewModel
                 NormalizeNullable(ProxyBaseUrl) ?? string.Empty,
                 NormalizeNullable(ProxyApiKey) ?? string.Empty,
                 NormalizeNullable(ProxyModel) ?? string.Empty),
+            ProxyModelPickerTarget.ApplicationCenterModel => new ProxyModelPickerContext(
+                NormalizeNullable(ApplicationCenterBaseUrl) ?? string.Empty,
+                NormalizeNullable(ApplicationCenterApiKey) ?? string.Empty,
+                NormalizeNullable(ApplicationCenterModel) ?? string.Empty),
             ProxyModelPickerTarget.CapabilityEmbeddingsModel => new ProxyModelPickerContext(
                 NormalizeNullable(ProxyBaseUrl) ?? string.Empty,
                 NormalizeNullable(ProxyApiKey) ?? string.Empty,
@@ -236,6 +240,7 @@ public sealed partial class MainWindowViewModel
         => _proxyModelPickerTarget switch
         {
             ProxyModelPickerTarget.DefaultModel => ProxyModel,
+            ProxyModelPickerTarget.ApplicationCenterModel => ApplicationCenterModel,
             ProxyModelPickerTarget.CapabilityEmbeddingsModel => ProxyEmbeddingsModel,
             ProxyModelPickerTarget.CapabilityImagesModel => ProxyImagesModel,
             ProxyModelPickerTarget.CapabilityAudioTranscriptionModel => ProxyAudioTranscriptionModel,
@@ -299,6 +304,11 @@ public sealed partial class MainWindowViewModel
 
                 SaveState();
                 break;
+            case ProxyModelPickerTarget.ApplicationCenterModel:
+                ApplicationCenterModel = normalizedModel;
+                StatusMessage = $"已回填应用接入模型：{normalizedModel}";
+                SaveState();
+                break;
             default:
                 ProxyModel = normalizedModel;
                 StatusMessage = $"已选择默认模型：{normalizedModel}";
@@ -318,6 +328,7 @@ public sealed partial class MainWindowViewModel
             ProxyModelPickerTarget.CapabilityAudioTranscriptionModel => "\u975E\u804A\u5929 API / Audio Transcription \u6A21\u578B",
             ProxyModelPickerTarget.CapabilityAudioSpeechModel => "\u975E\u804A\u5929 API / Audio Speech \u6A21\u578B",
             ProxyModelPickerTarget.CapabilityModerationModel => "\u975E\u804A\u5929 API / Moderation \u6A21\u578B",
+            ProxyModelPickerTarget.ApplicationCenterModel => "应用接入当前模型",
             ProxyModelPickerTarget.BatchSharedModel => "入口组的同站共用模型",
             ProxyModelPickerTarget.BatchEntryModel => "入口组的本条目模型",
             ProxyModelPickerTarget.BatchTemplateRowModel => "模板表当前行模型",
@@ -332,6 +343,7 @@ public sealed partial class MainWindowViewModel
             ProxyModelPickerTarget.CapabilityAudioTranscriptionModel => "\u4E0A\u65B9\u63A5\u53E3\u7684 Audio Transcription",
             ProxyModelPickerTarget.CapabilityAudioSpeechModel => "\u4E0A\u65B9\u63A5\u53E3\u7684 Audio Speech / TTS",
             ProxyModelPickerTarget.CapabilityModerationModel => "\u4E0A\u65B9\u63A5\u53E3\u7684 Moderation",
+            ProxyModelPickerTarget.ApplicationCenterModel => "应用接入接口",
             ProxyModelPickerTarget.BatchSharedModel => "\u5F53\u524D\u7AD9\u70B9",
             ProxyModelPickerTarget.BatchEntryModel => "\u5F53\u524D\u6761\u76EE",
             ProxyModelPickerTarget.BatchTemplateRowModel => "\u6A21\u677F\u884C",
@@ -344,6 +356,7 @@ public sealed partial class MainWindowViewModel
             ProxyModelPickerTarget.BatchSharedModel => "\u5F53\u524D\u7AD9\u70B9",
             ProxyModelPickerTarget.BatchEntryModel => "\u5F53\u524D\u6761\u76EE",
             ProxyModelPickerTarget.BatchTemplateRowModel => "\u5F53\u524D\u6A21\u677F\u884C",
+            ProxyModelPickerTarget.ApplicationCenterModel => "应用接入当前接口",
             _ => "\u4E0A\u65B9\u63A5\u53E3"
         };
 
@@ -432,6 +445,7 @@ public sealed partial class MainWindowViewModel
     private enum ProxyModelPickerTarget
     {
         DefaultModel,
+        ApplicationCenterModel,
         CapabilityEmbeddingsModel,
         CapabilityImagesModel,
         CapabilityAudioTranscriptionModel,

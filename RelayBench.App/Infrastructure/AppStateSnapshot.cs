@@ -14,6 +14,12 @@ public sealed class AppStateSnapshot
 
     public bool ProxyModelWasExplicitlySet { get; set; }
 
+    public string ApplicationCenterBaseUrl { get; set; } = string.Empty;
+
+    public string ApplicationCenterApiKey { get; set; } = string.Empty;
+
+    public string ApplicationCenterModel { get; set; } = string.Empty;
+
     public string ProxyTimeoutSecondsText { get; set; } = "20";
 
     public bool ProxyIgnoreTlsErrors { get; set; }

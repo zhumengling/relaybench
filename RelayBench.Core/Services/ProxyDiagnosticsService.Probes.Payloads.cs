@@ -270,6 +270,26 @@ public sealed partial class ProxyDiagnosticsService
         return JsonSerializer.Serialize(payload);
     }
 
+    private static string BuildAnthropicMessagesPayload(string model)
+    {
+        var payload = new
+        {
+            model,
+            max_tokens = GetChatProbeMaxTokens(model),
+            temperature = 0,
+            messages = new[]
+            {
+                new
+                {
+                    role = "user",
+                    content = "/no_think\nReply with exactly: proxy-ok"
+                }
+            }
+        };
+
+        return JsonSerializer.Serialize(payload);
+    }
+
     private static int GetChatProbeMaxTokens(string model)
         => GlobalChatProbeMaxTokens;
 
@@ -767,6 +787,32 @@ public sealed partial class ProxyDiagnosticsService
     {
         using var document = JsonDocument.Parse(json);
         return TryExtractResponsesText(document.RootElement);
+    }
+
+    private static string? ParseAnthropicMessagesPreview(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+
+        if (!root.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (var item in content.EnumerateArray())
+        {
+            if (item.TryGetProperty("text", out var textElement) && textElement.ValueKind == JsonValueKind.String)
+            {
+                return textElement.GetString();
+            }
+
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                return item.GetString();
+            }
+        }
+
+        return null;
     }
 
     private static string? ParseStructuredOutputPreview(string json)

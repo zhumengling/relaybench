@@ -287,7 +287,7 @@
                                 Margin="10,0,0,0"
                                 Padding="12,5"
                                 VerticalAlignment="Top"
-                                Command="{Binding OpenProxyEndpointHistoryCommand}"
+                                Command="{Binding OpenApplicationCenterProxyEndpointHistoryCommand}"
                                 Content="&#x5386;&#x53F2;&#x63A5;&#x53E3;" />
                     </Grid>
 
@@ -305,7 +305,7 @@
                                 <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5F53;&#x524D; Base URL" />
                                 <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
                                          IsReadOnly="True"
-                                         Text="{Binding ProxyBaseUrl, Mode=OneWay}" />
+                                         Text="{Binding ApplicationCenterBaseUrl, Mode=OneWay}" />
                             </StackPanel>
 
                             <Grid Grid.Row="1"
@@ -325,12 +325,12 @@
                                          Grid.Column="0"
                                          Style="{StaticResource CompactInputTextBoxStyle}"
                                          IsReadOnly="True"
-                                         Text="{Binding ProxyModel, Mode=OneWay}" />
+                                         Text="{Binding ApplicationCenterModel, Mode=OneWay}" />
                                 <Button Grid.Row="1"
                                         Grid.Column="2"
                                         MinWidth="86"
                                         Padding="10,4"
-                                        Command="{Binding FetchProxyModelsCommand}"
+                                        Command="{Binding FetchApplicationCenterProxyModelsCommand}"
                                         Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
                             </Grid>
 

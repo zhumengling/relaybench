@@ -11,6 +11,7 @@ public sealed class AppStateStore
     private static readonly HashSet<string> SecretPropertyNames = new(StringComparer.Ordinal)
     {
         nameof(AppStateSnapshot.ProxyApiKey),
+        nameof(AppStateSnapshot.ApplicationCenterApiKey),
         nameof(AppStateSnapshot.ProxyCacheIsolationAlternateApiKey),
         nameof(AppStateSnapshot.ProxyOfficialReferenceApiKey),
         nameof(AppStateSnapshot.ProxyBatchTargetsText),

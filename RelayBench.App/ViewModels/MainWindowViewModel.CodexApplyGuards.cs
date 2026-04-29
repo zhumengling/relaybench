@@ -17,11 +17,11 @@ public sealed partial class MainWindowViewModel
         ProxyEndpointSettings settings,
         string? entryName = null)
     {
-        await ExecuteBusyActionAsync(
-            string.IsNullOrWhiteSpace(entryName)
-                ? "正在检测当前接口是否支持 Responses API..."
-                : $"正在检测“{entryName}”是否支持 Responses API...",
-            () => DetectAndCacheProxyWireApiAsync(settings, forceProbe: true));
+        var result = await ProbeEndpointProtocolBeforeApplyAsync(settings, entryName);
+        if (result is null)
+        {
+            return false;
+        }
 
         if (CanApplyEndpointToCodexApps(settings.BaseUrl, settings.ApiKey, settings.Model))
         {
@@ -32,21 +32,70 @@ public sealed partial class MainWindowViewModel
             ? BuildCodexUnsupportedModelMessage(settings.Model)
             : BuildCodexUnsupportedModelMessage(entryName!, settings.Model);
         StatusMessage = message;
-        await ShowCodexResponsesUnsupportedNoticeAsync(message, settings);
+        await ShowCodexResponsesUnsupportedNoticeAsync(message, settings, result);
         return false;
     }
 
-    private Task ShowCodexResponsesUnsupportedNoticeAsync(string message, ProxyEndpointSettings settings)
+    private async Task<ProxyEndpointProtocolProbeResult?> ProbeEndpointProtocolBeforeApplyAsync(
+        ProxyEndpointSettings settings,
+        string? entryName = null)
+    {
+        ProxyEndpointProtocolProbeResult? result = null;
+        await ExecuteBusyActionAsync(
+            string.IsNullOrWhiteSpace(entryName)
+                ? "正在探测当前模型支持的接口格式..."
+                : $"正在探测“{entryName}”支持的接口格式...",
+            async () => result = await DetectAndCacheProxyWireApiAsync(settings, forceProbe: true));
+
+        StatusMessage = result is null
+            ? "接口格式探测未返回完整结果。"
+            : BuildProtocolProbeStatusMessage(result);
+        return result;
+    }
+
+    private Task ShowCodexResponsesUnsupportedNoticeAsync(
+        string message,
+        ProxyEndpointSettings settings,
+        ProxyEndpointProtocolProbeResult? probeResult = null)
         => ShowConfirmationDialogAsync(
             "不能应用到 Codex",
             message,
             $"地址：{FormatPreviewValue(settings.BaseUrl)}\n" +
             $"模型：{FormatPreviewValue(settings.Model)}\n\n" +
+            BuildProtocolProbeDetail(probeResult) +
+            "\n\n" +
             "原因：刚才的接口探测没有确认 /v1/responses 可用。Codex 当前配置只写入 wire_api = \"responses\"，" +
             "如果接口不支持 Responses API，应用后会导致 Codex 不能正常请求。\n\n" +
             "处理方式：换用支持 Responses API 的接口，或先在中转/本地服务里开启 Responses 兼容。",
             "知道了",
             "关闭");
+
+    private static string BuildProtocolProbeDetail(ProxyEndpointProtocolProbeResult? result)
+    {
+        if (result is null)
+        {
+            return "格式探测：未拿到完整探测结果。";
+        }
+
+        return
+            $"格式探测：{result.Summary}\n" +
+            $"OpenAI Chat Completions：{FormatSupported(result.ChatCompletionsSupported)}\n" +
+            $"OpenAI Responses：{FormatSupported(result.ResponsesSupported)}\n" +
+            $"Anthropic Messages：{FormatSupported(result.AnthropicMessagesSupported)}\n" +
+            $"推荐写入格式：{(string.IsNullOrWhiteSpace(result.PreferredWireApi) ? "暂无" : result.PreferredWireApi)}" +
+            (string.IsNullOrWhiteSpace(result.Error) ? string.Empty : $"\n探测错误：{result.Error}");
+    }
+
+    private static string BuildProtocolProbeStatusMessage(ProxyEndpointProtocolProbeResult result)
+        => $"格式探测完成：{FormatSupportedLabel("Chat", result.ChatCompletionsSupported)}，" +
+           $"{FormatSupportedLabel("Responses", result.ResponsesSupported)}，" +
+           $"{FormatSupportedLabel("Anthropic", result.AnthropicMessagesSupported)}。";
+
+    private static string FormatSupported(bool supported)
+        => supported ? "可用" : "不可用";
+
+    private static string FormatSupportedLabel(string label, bool supported)
+        => $"{label} {(supported ? "可用" : "不可用")}";
 
     private bool IsCodexResponsesCompatible(string? baseUrl, string? apiKey, string? model)
         => _codexResponsesCompatibilityByEndpointModel.TryGetValue(

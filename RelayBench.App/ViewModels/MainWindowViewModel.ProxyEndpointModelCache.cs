@@ -43,7 +43,7 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    private async Task DetectAndCacheProxyWireApiAsync(
+    private async Task<ProxyEndpointProtocolProbeResult?> DetectAndCacheProxyWireApiAsync(
         ProxyEndpointSettings settings,
         CancellationToken cancellationToken = default,
         bool forceProbe = false)
@@ -69,11 +69,11 @@ public sealed partial class MainWindowViewModel
                 if (!string.IsNullOrWhiteSpace(cached?.PreferredWireApi))
                 {
                     StatusMessage = $"已使用缓存的 Codex 接口链接方式：{cached.PreferredWireApi}。";
-                    return;
+                    return null;
                 }
             }
 
-            StatusMessage = "正在检测接口链接方式（chat / responses）...";
+            StatusMessage = "正在检测接口链接方式（chat / responses / Anthropic messages）...";
             var result = await _proxyDiagnosticsService.ProbeProtocolAsync(settings, cancellationToken);
             await _proxyEndpointModelCacheService.SaveProtocolProbeAsync(settings, result, cancellationToken);
             RememberCodexResponsesCompatibility(
@@ -89,6 +89,8 @@ public sealed partial class MainWindowViewModel
             {
                 StatusMessage = $"接口链接方式暂未识别：{result.Error}";
             }
+
+            return result;
         }
         catch (OperationCanceledException)
         {
@@ -97,6 +99,7 @@ public sealed partial class MainWindowViewModel
         catch (Exception ex)
         {
             AppDiagnosticLog.Write("ProxyEndpointModelCache.DetectWireApi", ex);
+            return null;
         }
     }
 

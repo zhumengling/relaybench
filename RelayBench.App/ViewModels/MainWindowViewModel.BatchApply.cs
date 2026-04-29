@@ -1,13 +1,9 @@
-using System.Text;
 using RelayBench.Core.Models;
-using RelayBench.Core.Services;
 
 namespace RelayBench.App.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    private readonly CodexFamilyConfigApplyService _codexFamilyConfigApplyService = new();
-
     private bool CanApplyRankingRowToCodexApps(ProxyBatchRankingRowViewModel? row)
         => !IsBusy &&
            row is not null &&
@@ -32,28 +28,26 @@ public sealed partial class MainWindowViewModel
         }
 
         var settings = BuildProxySettings(row.BaseUrl, row.ApiKey, row.Model);
-        if (!await ProbeCodexResponsesCompatibilityBeforeApplyAsync(settings, row.EntryName))
+        var protocolProbeResult = await ProbeEndpointProtocolBeforeApplyAsync(settings, row.EntryName);
+        if (protocolProbeResult is null)
         {
             return;
         }
 
-        var confirmed = await ShowConfirmationDialogAsync(
-            "确认应用到软件",
-            $"确定要把“{row.EntryName}”应用到 Codex 系列吗？",
-            "当前地址、密钥和模型会写入 Codex CLI、Codex Desktop、VSCode Codex 共用配置；不会把 Codex 登录态切换成 API Key 模式。\n" +
-            "修改前会自动创建备份。",
-            "应用到软件",
-            "取消");
-
-        if (!confirmed)
+        var selectedTargets = await ChooseClientApplyTargetsAsync(
+            $"应用“{row.EntryName}”到软件",
+            settings,
+            protocolProbeResult);
+        if (selectedTargets.Count == 0)
         {
             StatusMessage = $"已取消“{row.EntryName}”的应用。";
             return;
         }
 
-        var shouldMergeChats = await ConfirmCodexChatMergeAsync(
-            CodexChatMergeTarget.ThirdPartyCustom,
-            $"切到第三方（{row.EntryName}）");
+        var shouldMergeChats = ContainsCodexApplyTarget(selectedTargets) &&
+            await ConfirmCodexChatMergeAsync(
+                CodexChatMergeTarget.ThirdPartyCustom,
+                $"切到第三方（{row.EntryName}）");
 
         await ExecuteBusyActionAsync(
             $"正在应用“{row.EntryName}”...",
@@ -63,35 +57,36 @@ public sealed partial class MainWindowViewModel
                     row.BaseUrl,
                     row.ApiKey,
                     row.Model);
-                var result = await _codexFamilyConfigApplyService.ApplyAsync(
+                var endpoint = new ClientApplyEndpoint(
                     row.BaseUrl,
                     row.ApiKey,
                     row.Model,
                     CodexOpenAiProviderDisplayName,
                     cachedApplyInfo.ContextWindow,
                     cachedApplyInfo.PreferredWireApi);
+                var result = await _clientAppConfigApplyService.ApplyAsync(endpoint, selectedTargets);
                 CodexChatMergeResult? mergeResult = null;
-                if (result.Succeeded)
+                if (HasSucceededCodexTarget(result))
                 {
                     mergeResult = await MergeCodexChatsIfRequestedAsync(
                         shouldMergeChats,
                         CodexChatMergeTarget.ThirdPartyCustom);
                 }
 
-                StatusMessage = result.Succeeded
-                    ? mergeResult is { Succeeded: false }
-                        ? $"配置已更新，但聊天整理失败：{mergeResult.Error ?? mergeResult.Summary}"
-                        : mergeResult is { Succeeded: true }
-                            ? $"{result.Summary}；{mergeResult.Summary}"
-                            : result.Summary
-                    : $"应用失败：{result.Error ?? result.Summary}";
+                StatusMessage = BuildClientApplyStatusMessage(result, mergeResult);
 
                 AppendModuleOutput(
                     "排行榜入口应用到软件",
-                    BuildRankingRowApplySummary(row, result, mergeResult),
-                    BuildRankingRowApplyDetail(row, result, mergeResult));
+                    BuildClientApplyResultSummary(result, mergeResult),
+                    BuildClientApplyResultDetail(
+                        $"排行榜入口：{row.EntryName}",
+                        row.BaseUrl,
+                        row.ApiKey,
+                        row.Model,
+                        result,
+                        mergeResult));
 
-                if (result.Succeeded)
+                if (HasSucceededTarget(result))
                 {
                     ProxyBaseUrl = row.BaseUrl;
                     ProxyApiKey = row.ApiKey;
@@ -100,35 +95,6 @@ public sealed partial class MainWindowViewModel
                     ShowBatchRankingApplyToast(BuildBatchRankingApplyToastMessage(result, mergeResult));
                 }
             });
-    }
-
-    private static string BuildRankingRowApplySummary(
-        ProxyBatchRankingRowViewModel row,
-        ClientAppApplyResult result,
-        CodexChatMergeResult? mergeResult)
-        => $"入口：{row.EntryName}\n目标：Codex CLI / Codex Desktop / VSCode Codex\n配置结果：{result.Summary}\n聊天记录：{mergeResult?.Summary ?? "保持原样"}";
-
-    private static string BuildRankingRowApplyDetail(
-        ProxyBatchRankingRowViewModel row,
-        ClientAppApplyResult result,
-        CodexChatMergeResult? mergeResult)
-    {
-        StringBuilder builder = new();
-        builder.AppendLine($"入口名称：{row.EntryName}");
-        builder.AppendLine($"地址：{row.BaseUrl}");
-        builder.AppendLine($"密钥：{MaskApiKey(row.ApiKey)}");
-        builder.AppendLine($"模型：{row.Model}");
-        builder.AppendLine($"应用到：{string.Join(" / ", result.AppliedTargets)}");
-        builder.AppendLine($"更新文件：{(result.ChangedFiles.Count == 0 ? "无" : string.Join("\n", result.ChangedFiles))}");
-        builder.AppendLine($"备份文件：{(result.BackupFiles.Count == 0 ? "无" : string.Join("\n", result.BackupFiles))}");
-        builder.AppendLine($"聊天记录：{mergeResult?.Summary ?? "保持原样"}");
-        if (mergeResult is not null)
-        {
-            builder.AppendLine(BuildCodexChatMergeDetail(mergeResult));
-        }
-
-        builder.Append($"错误：{result.Error ?? "无"}");
-        return builder.ToString();
     }
 
     private static string BuildBatchRankingApplyToastMessage(

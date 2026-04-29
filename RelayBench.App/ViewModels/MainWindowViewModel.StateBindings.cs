@@ -20,6 +20,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ApplyCurrentInterfaceToCodexAppsCommand.RaiseCanExecuteChanged();
                 RunStunCommand.RaiseCanExecuteChanged();
                 FetchProxyModelsCommand.RaiseCanExecuteChanged();
+                FetchApplicationCenterProxyModelsCommand.RaiseCanExecuteChanged();
                 FetchProxyBatchSharedModelsCommand.RaiseCanExecuteChanged();
                 FetchProxyBatchEntryModelsCommand.RaiseCanExecuteChanged();
                 FetchProxyCapabilityModelsCommand.RaiseCanExecuteChanged();
@@ -163,7 +164,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (SetProperty(ref _proxyBaseUrl, value))
             {
                 RefreshProxyTrendView(value);
-                NotifyApplicationCenterProxyContextChanged();
                 if (!IsBusy)
                 {
                     RefreshSingleStationInlineChartPlaceholder();
@@ -175,13 +175,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string ProxyApiKey
     {
         get => _proxyApiKey;
-        set
-        {
-            if (SetProperty(ref _proxyApiKey, value))
-            {
-                NotifyApplicationCenterProxyContextChanged();
-            }
-        }
+        set => SetProperty(ref _proxyApiKey, value);
     }
 
     public string ProxyModel
@@ -191,7 +185,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             if (SetProperty(ref _proxyModel, value))
             {
-                NotifyApplicationCenterProxyContextChanged();
                 if (!IsBusy)
                 {
                     RefreshSingleStationInlineChartPlaceholder();
@@ -201,6 +194,46 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     SyncSelectedProxyCatalogModel(value);
                 }
                 OnPropertyChanged(nameof(ChatModeSummary));
+            }
+        }
+    }
+
+    public string ApplicationCenterBaseUrl
+    {
+        get => _applicationCenterBaseUrl;
+        set
+        {
+            if (SetProperty(ref _applicationCenterBaseUrl, value))
+            {
+                NotifyApplicationCenterProxyContextChanged();
+            }
+        }
+    }
+
+    public string ApplicationCenterApiKey
+    {
+        get => _applicationCenterApiKey;
+        set
+        {
+            if (SetProperty(ref _applicationCenterApiKey, value))
+            {
+                NotifyApplicationCenterProxyContextChanged();
+            }
+        }
+    }
+
+    public string ApplicationCenterModel
+    {
+        get => _applicationCenterModel;
+        set
+        {
+            if (SetProperty(ref _applicationCenterModel, value))
+            {
+                NotifyApplicationCenterProxyContextChanged();
+                if (_proxyModelPickerTarget == ProxyModelPickerTarget.ApplicationCenterModel)
+                {
+                    SyncSelectedProxyCatalogModel(value);
+                }
             }
         }
     }

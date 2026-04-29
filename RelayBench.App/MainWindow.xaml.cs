@@ -327,6 +327,8 @@ public partial class MainWindow : Window
             new OverlayAnimationState(OfficialApiTraceOverlay, OfficialApiTraceOverlayPanel, static viewModel => viewModel.IsOfficialApiTraceDialogOpen);
         _overlayAnimations[nameof(MainWindowViewModel.IsConfirmationDialogOpen)] =
             new OverlayAnimationState(ConfirmationDialogOverlay, ConfirmationDialogOverlayPanel, static viewModel => viewModel.IsConfirmationDialogOpen);
+        _overlayAnimations[nameof(MainWindowViewModel.IsClientApplyTargetDialogOpen)] =
+            new OverlayAnimationState(ClientApplyTargetOverlay, ClientApplyTargetOverlayPanel, static viewModel => viewModel.IsClientApplyTargetDialogOpen);
         _overlayAnimations[nameof(MainWindowViewModel.IsAboutDialogOpen)] =
             new OverlayAnimationState(AboutDialogOverlay, AboutDialogOverlayPanel, static viewModel => viewModel.IsAboutDialogOpen);
         _overlayAnimations[nameof(MainWindowViewModel.IsProxyEndpointHistoryOpen)] =

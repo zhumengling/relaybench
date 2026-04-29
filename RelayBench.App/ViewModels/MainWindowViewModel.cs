@@ -76,6 +76,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _proxyBaseUrl = string.Empty;
     private string _proxyApiKey = string.Empty;
     private string _proxyModel = string.Empty;
+    private string _applicationCenterBaseUrl = string.Empty;
+    private string _applicationCenterApiKey = string.Empty;
+    private string _applicationCenterModel = string.Empty;
     private string _proxyTimeoutSecondsText = "20";
     private bool _proxyIgnoreTlsErrors;
     private string _proxySeriesRoundsText = "5";

@@ -7,6 +7,11 @@ public sealed partial class MainWindowViewModel
             ProxyModelPickerTarget.DefaultModel,
             "\u9ED8\u8BA4\u6A21\u578B\u5217\u8868");
 
+    private Task FetchApplicationCenterProxyModelsWithGlobalProgressAsync()
+        => FetchProxyModelsForTargetWithGlobalProgressAsync(
+            ProxyModelPickerTarget.ApplicationCenterModel,
+            "应用接入模型列表");
+
     private Task FetchProxyBatchSharedModelsWithGlobalProgressAsync()
         => FetchProxyModelsForTargetWithGlobalProgressAsync(
             ProxyModelPickerTarget.BatchSharedModel,

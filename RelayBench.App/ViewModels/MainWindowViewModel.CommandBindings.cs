@@ -112,6 +112,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand FetchProxyModelsCommand { get; }
 
+    public AsyncRelayCommand FetchApplicationCenterProxyModelsCommand { get; }
+
     public AsyncRelayCommand FetchProxyBatchSharedModelsCommand { get; }
 
     public AsyncRelayCommand FetchProxyBatchEntryModelsCommand { get; }
@@ -178,6 +180,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand OpenProxyEndpointHistoryCommand { get; }
 
+    public AsyncRelayCommand OpenApplicationCenterProxyEndpointHistoryCommand { get; }
+
     public AsyncRelayCommand CloseProxyEndpointHistoryCommand { get; }
 
     public AsyncRelayCommand<ProxyEndpointHistoryItemViewModel?> ApplyProxyEndpointHistoryItemCommand { get; }
@@ -235,6 +239,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand ConfirmConfirmationDialogCommand { get; }
 
     public AsyncRelayCommand CancelConfirmationDialogCommand { get; }
+
+    public AsyncRelayCommand SelectAllClientApplyTargetsCommand { get; }
+
+    public AsyncRelayCommand InvertClientApplyTargetsCommand { get; }
+
+    public AsyncRelayCommand ConfirmClientApplyTargetDialogCommand { get; }
+
+    public AsyncRelayCommand CancelClientApplyTargetDialogCommand { get; }
 
     public AsyncRelayCommand OpenAboutDialogCommand { get; }
 

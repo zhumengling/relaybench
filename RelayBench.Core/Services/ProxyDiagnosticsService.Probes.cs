@@ -29,6 +29,7 @@ public sealed partial class ProxyDiagnosticsService
         string ProbeModel,
         bool ChatCompletionsSupported,
         bool ResponsesSupported,
+        bool AnthropicMessagesSupported,
         string? PreferredWireApi,
         string Summary);
 

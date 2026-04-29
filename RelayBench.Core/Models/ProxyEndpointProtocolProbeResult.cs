@@ -6,6 +6,7 @@ public sealed record ProxyEndpointProtocolProbeResult(
     string ProbeModel,
     bool ChatCompletionsSupported,
     bool ResponsesSupported,
+    bool AnthropicMessagesSupported,
     string? PreferredWireApi,
     string Summary,
     string? Error);

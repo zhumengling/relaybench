@@ -8,6 +8,7 @@ public sealed partial class MainWindowViewModel
     private const int MaxProxyEndpointHistoryEntries = 80;
     private bool _isProxyEndpointHistoryOpen;
     private ProxyEndpointHistoryItemViewModel? _selectedProxyEndpointHistoryItem;
+    private ProxyEndpointHistoryApplyTarget _proxyEndpointHistoryApplyTarget = ProxyEndpointHistoryApplyTarget.SingleStation;
 
     public ObservableCollection<ProxyEndpointHistoryItemViewModel> ProxyEndpointHistoryItems { get; } = [];
 
@@ -29,13 +30,33 @@ public sealed partial class MainWindowViewModel
     public string ProxyEndpointHistorySummary
         => ProxyEndpointHistoryItems.Count == 0
             ? "还没有保存过接口。填入接口并运行、拉取模型、加入入口组或关闭程序后会自动记录。"
-            : $"已保存 {ProxyEndpointHistoryItems.Count} 组接口，按最近使用时间倒序显示；点击任一项即可回填主页。";
+            : $"已保存 {ProxyEndpointHistoryItems.Count} 组接口，按最近使用时间倒序显示；点击任一项即可回填{ProxyEndpointHistoryTargetDisplayName}。";
+
+    public string ProxyEndpointHistoryTargetDisplayName
+        => _proxyEndpointHistoryApplyTarget == ProxyEndpointHistoryApplyTarget.ApplicationCenter
+            ? "应用接入"
+            : "单站测试";
+
+    public string ProxyEndpointHistoryApplyHint
+        => _proxyEndpointHistoryApplyTarget == ProxyEndpointHistoryApplyTarget.ApplicationCenter
+            ? "点击“使用选中项”后，会把接口地址、API Key、模型回填到应用接入的当前接口；单站测试里的当前接口不会被改动。"
+            : "点击“使用选中项”后，会把接口地址、API Key、模型回填到单站测试输入框；应用接入里的当前接口不会被改动。";
 
     private Task OpenProxyEndpointHistoryAsync()
+        => OpenProxyEndpointHistoryAsync(ProxyEndpointHistoryApplyTarget.SingleStation);
+
+    private Task OpenApplicationCenterProxyEndpointHistoryAsync()
+        => OpenProxyEndpointHistoryAsync(ProxyEndpointHistoryApplyTarget.ApplicationCenter);
+
+    private Task OpenProxyEndpointHistoryAsync(ProxyEndpointHistoryApplyTarget applyTarget)
     {
+        _proxyEndpointHistoryApplyTarget = applyTarget;
         RememberKnownProxyEndpoints(countUse: false);
         SelectedProxyEndpointHistoryItem = ProxyEndpointHistoryItems.FirstOrDefault();
         IsProxyEndpointHistoryOpen = true;
+        OnPropertyChanged(nameof(ProxyEndpointHistorySummary));
+        OnPropertyChanged(nameof(ProxyEndpointHistoryTargetDisplayName));
+        OnPropertyChanged(nameof(ProxyEndpointHistoryApplyHint));
         return Task.CompletedTask;
     }
 
@@ -53,12 +74,22 @@ public sealed partial class MainWindowViewModel
             return Task.CompletedTask;
         }
 
-        ProxyBaseUrl = item.BaseUrl;
-        ProxyApiKey = item.ApiKey;
-        ProxyModel = item.Model;
+        if (_proxyEndpointHistoryApplyTarget == ProxyEndpointHistoryApplyTarget.ApplicationCenter)
+        {
+            ApplicationCenterBaseUrl = item.BaseUrl;
+            ApplicationCenterApiKey = item.ApiKey;
+            ApplicationCenterModel = item.Model;
+        }
+        else
+        {
+            ProxyBaseUrl = item.BaseUrl;
+            ProxyApiKey = item.ApiKey;
+            ProxyModel = item.Model;
+        }
+
         RememberProxyEndpoint(item.BaseUrl, item.ApiKey, item.Model);
         IsProxyEndpointHistoryOpen = false;
-        StatusMessage = $"已回填历史接口：{item.BaseUrl}";
+        StatusMessage = $"已回填历史接口到{ProxyEndpointHistoryTargetDisplayName}：{item.BaseUrl}";
         SaveState();
         return Task.CompletedTask;
     }
@@ -108,6 +139,7 @@ public sealed partial class MainWindowViewModel
     private void RememberKnownProxyEndpoints(bool countUse = true)
     {
         RememberProxyEndpoint(ProxyBaseUrl, ProxyApiKey, ProxyModel, countUse);
+        RememberProxyEndpoint(ApplicationCenterBaseUrl, ApplicationCenterApiKey, ApplicationCenterModel, countUse);
 
         foreach (var item in ProxyBatchEditorItems)
         {
@@ -201,5 +233,11 @@ public sealed partial class MainWindowViewModel
     {
         OnPropertyChanged(nameof(HasProxyEndpointHistoryItems));
         OnPropertyChanged(nameof(ProxyEndpointHistorySummary));
+    }
+
+    private enum ProxyEndpointHistoryApplyTarget
+    {
+        SingleStation,
+        ApplicationCenter
     }
 }

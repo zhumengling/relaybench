@@ -71,6 +71,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ApplyCurrentInterfaceToCodexAppsCommand = new AsyncRelayCommand(ApplyCurrentInterfaceToCodexAppsAsync, CanApplyCurrentInterfaceToCodexApps, onError: HandleNonFatalCommandException);
         RunStunCommand = new AsyncRelayCommand(RunStunAsync, CanRun);
         FetchProxyModelsCommand = new AsyncRelayCommand(FetchDefaultProxyModelsWithGlobalProgressAsync, CanRun);
+        FetchApplicationCenterProxyModelsCommand = new AsyncRelayCommand(FetchApplicationCenterProxyModelsWithGlobalProgressAsync, CanRun);
         FetchProxyBatchSharedModelsCommand = new AsyncRelayCommand(FetchProxyBatchSharedModelsWithGlobalProgressAsync, CanRun);
         FetchProxyBatchEntryModelsCommand = new AsyncRelayCommand(FetchProxyBatchEntryModelsWithGlobalProgressAsync, CanRun);
         FetchProxyCapabilityModelsCommand = new AsyncRelayCommand<string?>(FetchProxyCapabilityModelsWithGlobalProgressAsync, _ => CanRun(), onError: HandleNonFatalCommandException);
@@ -104,6 +105,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OpenBatchComparisonChartCommand = new AsyncRelayCommand(OpenBatchComparisonChartAsync);
         OpenBatchDeepComparisonChartCommand = new AsyncRelayCommand(OpenBatchDeepComparisonChartAsync);
         OpenProxyEndpointHistoryCommand = new AsyncRelayCommand(OpenProxyEndpointHistoryAsync);
+        OpenApplicationCenterProxyEndpointHistoryCommand = new AsyncRelayCommand(OpenApplicationCenterProxyEndpointHistoryAsync);
         CloseProxyEndpointHistoryCommand = new AsyncRelayCommand(CloseProxyEndpointHistoryAsync);
         ApplyProxyEndpointHistoryItemCommand = new AsyncRelayCommand<ProxyEndpointHistoryItemViewModel?>(ApplyProxyEndpointHistoryItemAsync);
         ClearProxyEndpointHistoryCommand = new AsyncRelayCommand(ClearProxyEndpointHistoryAsync);
@@ -134,6 +136,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RunIpRiskReviewCommand = new AsyncRelayCommand(RunIpRiskReviewWithGlobalProgressAsync, CanRun);
         ConfirmConfirmationDialogCommand = new AsyncRelayCommand(ConfirmConfirmationDialogAsync);
         CancelConfirmationDialogCommand = new AsyncRelayCommand(CancelConfirmationDialogAsync);
+        SelectAllClientApplyTargetsCommand = new AsyncRelayCommand(SelectAllClientApplyTargetsAsync, CanEditClientApplyTargetSelection);
+        InvertClientApplyTargetsCommand = new AsyncRelayCommand(InvertClientApplyTargetsAsync, CanEditClientApplyTargetSelection);
+        ConfirmClientApplyTargetDialogCommand = new AsyncRelayCommand(ConfirmClientApplyTargetDialogAsync, CanConfirmClientApplyTargetDialog);
+        CancelClientApplyTargetDialogCommand = new AsyncRelayCommand(CancelClientApplyTargetDialogAsync);
         OpenAboutDialogCommand = new AsyncRelayCommand(OpenAboutDialogAsync);
         CloseAboutDialogCommand = new AsyncRelayCommand(CloseAboutDialogAsync);
         OpenProjectHomepageCommand = new AsyncRelayCommand(OpenProjectHomepageAsync);

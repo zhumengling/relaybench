@@ -14,7 +14,7 @@ public sealed partial class MainWindowViewModel
             var missing = GetApplicationCenterMissingContextFields();
             if (missing.Count == 0)
             {
-                return "当前接口信息已齐全；点击应用时会先检测 Responses API 支持，检测通过后继续确认。";
+                return "当前接口信息已齐全；点击应用时会先探测 Chat / Responses / Anthropic 支持，再选择要写入的软件。";
             }
 
             return $"还缺 {string.Join("、", missing)}，补齐后再应用。";
@@ -26,19 +26,21 @@ public sealed partial class MainWindowViewModel
         get
         {
             StringBuilder builder = new();
-            builder.AppendLine($"当前地址：{FormatPreviewValue(ProxyBaseUrl)}");
-            builder.AppendLine($"当前模型：{FormatPreviewValue(ProxyModel)}");
-            builder.AppendLine($"当前密钥：{FormatPreviewApiKey(ProxyApiKey)}");
+            builder.AppendLine($"当前地址：{FormatPreviewValue(ApplicationCenterBaseUrl)}");
+            builder.AppendLine($"当前模型：{FormatPreviewValue(ApplicationCenterModel)}");
+            builder.AppendLine($"当前密钥：{FormatPreviewApiKey(ApplicationCenterApiKey)}");
             builder.AppendLine($"显示名称：{ResolveCurrentProxyDisplayName() ?? "默认名称"}");
             builder.AppendLine();
             builder.AppendLine("将会更新：");
-            builder.AppendLine("- ~/.codex/config.toml");
+            builder.AppendLine("- ~/.codex/config.toml（Codex 系列共用配置）");
             builder.AppendLine("- ~/.codex/auth.json（仅清理旧版 API Key 接管，保留登录态）");
+            builder.AppendLine("- ~/.claude/settings.json（仅在选择 Claude CLI 且 Anthropic 可用时）");
             builder.AppendLine();
             builder.AppendLine("适用软件：");
             builder.AppendLine("- Codex CLI");
             builder.AppendLine("- Codex Desktop");
             builder.AppendLine("- VSCode Codex");
+            builder.AppendLine("- Claude CLI");
             builder.AppendLine();
             builder.AppendLine("完成后会自动重新扫描本地应用状态。");
 
@@ -48,10 +50,10 @@ public sealed partial class MainWindowViewModel
                 builder.AppendLine();
                 builder.AppendLine($"待补全：{string.Join("、", missing)}");
             }
-            else if (!CanApplyEndpointToCodexApps(ProxyBaseUrl, ProxyApiKey, ProxyModel))
+            else if (!CanApplyEndpointToCodexApps(ApplicationCenterBaseUrl, ApplicationCenterApiKey, ApplicationCenterModel))
             {
                 builder.AppendLine();
-                builder.AppendLine("点击应用时会先检测该接口是否支持 Codex 需要的 Responses API。");
+                builder.AppendLine("点击应用时会先探测接口格式，Codex 目标需要 Responses，Claude 目标需要 Anthropic Messages。");
             }
 
             return builder.ToString().TrimEnd();
@@ -59,7 +61,7 @@ public sealed partial class MainWindowViewModel
     }
 
     public string ApplicationCenterProxyApiKeyPreview
-        => FormatPreviewApiKey(ProxyApiKey);
+        => FormatPreviewApiKey(ApplicationCenterApiKey);
 
     private bool CanApplyCurrentInterfaceToCodexApps()
         => !IsBusy &&
@@ -74,98 +76,75 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        var settings = BuildProxySettings();
-        if (!await ProbeCodexResponsesCompatibilityBeforeApplyAsync(settings))
+        var settings = BuildProxySettings(
+            ApplicationCenterBaseUrl,
+            ApplicationCenterApiKey,
+            ApplicationCenterModel);
+        var protocolProbeResult = await ProbeEndpointProtocolBeforeApplyAsync(settings);
+        if (protocolProbeResult is null)
         {
             return;
         }
 
-        var confirmed = await ShowConfirmationDialogAsync(
-            "确认应用到软件",
-            "确定要把当前接口应用到 Codex 系列吗？",
-            "当前地址、密钥和模型会写入 Codex CLI、Codex Desktop、VSCode Codex 共用配置；不会把 Codex 登录态切换成 API Key 模式。\n" +
-            "修改前会自动创建备份。",
-            "应用到软件",
-            "取消");
-
-        if (!confirmed)
+        var selectedTargets = await ChooseClientApplyTargetsAsync(
+            "应用当前接口到软件",
+            settings,
+            protocolProbeResult);
+        if (selectedTargets.Count == 0)
         {
             StatusMessage = "已取消本次应用。";
             return;
         }
 
-        var shouldMergeChats = await ConfirmCodexChatMergeAsync(
-            CodexChatMergeTarget.ThirdPartyCustom,
-            "切到第三方");
+        var shouldMergeChats = ContainsCodexApplyTarget(selectedTargets) &&
+            await ConfirmCodexChatMergeAsync(
+                CodexChatMergeTarget.ThirdPartyCustom,
+                "切到第三方");
 
         await ExecuteBusyActionAsync(
             "正在应用当前接口...",
             async () =>
             {
                 var cachedApplyInfo = await ResolveCachedCodexApplyInfoAsync(
-                    ProxyBaseUrl,
-                    ProxyApiKey,
-                    ProxyModel);
-                var result = await _codexFamilyConfigApplyService.ApplyAsync(
-                    ProxyBaseUrl,
-                    ProxyApiKey,
-                    ProxyModel,
+                    ApplicationCenterBaseUrl,
+                    ApplicationCenterApiKey,
+                    ApplicationCenterModel);
+                var endpoint = new ClientApplyEndpoint(
+                    ApplicationCenterBaseUrl,
+                    ApplicationCenterApiKey,
+                    ApplicationCenterModel,
                     ResolveCurrentProxyDisplayName(),
                     cachedApplyInfo.ContextWindow,
                     cachedApplyInfo.PreferredWireApi);
-
-                StringBuilder detailBuilder = new();
-                detailBuilder.AppendLine(BuildApplicationCenterApplyDetail(result));
+                var result = await _clientAppConfigApplyService.ApplyAsync(endpoint, selectedTargets);
 
                 CodexChatMergeResult? mergeResult = null;
-                if (result.Succeeded)
+                if (HasSucceededCodexTarget(result))
                 {
                     mergeResult = await MergeCodexChatsIfRequestedAsync(
                         shouldMergeChats,
-                        CodexChatMergeTarget.ThirdPartyCustom,
-                        detailBuilder: detailBuilder);
+                        CodexChatMergeTarget.ThirdPartyCustom);
                 }
 
                 AppendModuleOutput(
-                    "应用当前接口到 Codex 系列",
-                    BuildApplicationCenterApplySummary(result, mergeResult),
-                    detailBuilder.ToString().TrimEnd());
+                    "应用当前接口到软件",
+                    BuildClientApplyResultSummary(result, mergeResult),
+                    BuildClientApplyResultDetail(
+                        "应用当前接口",
+                        ApplicationCenterBaseUrl,
+                        ApplicationCenterApiKey,
+                        ApplicationCenterModel,
+                        result,
+                        mergeResult));
 
-                StatusMessage = result.Succeeded
-                    ? mergeResult is { Succeeded: false }
-                        ? $"配置已更新，但聊天整理失败：{mergeResult.Error ?? mergeResult.Summary}"
-                        : mergeResult is { Succeeded: true }
-                            ? $"{result.Summary}；{mergeResult.Summary}"
-                            : result.Summary
-                    : $"应用失败：{result.Error ?? result.Summary}";
+                StatusMessage = BuildClientApplyStatusMessage(result, mergeResult);
 
-                if (result.Succeeded)
+                if (HasSucceededTarget(result))
                 {
                     SaveState();
                     await RunClientApiDiagnosticsCoreAsync();
                 }
             });
-    }
-
-    private static string BuildApplicationCenterApplySummary(
-        ClientAppApplyResult result,
-        CodexChatMergeResult? mergeResult)
-        => $"目标：{(result.AppliedTargets.Count == 0 ? "Codex 系列" : string.Join(" / ", result.AppliedTargets))}\n" +
-           $"配置结果：{result.Summary}\n" +
-           $"聊天记录：{mergeResult?.Summary ?? "保持原样"}";
-
-    private string BuildApplicationCenterApplyDetail(ClientAppApplyResult result)
-    {
-        StringBuilder builder = new();
-        builder.AppendLine($"当前地址：{ProxyBaseUrl}");
-        builder.AppendLine($"当前模型：{ProxyModel}");
-        builder.AppendLine($"当前密钥：{MaskApiKey(ProxyApiKey)}");
-        builder.AppendLine($"显示名称：{ResolveCurrentProxyDisplayName() ?? "默认名称"}");
-        builder.AppendLine($"应用到：{(result.AppliedTargets.Count == 0 ? "无" : string.Join(" / ", result.AppliedTargets))}");
-        builder.AppendLine($"更新文件：{(result.ChangedFiles.Count == 0 ? "无" : string.Join("\n", result.ChangedFiles))}");
-        builder.AppendLine($"备份文件：{(result.BackupFiles.Count == 0 ? "无" : string.Join("\n", result.BackupFiles))}");
-        builder.Append($"错误：{result.Error ?? "无"}");
-        return builder.ToString();
     }
 
     private void NotifyApplicationCenterProxyContextChanged()
@@ -180,17 +159,17 @@ public sealed partial class MainWindowViewModel
     {
         List<string> missing = [];
 
-        if (string.IsNullOrWhiteSpace(ProxyBaseUrl))
+        if (string.IsNullOrWhiteSpace(ApplicationCenterBaseUrl))
         {
             missing.Add("地址");
         }
 
-        if (string.IsNullOrWhiteSpace(ProxyModel))
+        if (string.IsNullOrWhiteSpace(ApplicationCenterModel))
         {
             missing.Add("模型");
         }
 
-        if (string.IsNullOrWhiteSpace(ProxyApiKey))
+        if (string.IsNullOrWhiteSpace(ApplicationCenterApiKey))
         {
             missing.Add("密钥");
         }
