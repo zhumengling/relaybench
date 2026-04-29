@@ -416,12 +416,19 @@
 
         <Grid Grid.RowSpan="3"
               Panel.ZIndex="30"
-              Background="#220F172A"
               Visibility="{Binding IsChatSettingsPanelOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="#220F172A">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick"
+                                  Command="{Binding CloseChatSettingsPanelCommand}" />
+                </Border.InputBindings>
+            </Border>
+
             <Border Width="460"
                     MaxHeight="720"
                     Margin="0,8,8,8"
                     Padding="14"
+                    Panel.ZIndex="1"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Top"
                     Background="White"
