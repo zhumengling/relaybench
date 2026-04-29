@@ -1012,10 +1012,8 @@ public sealed partial class MainWindowViewModel
             item.Title = BuildChatSessionTitle(session);
             item.UpdatedAt = session.UpdatedAt;
             item.MessageCount = session.Messages.Count;
-            ChatSessions.Move(ChatSessions.IndexOf(item), 0);
         }
 
-        SelectChatSession(item);
         OnPropertyChanged(nameof(HasChatSessions));
         DeleteChatSessionCommand.RaiseCanExecuteChanged();
     }
