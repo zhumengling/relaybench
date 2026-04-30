@@ -386,6 +386,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (SetProperty(ref _proxySummary, value))
             {
                 OnPropertyChanged(nameof(SingleStationResultSummary));
+                NotifySingleStationDashboardStateChanged();
             }
         }
     }
@@ -410,6 +411,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (SetProperty(ref _proxyStabilitySummary, value))
             {
                 OnPropertyChanged(nameof(SingleStationResultSummary));
+                NotifySingleStationDashboardStateChanged();
             }
         }
     }

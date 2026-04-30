@@ -49,10 +49,10 @@
                BasedOn="{StaticResource ReadOnlyConsoleTextBoxStyle}">
             <Setter Property="MinHeight" Value="118" />
             <Setter Property="Margin" Value="0,4,0,0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="#0F172A" />
+            <Setter Property="BorderBrush" Value="#1E293B" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10,8" />
         </Style>
 
         <Style x:Key="ReviewPaneRawTextBoxStyle"
@@ -60,10 +60,10 @@
                BasedOn="{StaticResource ReadOnlyRawLogTextBoxStyle}">
             <Setter Property="MinHeight" Value="118" />
             <Setter Property="Margin" Value="0,4,0,0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="#0F172A" />
+            <Setter Property="BorderBrush" Value="#1E293B" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10,8" />
         </Style>
 
         <Style x:Key="ReviewFlatTabControlStyle"
@@ -243,17 +243,19 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
+    <ScrollViewer x:Name="NetworkReviewRootScroll"
+                  Style="{StaticResource WorkbenchScrollViewerStyle}"
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
                   Background="Transparent">
-        <Grid Margin="0,0,2,0">
+        <Grid Margin="0,0,2,0"
+              MinHeight="{Binding ActualHeight, ElementName=NetworkReviewRootScroll}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Style="{StaticResource SectionPanelBorderStyle}">
+            <Border Style="{StaticResource CommandBarBorderStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -269,7 +271,7 @@
                              Style="{StaticResource PresetCardListBoxStyle}">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal" />
+                                <WrapPanel />
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                         <ListBox.ItemContainerStyle>
@@ -287,7 +289,7 @@
             </Border>
 
             <Border Grid.Row="1"
-                    Margin="0,4,0,0"
+                    Margin="0,8,0,0"
                     Style="{StaticResource SectionPanelBorderStyle}">
                 <Grid>
                     <Grid.RowDefinitions>

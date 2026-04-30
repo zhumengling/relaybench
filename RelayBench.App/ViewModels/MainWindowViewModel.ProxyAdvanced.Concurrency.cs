@@ -24,6 +24,7 @@ public sealed partial class MainWindowViewModel
             if (SetProperty(ref _proxyConcurrencySummary, value))
             {
                 OnPropertyChanged(nameof(SingleStationResultSummary));
+                NotifySingleStationDashboardStateChanged();
             }
         }
     }

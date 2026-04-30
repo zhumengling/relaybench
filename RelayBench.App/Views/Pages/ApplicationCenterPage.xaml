@@ -53,13 +53,13 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid>
+    <Grid MinHeight="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Style="{StaticResource SectionPanelBorderStyle}">
+        <Border Grid.Row="0" Style="{StaticResource CommandBarBorderStyle}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -94,10 +94,11 @@
         </Border>
 
         <Grid Grid.Row="1"
-              Margin="0,4,0,0">
+              Margin="0,8,0,0"
+              MinHeight="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="1.08*" />
-                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="0.92*" />
             </Grid.ColumnDefinitions>
 
@@ -133,9 +134,12 @@
                             <ItemsControl ItemsSource="{Binding ClientApiStatusRows}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Padding="0,8"
-                                                BorderBrush="#EAECF0"
-                                                BorderThickness="0,0,0,1">
+                                        <Border Margin="0,0,0,8"
+                                                Padding="10"
+                                                Background="#FFFFFF"
+                                                BorderBrush="{StaticResource PanelBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="10">
                                             <Grid>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
@@ -192,7 +196,7 @@
                                                               IsExpanded="False">
                                                         <Expander.Header>
                                                             <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                                                       Text="更多" />
+                                                                       Text="接入详情" />
                                                         </Expander.Header>
                                                         <StackPanel Margin="0,6,0,0">
                                                             <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
@@ -417,7 +421,7 @@
                             </Expander.Header>
                             <TextBlock Margin="0,6,0,0"
                                        Style="{StaticResource SectionHintTextStyle}"
-                                       Text="目前支持写入和还原 Codex 系列；其他应用以检测为主。" />
+                                       Text="根据协议探测结果展示可应用软件；不确定兼容项会二次确认。" />
                         </Expander>
                     </Grid>
                 </Grid>
