@@ -15,6 +15,13 @@ public sealed partial class MainWindowViewModel
     private bool _proxyEnableStreamingIntegrityTest;
     private bool _proxyEnableMultiModalTest;
     private bool _proxyEnableCacheMechanismTest;
+    private bool _proxyEnableInstructionFollowingTest = true;
+    private bool _proxyEnableDataExtractionTest = true;
+    private bool _proxyEnableStructuredOutputEdgeTest = true;
+    private bool _proxyEnableToolCallDeepTest = true;
+    private bool _proxyEnableReasonMathConsistencyTest;
+    private bool _proxyEnableCodeBlockDisciplineTest = true;
+    private bool _proxyEnableSemanticStabilitySampling;
     private bool _proxyEnableCacheIsolationTest;
     private string _proxyCacheIsolationAlternateApiKey = string.Empty;
     private bool _proxyEnableOfficialReferenceIntegrityTest;
@@ -137,6 +144,102 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
         }
     }
 
+    public bool ProxyEnableInstructionFollowingTest
+    {
+        get => _proxyEnableInstructionFollowingTest;
+        set
+        {
+            if (SetProperty(ref _proxyEnableInstructionFollowingTest, value))
+            {
+                SyncProxyDiagnosticPresetFromFlags();
+                OnPropertyChanged(nameof(ProxyDiagnosticsExecutionSummary));
+                OnPropertyChanged(nameof(ProxyBatchExecutionPlanSummary));
+            }
+        }
+    }
+
+    public bool ProxyEnableDataExtractionTest
+    {
+        get => _proxyEnableDataExtractionTest;
+        set
+        {
+            if (SetProperty(ref _proxyEnableDataExtractionTest, value))
+            {
+                SyncProxyDiagnosticPresetFromFlags();
+                OnPropertyChanged(nameof(ProxyDiagnosticsExecutionSummary));
+                OnPropertyChanged(nameof(ProxyBatchExecutionPlanSummary));
+            }
+        }
+    }
+
+    public bool ProxyEnableStructuredOutputEdgeTest
+    {
+        get => _proxyEnableStructuredOutputEdgeTest;
+        set
+        {
+            if (SetProperty(ref _proxyEnableStructuredOutputEdgeTest, value))
+            {
+                SyncProxyDiagnosticPresetFromFlags();
+                OnPropertyChanged(nameof(ProxyDiagnosticsExecutionSummary));
+                OnPropertyChanged(nameof(ProxyBatchExecutionPlanSummary));
+            }
+        }
+    }
+
+    public bool ProxyEnableToolCallDeepTest
+    {
+        get => _proxyEnableToolCallDeepTest;
+        set
+        {
+            if (SetProperty(ref _proxyEnableToolCallDeepTest, value))
+            {
+                SyncProxyDiagnosticPresetFromFlags();
+                OnPropertyChanged(nameof(ProxyDiagnosticsExecutionSummary));
+                OnPropertyChanged(nameof(ProxyBatchExecutionPlanSummary));
+            }
+        }
+    }
+
+    public bool ProxyEnableReasonMathConsistencyTest
+    {
+        get => _proxyEnableReasonMathConsistencyTest;
+        set
+        {
+            if (SetProperty(ref _proxyEnableReasonMathConsistencyTest, value))
+            {
+                SyncProxyDiagnosticPresetFromFlags();
+                OnPropertyChanged(nameof(ProxyDiagnosticsExecutionSummary));
+                OnPropertyChanged(nameof(ProxyBatchExecutionPlanSummary));
+            }
+        }
+    }
+
+    public bool ProxyEnableCodeBlockDisciplineTest
+    {
+        get => _proxyEnableCodeBlockDisciplineTest;
+        set
+        {
+            if (SetProperty(ref _proxyEnableCodeBlockDisciplineTest, value))
+            {
+                SyncProxyDiagnosticPresetFromFlags();
+                OnPropertyChanged(nameof(ProxyDiagnosticsExecutionSummary));
+                OnPropertyChanged(nameof(ProxyBatchExecutionPlanSummary));
+            }
+        }
+    }
+
+    public bool ProxyEnableSemanticStabilitySampling
+    {
+        get => _proxyEnableSemanticStabilitySampling;
+        set
+        {
+            if (SetProperty(ref _proxyEnableSemanticStabilitySampling, value))
+            {
+                RefreshProxyOverviewSummary();
+            }
+        }
+    }
+
     public bool ProxyEnableCacheIsolationTest
     {
         get => _proxyEnableCacheIsolationTest;
@@ -249,6 +352,12 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
                 $"流式完整性：{(ProxyEnableStreamingIntegrityTest ? "开启" : "关闭")}；" +
                 $"多模态：{(ProxyEnableMultiModalTest ? "开启" : "关闭")}；" +
                 $"缓存机制：{(ProxyEnableCacheMechanismTest ? "开启" : "关闭")}；" +
+                $"指令遵循：{(ProxyEnableInstructionFollowingTest ? "开启" : "关闭")}；" +
+                $"数据抽取：{(ProxyEnableDataExtractionTest ? "开启" : "关闭")}；" +
+                $"结构化边界：{(ProxyEnableStructuredOutputEdgeTest ? "开启" : "关闭")}；" +
+                $"ToolCall 深测：{(ProxyEnableToolCallDeepTest ? "开启" : "关闭")}；" +
+                $"推理一致性：{(ProxyEnableReasonMathConsistencyTest ? "开启" : "关闭")}；" +
+                $"代码块纪律：{(ProxyEnableCodeBlockDisciplineTest ? "开启" : "关闭")}；" +
                 $"\u591A\u6A21\u578B tok/s\uff1A{DescribeProxyMultiModelExecutionState()}\u3002";
         }
     }
@@ -320,6 +429,12 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
                 _proxyEnableStreamingIntegrityTest = snapshot.ProxyEnableStreamingIntegrityTest;
                 _proxyEnableMultiModalTest = snapshot.ProxyEnableMultiModalTest;
                 _proxyEnableCacheMechanismTest = snapshot.ProxyEnableCacheMechanismTest;
+                _proxyEnableInstructionFollowingTest = snapshot.ProxyEnableInstructionFollowingTest;
+                _proxyEnableDataExtractionTest = snapshot.ProxyEnableDataExtractionTest;
+                _proxyEnableStructuredOutputEdgeTest = snapshot.ProxyEnableStructuredOutputEdgeTest;
+                _proxyEnableToolCallDeepTest = snapshot.ProxyEnableToolCallDeepTest;
+                _proxyEnableReasonMathConsistencyTest = snapshot.ProxyEnableReasonMathConsistencyTest;
+                _proxyEnableCodeBlockDisciplineTest = snapshot.ProxyEnableCodeBlockDisciplineTest;
                 _proxyEnableCacheIsolationTest = false;
                 _proxyEnableOfficialReferenceIntegrityTest = false;
             }
@@ -330,10 +445,17 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
                 _proxyEnableStreamingIntegrityTest = true;
                 _proxyEnableMultiModalTest = true;
                 _proxyEnableCacheMechanismTest = true;
+                _proxyEnableInstructionFollowingTest = true;
+                _proxyEnableDataExtractionTest = true;
+                _proxyEnableStructuredOutputEdgeTest = true;
+                _proxyEnableToolCallDeepTest = true;
+                _proxyEnableReasonMathConsistencyTest = false;
+                _proxyEnableCodeBlockDisciplineTest = true;
                 _proxyEnableCacheIsolationTest = false;
                 _proxyEnableOfficialReferenceIntegrityTest = false;
             }
 
+            _proxyEnableSemanticStabilitySampling = snapshot.ProxyEnableSemanticStabilitySampling;
             _proxyCacheIsolationAlternateApiKey = snapshot.ProxyCacheIsolationAlternateApiKey ?? string.Empty;
             _proxyOfficialReferenceBaseUrl = snapshot.ProxyOfficialReferenceBaseUrl ?? string.Empty;
             _proxyOfficialReferenceApiKey = snapshot.ProxyOfficialReferenceApiKey ?? string.Empty;
@@ -359,6 +481,13 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
         OnPropertyChanged(nameof(ProxyEnableStreamingIntegrityTest));
         OnPropertyChanged(nameof(ProxyEnableMultiModalTest));
         OnPropertyChanged(nameof(ProxyEnableCacheMechanismTest));
+        OnPropertyChanged(nameof(ProxyEnableInstructionFollowingTest));
+        OnPropertyChanged(nameof(ProxyEnableDataExtractionTest));
+        OnPropertyChanged(nameof(ProxyEnableStructuredOutputEdgeTest));
+        OnPropertyChanged(nameof(ProxyEnableToolCallDeepTest));
+        OnPropertyChanged(nameof(ProxyEnableReasonMathConsistencyTest));
+        OnPropertyChanged(nameof(ProxyEnableCodeBlockDisciplineTest));
+        OnPropertyChanged(nameof(ProxyEnableSemanticStabilitySampling));
         OnPropertyChanged(nameof(ProxyEnableCacheIsolationTest));
         OnPropertyChanged(nameof(ProxyCacheIsolationAlternateApiKey));
         OnPropertyChanged(nameof(ProxyEnableOfficialReferenceIntegrityTest));
@@ -381,6 +510,13 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
         snapshot.ProxyEnableStreamingIntegrityTest = ProxyEnableStreamingIntegrityTest;
         snapshot.ProxyEnableMultiModalTest = ProxyEnableMultiModalTest;
         snapshot.ProxyEnableCacheMechanismTest = ProxyEnableCacheMechanismTest;
+        snapshot.ProxyEnableInstructionFollowingTest = ProxyEnableInstructionFollowingTest;
+        snapshot.ProxyEnableDataExtractionTest = ProxyEnableDataExtractionTest;
+        snapshot.ProxyEnableStructuredOutputEdgeTest = ProxyEnableStructuredOutputEdgeTest;
+        snapshot.ProxyEnableToolCallDeepTest = ProxyEnableToolCallDeepTest;
+        snapshot.ProxyEnableReasonMathConsistencyTest = ProxyEnableReasonMathConsistencyTest;
+        snapshot.ProxyEnableCodeBlockDisciplineTest = ProxyEnableCodeBlockDisciplineTest;
+        snapshot.ProxyEnableSemanticStabilitySampling = ProxyEnableSemanticStabilitySampling;
         snapshot.ProxyEnableCacheIsolationTest = false;
         snapshot.ProxyCacheIsolationAlternateApiKey = ProxyCacheIsolationAlternateApiKey;
         snapshot.ProxyEnableOfficialReferenceIntegrityTest = false;
@@ -409,6 +545,12 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
                 ProxyEnableStreamingIntegrityTest = true;
                 ProxyEnableMultiModalTest = true;
                 ProxyEnableCacheMechanismTest = true;
+                ProxyEnableInstructionFollowingTest = true;
+                ProxyEnableDataExtractionTest = true;
+                ProxyEnableStructuredOutputEdgeTest = true;
+                ProxyEnableToolCallDeepTest = true;
+                ProxyEnableReasonMathConsistencyTest = false;
+                ProxyEnableCodeBlockDisciplineTest = true;
                 ProxyEnableCacheIsolationTest = false;
                 ProxyEnableOfficialReferenceIntegrityTest = false;
             }
@@ -434,6 +576,12 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
             ProxyEnableStreamingIntegrityTest &&
             ProxyEnableMultiModalTest &&
             ProxyEnableCacheMechanismTest &&
+            ProxyEnableInstructionFollowingTest &&
+            ProxyEnableDataExtractionTest &&
+            ProxyEnableStructuredOutputEdgeTest &&
+            ProxyEnableToolCallDeepTest &&
+            !ProxyEnableReasonMathConsistencyTest &&
+            ProxyEnableCodeBlockDisciplineTest &&
             !ProxyEnableCacheIsolationTest &&
             !ProxyEnableOfficialReferenceIntegrityTest
                 ? "deep"

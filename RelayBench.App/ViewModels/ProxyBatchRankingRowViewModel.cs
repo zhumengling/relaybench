@@ -406,7 +406,7 @@ public sealed class ProxyBatchRankingRowViewModel : ObservableObject
             totalCount += 5;
         }
 
-        foreach (Match match in Regex.Matches(DeepSummary, @"\b(Sys|Fn|Err|Str|MM|Cch)\s+(OK|RV|CFG|SK|NO|ER)\b"))
+        foreach (Match match in Regex.Matches(DeepSummary, @"\b(Sys|Fn|Err|Str|MM|Cch|IF|DE|SO|TC|RM|CB)\s+(OK|RV|CFG|SK|NO|ER)\b"))
         {
             totalCount++;
             if (string.Equals(match.Groups[2].Value, "OK", StringComparison.Ordinal))

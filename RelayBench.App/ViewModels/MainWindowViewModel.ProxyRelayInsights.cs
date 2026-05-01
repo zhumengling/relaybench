@@ -6,8 +6,8 @@ namespace RelayBench.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private string _proxyVerdictSummary = "填写默认入口、默认密钥和默认模型后，这里会先给出一句话结论。";
-    private string _proxyCapabilityMatrixSummary = "单次探测完成后，这里会显示基础五项能力，以及按需追加的 System Prompt / Function Calling / 错误透传 / 流式完整性 / 官方对照完整性 / 多模态 / 缓存机制 / 缓存隔离状态。";
-    private string _proxySingleCapabilityDetailSummary = "运行基础或深度单次诊断后，这里会逐项显示 /models、普通对话、流式对话、Responses、结构化输出及对应探针的状态码、耗时与预览。";
+    private string _proxyCapabilityMatrixSummary = "单次探测完成后，这里会显示 Anthropic Messages、基础五项能力，以及按需追加的 System Prompt / Function Calling / 错误透传 / 流式完整性 / 官方对照完整性 / 多模态 / 缓存机制 / 指令遵循 / 数据抽取 / 缓存隔离状态。";
+    private string _proxySingleCapabilityDetailSummary = "运行基础或深度单次诊断后，这里会逐项显示 /models、Anthropic Messages、普通对话、流式对话、Responses、结构化输出及对应探针的状态码、耗时与预览。";
     private string _proxyKeyMetricsSummary = "这里会显示普通延迟、TTFT、独立吞吐、探针速率参考、输出量、长流简测、可追溯性和高级探针状态码。";
     private string _proxyIssueSummary = "这里会显示当前接口最主要的问题定位。";
     private string _proxyHeadersSummary = "这里会显示各探测步骤采集到的关键响应头。";
@@ -86,6 +86,7 @@ public sealed partial class MainWindowViewModel
         var models = FindScenario(scenarios, ProxyProbeScenarioKind.Models);
         var chat = FindScenario(scenarios, ProxyProbeScenarioKind.ChatCompletions);
         var stream = FindScenario(scenarios, ProxyProbeScenarioKind.ChatCompletionsStream);
+        var anthropic = FindScenario(scenarios, ProxyProbeScenarioKind.AnthropicMessages);
         var responses = FindScenario(scenarios, ProxyProbeScenarioKind.Responses);
         var structuredOutput = FindScenario(scenarios, ProxyProbeScenarioKind.StructuredOutput);
         var systemPrompt = FindScenario(scenarios, ProxyProbeScenarioKind.SystemPromptMapping);
@@ -96,6 +97,8 @@ public sealed partial class MainWindowViewModel
         var multiModal = FindScenario(scenarios, ProxyProbeScenarioKind.MultiModal);
         var cacheMechanism = FindScenario(scenarios, ProxyProbeScenarioKind.CacheMechanism);
         var cacheIsolation = FindScenario(scenarios, ProxyProbeScenarioKind.CacheIsolation);
+        var instructionFollowing = FindScenario(scenarios, ProxyProbeScenarioKind.InstructionFollowing);
+        var dataExtraction = FindScenario(scenarios, ProxyProbeScenarioKind.DataExtraction);
 
         var showProtocolCompatibility = ShouldShowScenario(systemPrompt) ||
                                         ShouldShowScenario(functionCalling);
@@ -104,6 +107,8 @@ public sealed partial class MainWindowViewModel
         var showOfficialReferenceIntegrity = ShouldShowScenario(officialReferenceIntegrity);
         var showMultiModal = ShouldShowScenario(multiModal);
         var showCacheMechanism = ShouldShowScenario(cacheMechanism);
+        var showInstructionFollowing = ShouldShowScenario(instructionFollowing);
+        var showDataExtraction = ShouldShowScenario(dataExtraction);
         var showCacheIsolation = ShouldShowScenario(cacheIsolation);
 
         ProxyVerdictSummary =
@@ -113,6 +118,7 @@ public sealed partial class MainWindowViewModel
 
         StringBuilder capabilityBuilder = new();
         capabilityBuilder.AppendLine($"模型列表：{FormatScenarioStatus(models)}");
+        capabilityBuilder.AppendLine($"Anthropic Messages：{FormatScenarioStatus(anthropic)}");
         capabilityBuilder.AppendLine($"普通对话：{FormatScenarioStatus(chat)}");
         capabilityBuilder.AppendLine($"流式对话：{FormatScenarioStatus(stream)}");
         capabilityBuilder.AppendLine($"Responses：{FormatScenarioStatus(responses)}");
@@ -154,6 +160,18 @@ public sealed partial class MainWindowViewModel
             capabilityBuilder.Append($"缓存机制：{FormatScenarioStatus(cacheMechanism)}");
         }
 
+        if (showInstructionFollowing)
+        {
+            capabilityBuilder.AppendLine();
+            capabilityBuilder.Append($"指令遵循：{FormatScenarioStatus(instructionFollowing)}");
+        }
+
+        if (showDataExtraction)
+        {
+            capabilityBuilder.AppendLine();
+            capabilityBuilder.Append($"数据抽取：{FormatScenarioStatus(dataExtraction)}");
+        }
+
         if (showCacheIsolation)
         {
             capabilityBuilder.AppendLine();
@@ -164,6 +182,7 @@ public sealed partial class MainWindowViewModel
 
         StringBuilder capabilityDetailBuilder = new();
         capabilityDetailBuilder.AppendLine($"/models：{BuildSingleScenarioDigest(models, $"模型数 {result.ModelCount} / 示例 {FormatSampleModels(result.SampleModels)}", fallbackStatusCode: result.ModelsStatusCode, fallbackLatency: result.ModelsLatency)}");
+        capabilityDetailBuilder.AppendLine($"Anthropic Messages：{BuildSingleScenarioDigest(anthropic, PreviewLabel(anthropic?.Preview), fallbackStatusCode: anthropic?.StatusCode, fallbackLatency: anthropic?.Latency)}");
         capabilityDetailBuilder.AppendLine($"普通对话：{BuildSingleScenarioDigest(chat, PreviewLabel(result.ChatPreview), fallbackStatusCode: result.ChatStatusCode, fallbackLatency: result.ChatLatency)}");
         capabilityDetailBuilder.AppendLine($"流式对话：{BuildSingleScenarioDigest(stream, BuildStreamPreviewLabel(result.StreamPreview), fallbackStatusCode: result.StreamStatusCode, fallbackLatency: result.StreamDuration, fallbackFirstTokenLatency: result.StreamFirstTokenLatency)}");
         capabilityDetailBuilder.AppendLine($"Responses：{BuildSingleScenarioDigest(responses, PreviewLabel(responses?.Preview), fallbackLatency: responses?.Latency)}");
@@ -203,6 +222,18 @@ public sealed partial class MainWindowViewModel
         {
             capabilityDetailBuilder.AppendLine();
             capabilityDetailBuilder.Append($"缓存机制：{BuildSingleScenarioDigest(cacheMechanism, PreviewLabel(BuildCacheMechanismDigest(cacheMechanism)), fallbackLatency: cacheMechanism?.Latency, fallbackFirstTokenLatency: cacheMechanism?.FirstTokenLatency)}");
+        }
+
+        if (showInstructionFollowing)
+        {
+            capabilityDetailBuilder.AppendLine();
+            capabilityDetailBuilder.Append($"指令遵循：{BuildSingleScenarioDigest(instructionFollowing, PreviewLabel(instructionFollowing?.Preview), fallbackLatency: instructionFollowing?.Latency)}");
+        }
+
+        if (showDataExtraction)
+        {
+            capabilityDetailBuilder.AppendLine();
+            capabilityDetailBuilder.Append($"数据抽取：{BuildSingleScenarioDigest(dataExtraction, PreviewLabel(dataExtraction?.Preview), fallbackLatency: dataExtraction?.Latency)}");
         }
 
         if (showCacheIsolation)
@@ -264,6 +295,18 @@ public sealed partial class MainWindowViewModel
             keyMetricsBuilder.AppendLine($"缓存机制摘要：{BuildCacheMechanismDigest(cacheMechanism)}");
         }
 
+        if (showInstructionFollowing)
+        {
+            keyMetricsBuilder.AppendLine($"指令遵循状态码：{instructionFollowing?.StatusCode?.ToString() ?? "--"}");
+            keyMetricsBuilder.AppendLine($"指令遵循观察：{instructionFollowing?.CapabilityStatus ?? "未探测"}");
+        }
+
+        if (showDataExtraction)
+        {
+            keyMetricsBuilder.AppendLine($"数据抽取状态码：{dataExtraction?.StatusCode?.ToString() ?? "--"}");
+            keyMetricsBuilder.AppendLine($"数据抽取观察：{dataExtraction?.CapabilityStatus ?? "未探测"}");
+        }
+
         if (showCacheIsolation)
         {
             keyMetricsBuilder.AppendLine($"缓存隔离状态码：{cacheIsolation?.StatusCode?.ToString() ?? "--"}");
@@ -285,6 +328,7 @@ public sealed partial class MainWindowViewModel
         keyMetricsBuilder.AppendLine($"边缘签名：{result.EdgeSignature ?? "未识别"}");
         keyMetricsBuilder.AppendLine($"CDN 观察：{result.CdnSummary ?? "无明显特征"}");
         keyMetricsBuilder.AppendLine($"模型列表状态码：{models?.StatusCode?.ToString() ?? "--"}");
+        keyMetricsBuilder.AppendLine($"Anthropic Messages 状态码：{anthropic?.StatusCode?.ToString() ?? "--"}");
         keyMetricsBuilder.AppendLine($"普通对话状态码：{chat?.StatusCode?.ToString() ?? "--"}");
         keyMetricsBuilder.AppendLine($"流式对话状态码：{stream?.StatusCode?.ToString() ?? "--"}");
         keyMetricsBuilder.AppendLine($"Responses 状态码：{responses?.StatusCode?.ToString() ?? "--"}");
@@ -493,7 +537,7 @@ public sealed partial class MainWindowViewModel
             $"最近一轮独立吞吐：{BuildThroughputBenchmarkDigest(best.LatestResult.ThroughputBenchmarkResult)}\n" +
             (ProxyBatchEnableLongStreamingTest ? $"最近一轮长流：{BuildLongStreamingDigest(best.LatestResult.LongStreamingResult)}\n" : string.Empty) +
             $"可追溯性：{best.LatestResult.TraceabilitySummary ?? "未识别"}\n" +
-            $"最近一轮五项：{BuildBatchCapabilityMatrix(best.LatestResult)}\n" +
+            $"最近一轮基础协议：{BuildBatchCapabilityMatrix(best.LatestResult)}\n" +
             $"CDN / 边缘：{best.LatestResult.CdnSummary ?? "未识别"}\n" +
             $"推荐理由：{best.LatestResult.Recommendation ?? best.LatestResult.Summary}\n" +
             $"主要风险：{risk}";

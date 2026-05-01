@@ -8,7 +8,7 @@ namespace RelayBench.Core.Services;
 
 public sealed partial class CloudflareSpeedTestService
 {
-    private static double? Percentile(IReadOnlyList<double> values, double percentile)
+    internal static double? Percentile(IReadOnlyList<double> values, double percentile)
     {
         if (values.Count == 0)
         {
@@ -29,7 +29,7 @@ public sealed partial class CloudflareSpeedTestService
         return lower + ((upper - lower) * remainder);
     }
 
-    private static double? CalculateJitter(IReadOnlyList<double> points)
+    internal static double? CalculateJitter(IReadOnlyList<double> points)
     {
         if (points.Count < 2)
         {
@@ -45,7 +45,7 @@ public sealed partial class CloudflareSpeedTestService
         return totalDelta / (points.Count - 1);
     }
 
-    private static double? ComputeLoadedLatencyIncrease(
+    internal static double? ComputeLoadedLatencyIncrease(
         double? idleLatency,
         double? downloadLoadedLatency,
         double? uploadLoadedLatency)
@@ -64,7 +64,7 @@ public sealed partial class CloudflareSpeedTestService
         return double.IsNaN(loadedLatency) ? null : Math.Max(0, loadedLatency - idleLatency.Value);
     }
 
-    private static int ComputeGptImpactScore(
+    internal static int ComputeGptImpactScore(
         double? idleLatency,
         double? idleJitter,
         double? packetLossRatio,
@@ -118,7 +118,7 @@ public sealed partial class CloudflareSpeedTestService
         return penalties[^1];
     }
 
-    private static string LabelGptImpact(int score)
+    internal static string LabelGptImpact(int score)
         => score switch
         {
             >= 85 => "优秀",
@@ -128,7 +128,7 @@ public sealed partial class CloudflareSpeedTestService
             _ => "较差"
         };
 
-    private static string FormatBandwidth(double? bitsPerSecond)
+    internal static string FormatBandwidth(double? bitsPerSecond)
     {
         if (bitsPerSecond is null)
         {

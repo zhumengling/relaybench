@@ -22,146 +22,254 @@ public sealed class ChatConversationService
             yield break;
         }
 
-        var useResponsesApi = ShouldUseResponsesApi(normalizedOptions, history, pendingAttachments);
-        var wireApi = useResponsesApi ? "responses" : "chat/completions";
-        var stopwatch = Stopwatch.StartNew();
-        TimeSpan? firstTokenLatency = null;
-        var outputCharacters = 0;
-
         yield return new ChatStreamUpdate(ChatStreamUpdateKind.Started, null, null, null);
 
-        using var client = CreateClient(baseUri, normalizedOptions);
-        var path = BuildApiPath(baseUri, wireApi);
-        var payload = useResponsesApi
-            ? ChatRequestPayloadBuilder.BuildResponsesPayload(normalizedOptions, history)
-            : ChatRequestPayloadBuilder.BuildChatCompletionsPayload(normalizedOptions, history);
+        var wireApis = BuildWireApiCandidates(normalizedOptions, history, pendingAttachments);
+        ChatStreamUpdate? lastFailureUpdate = null;
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, path)
+        foreach (var wireApi in wireApis)
         {
-            Content = new StringContent(payload, Encoding.UTF8, "application/json")
-        };
+            var stopwatch = Stopwatch.StartNew();
+            TimeSpan? firstTokenLatency = null;
+            var outputCharacters = 0;
 
-        HttpResponseMessage? response = null;
-        Stream? stream = null;
-        StreamReader? reader = null;
-        ChatStreamUpdate? failureUpdate = null;
-        try
-        {
-            response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            using var client = CreateClient(baseUri, normalizedOptions);
+            var path = BuildApiPath(baseUri, ToEndpointName(wireApi));
+            var payload = BuildPayloadForWireApi(wireApi, normalizedOptions, history);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, path)
             {
-                var body = await response.Content.ReadAsStringAsync(cancellationToken);
-                stopwatch.Stop();
-                failureUpdate = new ChatStreamUpdate(
-                    ChatStreamUpdateKind.Failed,
-                    null,
-                    BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
-                    BuildHttpFailureMessage((int)response.StatusCode, response.ReasonPhrase, body));
-            }
+                Content = new StringContent(payload, Encoding.UTF8, "application/json")
+            };
+            ConfigureRequestForWireApi(request, client, wireApi);
 
-            if (failureUpdate is null)
+            HttpResponseMessage? response = null;
+            Stream? stream = null;
+            StreamReader? reader = null;
+            ChatStreamUpdate? failureUpdate = null;
+            try
             {
-                stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                reader = new StreamReader(stream, Encoding.UTF8);
-            }
-        }
-        catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
-        {
-            stopwatch.Stop();
-            failureUpdate = new ChatStreamUpdate(
-                ChatStreamUpdateKind.Failed,
-                null,
-                BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
-                BuildExceptionFailureMessage(ex));
-        }
-
-        if (failureUpdate is not null)
-        {
-            response?.Dispose();
-            stream?.Dispose();
-            reader?.Dispose();
-            yield return failureUpdate;
-            yield break;
-        }
-
-        var activeStream = stream!;
-        var activeResponse = response!;
-        var activeReader = reader!;
-        await using (activeStream)
-        using (activeResponse)
-        using (activeReader)
-        {
-            while (true)
-            {
-                string? line;
-                try
+                response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                if (!response.IsSuccessStatusCode)
                 {
-                    line = await activeReader.ReadLineAsync(cancellationToken);
-                }
-                catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
-                {
+                    var body = await response.Content.ReadAsStringAsync(cancellationToken);
                     stopwatch.Stop();
                     failureUpdate = new ChatStreamUpdate(
                         ChatStreamUpdateKind.Failed,
                         null,
                         BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
-                        BuildExceptionFailureMessage(ex));
-                    break;
+                        BuildHttpFailureMessage((int)response.StatusCode, response.ReasonPhrase, body));
                 }
 
-                if (failureUpdate is not null)
+                if (failureUpdate is null)
                 {
-                    break;
+                    stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    reader = new StreamReader(stream, Encoding.UTF8);
                 }
-
-                if (line is null)
-                {
-                    break;
-                }
-
-                if (!ChatSseParser.TryReadDataLine(line, out var data))
-                {
-                    continue;
-                }
-
-                if (ChatSseParser.IsDone(data))
-                {
-                    break;
-                }
-
-                string? delta;
-                try
-                {
-                    delta = ChatSseParser.TryExtractDelta(data);
-                }
-                catch
-                {
-                    continue;
-                }
-
-                if (string.IsNullOrEmpty(delta))
-                {
-                    continue;
-                }
-
-                firstTokenLatency ??= stopwatch.Elapsed;
-                outputCharacters += delta.Length;
-                yield return new ChatStreamUpdate(ChatStreamUpdateKind.Delta, delta, null, null);
             }
-        }
+            catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
+            {
+                stopwatch.Stop();
+                failureUpdate = new ChatStreamUpdate(
+                    ChatStreamUpdateKind.Failed,
+                    null,
+                    BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
+                    BuildExceptionFailureMessage(ex));
+            }
 
-        if (failureUpdate is not null)
-        {
-            yield return failureUpdate;
+            if (failureUpdate is not null)
+            {
+                response?.Dispose();
+                stream?.Dispose();
+                reader?.Dispose();
+                lastFailureUpdate = failureUpdate;
+                continue;
+            }
+
+            var activeStream = stream!;
+            var activeResponse = response!;
+            var activeReader = reader!;
+            var sawTerminalEvent = false;
+            await using (activeStream)
+            using (activeResponse)
+            using (activeReader)
+            {
+                while (true)
+                {
+                    string? line;
+                    try
+                    {
+                        line = await activeReader.ReadLineAsync(cancellationToken);
+                    }
+                    catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
+                    {
+                        stopwatch.Stop();
+                        failureUpdate = new ChatStreamUpdate(
+                            ChatStreamUpdateKind.Failed,
+                            null,
+                            BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
+                            BuildExceptionFailureMessage(ex));
+                        break;
+                    }
+
+                    if (failureUpdate is not null)
+                    {
+                        break;
+                    }
+
+                    if (line is null)
+                    {
+                        break;
+                    }
+
+                    if (!ChatSseParser.TryReadDataLine(line, out var data))
+                    {
+                        continue;
+                    }
+
+                    if (ChatSseParser.IsDone(data))
+                    {
+                        sawTerminalEvent = true;
+                        break;
+                    }
+
+                    string? delta;
+                    try
+                    {
+                        delta = ChatSseParser.TryExtractDelta(data);
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    if (string.IsNullOrEmpty(delta))
+                    {
+                        continue;
+                    }
+
+                    firstTokenLatency ??= stopwatch.Elapsed;
+                    outputCharacters += delta.Length;
+                    yield return new ChatStreamUpdate(ChatStreamUpdateKind.Delta, delta, null, null);
+                }
+            }
+
+            if (failureUpdate is not null)
+            {
+                if (outputCharacters > 0)
+                {
+                    yield return failureUpdate;
+                    yield break;
+                }
+
+                lastFailureUpdate = failureUpdate;
+                continue;
+            }
+
+            if (!sawTerminalEvent)
+            {
+                stopwatch.Stop();
+                failureUpdate = new ChatStreamUpdate(
+                    ChatStreamUpdateKind.Failed,
+                    null,
+                    BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
+                    "stream ended before a terminal event.");
+
+                if (outputCharacters > 0)
+                {
+                    yield return failureUpdate;
+                    yield break;
+                }
+
+                lastFailureUpdate = failureUpdate;
+                continue;
+            }
+
+            stopwatch.Stop();
+            yield return new ChatStreamUpdate(
+                ChatStreamUpdateKind.Completed,
+                null,
+                BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
+                null);
             yield break;
         }
 
-        stopwatch.Stop();
-        yield return new ChatStreamUpdate(
-            ChatStreamUpdateKind.Completed,
-            null,
-            BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
-            null);
+        if (lastFailureUpdate is not null)
+        {
+            yield return lastFailureUpdate;
+        }
+    }
+
+    private static IReadOnlyList<string> BuildWireApiCandidates(
+        ChatRequestOptions options,
+        IReadOnlyList<ChatMessage> history,
+        IReadOnlyList<ChatAttachment> pendingAttachments)
+    {
+        List<string> candidates = [];
+        AddCandidate(candidates, ProxyWireApiProbeService.NormalizeWireApi(options.PreferredWireApi));
+
+        if (ShouldUseResponsesApi(options, history, pendingAttachments))
+        {
+            AddCandidate(candidates, ProxyWireApiProbeService.ResponsesWireApi);
+            AddCandidate(candidates, ProxyWireApiProbeService.AnthropicMessagesWireApi);
+            AddCandidate(candidates, ProxyWireApiProbeService.ChatCompletionsWireApi);
+        }
+        else
+        {
+            AddCandidate(candidates, ProxyWireApiProbeService.ChatCompletionsWireApi);
+            AddCandidate(candidates, ProxyWireApiProbeService.AnthropicMessagesWireApi);
+            AddCandidate(candidates, ProxyWireApiProbeService.ResponsesWireApi);
+        }
+
+        return candidates;
+    }
+
+    private static void AddCandidate(List<string> candidates, string? wireApi)
+    {
+        if (string.IsNullOrWhiteSpace(wireApi) ||
+            candidates.Contains(wireApi, StringComparer.Ordinal))
+        {
+            return;
+        }
+
+        candidates.Add(wireApi);
+    }
+
+    private static string ToEndpointName(string wireApi)
+        => wireApi switch
+        {
+            ProxyWireApiProbeService.ResponsesWireApi => "responses",
+            ProxyWireApiProbeService.AnthropicMessagesWireApi => "messages",
+            _ => "chat/completions"
+        };
+
+    private static string BuildPayloadForWireApi(
+        string wireApi,
+        ChatRequestOptions options,
+        IReadOnlyList<ChatMessage> history)
+        => wireApi switch
+        {
+            ProxyWireApiProbeService.ResponsesWireApi => ChatRequestPayloadBuilder.BuildResponsesPayload(options, history),
+            ProxyWireApiProbeService.AnthropicMessagesWireApi => ChatRequestPayloadBuilder.BuildAnthropicMessagesPayload(options, history),
+            _ => ChatRequestPayloadBuilder.BuildChatCompletionsPayload(options, history)
+        };
+
+    private static void ConfigureRequestForWireApi(
+        HttpRequestMessage request,
+        HttpClient client,
+        string wireApi)
+    {
+        if (!string.Equals(wireApi, ProxyWireApiProbeService.AnthropicMessagesWireApi, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
+        var apiKey = client.DefaultRequestHeaders.Authorization?.Parameter;
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            request.Headers.TryAddWithoutValidation("x-api-key", apiKey);
+        }
     }
 
     private static bool ShouldUseResponsesApi(

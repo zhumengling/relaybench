@@ -115,6 +115,13 @@ public sealed class AppStateStore
             snapshot.ProxyEnableStreamingIntegrityTest = config.ProxyEnableStreamingIntegrityTest;
             snapshot.ProxyEnableMultiModalTest = config.ProxyEnableMultiModalTest;
             snapshot.ProxyEnableCacheMechanismTest = config.ProxyEnableCacheMechanismTest;
+            snapshot.ProxyEnableInstructionFollowingTest = config.ProxyEnableInstructionFollowingTest;
+            snapshot.ProxyEnableDataExtractionTest = config.ProxyEnableDataExtractionTest;
+            snapshot.ProxyEnableStructuredOutputEdgeTest = config.ProxyEnableStructuredOutputEdgeTest;
+            snapshot.ProxyEnableToolCallDeepTest = config.ProxyEnableToolCallDeepTest;
+            snapshot.ProxyEnableReasonMathConsistencyTest = config.ProxyEnableReasonMathConsistencyTest;
+            snapshot.ProxyEnableCodeBlockDisciplineTest = config.ProxyEnableCodeBlockDisciplineTest;
+            snapshot.ProxyEnableSemanticStabilitySampling = config.ProxyEnableSemanticStabilitySampling;
             snapshot.ProxyEnableCacheIsolationTest = config.ProxyEnableCacheIsolationTest;
             snapshot.ProxyCacheIsolationAlternateApiKey = string.IsNullOrWhiteSpace(config.ProxyCacheIsolationAlternateApiKey)
                 ? snapshot.ProxyCacheIsolationAlternateApiKey
@@ -182,6 +189,13 @@ public sealed class AppStateStore
                 ProxyEnableStreamingIntegrityTest = snapshot.ProxyEnableStreamingIntegrityTest,
                 ProxyEnableMultiModalTest = snapshot.ProxyEnableMultiModalTest,
                 ProxyEnableCacheMechanismTest = snapshot.ProxyEnableCacheMechanismTest,
+                ProxyEnableInstructionFollowingTest = snapshot.ProxyEnableInstructionFollowingTest,
+                ProxyEnableDataExtractionTest = snapshot.ProxyEnableDataExtractionTest,
+                ProxyEnableStructuredOutputEdgeTest = snapshot.ProxyEnableStructuredOutputEdgeTest,
+                ProxyEnableToolCallDeepTest = snapshot.ProxyEnableToolCallDeepTest,
+                ProxyEnableReasonMathConsistencyTest = snapshot.ProxyEnableReasonMathConsistencyTest,
+                ProxyEnableCodeBlockDisciplineTest = snapshot.ProxyEnableCodeBlockDisciplineTest,
+                ProxyEnableSemanticStabilitySampling = snapshot.ProxyEnableSemanticStabilitySampling,
                 ProxyEnableCacheIsolationTest = snapshot.ProxyEnableCacheIsolationTest,
                 ProxyCacheIsolationAlternateApiKey = snapshot.ProxyCacheIsolationAlternateApiKey,
                 ProxyEnableOfficialReferenceIntegrityTest = snapshot.ProxyEnableOfficialReferenceIntegrityTest,
@@ -361,6 +375,20 @@ public sealed class AppStateStore
         public bool ProxyEnableMultiModalTest { get; set; }
 
         public bool ProxyEnableCacheMechanismTest { get; set; }
+
+        public bool ProxyEnableInstructionFollowingTest { get; set; } = true;
+
+        public bool ProxyEnableDataExtractionTest { get; set; } = true;
+
+        public bool ProxyEnableStructuredOutputEdgeTest { get; set; } = true;
+
+        public bool ProxyEnableToolCallDeepTest { get; set; } = true;
+
+        public bool ProxyEnableReasonMathConsistencyTest { get; set; }
+
+        public bool ProxyEnableCodeBlockDisciplineTest { get; set; } = true;
+
+        public bool ProxyEnableSemanticStabilitySampling { get; set; }
 
         public bool ProxyEnableCacheIsolationTest { get; set; }
 

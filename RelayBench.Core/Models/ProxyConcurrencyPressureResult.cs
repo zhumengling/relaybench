@@ -9,4 +9,5 @@ public sealed record ProxyConcurrencyPressureResult(
     int? RateLimitStartConcurrency,
     int? HighRiskConcurrency,
     string Summary,
-    string? Error);
+    string? Error,
+    int? PracticalConcurrencyLimit = null);

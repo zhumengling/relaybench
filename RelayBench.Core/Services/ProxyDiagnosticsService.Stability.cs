@@ -24,6 +24,45 @@ public sealed partial class ProxyDiagnosticsService
         var streamSuccessCount = rounds.Count(round => round.StreamRequestSucceeded);
         var responsesSuccessCount = rounds.Count(round => GetScenario(round.ScenarioResults ?? Array.Empty<ProxyProbeScenarioResult>(), ProxyProbeScenarioKind.Responses)?.Success == true);
         var structuredOutputSuccessCount = rounds.Count(round => GetScenario(round.ScenarioResults ?? Array.Empty<ProxyProbeScenarioResult>(), ProxyProbeScenarioKind.StructuredOutput)?.Success == true);
+        var instructionFollowingResults = rounds
+            .Select(round => GetScenario(round.ScenarioResults ?? Array.Empty<ProxyProbeScenarioResult>(), ProxyProbeScenarioKind.InstructionFollowing))
+            .Where(result => result is not null && !IsSkippedInformationalScenario(result))
+            .Cast<ProxyProbeScenarioResult>()
+            .ToArray();
+        var dataExtractionResults = rounds
+            .Select(round => GetScenario(round.ScenarioResults ?? Array.Empty<ProxyProbeScenarioResult>(), ProxyProbeScenarioKind.DataExtraction))
+            .Where(result => result is not null && !IsSkippedInformationalScenario(result))
+            .Cast<ProxyProbeScenarioResult>()
+            .ToArray();
+        var structuredOutputEdgeResults = rounds
+            .Select(round => GetScenario(round.ScenarioResults ?? Array.Empty<ProxyProbeScenarioResult>(), ProxyProbeScenarioKind.StructuredOutputEdge))
+            .Where(result => result is not null && !IsSkippedInformationalScenario(result))
+            .Cast<ProxyProbeScenarioResult>()
+            .ToArray();
+        var reasonMathConsistencyResults = rounds
+            .Select(round => GetScenario(round.ScenarioResults ?? Array.Empty<ProxyProbeScenarioResult>(), ProxyProbeScenarioKind.ReasonMathConsistency))
+            .Where(result => result is not null && !IsSkippedInformationalScenario(result))
+            .Cast<ProxyProbeScenarioResult>()
+            .ToArray();
+        var instructionFollowingExecutedCount = instructionFollowingResults.Length;
+        var dataExtractionExecutedCount = dataExtractionResults.Length;
+        var structuredOutputEdgeExecutedCount = structuredOutputEdgeResults.Length;
+        var reasonMathConsistencyExecutedCount = reasonMathConsistencyResults.Length;
+        var instructionFollowingSuccessCount = instructionFollowingResults.Count(result => result.Success);
+        var dataExtractionSuccessCount = dataExtractionResults.Count(result => result.Success);
+        var structuredOutputEdgeSuccessCount = structuredOutputEdgeResults.Count(result => result.Success);
+        var reasonMathConsistencySuccessCount = reasonMathConsistencyResults.Count(result => result.Success);
+        var semanticExecutedCount =
+            instructionFollowingExecutedCount +
+            dataExtractionExecutedCount +
+            structuredOutputEdgeExecutedCount +
+            reasonMathConsistencyExecutedCount;
+        var semanticSuccessCount =
+            instructionFollowingSuccessCount +
+            dataExtractionSuccessCount +
+            structuredOutputEdgeSuccessCount +
+            reasonMathConsistencySuccessCount;
+        var semanticStabilityRate = Rate(semanticSuccessCount, semanticExecutedCount);
         var maxConsecutiveFailures = CalculateMaxConsecutiveFailures(rounds);
         var fullSuccessRate = Rate(fullSuccessCount, completedRounds);
         var modelsSuccessRate = Rate(modelsSuccessCount, completedRounds);
@@ -56,8 +95,25 @@ public sealed partial class ProxyDiagnosticsService
             .Count();
         var edgeSwitchCount = CalculateEdgeSwitchCount(rounds);
         var cdnStabilitySummary = BuildCdnStabilitySummary(rounds, distinctResolvedAddressCount, distinctEdgeSignatureCount, edgeSwitchCount);
-        var healthScore = CalculateHealthScore(fullSuccessRate, streamSuccessRate, averageChatLatency, averageTtft, maxConsecutiveFailures);
+        var healthScore = CalculateHealthScore(
+            fullSuccessRate,
+            streamSuccessRate,
+            averageChatLatency,
+            averageTtft,
+            maxConsecutiveFailures,
+            semanticExecutedCount,
+            semanticStabilityRate);
         var healthLabel = LabelHealth(healthScore);
+        var semanticSummary = semanticExecutedCount == 0
+            ? string.Empty
+            : $" 语义稳定率 {semanticSuccessCount}/{semanticExecutedCount}（{semanticStabilityRate:F1}%）；指令遵循 {instructionFollowingSuccessCount}/{instructionFollowingExecutedCount}；数据抽取 {dataExtractionSuccessCount}/{dataExtractionExecutedCount}。";
+
+        if (semanticExecutedCount > 0 &&
+            (structuredOutputEdgeExecutedCount > 0 || reasonMathConsistencyExecutedCount > 0))
+        {
+            semanticSummary +=
+                $" StructuredEdge {structuredOutputEdgeSuccessCount}/{structuredOutputEdgeExecutedCount}; ReasonMath {reasonMathConsistencySuccessCount}/{reasonMathConsistencyExecutedCount}.";
+        }
 
         var summary =
             $"健康度 {healthScore}/100（{healthLabel}）。" +
@@ -69,6 +125,7 @@ public sealed partial class ProxyDiagnosticsService
             $"平均 TTFT {(averageTtft?.TotalMilliseconds.ToString("F0") ?? "--")} ms，" +
             $"最大连续失败 {maxConsecutiveFailures}。" +
             $"失败分布：{failureDistributionSummary}" +
+            semanticSummary +
             $" CDN 观察：{cdnStabilitySummary}";
 
         return new ProxyStabilityResult(
@@ -101,7 +158,12 @@ public sealed partial class ProxyDiagnosticsService
             distinctResolvedAddressCount,
             distinctEdgeSignatureCount,
             edgeSwitchCount,
-            cdnStabilitySummary);
+            cdnStabilitySummary,
+            instructionFollowingSuccessCount,
+            instructionFollowingExecutedCount,
+            dataExtractionSuccessCount,
+            dataExtractionExecutedCount,
+            semanticStabilityRate);
     }
 
     private static bool IsFullSuccess(ProxyDiagnosticsResult result)

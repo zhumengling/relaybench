@@ -53,7 +53,7 @@ public sealed partial class MainWindowViewModel
             else if (!CanApplyEndpointToCodexApps(ApplicationCenterBaseUrl, ApplicationCenterApiKey, ApplicationCenterModel))
             {
                 builder.AppendLine();
-                builder.AppendLine("点击应用时会先探测接口格式，Codex 目标需要 Responses，Claude 目标需要 Anthropic Messages。");
+                builder.AppendLine("点击应用时会先探测接口格式；Codex 目标优先使用 Responses，必要时回退 OpenAI Chat，Claude 目标需要 Anthropic Messages。");
             }
 
             return builder.ToString().TrimEnd();

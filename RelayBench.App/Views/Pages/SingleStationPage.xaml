@@ -4,7 +4,29 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:infra="clr-namespace:RelayBench.App.Infrastructure"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             Style="{StaticResource MotionPageRootStyle}"
              mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="SingleStationToolbarIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonStyle}">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+
+        <Style x:Key="SingleStationMotionInsetPanelStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource MotionDialogPanelStyle}">
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="Background" Value="{StaticResource PanelBrushStrong}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+    </UserControl.Resources>
+
     <Grid MinHeight="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -45,8 +67,10 @@
 
                 <Button Grid.Column="6"
                         VerticalAlignment="Bottom"
+                        Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                         Command="{Binding FetchProxyModelsCommand}"
-                        Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                        Content="&#xE72C;"
+                        ToolTip="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
             </Grid>
         </Border>
 
@@ -75,21 +99,23 @@
                 <WrapPanel Grid.Row="0"
                            Grid.Column="2"
                            VerticalAlignment="Center">
-                    <Button Margin="0,0,8,0"
-                            Padding="12,6"
-                            Command="{Binding OpenProxyEndpointHistoryCommand}"
-                            Content="历史接口" />
-                    <Button Margin="0,0,8,0"
-                            Padding="12,6"
-                            Command="{Binding OpenProxySingleChartCommand}"
-                            Content="查看图表" />
+                    <Button Command="{Binding OpenProxyEndpointHistoryCommand}"
+                            Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                            Content="&#xE81C;"
+                            ToolTip="&#x5386;&#x53F2;&#x63A5;&#x53E3;" />
+                    <Button Command="{Binding OpenProxySingleChartCommand}"
+                            Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                            Content="&#xE9D2;"
+                            ToolTip="&#x67E5;&#x770B;&#x56FE;&#x8868;" />
                     <Button Command="{Binding RunSelectedSingleStationModeCommand}"
-                            Style="{StaticResource PrimaryActionButtonStyle}"
-                            Content="{Binding SingleStationPrimaryButtonText}" />
-                    <Button Margin="8,0,0,0"
-                            Padding="12,6"
+                            Style="{StaticResource WorkbenchIconButtonPrimaryStyle}"
+                            Content="&#xE768;"
+                            ToolTip="{Binding SingleStationPrimaryButtonText}" />
+                    <Button Margin="6,0,0,0"
                             Command="{Binding StopCurrentProxyTestCommand}"
-                            Content="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;" />
+                            Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                            Content="&#xE71A;"
+                            ToolTip="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;" />
                 </WrapPanel>
 
                 <ComboBox Grid.Row="1"
@@ -114,6 +140,10 @@
                       Grid.ColumnSpan="3"
                       Margin="0,6,0,0"
                       Visibility="{Binding IsSingleStationStabilityMode, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="160" />
                         <ColumnDefinition Width="6" />
@@ -131,6 +161,12 @@
                         <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
                                  Text="{Binding ProxySeriesDelayMsText, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
+
+                    <CheckBox Grid.Row="1"
+                              Grid.ColumnSpan="3"
+                              Margin="0,8,0,0"
+                              Content="语义抽样"
+                              IsChecked="{Binding ProxyEnableSemanticStabilitySampling, Mode=TwoWay}" />
                 </Grid>
 
                 <Border Grid.Row="2"
@@ -163,14 +199,22 @@
                             <CheckBox Content="&#x6D41;&#x5F0F;&#x5B8C;&#x6574;&#x6027;" IsChecked="{Binding ProxyEnableStreamingIntegrityTest, Mode=TwoWay}" />
                             <CheckBox Content="&#x591A;&#x6A21;&#x6001;" IsChecked="{Binding ProxyEnableMultiModalTest, Mode=TwoWay}" />
                             <CheckBox Content="&#x7F13;&#x5B58;&#x673A;&#x5236;" IsChecked="{Binding ProxyEnableCacheMechanismTest, Mode=TwoWay}" />
+                            <CheckBox Content="指令遵循" IsChecked="{Binding ProxyEnableInstructionFollowingTest, Mode=TwoWay}" />
+                            <CheckBox Content="数据抽取" IsChecked="{Binding ProxyEnableDataExtractionTest, Mode=TwoWay}" />
+                            <CheckBox Content="结构化边界" IsChecked="{Binding ProxyEnableStructuredOutputEdgeTest, Mode=TwoWay}" />
+                            <CheckBox Content="ToolCall 深测" IsChecked="{Binding ProxyEnableToolCallDeepTest, Mode=TwoWay}" />
+                            <CheckBox Content="推理一致性" IsChecked="{Binding ProxyEnableReasonMathConsistencyTest, Mode=TwoWay}" />
+                            <CheckBox Content="代码块纪律" IsChecked="{Binding ProxyEnableCodeBlockDisciplineTest, Mode=TwoWay}" />
                             <Button Margin="8,0,0,0"
-                                    Padding="10,2"
+                                    Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                                     Command="{Binding OpenProxyMultiModelPickerCommand}"
-                                    Content="&#x591A;&#x6A21;&#x578B;..." />
+                                    Content="&#xE8F9;"
+                                    ToolTip="&#x591A;&#x6A21;&#x578B;" />
                             <Button Margin="8,0,0,0"
-                                    Padding="10,2"
+                                    Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                                     Command="{Binding ToggleProxyCapabilityConfigCommand}"
-                                    Content="{Binding ProxyCapabilityConfigButtonText, Mode=OneWay}" />
+                                    Content="&#xE713;"
+                                    ToolTip="{Binding ProxyCapabilityConfigButtonText, Mode=OneWay}" />
                             <TextBlock Margin="8,4,0,0"
                                        VerticalAlignment="Center"
                                        Style="{StaticResource SectionHintTextStyle}"
@@ -182,7 +226,7 @@
                         </WrapPanel>
 
                         <Border Margin="0,6,0,0"
-                                Style="{StaticResource InsetPanelBorderStyle}"
+                                Style="{StaticResource SingleStationMotionInsetPanelStyle}"
                                 Visibility="{Binding IsProxyCapabilityConfigOpen, Converter={StaticResource BoolToVisibilityConverter}}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="能力模型" />
@@ -217,11 +261,11 @@
                                                  Text="{Binding ProxyEmbeddingsModel, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="1"
                                                 Margin="6,0,0,0"
-                                                MinWidth="84"
-                                                Padding="10,4"
+                                                Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                                                 Command="{Binding FetchProxyCapabilityModelsCommand}"
                                                 CommandParameter="embeddings"
-                                                Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                                Content="&#xE72C;"
+                                                ToolTip="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
                                     </Grid>
                                 </StackPanel>
 
@@ -237,11 +281,11 @@
                                                  Text="{Binding ProxyImagesModel, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="1"
                                                 Margin="6,0,0,0"
-                                                MinWidth="84"
-                                                Padding="10,4"
+                                                Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                                                 Command="{Binding FetchProxyCapabilityModelsCommand}"
                                                 CommandParameter="images"
-                                                Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                                Content="&#xE72C;"
+                                                ToolTip="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
                                     </Grid>
                                 </StackPanel>
 
@@ -257,11 +301,11 @@
                                                  Text="{Binding ProxyAudioTranscriptionModel, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="1"
                                                 Margin="6,0,0,0"
-                                                MinWidth="84"
-                                                Padding="10,4"
+                                                Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                                                 Command="{Binding FetchProxyCapabilityModelsCommand}"
                                                 CommandParameter="audio-transcription"
-                                                Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                                Content="&#xE72C;"
+                                                ToolTip="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
                                     </Grid>
                                 </StackPanel>
 
@@ -277,11 +321,11 @@
                                                  Text="{Binding ProxyModerationModel, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="1"
                                                 Margin="6,0,0,0"
-                                                MinWidth="84"
-                                                Padding="10,4"
+                                                Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                                                 Command="{Binding FetchProxyCapabilityModelsCommand}"
                                                 CommandParameter="moderation"
-                                                Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                                Content="&#xE72C;"
+                                                ToolTip="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
                                     </Grid>
                                 </StackPanel>
 
@@ -297,11 +341,11 @@
                                                  Text="{Binding ProxyAudioSpeechModel, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="1"
                                                 Margin="6,0,0,0"
-                                                MinWidth="84"
-                                                Padding="10,4"
+                                                Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                                                 Command="{Binding FetchProxyCapabilityModelsCommand}"
                                                 CommandParameter="audio-speech"
-                                                Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                                Content="&#xE72C;"
+                                                ToolTip="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
                                     </Grid>
                                 </StackPanel>
 
@@ -482,11 +526,10 @@
 
                         <DockPanel LastChildFill="True">
                             <Button DockPanel.Dock="Right"
-                                    MinWidth="88"
-                                    Height="28"
-                                    Padding="10,3"
+                                    Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                                     Command="{Binding OpenProxySingleChartCommand}"
-                                    Content="放大图表" />
+                                    Content="&#xE740;"
+                                    ToolTip="&#x653E;&#x5927;&#x56FE;&#x8868;" />
                             <StackPanel>
                                 <TextBlock FontSize="12.2"
                                            FontWeight="SemiBold"
@@ -521,7 +564,8 @@
                                             <ColumnDefinition Width="112" />
                                             <ColumnDefinition Width="70" />
                                             <ColumnDefinition Width="1.45*" />
-                                            <ColumnDefinition Width="2.6*" />
+                                            <ColumnDefinition Width="2.35*" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
                                         <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="检测项" />
@@ -529,6 +573,7 @@
                                         <TextBlock Grid.Column="2" Style="{StaticResource FieldLabelTextStyle}" Text="HTTP" />
                                         <TextBlock Grid.Column="3" Style="{StaticResource FieldLabelTextStyle}" Text="指标" />
                                         <TextBlock Grid.Column="4" Style="{StaticResource FieldLabelTextStyle}" Text="结果" />
+                                        <TextBlock Grid.Column="5" Style="{StaticResource FieldLabelTextStyle}" Text="证据" />
                                     </Grid>
                                 </Border>
 
@@ -573,7 +618,8 @@
                                                             <ColumnDefinition Width="112" />
                                                             <ColumnDefinition Width="70" />
                                                             <ColumnDefinition Width="1.45*" />
-                                                            <ColumnDefinition Width="2.6*" />
+                                                            <ColumnDefinition Width="2.35*" />
+                                                            <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
 
                                                         <StackPanel Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center">
@@ -643,6 +689,15 @@
                                                                    TextTrimming="CharacterEllipsis"
                                                                    MaxHeight="38"
                                                                    Text="{Binding PreviewText}" />
+                                                        <Button Grid.Column="5"
+                                                                Margin="10,0,0,0"
+                                                                Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                                                                VerticalAlignment="Center"
+                                                                Command="{Binding DataContext.OpenProbeTraceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Content="&#xE946;"
+                                                                ToolTip="查看输入输出与判定证据"
+                                                                Visibility="{Binding HasTrace, Converter={StaticResource BoolToVisibilityConverter}}" />
                                                     </Grid>
                                                 </Border>
                                                 <DataTemplate.Triggers>
@@ -698,11 +753,11 @@
 
                         <DockPanel LastChildFill="True">
                             <Button DockPanel.Dock="Right"
-                                    MinWidth="96"
-                                    Padding="10,3"
+                                    Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                                     VerticalAlignment="Center"
                                     Command="{Binding OpenProxyConcurrencyChartCommand}"
-                                    Content="放大图表" />
+                                    Content="&#xE740;"
+                                    ToolTip="&#x653E;&#x5927;&#x56FE;&#x8868;" />
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="分档结果" />
                                 <TextBlock Margin="10,0,0,0"

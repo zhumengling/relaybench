@@ -37,6 +37,8 @@ public sealed class ChatModelAnswerViewModel : ObservableObject
             {
                 RefreshBlocks();
                 OnPropertyChanged(nameof(HasContent));
+                OnPropertyChanged(nameof(CopyText));
+                OnPropertyChanged(nameof(CanCopy));
             }
         }
     }
@@ -61,6 +63,8 @@ public sealed class ChatModelAnswerViewModel : ObservableObject
             if (SetProperty(ref _error, value))
             {
                 OnPropertyChanged(nameof(HasError));
+                OnPropertyChanged(nameof(CopyText));
+                OnPropertyChanged(nameof(CanCopy));
             }
         }
     }
@@ -80,6 +84,19 @@ public sealed class ChatModelAnswerViewModel : ObservableObject
     public bool HasContent => !string.IsNullOrWhiteSpace(Content);
 
     public bool HasError => !string.IsNullOrWhiteSpace(Error);
+
+    public bool CanCopy => !string.IsNullOrWhiteSpace(Content) || HasError;
+
+    public string CopyText
+    {
+        get
+        {
+            var body = string.IsNullOrWhiteSpace(Content) ? "\u6682\u65e0\u8f93\u51fa\u3002" : Content;
+            return HasError
+                ? $"## {Ordinal}. {ModelName}{Environment.NewLine}{Environment.NewLine}{body}{Environment.NewLine}{Environment.NewLine}> \u9519\u8bef\uff1a{Error}"
+                : $"## {Ordinal}. {ModelName}{Environment.NewLine}{Environment.NewLine}{body}";
+        }
+    }
 
     public string MetricsSummary
     {

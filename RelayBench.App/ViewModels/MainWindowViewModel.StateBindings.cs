@@ -31,6 +31,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 PasteProxyBatchTemplateRowsCommand.RaiseCanExecuteChanged();
                 ApplyProxyBatchTemplateDefaultsCommand.RaiseCanExecuteChanged();
                 ClearProxyBatchTemplateEmptyRowsCommand.RaiseCanExecuteChanged();
+                ToggleProxyBatchTemplateRowsTestInclusionCommand.RaiseCanExecuteChanged();
                 FetchProxyBatchTemplateRowModelsCommand.RaiseCanExecuteChanged();
                 OpenProxyBatchEditorCommand.RaiseCanExecuteChanged();
                 RunProxyCommand.RaiseCanExecuteChanged();
@@ -310,6 +311,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public string ProxyChartImageOnlyModeButtonText
         => IsProxyChartImageOnlyMode ? "恢复完整布局" : "仅看图表";
+
+    public string ProxyBatchTemplateToggleAllTestText
+    {
+        get
+        {
+            var rows = ProxyBatchTemplateDraftItems
+                .Where(item => !IsEmptyProxyBatchTemplateDraftRow(item))
+                .ToArray();
+
+            if (rows.Length == 0)
+            {
+                return "全部加入";
+            }
+
+            return rows.All(item => item.IncludeInBatchTest) ? "全部关闭" : "全部加入";
+        }
+    }
 
     public string ProxyModelPickerTargetSummary
         => $"当前回填位置：{GetProxyModelPickerTargetDisplayName()}";

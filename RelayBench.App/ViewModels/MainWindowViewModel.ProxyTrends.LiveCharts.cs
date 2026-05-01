@@ -207,7 +207,7 @@ public sealed partial class MainWindowViewModel
 
         AppendPendingSupplementalCapabilityChartItems(items, ref nextOrder, skipExisting: true);
 
-        return items;
+        return NormalizeSingleCapabilityChartItems(items);
 
     }
 
@@ -365,6 +365,114 @@ public sealed partial class MainWindowViewModel
 
             scenarios,
 
+            ProxyProbeScenarioKind.InstructionFollowing,
+
+            "\u6df1\u5ea6\u6d4b\u8bd5",
+
+            "语义稳定性",
+
+            "指令遵循",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "system 优先级与严格 JSON"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.DataExtraction,
+
+            "\u6df1\u5ea6\u6d4b\u8bd5",
+
+            "语义稳定性",
+
+            "数据抽取",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "事实字段与数字保真"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.StructuredOutputEdge,
+
+            "深度测试",
+
+            "接口稳定性",
+
+            "结构化边界",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "JSON / CSV / 类型保真"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.ToolCallDeep,
+
+            "深度测试",
+
+            "应用接入可用性",
+
+            "ToolCall 深测",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "工具选择与参数精度"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.ReasonMathConsistency,
+
+            "语义稳定性",
+
+            "固定答案与中间量",
+
+            "推理一致性",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "答案与 CHECKS 契约"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
+            ProxyProbeScenarioKind.CodeBlockDiscipline,
+
+            "真实使用体验",
+
+            "代码块识别",
+
+            "代码块纪律",
+
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "单代码块、语言标签与修复点"));
+
+        AddScenarioChartItemIfPresent(
+
+            items,
+
+            ref nextOrder,
+
+            scenarios,
+
             ProxyProbeScenarioKind.CacheIsolation,
 
             "\u6df1\u5ea6\u6d4b\u8bd5",
@@ -477,7 +585,7 @@ public sealed partial class MainWindowViewModel
         var nextOrder = (items.Count == 0 ? 0 : items.Max(item => item.Order)) + 1;
         AppendPendingSupplementalCapabilityChartItems(items, ref nextOrder, skipExisting: true);
 
-        return items;
+        return NormalizeSingleCapabilityChartItems(items);
     }
 
     private void AppendPendingSupplementalCapabilityChartItems(
@@ -600,6 +708,66 @@ public sealed partial class MainWindowViewModel
                 "将检查重复 Prompt 的缓存命中");
         }
 
+        if (executionPlan.EnableInstructionFollowingTest)
+        {
+            AddPending(
+                "深度测试",
+                "语义稳定性",
+                "指令遵循",
+                "等待补充探针",
+                "将检查 system 优先级与严格 JSON");
+        }
+
+        if (executionPlan.EnableDataExtractionTest)
+        {
+            AddPending(
+                "深度测试",
+                "语义稳定性",
+                "数据抽取",
+                "等待补充探针",
+                "将检查字段、数字和 URL 保真");
+        }
+
+        if (executionPlan.EnableStructuredOutputEdgeTest)
+        {
+            AddPending(
+                "深度测试",
+                "接口稳定性",
+                "结构化边界",
+                "等待补充探针",
+                "将检查 JSON / CSV / 类型保真");
+        }
+
+        if (executionPlan.EnableToolCallDeepTest)
+        {
+            AddPending(
+                "深度测试",
+                "应用接入可用性",
+                "ToolCall 深测",
+                "等待补充探针",
+                "将检查工具选择与参数精度");
+        }
+
+        if (executionPlan.EnableReasonMathConsistencyTest)
+        {
+            AddPending(
+                "语义稳定性",
+                "固定答案与中间量",
+                "推理一致性",
+                "等待补充探针",
+                "将检查答案与 CHECKS 契约");
+        }
+
+        if (executionPlan.EnableCodeBlockDisciplineTest)
+        {
+            AddPending(
+                "真实使用体验",
+                "代码块识别",
+                "代码块纪律",
+                "等待补充探针",
+                "将检查单代码块、语言标签与修复点");
+        }
+
         if (executionPlan.EnableCacheIsolationTest)
         {
             AddPending(
@@ -638,6 +806,17 @@ public sealed partial class MainWindowViewModel
 
         nextOrder = order;
     }
+
+    private static IReadOnlyList<ProxySingleCapabilityChartItem> NormalizeSingleCapabilityChartItems(
+        IReadOnlyList<ProxySingleCapabilityChartItem> items)
+        => ProxySingleCapabilityChartModelFactory.NormalizeItems(
+            items,
+            GetOrderedScenarioDefinitions().Select(static definition => definition.Label).ToArray());
+
+    private static int ResolveSingleCapabilityChartItemRank(ProxySingleCapabilityChartItem item)
+        => ProxySingleCapabilityChartModelFactory.ResolveRank(
+            item,
+            GetOrderedScenarioDefinitions().Select(static definition => definition.Label).ToArray());
 
     private static int ResolveNextSingleCapabilityOrder(IReadOnlyCollection<ProxySingleCapabilityChartItem> items)
         => (items.Count == 0 ? 0 : items.Max(item => item.Order)) + 1;
@@ -688,7 +867,7 @@ public sealed partial class MainWindowViewModel
         SetProxyChartRetryMode(ProxyChartRetryMode.Stability, "追加重试 5 轮");
         var baseUrl = string.IsNullOrWhiteSpace(ProxyBaseUrl) ? "（未填写）" : ProxyBaseUrl.Trim();
         var placeholderRecords = BuildLiveSeriesChartEntries(Array.Empty<ProxyDiagnosticsResult>(), baseUrl, includePlaceholder: true);
-        var chartResult = _proxyTrendChartRenderService.Render(placeholderRecords, baseUrl);
+        var chartResult = _proxyTrendChartRenderService.Render(placeholderRecords, baseUrl, ResolvePreferredSingleChartWidth());
 
         SetProxyChartSnapshot(
             ProxyChartViewMode.StabilityTrend,
@@ -719,7 +898,7 @@ public sealed partial class MainWindowViewModel
     {
         var baseUrl = rounds.FirstOrDefault()?.BaseUrl ?? ProxyBaseUrl.Trim();
         var chartEntries = BuildLiveSeriesChartEntries(rounds, baseUrl, includePlaceholder: rounds.Count == 0);
-        var chartResult = _proxyTrendChartRenderService.Render(chartEntries, baseUrl);
+        var chartResult = _proxyTrendChartRenderService.Render(chartEntries, baseUrl, ResolvePreferredSingleChartWidth());
         var latestRound = rounds.OrderByDescending(item => item.CheckedAt).FirstOrDefault();
         var fullSuccessCount = rounds.Count(IsFullSuccess);
         var avgChatLatency = Average(rounds.Select(round => round.ChatLatency?.TotalMilliseconds));
@@ -766,7 +945,7 @@ public sealed partial class MainWindowViewModel
         SetProxyChartRetryMode(ProxyChartRetryMode.Stability, "追加重试 5 轮");
         var latestRound = result.RoundResults.OrderByDescending(item => item.CheckedAt).FirstOrDefault();
         var chartEntries = BuildLiveSeriesChartEntries(result.RoundResults, result.BaseUrl, includePlaceholder: false);
-        var chartResult = _proxyTrendChartRenderService.Render(chartEntries, result.BaseUrl);
+        var chartResult = _proxyTrendChartRenderService.Render(chartEntries, result.BaseUrl, ResolvePreferredSingleChartWidth());
 
         SetProxyChartSnapshot(
             ProxyChartViewMode.StabilityTrend,

@@ -197,6 +197,7 @@ public sealed partial class MainWindowViewModel
     private void RefreshProxyBatchTemplateDraftState()
     {
         OnPropertyChanged(nameof(ProxyBatchTemplateSummary));
+        OnPropertyChanged(nameof(ProxyBatchTemplateToggleAllTestText));
         OnPropertyChanged(nameof(ProxyBatchEditorSelectionSummary));
     }
 

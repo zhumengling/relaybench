@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             Style="{StaticResource MotionPageRootStyle}"
              mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="ChartPreviewOverlayTextStyle"
@@ -10,6 +11,23 @@
                BasedOn="{StaticResource SectionHintTextStyle}">
             <Setter Property="Foreground" Value="#344054" />
             <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="BatchToolbarIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonStyle}">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+        <Style x:Key="BatchMotionInsetPanelStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource MotionDialogPanelStyle}">
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="Background" Value="{StaticResource PanelBrushStrong}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
         </Style>
         <Style x:Key="BatchRankingApplyButtonStyle"
                TargetType="Button"
@@ -423,10 +441,14 @@
                 </StackPanel>
 
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                    <Button Command="{Binding OpenProxyBatchEditorCommand}" Content="管理入口组" />
+                    <Button Command="{Binding OpenProxyBatchEditorCommand}"
+                            Style="{StaticResource BatchToolbarIconButtonStyle}"
+                            Content="&#xE713;"
+                            ToolTip="&#x7BA1;&#x7406;&#x5165;&#x53E3;&#x7EC4;" />
                     <Button Command="{Binding RunProxyBatchCommand}"
-                            Style="{StaticResource PrimaryActionButtonStyle}"
-                            Content="开始快速对比" />
+                            Style="{StaticResource WorkbenchIconButtonPrimaryStyle}"
+                            Content="&#xE768;"
+                            ToolTip="&#x5F00;&#x59CB;&#x5FEB;&#x901F;&#x5BF9;&#x6BD4;" />
                 </WrapPanel>
             </Grid>
         </Border>
@@ -460,16 +482,16 @@
 
                         <Button Grid.Column="1"
                                 Margin="12,0,0,0"
-                                MinWidth="88"
-                                Height="28"
+                                Style="{StaticResource BatchToolbarIconButtonStyle}"
                                 VerticalAlignment="Center"
                                 Command="{Binding OpenBatchComparisonChartCommand}"
-                                Content="放大图表" />
+                                Content="&#xE740;"
+                                ToolTip="&#x653E;&#x5927;&#x56FE;&#x8868;" />
                     </Grid>
 
                     <Border Grid.Row="1"
                             Margin="0,6,0,0"
-                            Style="{StaticResource InsetPanelBorderStyle}">
+                            Style="{StaticResource BatchMotionInsetPanelStyle}">
                         <Grid x:Name="BatchComparisonChartPreviewHost"
                               Background="Transparent"
                               ClipToBounds="True"
@@ -919,15 +941,17 @@
                                     Orientation="Horizontal"
                                     VerticalAlignment="Center">
                             <Button MinWidth="78"
-                                    Height="34"
                                     Margin="0,0,10,0"
+                                    Style="{StaticResource BatchToolbarIconButtonStyle}"
                                     Command="{Binding ToggleBatchDeepSelectionCommand}"
                                     IsEnabled="{Binding CanToggleBatchDeepSelection, Mode=OneWay}"
-                                    Content="{Binding BatchDeepSelectionToggleText, Mode=OneWay}" />
+                                    Content="&#xE8EF;"
+                                    ToolTip="{Binding BatchDeepSelectionToggleText, Mode=OneWay}" />
                             <Button Command="{Binding RunSelectedBatchDeepTestsCommand}"
-                                    Style="{StaticResource PrimaryActionButtonStyle}"
+                                    Style="{StaticResource WorkbenchIconButtonPrimaryStyle}"
                                     IsEnabled="{Binding CanRunSelectedBatchDeepTests, Mode=OneWay}"
-                                    Content="开始深测" />
+                                    Content="&#xE768;"
+                                    ToolTip="&#x5F00;&#x59CB;&#x6DF1;&#x6D4B;" />
                         </StackPanel>
                     </Grid>
 
@@ -947,6 +971,7 @@
                     <Border x:Name="BatchDeepComparisonChartPreviewHost"
                             Grid.Row="2"
                             Margin="0,8,0,0"
+                            Style="{StaticResource BatchMotionInsetPanelStyle}"
                             Padding="10"
                             Background="#F8FBFF"
                             BorderBrush="#D6E4FF"
@@ -975,11 +1000,11 @@
                                 </StackPanel>
 
                                 <Button Grid.Column="1"
-                                        MinWidth="88"
-                                        Height="28"
+                                        Style="{StaticResource BatchToolbarIconButtonStyle}"
                                         VerticalAlignment="Center"
                                         Command="{Binding OpenBatchDeepComparisonChartCommand}"
-                                        Content="查看总览" />
+                                        Content="&#xE9D2;"
+                                        ToolTip="&#x67E5;&#x770B;&#x603B;&#x89C8;" />
                             </Grid>
 
                             <ScrollViewer Grid.Row="1"

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text;
+using System.Windows;
 using RelayBench.App.Infrastructure;
 using RelayBench.Core.Models;
 
@@ -35,9 +36,22 @@ public sealed partial class MainWindowViewModel
 
     public AsyncRelayCommand CloseOfficialApiTraceDialogCommand { get; private set; } = null!;
 
+    public AsyncRelayCommand CopyOfficialApiTraceDialogContentCommand { get; private set; } = null!;
+
     private Task CloseOfficialApiTraceDialogAsync()
     {
         IsOfficialApiTraceDialogOpen = false;
+        return Task.CompletedTask;
+    }
+
+    private Task CopyOfficialApiTraceDialogContentAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(OfficialApiTraceDialogContent))
+        {
+            Clipboard.SetText(OfficialApiTraceDialogContent);
+            StatusMessage = "Trace 内容已复制。";
+        }
+
         return Task.CompletedTask;
     }
 

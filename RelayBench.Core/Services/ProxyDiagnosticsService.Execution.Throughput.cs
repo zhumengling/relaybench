@@ -13,7 +13,9 @@ public sealed partial class ProxyDiagnosticsService
         Func<string, string?> streamContentParser,
         Func<string?, bool>? semanticMatcher,
         int requestedSampleCount,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<HttpRequestMessage>? requestConfigurer = null,
+        Func<string, bool>? streamDoneDetector = null)
     {
         var clampedSampleCount = Math.Clamp(requestedSampleCount, 1, 3);
         if (clampedSampleCount <= 1 || !primaryResult.Success)
@@ -33,7 +35,9 @@ public sealed partial class ProxyDiagnosticsService
                 displayName,
                 streamContentParser,
                 semanticMatcher,
-                cancellationToken);
+                cancellationToken,
+                requestConfigurer,
+                streamDoneDetector);
             samples.Add(sampleResult);
         }
 

@@ -175,7 +175,7 @@ public sealed partial class MainWindowViewModel
             $"推荐密钥：{bestRow.Entry.ApiKeyAlias} / {MaskApiKey(bestRow.Entry.ApiKey)}\n" +
             $"推荐模型：{bestRow.Entry.Model}\n" +
             $"推荐理由：平均普通对话 {FormatMillisecondsValue(bestRow.AverageChatLatencyMs)}，平均 TTFT {FormatMillisecondsValue(bestRow.AverageTtftMs)}，平均独立吞吐 {FormatTokensPerSecond(bestRow.AverageBenchmarkTokensPerSecond)}，综合分 {bestRow.CompositeScore:F1}，{BuildBatchCapabilityBreakdown(bestRow, includeDeepHint: true)}，最新结论 {bestRow.LatestResult.Verdict ?? "待复核"}\n" +
-            $"最近一轮五项：{BuildBatchCapabilityMatrix(bestRow.LatestResult)}\n" +
+            $"最近一轮基础协议：{BuildBatchCapabilityMatrix(bestRow.LatestResult)}\n" +
             $"最近一轮独立吞吐：{BuildThroughputBenchmarkDigest(bestRow.LatestResult.ThroughputBenchmarkResult)}\n" +
             (bestRow.LatestResult.LongStreamingResult is { } bestLongStream
                 ? $"最近一轮长流：{(bestLongStream.Success ? "通过" : "异常")} / {bestLongStream.ActualSegmentCount}/{bestLongStream.ExpectedSegmentCount} / {FormatTokensPerSecond(bestLongStream.OutputTokensPerSecond, bestLongStream.OutputTokenCountEstimated)}\n"
@@ -214,7 +214,7 @@ public sealed partial class MainWindowViewModel
             }
             builder.AppendLine("深度测试：入口组模式不聚合，需查看单次诊断图表。");
             builder.AppendLine($"最近一轮时间：{row.value.LatestResult.CheckedAt:yyyy-MM-dd HH:mm:ss}");
-            builder.AppendLine($"最近一轮五项：{BuildBatchCapabilityMatrix(row.value.LatestResult)}");
+            builder.AppendLine($"最近一轮基础协议：{BuildBatchCapabilityMatrix(row.value.LatestResult)}");
             builder.AppendLine($"最近一轮普通对话：{(row.value.LatestResult.ChatRequestSucceeded ? "成功" : "失败")} / 延迟 {FormatMilliseconds(row.value.LatestResult.ChatLatency)}");
             builder.AppendLine($"最近一轮流式对话：{(row.value.LatestResult.StreamRequestSucceeded ? "成功" : "失败")} / 首 Token {FormatMilliseconds(row.value.LatestResult.StreamFirstTokenLatency)}");
             var latestStreamScenario = FindScenario(GetScenarioResults(row.value.LatestResult), ProxyProbeScenarioKind.ChatCompletionsStream);

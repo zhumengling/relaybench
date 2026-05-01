@@ -391,7 +391,7 @@ public sealed class PortScanDiagnosticsService
             resolutionInfo.SystemAddresses);
     }
 
-    private static IReadOnlyList<int> ResolvePorts(
+    internal static IReadOnlyList<int> ResolvePorts(
         PortScanProfile profile,
         string normalizedCustomPortsText,
         out string effectivePortsText,
@@ -1983,7 +1983,7 @@ public sealed class PortScanDiagnosticsService
     private static bool ContainsSyntheticBenchmarkAddress(IEnumerable<IPAddress> addresses)
         => addresses.Any(IsSyntheticBenchmarkAddress);
 
-    private static bool IsPublicRoutableAddress(IPAddress address)
+    internal static bool IsPublicRoutableAddress(IPAddress address)
     {
         if (IPAddress.IsLoopback(address))
         {
@@ -2041,7 +2041,7 @@ public sealed class PortScanDiagnosticsService
         => address.AddressFamily == AddressFamily.InterNetwork &&
            address.GetAddressBytes() is [198, 18 or 19, ..];
 
-    private static string NormalizeDnsHostForNetworkApis(string target)
+    internal static string NormalizeDnsHostForNetworkApis(string target)
     {
         var normalizedTarget = target.Trim().TrimEnd('.');
         if (string.IsNullOrWhiteSpace(normalizedTarget) ||

@@ -81,6 +81,22 @@ public sealed class ChatAttachmentImportService
             content);
     }
 
+    public ChatAttachment ImportFile(string path)
+    {
+        var file = ValidateFile(path);
+        if (ImageMediaTypes.ContainsKey(file.Extension))
+        {
+            return ImportImage(file.FullName);
+        }
+
+        if (TextExtensions.Contains(file.Extension))
+        {
+            return ImportTextFile(file.FullName);
+        }
+
+        throw new InvalidOperationException("\u4ec5\u652f\u6301\u56fe\u7247\u3001\u5e38\u89c1\u6587\u672c\u3001\u4ee3\u7801\u548c\u914d\u7f6e\u6587\u4ef6\u3002");
+    }
+
     private static FileInfo ValidateFile(string path)
     {
         if (string.IsNullOrWhiteSpace(path))

@@ -30,4 +30,9 @@ public sealed record ProxyStabilityResult(
     int DistinctResolvedAddressCount = 0,
     int DistinctEdgeSignatureCount = 0,
     int EdgeSwitchCount = 0,
-    string? CdnStabilitySummary = null);
+    string? CdnStabilitySummary = null,
+    int InstructionFollowingSuccessCount = 0,
+    int InstructionFollowingExecutedCount = 0,
+    int DataExtractionSuccessCount = 0,
+    int DataExtractionExecutedCount = 0,
+    double SemanticStabilityRate = 0);

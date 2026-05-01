@@ -73,8 +73,16 @@ public sealed partial class MainWindowViewModel
                     }
 
                     break;
-                case ProxyChartViewMode.StabilityTrend when _lastProxyStabilityResult is not null && !IsBusy:
-                    ShowFinalProxySeriesChart(_lastProxyStabilityResult);
+                case ProxyChartViewMode.StabilityTrend:
+                    if (_proxyTrendChartSnapshot?.StabilityTrendItems is { Count: > 0 })
+                    {
+                        RefreshProxyStabilityTrendChartSnapshot();
+                    }
+                    else if (!IsBusy)
+                    {
+                        RefreshProxyTrendView(ResolveProxyTrendTarget(null));
+                    }
+
                     break;
                 case ProxyChartViewMode.SingleLatency when _lastProxySingleResult is not null && !IsBusy:
                     ShowFinalSingleProxyChart(_lastProxySingleResult);
@@ -175,5 +183,26 @@ public sealed partial class MainWindowViewModel
         }
 
         return Math.Max(0, width);
+    }
+
+    private void RefreshProxyStabilityTrendChartSnapshot()
+    {
+        if (_proxyTrendChartSnapshot?.StabilityTrendItems is not { Count: > 0 } items)
+        {
+            return;
+        }
+
+        var target = items.FirstOrDefault()?.BaseUrl ?? ResolveProxyTrendTarget(null);
+        var chartResult = _proxyTrendChartRenderService.Render(items, target, ResolvePreferredSingleChartWidth());
+        SetProxyChartSnapshot(
+            ProxyChartViewMode.StabilityTrend,
+            _proxyTrendChartSnapshot with
+            {
+                Image = chartResult.ChartImage,
+                StatusSummary = chartResult.HasChart
+                    ? chartResult.Summary
+                    : chartResult.Error ?? chartResult.Summary
+            },
+            activate: _activeProxyChartViewMode == ProxyChartViewMode.StabilityTrend);
     }
 }

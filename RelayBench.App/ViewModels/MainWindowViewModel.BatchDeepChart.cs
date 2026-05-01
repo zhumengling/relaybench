@@ -262,7 +262,7 @@ public sealed partial class MainWindowViewModel
                 BuildBatchDeepDialogSummaryText(orderedStates, top, running),
                 BuildBatchDeepCapabilitySummaryText(orderedStates, _currentBatchDeepExecutionPlan),
                 BuildBatchDeepCapabilityDetailText(orderedStates, _currentBatchDeepExecutionPlan),
-                "左侧保留快速对比基线；中部显示当前阶段与实时进度；右侧矩阵依次展示 B5、System Prompt、Function Calling、错误透传、流式完整性、多模态、缓存命中。",
+                "左侧保留快速对比基线；中部显示当前阶段与实时进度；右侧矩阵依次展示基础能力、协议兼容、语义稳定性和应用接入探针。",
                 chartResult.HasChart
                     ? $"{chartResult.Summary} 已完成 {completedCount}/{orderedStates.Length}。"
                     : chartResult.Error ?? chartResult.Summary,
@@ -312,7 +312,13 @@ public sealed partial class MainWindowViewModel
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.ErrorTransparency, "Err", executionPlan.EnableErrorTransparencyTest),
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.StreamingIntegrity, "Str", executionPlan.EnableStreamingIntegrityTest),
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.MultiModal, "MM", executionPlan.EnableMultiModalTest),
-            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CacheMechanism, "Cch", executionPlan.EnableCacheMechanismTest)
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CacheMechanism, "Cch", executionPlan.EnableCacheMechanismTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.InstructionFollowing, "IF", executionPlan.EnableInstructionFollowingTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.DataExtraction, "DE", executionPlan.EnableDataExtractionTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.StructuredOutputEdge, "SO", executionPlan.EnableStructuredOutputEdgeTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.ToolCallDeep, "TC", executionPlan.EnableToolCallDeepTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.ReasonMathConsistency, "RM", executionPlan.EnableReasonMathConsistencyTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CodeBlockDiscipline, "CB", executionPlan.EnableCodeBlockDisciplineTest)
         ];
 
         return badges;
@@ -450,6 +456,18 @@ public sealed partial class MainWindowViewModel
             "Iso" => (
                 "缓存隔离",
                 "检查不同账号 / key / 会话之间的缓存是否正确隔离，避免出现串号或交叉命中。"),
+            "SO" => (
+                "结构化边界",
+                "检查 JSON / CSV / 转义字符 / 类型保真，发现中转层包裹、清洗、截断或格式漂移。"),
+            "TC" => (
+                "ToolCall 深测",
+                "检查工具选择、参数精度和真实 tool_calls 结构，判断是否适合 Agent / Codex 类工具链。"),
+            "RM" => (
+                "推理一致性",
+                "检查固定答案任务的稳定输出，发现模型路由漂移、温度失控或上下文拼接异常。"),
+            "CB" => (
+                "代码块纪律",
+                "检查代码块语言标签、单代码块边界和修复内容，贴近大模型对话里的复制与折叠体验。"),
             _ => (
                 label,
                 "该标签表示本轮深度测试中的一个专项探针结果。")
@@ -469,7 +487,13 @@ public sealed partial class MainWindowViewModel
            (executionPlan.EnableErrorTransparencyTest ? 1 : 0) +
            (executionPlan.EnableStreamingIntegrityTest ? 1 : 0) +
            (executionPlan.EnableMultiModalTest ? 1 : 0) +
-           (executionPlan.EnableCacheMechanismTest ? 1 : 0);
+           (executionPlan.EnableCacheMechanismTest ? 1 : 0) +
+           (executionPlan.EnableInstructionFollowingTest ? 1 : 0) +
+           (executionPlan.EnableDataExtractionTest ? 1 : 0) +
+           (executionPlan.EnableStructuredOutputEdgeTest ? 1 : 0) +
+           (executionPlan.EnableToolCallDeepTest ? 1 : 0) +
+           (executionPlan.EnableReasonMathConsistencyTest ? 1 : 0) +
+           (executionPlan.EnableCodeBlockDisciplineTest ? 1 : 0);
 
     private static int CountCompletedBatchDeepScenarioCount(ProxyDiagnosticsResult result, ProxySingleExecutionPlan executionPlan)
         => GetBatchDeepBaselineScenarioKinds().Count(kind => FindScenario(GetScenarioResults(result), kind) is not null) +
@@ -512,6 +536,36 @@ public sealed partial class MainWindowViewModel
         if (executionPlan.EnableCacheMechanismTest)
         {
             kinds.Add(ProxyProbeScenarioKind.CacheMechanism);
+        }
+
+        if (executionPlan.EnableInstructionFollowingTest)
+        {
+            kinds.Add(ProxyProbeScenarioKind.InstructionFollowing);
+        }
+
+        if (executionPlan.EnableDataExtractionTest)
+        {
+            kinds.Add(ProxyProbeScenarioKind.DataExtraction);
+        }
+
+        if (executionPlan.EnableStructuredOutputEdgeTest)
+        {
+            kinds.Add(ProxyProbeScenarioKind.StructuredOutputEdge);
+        }
+
+        if (executionPlan.EnableToolCallDeepTest)
+        {
+            kinds.Add(ProxyProbeScenarioKind.ToolCallDeep);
+        }
+
+        if (executionPlan.EnableReasonMathConsistencyTest)
+        {
+            kinds.Add(ProxyProbeScenarioKind.ReasonMathConsistency);
+        }
+
+        if (executionPlan.EnableCodeBlockDisciplineTest)
+        {
+            kinds.Add(ProxyProbeScenarioKind.CodeBlockDiscipline);
         }
 
         return kinds;
@@ -645,7 +699,13 @@ public sealed partial class MainWindowViewModel
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.ErrorTransparency, "Err", executionPlan.EnableErrorTransparencyTest),
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.StreamingIntegrity, "Str", executionPlan.EnableStreamingIntegrityTest),
             BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.MultiModal, "MM", executionPlan.EnableMultiModalTest),
-            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CacheMechanism, "Cch", executionPlan.EnableCacheMechanismTest)
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CacheMechanism, "Cch", executionPlan.EnableCacheMechanismTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.InstructionFollowing, "IF", executionPlan.EnableInstructionFollowingTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.DataExtraction, "DE", executionPlan.EnableDataExtractionTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.StructuredOutputEdge, "SO", executionPlan.EnableStructuredOutputEdgeTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.ToolCallDeep, "TC", executionPlan.EnableToolCallDeepTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.ReasonMathConsistency, "RM", executionPlan.EnableReasonMathConsistencyTest),
+            BuildBatchDeepScenarioBadge(state, ProxyProbeScenarioKind.CodeBlockDiscipline, "CB", executionPlan.EnableCodeBlockDisciplineTest)
         };
 
         return string.Join(" | ", badges.Select(item => $"{item.Label} {item.Value}"));
@@ -770,6 +830,18 @@ public sealed partial class MainWindowViewModel
                 => "\u53cc\u56fe\u591a\u6a21\u6001\u8bf7\u6c42\u5e94\u88ab\u6b63\u786e\u8bc6\u522b\uff0c\u8fd4\u56de\u5185\u5bb9\u9700\u660e\u786e\u533a\u5206\u7ea2\u56fe\u4e0e\u84dd\u56fe\u3002",
             ProxyProbeScenarioKind.CacheMechanism
                 => "\u91cd\u590d\u8bf7\u6c42\u5e94\u8fd4\u56de\u9884\u671f\u5185\u5bb9\uff0c\u5e76\u6839\u636e TTFT \u53d8\u5316\u4f53\u73b0\u51fa\u5408\u7406\u7f13\u5b58\u8ff9\u8c61\uff0c\u6216\u660e\u786e\u8bf4\u660e\u672a\u547d\u4e2d\u3002",
+            ProxyProbeScenarioKind.InstructionFollowing
+                => "System 约束、禁止项和 JSON 字段应被稳定遵循，不应被 user 覆盖指令带偏。",
+            ProxyProbeScenarioKind.DataExtraction
+                => "中文实体、金额、日期、URL、null 字段和明细数组应被稳定抽取，不应发生事实漂移。",
+            ProxyProbeScenarioKind.StructuredOutputEdge
+                => "JSON / CSV / 转义字符 / 类型应保持可解析和可消费，不应被 Markdown 包裹或发生类型漂移。",
+            ProxyProbeScenarioKind.ToolCallDeep
+                => "应返回真实 tool_calls，工具名称和参数类型、枚举、数组值都应匹配预期。",
+            ProxyProbeScenarioKind.ReasonMathConsistency
+                => "固定答案任务应返回严格两行结果，ANSWER 和 CHECKS 都应与标准答案一致。",
+            ProxyProbeScenarioKind.CodeBlockDiscipline
+                => "应只返回一个带正确语言标签的代码块，修复点明确，且不夹带额外解释文字。",
             ProxyProbeScenarioKind.CacheIsolation
                 => "A/B Key \u7684\u7f13\u5b58\u5e94\u5f7c\u6b64\u9694\u79bb\uff0cB \u4e0d\u5e94\u8bfb\u5230 A \u7684 secret\uff0c\u4e14\u4e24\u6b21\u8f93\u51fa\u90fd\u5e94\u7b26\u5408\u5404\u81ea\u9884\u671f\u3002",
             _ => "\u5e94\u8fd4\u56de\u4e0e\u8be5\u4e13\u9879\u80fd\u529b\u4e00\u81f4\u7684\u9884\u671f\u7ed3\u679c\u3002"
@@ -861,6 +933,12 @@ public sealed partial class MainWindowViewModel
         AddIfEnabled(executionPlan.EnableStreamingIntegrityTest, ProxyProbeScenarioKind.StreamingIntegrity, "Str");
         AddIfEnabled(executionPlan.EnableMultiModalTest, ProxyProbeScenarioKind.MultiModal, "MM");
         AddIfEnabled(executionPlan.EnableCacheMechanismTest, ProxyProbeScenarioKind.CacheMechanism, "Cch");
+        AddIfEnabled(executionPlan.EnableInstructionFollowingTest, ProxyProbeScenarioKind.InstructionFollowing, "IF");
+        AddIfEnabled(executionPlan.EnableDataExtractionTest, ProxyProbeScenarioKind.DataExtraction, "DE");
+        AddIfEnabled(executionPlan.EnableStructuredOutputEdgeTest, ProxyProbeScenarioKind.StructuredOutputEdge, "SO");
+        AddIfEnabled(executionPlan.EnableToolCallDeepTest, ProxyProbeScenarioKind.ToolCallDeep, "TC");
+        AddIfEnabled(executionPlan.EnableReasonMathConsistencyTest, ProxyProbeScenarioKind.ReasonMathConsistency, "RM");
+        AddIfEnabled(executionPlan.EnableCodeBlockDisciplineTest, ProxyProbeScenarioKind.CodeBlockDiscipline, "CB");
 
         if (!string.IsNullOrWhiteSpace(result.PrimaryIssue))
         {

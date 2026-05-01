@@ -20,7 +20,13 @@ public sealed partial class ProxyDiagnosticsService
                        ProxyProbeScenarioKind.OfficialReferenceIntegrity or
                        ProxyProbeScenarioKind.MultiModal or
                        ProxyProbeScenarioKind.CacheMechanism or
-                       ProxyProbeScenarioKind.CacheIsolation;
+                       ProxyProbeScenarioKind.CacheIsolation or
+                       ProxyProbeScenarioKind.InstructionFollowing or
+                       ProxyProbeScenarioKind.DataExtraction or
+                       ProxyProbeScenarioKind.StructuredOutputEdge or
+                       ProxyProbeScenarioKind.ToolCallDeep or
+                       ProxyProbeScenarioKind.ReasonMathConsistency or
+                       ProxyProbeScenarioKind.CodeBlockDiscipline;
 
     private static bool IsNonChatCapabilityScenario(ProxyProbeScenarioKind scenario)
         => scenario is ProxyProbeScenarioKind.Embeddings or
@@ -65,6 +71,7 @@ public sealed partial class ProxyDiagnosticsService
         var models = GetScenario(scenarioResults, ProxyProbeScenarioKind.Models);
         var chat = GetScenario(scenarioResults, ProxyProbeScenarioKind.ChatCompletions);
         var stream = GetScenario(scenarioResults, ProxyProbeScenarioKind.ChatCompletionsStream);
+        var anthropic = GetScenario(scenarioResults, ProxyProbeScenarioKind.AnthropicMessages);
         var responses = GetScenario(scenarioResults, ProxyProbeScenarioKind.Responses);
         var structuredOutput = GetScenario(scenarioResults, ProxyProbeScenarioKind.StructuredOutput);
 
@@ -92,6 +99,13 @@ public sealed partial class ProxyDiagnosticsService
         if (baseFivePassed && advancedExecuted)
         {
             return "基础可用，高级兼容待复核";
+        }
+
+        if (anthropic?.Success == true)
+        {
+            return advancedExecuted && !advancedAllPassed
+                ? "Anthropic 可用，高级兼容待复核"
+                : "适合 Anthropic 接入";
         }
 
         if (models?.Success == true &&
@@ -125,6 +139,7 @@ public sealed partial class ProxyDiagnosticsService
         var models = GetScenario(scenarioResults, ProxyProbeScenarioKind.Models);
         var chat = GetScenario(scenarioResults, ProxyProbeScenarioKind.ChatCompletions);
         var stream = GetScenario(scenarioResults, ProxyProbeScenarioKind.ChatCompletionsStream);
+        var anthropic = GetScenario(scenarioResults, ProxyProbeScenarioKind.AnthropicMessages);
         var responses = GetScenario(scenarioResults, ProxyProbeScenarioKind.Responses);
         var structuredOutput = GetScenario(scenarioResults, ProxyProbeScenarioKind.StructuredOutput);
 
@@ -154,6 +169,11 @@ public sealed partial class ProxyDiagnosticsService
             return "基础五项已经可用，但高级兼容探针里至少有一项待复核，建议继续补测后再长期使用。";
         }
 
+        if (anthropic?.Success == true)
+        {
+            return "Anthropic Messages 已通过，适合 Claude CLI 或 Anthropic 协议客户端接入；OpenAI Chat / Responses 兼容性需按对应探针结果另行判断。";
+        }
+
         if (models?.Success == true && chat?.Success == true && stream?.Success == true && responses?.Success == true)
         {
             return "适合基础聊天、流式输出和 Responses；结构化输出或高级协议转换仍建议继续复核。";
@@ -179,6 +199,18 @@ public sealed partial class ProxyDiagnosticsService
 
     private static string BuildPrimaryIssue(IReadOnlyList<ProxyProbeScenarioResult> scenarioResults)
     {
+        if (GetScenario(scenarioResults, ProxyProbeScenarioKind.AnthropicMessages)?.Success == true)
+        {
+            var nonOpenAiPrimaryFailure = scenarioResults
+                .Where(result => !IsOpenAiBaselineScenario(result.Scenario))
+                .Where(result => !result.Success && !IsSkippedInformationalScenario(result))
+                .OrderBy(result => GetFailurePriority(result.FailureKind))
+                .FirstOrDefault();
+            return nonOpenAiPrimaryFailure is null
+                ? "Anthropic Messages：已通过。"
+                : $"{nonOpenAiPrimaryFailure.DisplayName}：{nonOpenAiPrimaryFailure.Error ?? nonOpenAiPrimaryFailure.Summary}";
+        }
+
         var primaryFailure = SelectPrimaryFailure(scenarioResults);
         if (primaryFailure is null)
         {
@@ -187,6 +219,13 @@ public sealed partial class ProxyDiagnosticsService
 
         return $"{primaryFailure.DisplayName}：{primaryFailure.Error ?? primaryFailure.Summary}";
     }
+
+    private static bool IsOpenAiBaselineScenario(ProxyProbeScenarioKind scenario)
+        => scenario is ProxyProbeScenarioKind.Models or
+                       ProxyProbeScenarioKind.ChatCompletions or
+                       ProxyProbeScenarioKind.ChatCompletionsStream or
+                       ProxyProbeScenarioKind.Responses or
+                       ProxyProbeScenarioKind.StructuredOutput;
 
     private static string BuildHeadersSummary(IReadOnlyList<ProxyProbeScenarioResult> scenarioResults)
     {
@@ -247,9 +286,15 @@ public sealed partial class ProxyDiagnosticsService
             return ProxyFailureKind.RateLimited;
         }
 
+        if (LooksLikeModelMissing(body))
+        {
+            return ProxyFailureKind.ModelNotFound;
+        }
+
         if (statusCode == 404)
         {
             return scenario is ProxyProbeScenarioKind.Responses or
+                       ProxyProbeScenarioKind.AnthropicMessages or
                        ProxyProbeScenarioKind.StructuredOutput or
                        ProxyProbeScenarioKind.Embeddings or
                        ProxyProbeScenarioKind.Images or
@@ -257,12 +302,19 @@ public sealed partial class ProxyDiagnosticsService
                        ProxyProbeScenarioKind.AudioSpeech or
                        ProxyProbeScenarioKind.Moderation or
                        ProxyProbeScenarioKind.FunctionCalling or
-                       ProxyProbeScenarioKind.MultiModal
+                       ProxyProbeScenarioKind.MultiModal or
+                       ProxyProbeScenarioKind.InstructionFollowing or
+                       ProxyProbeScenarioKind.DataExtraction or
+                       ProxyProbeScenarioKind.StructuredOutputEdge or
+                       ProxyProbeScenarioKind.ToolCallDeep or
+                       ProxyProbeScenarioKind.ReasonMathConsistency or
+                       ProxyProbeScenarioKind.CodeBlockDiscipline
                 ? ProxyFailureKind.UnsupportedEndpoint
                 : ProxyFailureKind.Http4xx;
         }
 
         if ((scenario is ProxyProbeScenarioKind.Responses or
+             ProxyProbeScenarioKind.AnthropicMessages or
              ProxyProbeScenarioKind.StructuredOutput or
              ProxyProbeScenarioKind.Embeddings or
              ProxyProbeScenarioKind.Images or
@@ -270,7 +322,13 @@ public sealed partial class ProxyDiagnosticsService
              ProxyProbeScenarioKind.AudioSpeech or
              ProxyProbeScenarioKind.Moderation or
              ProxyProbeScenarioKind.FunctionCalling or
-             ProxyProbeScenarioKind.MultiModal) &&
+             ProxyProbeScenarioKind.MultiModal or
+             ProxyProbeScenarioKind.InstructionFollowing or
+             ProxyProbeScenarioKind.DataExtraction or
+             ProxyProbeScenarioKind.StructuredOutputEdge or
+             ProxyProbeScenarioKind.ToolCallDeep or
+             ProxyProbeScenarioKind.ReasonMathConsistency or
+             ProxyProbeScenarioKind.CodeBlockDiscipline) &&
             LooksLikeUnsupportedFeature(body))
         {
             return ProxyFailureKind.UnsupportedEndpoint;
@@ -279,11 +337,6 @@ public sealed partial class ProxyDiagnosticsService
         if (statusCode >= 500)
         {
             return ProxyFailureKind.Http5xx;
-        }
-
-        if (LooksLikeModelMissing(body))
-        {
-            return ProxyFailureKind.ModelNotFound;
         }
 
         return statusCode >= 400 ? ProxyFailureKind.Http4xx : ProxyFailureKind.Unknown;
@@ -298,7 +351,10 @@ public sealed partial class ProxyDiagnosticsService
 
         return body.Contains("model", StringComparison.OrdinalIgnoreCase) &&
                (body.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
-                body.Contains("does not exist", StringComparison.OrdinalIgnoreCase));
+                body.Contains("does not exist", StringComparison.OrdinalIgnoreCase) ||
+                body.Contains("not supported model", StringComparison.OrdinalIgnoreCase) ||
+                body.Contains("unsupported model", StringComparison.OrdinalIgnoreCase) ||
+                body.Contains("unknown-model", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool LooksLikeUnsupportedFeature(string? body)

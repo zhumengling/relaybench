@@ -15,6 +15,11 @@ public sealed partial class ProxyTrendChartRenderService
         return brush;
     }
 
+    private static int ResolveChartWidth(int? preferredWidth)
+        => preferredWidth.HasValue
+            ? Math.Clamp(preferredWidth.Value, MinChartWidth, MaxChartWidth)
+            : DefaultChartWidth;
+
     private static double ResolveSuccessRate(ProxyTrendEntry entry)
     {
         if (entry.FullSuccessRate.HasValue)

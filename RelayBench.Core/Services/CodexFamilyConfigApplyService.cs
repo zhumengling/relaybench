@@ -143,10 +143,13 @@ public sealed class CodexFamilyConfigApplyService
         IReadOnlyList<string> backupFiles,
         string? error)
     {
-        var selectedIds = targetSelections?
-            .Where(target => target.Protocol == ClientApplyProtocolKind.Responses)
-            .Select(target => target.TargetId)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var selectedProtocols = targetSelections?
+            .Where(target => target.Protocol is ClientApplyProtocolKind.Responses or ClientApplyProtocolKind.OpenAiCompatible)
+            .GroupBy(target => target.TargetId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.First().Protocol,
+                StringComparer.OrdinalIgnoreCase);
 
         (string Id, string Name)[] knownTargets =
         [
@@ -156,11 +159,13 @@ public sealed class CodexFamilyConfigApplyService
         ];
 
         return knownTargets
-            .Where(target => selectedIds is null || selectedIds.Count == 0 || selectedIds.Contains(target.Id))
+            .Where(target => selectedProtocols is null || selectedProtocols.Count == 0 || selectedProtocols.ContainsKey(target.Id))
             .Select(target => new ClientAppTargetApplyResult(
                 target.Id,
                 target.Name,
-                ClientApplyProtocolKind.Responses,
+                selectedProtocols is not null && selectedProtocols.TryGetValue(target.Id, out var protocol)
+                    ? protocol
+                    : ClientApplyProtocolKind.Responses,
                 succeeded,
                 changedFiles,
                 backupFiles,
@@ -454,8 +459,7 @@ public sealed class CodexFamilyConfigApplyService
         string? model,
         string? preferredWireApi = null)
     {
-        if (TryNormalizeCodexWireApi(preferredWireApi, out var normalizedPreferredWireApi) &&
-            string.Equals(normalizedPreferredWireApi, CodexResponsesWireApi, StringComparison.Ordinal))
+        if (TryNormalizeCodexWireApi(preferredWireApi, out var normalizedPreferredWireApi))
         {
             return normalizedPreferredWireApi;
         }
@@ -463,134 +467,30 @@ public sealed class CodexFamilyConfigApplyService
         return CodexResponsesWireApi;
     }
 
-    public static bool IsCodexSupportedChatGptModel(string? model)
-    {
-        var normalized = NormalizeCodexModelIdentity(model);
-        if (string.IsNullOrWhiteSpace(normalized))
-        {
-            return false;
-        }
-
-        string[] allowedPrefixes =
-        [
-            "gpt-",
-            "chatgpt-",
-            "o1",
-            "o3",
-            "o4",
-            "codex-"
-        ];
-
-        return string.Equals(normalized, "chatgpt", StringComparison.Ordinal) ||
-               string.Equals(normalized, "codex", StringComparison.Ordinal) ||
-               allowedPrefixes.Any(prefix => normalized.StartsWith(prefix, StringComparison.Ordinal));
-    }
-
     private static bool IsDeepSeekModel(string model)
         => model.Contains("deepseek", StringComparison.OrdinalIgnoreCase);
-
-    private static string NormalizeCodexModelIdentity(string? model)
-    {
-        var normalized = (model ?? string.Empty).Trim().ToLowerInvariant();
-        var slashIndex = normalized.LastIndexOf('/');
-        if (slashIndex >= 0 && slashIndex < normalized.Length - 1)
-        {
-            normalized = normalized[(slashIndex + 1)..];
-        }
-
-        return normalized;
-    }
 
     private static bool TryNormalizeCodexWireApi(string? value, out string normalized)
     {
         normalized = string.Empty;
-        var text = value?.Trim();
-        if (string.IsNullOrWhiteSpace(text))
+        var wireApi = ProxyWireApiProbeService.NormalizeWireApi(value);
+        if (string.IsNullOrWhiteSpace(wireApi))
         {
             return false;
         }
 
-        if (string.Equals(text, CodexResponsesWireApi, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(wireApi, CodexResponsesWireApi, StringComparison.Ordinal))
         {
             normalized = CodexResponsesWireApi;
             return true;
         }
 
+        if (string.Equals(wireApi, CodexChatWireApi, StringComparison.Ordinal))
+        {
+            normalized = CodexChatWireApi;
+            return true;
+        }
+
         return false;
-    }
-
-    private static bool IsChatPreferredModel(string? model)
-    {
-        var normalized = model?.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(normalized))
-        {
-            return false;
-        }
-
-        string[] markers =
-        [
-            "deepseek",
-            "qwen",
-            "qwq",
-            "qvq",
-            "kimi",
-            "moonshot",
-            "glm",
-            "chatglm",
-            "zhipu",
-            "yi-",
-            "yi_",
-            "baichuan",
-            "minimax",
-            "abab",
-            "doubao",
-            "hunyuan",
-            "ernie",
-            "wenxin",
-            "spark",
-            "xunfei",
-            "step-",
-            "step_",
-            "internlm",
-            "sensechat",
-            "telechat"
-        ];
-
-        return markers.Any(marker => normalized.Contains(marker, StringComparison.Ordinal));
-    }
-
-    private static bool IsChatPreferredEndpoint(string? baseUrl)
-    {
-        if (string.IsNullOrWhiteSpace(baseUrl))
-        {
-            return false;
-        }
-
-        if (!Uri.TryCreate(ClientApiConfigPatterns.NormalizeEndpoint(baseUrl), UriKind.Absolute, out var uri))
-        {
-            return false;
-        }
-
-        var signature = $"{uri.Host}{uri.AbsolutePath}".ToLowerInvariant();
-        string[] markers =
-        [
-            "dashscope.aliyuncs.com",
-            "bigmodel.cn",
-            "moonshot.cn",
-            "deepseek.com",
-            "volces.com",
-            "volcengineapi.com",
-            "siliconflow.cn",
-            "minimax.chat",
-            "baichuan-ai.com",
-            "lingyiwanwu.com",
-            "hunyuan.cloud.tencent.com",
-            "xf-yun.com",
-            "sensenova.cn",
-            "stepfun.com",
-            "compatible-mode"
-        ];
-
-        return markers.Any(marker => signature.Contains(marker, StringComparison.Ordinal));
     }
 }

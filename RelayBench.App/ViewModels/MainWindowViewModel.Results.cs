@@ -158,6 +158,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var models = FindScenario(scenarios, ProxyProbeScenarioKind.Models);
         var chat = FindScenario(scenarios, ProxyProbeScenarioKind.ChatCompletions);
         var stream = FindScenario(scenarios, ProxyProbeScenarioKind.ChatCompletionsStream);
+        var anthropic = FindScenario(scenarios, ProxyProbeScenarioKind.AnthropicMessages);
         var responses = FindScenario(scenarios, ProxyProbeScenarioKind.Responses);
         var structuredOutput = FindScenario(scenarios, ProxyProbeScenarioKind.StructuredOutput);
         var systemPrompt = FindScenario(scenarios, ProxyProbeScenarioKind.SystemPromptMapping);
@@ -168,6 +169,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var multiModal = FindScenario(scenarios, ProxyProbeScenarioKind.MultiModal);
         var cacheMechanism = FindScenario(scenarios, ProxyProbeScenarioKind.CacheMechanism);
         var cacheIsolation = FindScenario(scenarios, ProxyProbeScenarioKind.CacheIsolation);
+        var instructionFollowing = FindScenario(scenarios, ProxyProbeScenarioKind.InstructionFollowing);
+        var dataExtraction = FindScenario(scenarios, ProxyProbeScenarioKind.DataExtraction);
 
         StringBuilder summaryBuilder = new();
         summaryBuilder.AppendLine($"检测时间：{result.CheckedAt:yyyy-MM-dd HH:mm:ss}");
@@ -178,6 +181,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         summaryBuilder.AppendLine($"建议用途：{result.Recommendation ?? "请结合稳定性和入口组对比结果继续判断。"}");
         summaryBuilder.AppendLine($"主要问题：{result.PrimaryIssue ?? "无"}");
         summaryBuilder.AppendLine($"模型列表：{FormatScenarioStatus(models)}");
+        summaryBuilder.AppendLine($"Anthropic Messages：{FormatScenarioStatus(anthropic)}");
         summaryBuilder.AppendLine($"普通对话：{FormatScenarioStatus(chat)}");
         summaryBuilder.AppendLine($"流式对话：{FormatScenarioStatus(stream)}");
         summaryBuilder.AppendLine($"Responses：{FormatScenarioStatus(responses)}");
@@ -211,6 +215,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (cacheMechanism is not null)
         {
             summaryBuilder.AppendLine($"缓存机制：{FormatScenarioStatus(cacheMechanism)}");
+        }
+
+        if (instructionFollowing is not null)
+        {
+            summaryBuilder.AppendLine($"指令遵循：{FormatScenarioStatus(instructionFollowing)}");
+        }
+
+        if (dataExtraction is not null)
+        {
+            summaryBuilder.AppendLine($"数据抽取：{FormatScenarioStatus(dataExtraction)}");
         }
 
         if (cacheIsolation is not null)
@@ -351,6 +365,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             $"流式成功率：{result.StreamSuccessRate:F1}%\n" +
             $"Responses 成功轮次：{responsesSuccessCount}/{result.CompletedRounds}\n" +
             $"结构化输出成功轮次：{structuredOutputSuccessCount}/{result.CompletedRounds}\n" +
+            $"指令遵循成功轮次：{result.InstructionFollowingSuccessCount}/{result.InstructionFollowingExecutedCount}\n" +
+            $"数据抽取成功轮次：{result.DataExtractionSuccessCount}/{result.DataExtractionExecutedCount}\n" +
+            $"语义稳定率：{(result.InstructionFollowingExecutedCount + result.DataExtractionExecutedCount == 0 ? "未启用" : $"{result.SemanticStabilityRate:F1}%")}\n" +
             $"平均普通对话延迟：{FormatMilliseconds(result.AverageChatLatency)}\n" +
             $"平均首 Token 时间：{FormatMilliseconds(result.AverageStreamFirstTokenLatency)}\n" +
             $"平均 Responses 延迟：{FormatMilliseconds(result.AverageResponsesLatency)}\n" +
@@ -366,6 +383,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var responsesScenario = FindScenario(GetScenarioResults(round.value), ProxyProbeScenarioKind.Responses);
             var structuredOutputScenario = FindScenario(GetScenarioResults(round.value), ProxyProbeScenarioKind.StructuredOutput);
             var streamScenario = FindScenario(GetScenarioResults(round.value), ProxyProbeScenarioKind.ChatCompletionsStream);
+            var instructionFollowingScenario = FindScenario(GetScenarioResults(round.value), ProxyProbeScenarioKind.InstructionFollowing);
+            var dataExtractionScenario = FindScenario(GetScenarioResults(round.value), ProxyProbeScenarioKind.DataExtraction);
 
             builder.AppendLine(
                 $"第 {round.index + 1} 轮：" +
@@ -374,6 +393,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 $"流式={(round.value.StreamRequestSucceeded ? "成功" : "失败")}（首 Token {FormatMilliseconds(round.value.StreamFirstTokenLatency)} / {FormatTokensPerSecond(streamScenario?.OutputTokensPerSecond, streamScenario?.OutputTokenCountEstimated == true, streamScenario?.OutputTokensPerSecondSampleCount ?? 1)}），" +
                 $"Responses={FormatScenarioStatus(responsesScenario)}，" +
                 $"结构化输出={FormatScenarioStatus(structuredOutputScenario)}，" +
+                $"指令遵循={FormatScenarioStatus(instructionFollowingScenario)}，" +
+                $"数据抽取={FormatScenarioStatus(dataExtractionScenario)}，" +
                 $"边缘={round.value.EdgeSignature ?? "未识别"}，" +
                 $"主故障={TranslateFailureKind(round.value.PrimaryFailureKind)}，" +
                 $"错误={round.value.Error ?? "无"}");

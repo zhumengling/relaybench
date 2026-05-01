@@ -221,7 +221,7 @@ public sealed class ExitIpRiskReviewService
             null);
     }
 
-    private static bool TryNormalizeTargetIp(string? targetIp, out string? normalizedTargetIp, out string? error)
+    internal static bool TryNormalizeTargetIp(string? targetIp, out string? normalizedTargetIp, out string? error)
     {
         normalizedTargetIp = null;
         error = null;
@@ -1245,7 +1245,7 @@ public sealed class ExitIpRiskReviewService
             ex.Message,
             Error: ex.Message);
 
-    private static string BuildRiskVerdict(
+    internal static string BuildRiskVerdict(
         bool? isDatacenter,
         bool? isProxy,
         bool? isVpn,
@@ -1318,7 +1318,7 @@ public sealed class ExitIpRiskReviewService
             : null;
     }
 
-    private static bool IsAddressInCidr(IPAddress address, string cidr)
+    internal static bool IsAddressInCidr(IPAddress address, string cidr)
     {
         var parts = cidr.Split('/', 2, StringSplitOptions.TrimEntries);
         if (parts.Length != 2 ||

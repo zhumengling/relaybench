@@ -451,6 +451,100 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="WorkbenchIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI, Segoe UI" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock x:Name="IconButtonGlyphTextBlock"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="{Binding FontSize, RelativeSource={RelativeSource AncestorType=Button}}"
+                                   FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=Button}}"
+                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                   Text="{Binding}" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="0" />
+            <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
+            <Setter Property="ToolTipService.ShowDuration" Value="60000" />
+            <Setter Property="ToolTipService.Placement" Value="Top" />
+            <Setter Property="ToolTipService.VerticalOffset" Value="-4" />
+        </Style>
+        <Style x:Key="WorkbenchIconButtonDangerStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonStyle}">
+            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+            <Setter Property="Background" Value="#FFF5F5" />
+            <Setter Property="BorderBrush" Value="#FECDCA" />
+        </Style>
+        <Style x:Key="WorkbenchIconButtonPrimaryStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonStyle}">
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Background" Value="{StaticResource AccentSoftBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBorderBrush}" />
+        </Style>
+        <Style x:Key="WorkbenchComposerIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonStyle}">
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="FontSize" Value="15" />
+        </Style>
+        <Style TargetType="ToolTip">
+            <Setter Property="HasDropShadow" Value="True" />
+            <Setter Property="Placement" Value="Top" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Background" Value="#111827" />
+            <Setter Property="BorderBrush" Value="#111827" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontFamily" Value="Microsoft YaHei UI, Segoe UI" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border x:Name="ToolTipChrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <TextBlock x:Name="ToolTipContentPresenter"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{TemplateBinding FontFamily}"
+                                       FontSize="{TemplateBinding FontSize}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"
+                                       TextTrimming="CharacterEllipsis"
+                                       TextWrapping="NoWrap" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style TargetType="TextBox">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
             <Setter Property="Background" Value="#FFFFFF" />

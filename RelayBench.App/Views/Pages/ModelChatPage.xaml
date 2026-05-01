@@ -5,7 +5,42 @@
              xmlns:infra="clr-namespace:RelayBench.App.Infrastructure"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             Style="{StaticResource MotionPageRootStyle}"
+             PreviewKeyDown="ModelChatPage_PreviewKeyDown"
              mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="ChatRecordToolButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonStyle}">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Margin" Value="0,0,3,0" />
+        </Style>
+        <Style x:Key="ChatSessionIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonStyle}">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+        <Style x:Key="ChatSessionDangerIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonDangerStyle}">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Margin" Value="0" />
+        </Style>
+        <Style x:Key="ChatMessageBubbleBorderStyle" TargetType="Border">
+            <Setter Property="MaxWidth" Value="920" />
+            <Setter Property="Padding" Value="14" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+    </UserControl.Resources>
+
     <Grid MinHeight="0">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -38,20 +73,28 @@
                                TextTrimming="CharacterEllipsis" />
                 </Grid>
 
-                <Button Grid.Column="1"
-                        Padding="12,5"
-                        Command="{Binding ToggleChatSettingsPanelCommand}"
-                        Content="&#x53C2;&#x6570;" />
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Margin="0,0,8,0"
+                               VerticalAlignment="Center"
+                               MaxWidth="360"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               Text="{Binding ChatStatusMessage}"
+                               TextTrimming="CharacterEllipsis" />
+                    <Button Style="{StaticResource ChatSessionIconButtonStyle}"
+                            Command="{Binding ToggleChatSettingsPanelCommand}"
+                            Content="&#xE713;"
+                            ToolTip="&#x6253;&#x5F00;&#x53C2;&#x6570;" />
+                </StackPanel>
             </Grid>
         </Border>
 
         <Grid Grid.Row="1" Margin="0,8,0,8" MinHeight="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="226" />
+                <ColumnDefinition Width="188" />
                 <ColumnDefinition Width="10" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="10" />
-                <ColumnDefinition Width="204" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Style="{StaticResource SectionPanelBorderStyle}">
@@ -66,17 +109,23 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="6" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextBrush}"
+                                   Text="&#x8BB0;&#x5F55;" />
                         <Button Grid.Column="1"
-                                Padding="9,4"
+                                Style="{StaticResource ChatSessionIconButtonStyle}"
                                 Command="{Binding NewChatSessionCommand}"
-                                Content="&#x65B0;&#x5EFA;" />
-                        <Button Grid.Column="3"
-                                Padding="9,4"
+                                Content="&#xE710;"
+                                ToolTip="&#x65B0;&#x5EFA;&#x4F1A;&#x8BDD;" />
+                        <Button Grid.Column="2"
+                                Style="{StaticResource ChatSessionDangerIconButtonStyle}"
                                 Command="{Binding DeleteChatSessionCommand}"
-                                Content="&#x5220;&#x9664;" />
+                                Content="&#xE74D;"
+                                ToolTip="&#x5220;&#x9664;&#x5F53;&#x524D;&#x4F1A;&#x8BDD;" />
                     </Grid>
 
                     <ListBox Grid.Row="2"
@@ -107,17 +156,74 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <StackPanel>
-                                        <TextBlock FontSize="11.5"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="#101828"
-                                                   Text="{Binding Title}"
-                                                   TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Margin="0,3,0,0"
-                                                   FontSize="10"
-                                                   Foreground="{StaticResource MutedBrush}"
-                                                   Text="{Binding Summary}" />
-                                    </StackPanel>
+                                    <Grid>
+                                        <Grid Visibility="{Binding IsNotRenaming, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock FontSize="11.5"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#101828"
+                                                           Text="{Binding Title}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <Border Grid.Column="1"
+                                                        Margin="6,0,0,0"
+                                                        Padding="5,1"
+                                                        Background="#EEF4FF"
+                                                        BorderBrush="#B2CCFF"
+                                                        BorderThickness="1"
+                                                        CornerRadius="6"
+                                                        Visibility="{Binding IsManualTitle, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <TextBlock FontSize="9.5"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#175CD3"
+                                                               Text="&#x81EA;&#x5B9A;" />
+                                                </Border>
+                                            </Grid>
+                                            <TextBlock Grid.Row="1"
+                                                       Margin="0,3,0,0"
+                                                       FontSize="10"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       Text="{Binding Summary}" />
+                                            <WrapPanel Grid.Row="2" Margin="0,6,0,0">
+                                                <Button Style="{StaticResource ChatRecordToolButtonStyle}"
+                                                        Command="{Binding DataContext.BeginRenameChatSessionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="&#xE70F;"
+                                                        ToolTip="&#x91CD;&#x547D;&#x540D;" />
+                                            </WrapPanel>
+                                        </Grid>
+
+                                        <Grid Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="6" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                     Text="{Binding DraftTitle, UpdateSourceTrigger=PropertyChanged}"
+                                                     KeyDown="ChatSessionRenameTextBox_KeyDown" />
+                                            <WrapPanel Grid.Row="2" HorizontalAlignment="Right">
+                                                <Button Style="{StaticResource ChatRecordToolButtonStyle}"
+                                                        Command="{Binding DataContext.CommitRenameChatSessionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="&#xE74E;"
+                                                        ToolTip="&#x4FDD;&#x5B58;" />
+                                                <Button Style="{StaticResource ChatRecordToolButtonStyle}"
+                                                        Command="{Binding DataContext.CancelRenameChatSessionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="&#xE711;"
+                                                        ToolTip="&#x53D6;&#x6D88;" />
+                                            </WrapPanel>
+                                        </Grid>
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -126,26 +232,22 @@
             </Border>
 
             <Border Grid.Column="2" Style="{StaticResource SectionPanelBorderStyle}">
-                <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
-                              VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding ChatMessages}">
+                <Grid>
+                    <ScrollViewer x:Name="ChatMessagesScrollViewer"
+                                  Style="{StaticResource WorkbenchScrollViewerStyle}"
+                                  ScrollChanged="ChatMessagesScrollViewer_ScrollChanged"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl Margin="0,0,18,0"
+                                      ItemsSource="{Binding ChatMessages}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="0,0,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="16" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-
-                                            <Border Grid.Column="{Binding BubbleColumn}"
-                                            MaxWidth="760"
-                                            Padding="12"
+                                    <Border Style="{StaticResource ChatMessageBubbleBorderStyle}"
                                             HorizontalAlignment="{Binding BubbleHorizontalAlignment}"
+                                            Margin="{Binding BubbleOuterMargin}"
+                                            Width="{Binding BubbleWidth}"
                                             Background="{Binding BubbleBackground}"
                                             BorderBrush="{Binding BubbleBorderBrush}"
-                                            BorderThickness="1"
-                                            CornerRadius="8"
                                             Visibility="{Binding IsStandardMessage, Converter={StaticResource BoolToVisibilityConverter}}">
                                         <StackPanel>
                                             <Grid>
@@ -153,19 +255,41 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <StackPanel Orientation="Horizontal">
+                                                <Grid VerticalAlignment="Center">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
                                                     <TextBlock FontSize="12"
                                                                FontWeight="SemiBold"
+                                                               VerticalAlignment="Center"
                                                                Foreground="#101828"
                                                                Text="{Binding DisplayRole}" />
-                                                    <Button Margin="8,0,0,0"
-                                                            Padding="7,1"
+                                                    <Button Grid.Column="1"
+                                                            Margin="8,0,4,0"
+                                                            Style="{StaticResource ChatRecordToolButtonStyle}"
                                                             Command="{Binding DataContext.EditChatMessageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"
-                                                            Content="&#x7F16;&#x8F91;"
+                                                            Content="&#xE70F;"
+                                                            ToolTip="&#x7F16;&#x8F91;&#x6D88;&#x606F;"
                                                             Visibility="{Binding IsUser, Converter={StaticResource BoolToVisibilityConverter}}" />
-                                                </StackPanel>
+                                                    <Button Grid.Column="2"
+                                                            Style="{StaticResource ChatRecordToolButtonStyle}"
+                                                            Command="{Binding DataContext.CopyChatMessageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Content="&#xE8C8;"
+                                                            ToolTip="&#x590D;&#x5236;&#x6D88;&#x606F;" />
+                                                    <Button Grid.Column="3"
+                                                            Style="{StaticResource ChatRecordToolButtonStyle}"
+                                                            Command="{Binding DataContext.RegenerateLastChatAnswerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            Content="&#xE72C;"
+                                                            ToolTip="&#x91CD;&#x65B0;&#x751F;&#x6210;"
+                                                            Visibility="{Binding IsAssistant, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                </Grid>
                                                 <TextBlock Grid.Column="1"
+                                                           VerticalAlignment="Center"
                                                            Foreground="{StaticResource MutedBrush}"
                                                            FontSize="10.5"
                                                            Text="{Binding CreatedAtLabel}" />
@@ -217,9 +341,9 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <Border Grid.ColumnSpan="3"
-                                             Padding="12"
-                                            Background="#F8FAFC"
+                                    <Border
+                                              Padding="12"
+                                             Background="#F8FAFC"
                                             BorderBrush="#D0D5DD"
                                             BorderThickness="1"
                                             CornerRadius="8"
@@ -232,12 +356,33 @@
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock FontSize="12"
                                                            FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"
                                                            Foreground="#101828"
                                                            Text="&#x591A;&#x6A21;&#x578B;&#x56DE;&#x7B54;" />
-                                                <TextBlock Grid.Column="1"
-                                                           Foreground="{StaticResource MutedBrush}"
-                                                           FontSize="10.5"
-                                                           Text="{Binding CreatedAtLabel}" />
+                                                <Grid Grid.Column="1"
+                                                      VerticalAlignment="Center">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Button Grid.Column="0"
+                                                            Style="{StaticResource ChatRecordToolButtonStyle}"
+                                                            Command="{Binding DataContext.CopyChatMessageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Content="&#xE8C8;"
+                                                            ToolTip="&#x590D;&#x5236;&#x5168;&#x90E8;" />
+                                                    <Button Grid.Column="1"
+                                                            Style="{StaticResource ChatRecordToolButtonStyle}"
+                                                            Command="{Binding DataContext.RegenerateLastChatAnswerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            Content="&#xE72C;"
+                                                            ToolTip="&#x91CD;&#x65B0;&#x751F;&#x6210;" />
+                                                    <TextBlock Grid.Column="2"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{StaticResource MutedBrush}"
+                                                               FontSize="10.5"
+                                                               Text="{Binding CreatedAtLabel}" />
+                                                </Grid>
                                             </Grid>
 
                                             <ScrollViewer Margin="0,8,0,0"
@@ -267,17 +412,32 @@
                                                                         </Grid.ColumnDefinitions>
                                                                         <TextBlock FontSize="11.5"
                                                                                    FontWeight="SemiBold"
+                                                                                   VerticalAlignment="Center"
                                                                                    Foreground="#101828"
                                                                                    Text="{Binding Header}"
                                                                                    TextTrimming="CharacterEllipsis" />
-                                                                        <Border Grid.Column="1"
-                                                                                Margin="8,0,0,0"
-                                                                                Style="{StaticResource StatusPillBorderStyle}">
-                                                                            <TextBlock FontSize="10.5"
-                                                                                       Foreground="{StaticResource AccentBrush}"
-                                                                                       FontWeight="SemiBold"
-                                                                                       Text="{Binding StatusText}" />
-                                                                        </Border>
+                                                                        <Grid Grid.Column="1"
+                                                                              VerticalAlignment="Center">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <Button Grid.Column="0"
+                                                                                    Margin="8,0,4,0"
+                                                                                    Style="{StaticResource ChatRecordToolButtonStyle}"
+                                                                                    Command="{Binding DataContext.CopyChatModelAnswerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                                    CommandParameter="{Binding}"
+                                                                                    Content="&#xE8C8;"
+                                                                                    ToolTip="&#x590D;&#x5236;&#x6A21;&#x578B;&#x56DE;&#x7B54;" />
+                                                                            <Border Grid.Column="1"
+                                                                                    Style="{StaticResource StatusPillBorderStyle}">
+                                                                                <TextBlock FontSize="10.5"
+                                                                                           VerticalAlignment="Center"
+                                                                                           Foreground="{StaticResource AccentBrush}"
+                                                                                           FontWeight="SemiBold"
+                                                                                           Text="{Binding StatusText}" />
+                                                                            </Border>
+                                                                        </Grid>
                                                                     </Grid>
 
                                                                     <controls:MarkdownViewer Margin="0,8,0,0"
@@ -305,32 +465,32 @@
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Button x:Name="BackToBottomButton"
+                            Margin="0,0,12,12"
+                            Style="{StaticResource WorkbenchIconButtonStyle}"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom"
+                            Panel.ZIndex="2"
+                            Click="BackToBottomButton_Click"
+                            Content="&#xE70D;"
+                            ToolTip="&#x56DE;&#x5230;&#x5E95;&#x90E8;"
+                            Visibility="Collapsed" />
+                </Grid>
             </Border>
 
-            <Border Grid.Column="4" Style="{StaticResource SectionPanelBorderStyle}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x8BF7;&#x6C42;&#x72B6;&#x6001;" />
-                    <TextBlock Margin="0,6,0,0"
-                               Style="{StaticResource SectionHintTextStyle}"
-                               TextWrapping="Wrap"
-                               Text="{Binding ChatStatusMessage}" />
-                    <Border Margin="0,10,0,0" Style="{StaticResource InsetPanelBorderStyle}">
-                        <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                   TextWrapping="Wrap"
-                                   Text="{Binding ChatMetricsSummary}" />
-                    </Border>
-                    <Border Margin="0,8,0,0" Style="{StaticResource InsetPanelBorderStyle}">
-                        <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                   TextWrapping="Wrap"
-                                   Text="{Binding ChatReasoningEffortSummary}" />
-                    </Border>
-                </StackPanel>
-            </Border>
         </Grid>
 
-        <Border Grid.Row="2" Style="{StaticResource CommandBarBorderStyle}">
+        <Border x:Name="ChatInputDropZone"
+                Grid.Row="2"
+                Style="{StaticResource CommandBarBorderStyle}"
+                AllowDrop="True"
+                DragEnter="ChatInputDropZone_DragEnter"
+                DragOver="ChatInputDropZone_DragOver"
+                DragLeave="ChatInputDropZone_DragLeave"
+                Drop="ChatInputDropZone_Drop">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -373,10 +533,11 @@
                                                    Text="{Binding SizeLabel}" />
                                     </StackPanel>
                                     <Button Grid.Column="1"
-                                            Padding="6,2"
+                                            Style="{StaticResource ChatRecordToolButtonStyle}"
                                             Command="{Binding DataContext.RemoveChatAttachmentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}"
-                                            Content="&#x5220;" />
+                                            Content="&#xE711;"
+                                            ToolTip="&#x79FB;&#x9664;&#x9644;&#x4EF6;" />
                                 </Grid>
                             </Border>
                         </DataTemplate>
@@ -396,9 +557,10 @@
                                TextWrapping="Wrap" />
                     <Button Grid.Column="1"
                             Margin="8,0,0,0"
-                            Padding="10,4"
+                            Style="{StaticResource ChatRecordToolButtonStyle}"
                             Command="{Binding CancelChatEditCommand}"
-                            Content="&#x53D6;&#x6D88;&#x7F16;&#x8F91;" />
+                            Content="&#xE711;"
+                            ToolTip="&#x53D6;&#x6D88;&#x7F16;&#x8F91;" />
                 </Grid>
 
                 <Grid Grid.Row="3">
@@ -408,7 +570,8 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBox MinHeight="74"
+                    <TextBox x:Name="ChatInputTextBox"
+                             MinHeight="74"
                              MaxHeight="150"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
@@ -418,18 +581,22 @@
 
                     <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
                         <WrapPanel HorizontalAlignment="Right">
-                            <Button Margin="0,0,6,0"
-                                    Padding="10,5"
+                            <Button Style="{StaticResource WorkbenchComposerIconButtonStyle}"
                                     Command="{Binding AddChatImageAttachmentCommand}"
-                                    Content="&#x56FE;&#x7247;" />
-                            <Button Margin="0,0,6,0"
-                                    Padding="10,5"
+                                    Content="&#xEB9F;"
+                                    ToolTip="&#x6DFB;&#x52A0;&#x56FE;&#x7247;" />
+                            <Button Style="{StaticResource WorkbenchComposerIconButtonStyle}"
                                     Command="{Binding AddChatTextFileAttachmentCommand}"
-                                    Content="&#x6587;&#x4EF6;" />
-                            <Button Padding="14,6"
+                                    Content="&#xE723;"
+                                    ToolTip="&#x6DFB;&#x52A0;&#x6587;&#x4EF6;" />
+                            <Button Style="{StaticResource WorkbenchComposerIconButtonStyle}"
+                                    Command="{Binding StopChatStreamingCommand}"
+                                    Content="&#xE71A;"
+                                    ToolTip="&#x505C;&#x6B62;&#x751F;&#x6210;" />
+                            <Button Style="{StaticResource WorkbenchIconButtonPrimaryStyle}"
                                     Command="{Binding SendChatMessageCommand}"
-                                    Style="{StaticResource PrimaryActionButtonStyle}"
-                                    Content="{Binding ChatSendButtonText}" />
+                                    Content="&#xE724;"
+                                    ToolTip="{Binding ChatSendButtonText}" />
                         </WrapPanel>
                     </StackPanel>
                 </Grid>
@@ -446,9 +613,10 @@
                 </Border.InputBindings>
             </Border>
 
-            <Border Width="420"
+            <Border Width="380"
                     Margin="0,8,8,8"
                     Padding="14"
+                    Style="{StaticResource MotionDialogPanelStyle}"
                     Panel.ZIndex="1"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Stretch"
@@ -471,10 +639,29 @@
                                            Text="{Binding ChatModeSummary}" />
                             </StackPanel>
                             <Button Grid.Column="1"
-                                    Padding="10,4"
+                                    Style="{StaticResource ChatSessionIconButtonStyle}"
                                     Command="{Binding CloseChatSettingsPanelCommand}"
-                                    Content="&#x5173;&#x95ED;" />
+                                    Content="&#xE711;"
+                                    ToolTip="&#x5173;&#x95ED;&#x53C2;&#x6570;" />
                         </Grid>
+
+                        <Border Margin="0,12,0,0" Style="{StaticResource InsetPanelBorderStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x8BF7;&#x6C42;&#x72B6;&#x6001;" />
+                                <TextBlock Margin="0,4,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ChatStatusMessage}" />
+                                <TextBlock Margin="0,8,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ChatMetricsSummary}" />
+                                <TextBlock Margin="0,8,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ChatReasoningEffortSummary}" />
+                            </StackPanel>
+                        </Border>
 
                         <Border Margin="0,12,0,0" Style="{StaticResource InsetPanelBorderStyle}">
                             <StackPanel>
@@ -628,10 +815,11 @@
                                                                Foreground="#067647"
                                                                Text="{Binding DisplayName}" />
                                                     <Button Margin="6,0,0,0"
-                                                            Padding="5,0"
+                                                            Style="{StaticResource ChatRecordToolButtonStyle}"
                                                             Command="{Binding DataContext.RemoveChatSelectedModelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"
-                                                            Content="&#x5220;" />
+                                                            Content="&#xE711;"
+                                                            ToolTip="&#x79FB;&#x9664;&#x5BF9;&#x6BD4;&#x6A21;&#x578B;" />
                                                 </StackPanel>
                                             </Border>
                                         </DataTemplate>
@@ -648,6 +836,14 @@
                                             Padding="10,5"
                                             Command="{Binding StopChatStreamingCommand}"
                                             Content="&#x505C;&#x6B62;&#x751F;&#x6210;" />
+                                    <Button Margin="0,0,6,0"
+                                            Padding="10,5"
+                                            Command="{Binding ExportChatSessionMarkdownCommand}"
+                                            Content="&#x5BFC;&#x51FA; MD" />
+                                    <Button Margin="0,0,6,0"
+                                            Padding="10,5"
+                                            Command="{Binding ExportChatSessionTextCommand}"
+                                            Content="&#x5BFC;&#x51FA; TXT" />
                                     <Button Padding="10,5"
                                             Command="{Binding ClearChatSessionCommand}"
                                             Content="&#x6E05;&#x7A7A;&#x4F1A;&#x8BDD;" />

@@ -131,8 +131,7 @@ public sealed partial class MainWindowViewModel
            _proxyChartDialogBatchComparisonRows.Count > 0;
 
     public bool IsNativeStabilityTrendChartVisible
-        => _activeProxyChartViewMode == ProxyChartViewMode.StabilityTrend &&
-           _proxyChartDialogStabilityTrendRows.Count > 0;
+        => false;
 
     public bool IsNativeConcurrencyChartVisible
         => _activeProxyChartViewMode == ProxyChartViewMode.ConcurrencyPressure &&

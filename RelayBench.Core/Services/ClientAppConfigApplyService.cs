@@ -35,17 +35,20 @@ public sealed class ClientAppConfigApplyService
         List<ClientAppApplyResult> results = [];
 
         var codexSelections = targetSelections
-            .Where(target => target.Protocol == ClientApplyProtocolKind.Responses)
+            .Where(target => target.Protocol is ClientApplyProtocolKind.Responses or ClientApplyProtocolKind.OpenAiCompatible)
             .ToArray();
         if (codexSelections.Length > 0)
         {
+            var codexPreferredWireApi = ResolveCodexPreferredWireApi(
+                endpoint.PreferredWireApi,
+                codexSelections);
             results.Add(await _codexService.ApplyAsync(
                 endpoint.BaseUrl,
                 endpoint.ApiKey,
                 endpoint.Model,
                 endpoint.DisplayName,
                 endpoint.ContextWindow,
-                endpoint.PreferredWireApi,
+                codexPreferredWireApi,
                 codexSelections,
                 cancellationToken));
         }
@@ -80,6 +83,25 @@ public sealed class ClientAppConfigApplyService
         {
             TargetResults = targetResults
         };
+    }
+
+    private static string? ResolveCodexPreferredWireApi(
+        string? preferredWireApi,
+        IReadOnlyList<ClientApplyTargetSelection> codexSelections)
+    {
+        var hasResponsesTarget = codexSelections.Any(target => target.Protocol == ClientApplyProtocolKind.Responses);
+        if (hasResponsesTarget)
+        {
+            return "responses";
+        }
+
+        var hasChatFallbackTarget = codexSelections.Any(target => target.Protocol == ClientApplyProtocolKind.OpenAiCompatible);
+        if (hasChatFallbackTarget)
+        {
+            return "chat";
+        }
+
+        return preferredWireApi;
     }
 
     private static string BuildSummary(IReadOnlyList<ClientAppTargetApplyResult> targetResults)

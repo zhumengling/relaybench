@@ -1,3 +1,5 @@
+using RelayBench.Core.Models;
+
 namespace RelayBench.App.Services;
 
 public sealed record ProxySingleCapabilityChartItem(
@@ -13,4 +15,5 @@ public sealed record ProxySingleCapabilityChartItem(
     string MetricText,
     bool ReceivedDone,
     string DetailText,
-    string PreviewText);
+    string PreviewText,
+    ProxyProbeTrace? Trace = null);

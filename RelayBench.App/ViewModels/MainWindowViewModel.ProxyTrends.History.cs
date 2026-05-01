@@ -133,7 +133,7 @@ public sealed partial class MainWindowViewModel
         var averageTtft = Average(recentRecords.Select(record => record.StreamFirstTokenLatencyMs));
         var volatilityLabel = BuildVolatilityLabel(recentRecords);
         var comparison = AnalyzeProxyTrend(_lastProxyTrendRecords.Count == 0 ? recentRecords : _lastProxyTrendRecords);
-        var chartResult = _proxyTrendChartRenderService.Render(recentRecords, target);
+        var chartResult = _proxyTrendChartRenderService.Render(recentRecords, target, ResolvePreferredSingleChartWidth());
 
         ProxyTrendChartImage = chartResult.ChartImage;
         ProxyTrendChartStatusSummary = chartResult.HasChart
@@ -302,6 +302,8 @@ public sealed partial class MainWindowViewModel
         var multiModal = FindScenario(scenarios, ProxyProbeScenarioKind.MultiModal);
         var cacheMechanism = FindScenario(scenarios, ProxyProbeScenarioKind.CacheMechanism);
         var cacheIsolation = FindScenario(scenarios, ProxyProbeScenarioKind.CacheIsolation);
+        var instructionFollowing = FindScenario(scenarios, ProxyProbeScenarioKind.InstructionFollowing);
+        var dataExtraction = FindScenario(scenarios, ProxyProbeScenarioKind.DataExtraction);
 
         StringBuilder builder = new();
         AppendDialogSection(
@@ -357,6 +359,8 @@ public sealed partial class MainWindowViewModel
                 BuildScenarioStatusLine("官方对照完整性", officialReferenceIntegrity),
                 BuildScenarioStatusLine("多模态", multiModal),
                 BuildScenarioStatusLine("缓存命中", cacheMechanism),
+                BuildScenarioStatusLine("指令遵循", instructionFollowing),
+                BuildScenarioStatusLine("数据抽取", dataExtraction),
                 BuildScenarioStatusLine("缓存隔离", cacheIsolation)
             }));
 
@@ -384,6 +388,8 @@ public sealed partial class MainWindowViewModel
         var multiModal = FindScenario(scenarios, ProxyProbeScenarioKind.MultiModal);
         var cacheMechanism = FindScenario(scenarios, ProxyProbeScenarioKind.CacheMechanism);
         var cacheIsolation = FindScenario(scenarios, ProxyProbeScenarioKind.CacheIsolation);
+        var instructionFollowing = FindScenario(scenarios, ProxyProbeScenarioKind.InstructionFollowing);
+        var dataExtraction = FindScenario(scenarios, ProxyProbeScenarioKind.DataExtraction);
 
         StringBuilder builder = new();
         AppendDialogSection(
@@ -439,6 +445,8 @@ public sealed partial class MainWindowViewModel
                 BuildScenarioDetailLine("官方对照完整性", officialReferenceIntegrity, BuildOfficialReferenceIntegrityDigest(officialReferenceIntegrity)),
                 BuildScenarioDetailLine("多模态", multiModal),
                 BuildScenarioDetailLine("缓存命中", cacheMechanism, BuildCacheMechanismDigest(cacheMechanism)),
+                BuildScenarioDetailLine("指令遵循", instructionFollowing),
+                BuildScenarioDetailLine("数据抽取", dataExtraction),
                 BuildScenarioDetailLine("缓存隔离", cacheIsolation, BuildCacheIsolationDigest(cacheIsolation))
             }));
 

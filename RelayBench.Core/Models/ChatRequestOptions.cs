@@ -18,4 +18,7 @@ public sealed record ChatRequestOptions(
     bool IgnoreTlsErrors,
     int TimeoutSeconds,
     ChatReasoningEffort ReasoningEffort,
-    bool PreferResponsesApi);
+    bool PreferResponsesApi)
+{
+    public string? PreferredWireApi { get; init; }
+}

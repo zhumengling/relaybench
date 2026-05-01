@@ -403,12 +403,16 @@ public sealed partial class ProxyDiagnosticsService
             }
 
             var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
-            var preview = $"{contentType} / {bytes.Length} bytes";
+            var isAudioPayload = IsLikelyAudioSpeechResponse(contentType, bytes);
+            var decodedBody = isAudioPayload ? null : SafeDecodeUtf8(bytes);
+            var preview = isAudioPayload
+                ? $"{contentType} / {bytes.Length} bytes"
+                : $"{contentType} / {bytes.Length} bytes / {ExtractBodySample(decodedBody)}";
             return new ProxyProbeScenarioResult(
                 ProxyProbeScenarioKind.AudioSpeech,
                 "\u6587\u672C\u8F6C\u8BED\u97F3",
-                "\u652F\u6301",
-                bytes.Length > 0,
+                isAudioPayload ? "\u652F\u6301" : "\u5F02\u5E38",
+                isAudioPayload,
                 statusCode,
                 stopwatch.Elapsed,
                 null,
@@ -416,13 +420,13 @@ public sealed partial class ProxyDiagnosticsService
                 false,
                 0,
                 null,
-                bytes.Length > 0
+                isAudioPayload
                     ? "\u6587\u672C\u8F6C\u8BED\u97F3\u8BF7\u6C42\u6210\u529F\u3002"
-                    : "\u6587\u672C\u8F6C\u8BED\u97F3\u8FD4\u56DE 200\uFF0C\u4F46\u54CD\u5E94\u4F53\u4E3A\u7A7A\u3002",
+                    : "\u6587\u672C\u8F6C\u8BED\u97F3\u8FD4\u56DE 200\uFF0C\u4F46\u54CD\u5E94\u4E0D\u50CF\u53EF\u64AD\u653E\u97F3\u9891\u3002",
                 preview,
-                bytes.Length > 0 ? null : ProxyFailureKind.ProtocolMismatch,
+                isAudioPayload ? null : ProxyFailureKind.ProtocolMismatch,
                 "\u6587\u672C\u8F6C\u8BED\u97F3",
-                bytes.Length > 0 ? null : "\u8BED\u97F3\u8F93\u51FA\u4E3A\u7A7A\u3002",
+                isAudioPayload ? null : "\u8BED\u97F3\u8F93\u51FA\u4E3A\u7A7A\u6216\u8FD4\u56DE\u4E86 JSON/text \u9519\u8BEF\u4F53\u3002",
                 headers,
                 RequestId: requestId,
                 TraceId: traceId);
@@ -524,35 +528,16 @@ public sealed partial class ProxyDiagnosticsService
     }
 
     private static string BuildEmbeddingsPayload(string model)
-        => JsonSerializer.Serialize(new
-        {
-            model,
-            input = "RelayBench embeddings capability probe"
-        });
+        => ProxyProbePayloadFactory.BuildEmbeddingsPayload(model);
 
     private static string BuildImagesPayload(string model)
-        => JsonSerializer.Serialize(new
-        {
-            model,
-            prompt = "Generate a simple flat test image with a single colored square and no text.",
-            size = "256x256"
-        });
+        => ProxyProbePayloadFactory.BuildImagesPayload(model);
 
     private static string BuildModerationPayload(string model)
-        => JsonSerializer.Serialize(new
-        {
-            model,
-            input = "RelayBench moderation capability probe."
-        });
+        => ProxyProbePayloadFactory.BuildModerationPayload(model);
 
     private static string BuildAudioSpeechPayload(string model)
-        => JsonSerializer.Serialize(new
-        {
-            model,
-            voice = "alloy",
-            response_format = "mp3",
-            input = "RelayBench audio speech probe."
-        });
+        => ProxyProbePayloadFactory.BuildAudioSpeechPayload(model);
 
     private static MultipartFormDataContent BuildAudioTranscriptionContent(string model)
     {
@@ -615,7 +600,11 @@ public sealed partial class ProxyDiagnosticsService
                 continue;
             }
 
-            return $"dim={embedding.GetArrayLength()}";
+            var dimension = embedding.GetArrayLength();
+            if (dimension > 0)
+            {
+                return $"dim={dimension}";
+            }
         }
 
         return null;
@@ -634,14 +623,19 @@ public sealed partial class ProxyDiagnosticsService
             if (item.TryGetProperty("b64_json", out var base64Element) && base64Element.ValueKind == JsonValueKind.String)
             {
                 var value = base64Element.GetString();
-                return string.IsNullOrWhiteSpace(value)
-                    ? "b64_json"
-                    : $"b64_json ({value!.Length} chars)";
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return $"b64_json ({value!.Length} chars)";
+                }
             }
 
             if (item.TryGetProperty("url", out var urlElement) && urlElement.ValueKind == JsonValueKind.String)
             {
-                return urlElement.GetString();
+                var value = urlElement.GetString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
             }
         }
 
@@ -683,6 +677,26 @@ public sealed partial class ProxyDiagnosticsService
         }
 
         return null;
+    }
+
+    private static bool IsLikelyAudioSpeechResponse(string contentType, byte[] bytes)
+    {
+        if (bytes.Length == 0)
+        {
+            return false;
+        }
+
+        if (contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (string.Equals(contentType, "application/octet-stream", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private static string SafeDecodeUtf8(byte[] bytes)

@@ -1,4 +1,5 @@
 using RelayBench.App.Services;
+using RelayBench.Core.Models;
 
 namespace RelayBench.App.ViewModels;
 
@@ -26,6 +27,7 @@ public sealed class ProxySingleCapabilityChartRowViewModel
         ReceivedDoneText = item.ReceivedDone ? "done" : "no done";
         DetailText = string.IsNullOrWhiteSpace(item.DetailText) ? "-" : item.DetailText;
         PreviewText = string.IsNullOrWhiteSpace(item.PreviewText) ? "-" : item.PreviewText;
+        Trace = item.Trace;
         IsSectionFirst = isSectionFirst;
         StatusTone = ResolveStatusTone(item);
         ShouldAnimateMetricReveal = shouldAnimateMetricReveal;
@@ -58,6 +60,10 @@ public sealed class ProxySingleCapabilityChartRowViewModel
     public string DetailText { get; }
 
     public string PreviewText { get; }
+
+    public ProxyProbeTrace? Trace { get; }
+
+    public bool HasTrace => Trace is not null;
 
     public bool IsSectionFirst { get; }
 

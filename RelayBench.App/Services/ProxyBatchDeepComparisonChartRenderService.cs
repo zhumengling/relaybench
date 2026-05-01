@@ -13,7 +13,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
     private const double HeaderHeight = 92;
     private const double FooterHeight = 30;
     private const double TableHeaderHeight = 28;
-    private const double RowHeight = 70;
+    private const double RowHeight = 86;
     private const double RankColumnX = 28;
     private const double EntryColumnX = 90;
     private const double QuickColumnX = 366;
@@ -294,20 +294,21 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
         double top,
         ICollection<ProxyChartHitRegion> hitRegions)
     {
-        var rows = new[]
-        {
-            badges.Take(5).ToArray(),
-            badges.Skip(5).Take(4).ToArray()
-        };
+        const int badgesPerRow = 5;
+        var rowCount = (int)Math.Ceiling(badges.Count / (double)badgesPerRow);
 
-        for (var rowIndex = 0; rowIndex < rows.Length; rowIndex++)
+        for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
         {
-            var y = top + (rowIndex * 22);
-            for (var index = 0; index < rows[rowIndex].Length; index++)
+            var y = top + (rowIndex * 20);
+            var rowBadges = badges
+                .Skip(rowIndex * badgesPerRow)
+                .Take(badgesPerRow)
+                .ToArray();
+            for (var index = 0; index < rowBadges.Length; index++)
             {
-                var badge = rows[rowIndex][index];
+                var badge = rowBadges[index];
                 var x = ScaleX(MatrixColumnX + (index * 76));
-                DrawMatrixBadge(context, badge, x, y, ScaleWidth(72), 17, hitRegions);
+                DrawMatrixBadge(context, badge, x, y, ScaleWidth(72), 16.5, hitRegions);
             }
         }
     }
@@ -366,7 +367,7 @@ public sealed class ProxyBatchDeepComparisonChartRenderService
     {
         DrawWrappedText(
             context,
-            "图例：B5 基础项；Sys/Fn/Err/Str/Ref/MM/Cch/Iso 为深度探针。蓝=运行，绿=通过，橙=待复核，红=异常。",
+            "图例：B5 基础项；Sys/Fn/Err/Str/MM/Cch/IF/DE/SO/TC/RM/CB 为深度探针。蓝=运行，绿=通过，橙=待复核，红=异常。",
             new Point(20, chartHeight - 22),
             9.8,
             FontWeights.Normal,

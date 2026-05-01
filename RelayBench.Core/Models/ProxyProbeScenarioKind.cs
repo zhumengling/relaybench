@@ -5,6 +5,7 @@ public enum ProxyProbeScenarioKind
     Models,
     ChatCompletions,
     ChatCompletionsStream,
+    AnthropicMessages,
     Responses,
     StructuredOutput,
     Embeddings,
@@ -19,5 +20,11 @@ public enum ProxyProbeScenarioKind
     OfficialReferenceIntegrity,
     MultiModal,
     CacheMechanism,
-    CacheIsolation
+    CacheIsolation,
+    InstructionFollowing,
+    DataExtraction,
+    StructuredOutputEdge,
+    ToolCallDeep,
+    ReasonMathConsistency,
+    CodeBlockDiscipline
 }

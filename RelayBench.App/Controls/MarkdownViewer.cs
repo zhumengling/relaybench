@@ -49,6 +49,7 @@ public sealed class MarkdownViewer : FlowDocumentScrollViewer
         VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
         Background = Brushes.Transparent;
         Focusable = false;
+        PreviewMouseWheel += ForwardMouseWheelToParentScrollViewer;
         Document = BuildDocument(string.Empty);
     }
 
@@ -65,6 +66,47 @@ public sealed class MarkdownViewer : FlowDocumentScrollViewer
             viewer.Document = BuildDocument(e.NewValue as string ?? string.Empty);
         }
     }
+
+    private static void ForwardMouseWheelToParentScrollViewer(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Handled || sender is not DependencyObject source)
+        {
+            return;
+        }
+
+        var parentScrollViewer = FindParentScrollViewer(source);
+        if (parentScrollViewer is null)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        parentScrollViewer.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+        {
+            RoutedEvent = UIElement.MouseWheelEvent,
+            Source = sender
+        });
+    }
+
+    private static ScrollViewer? FindParentScrollViewer(DependencyObject source)
+    {
+        var current = GetParent(source);
+        while (current is not null)
+        {
+            if (current is ScrollViewer scrollViewer &&
+                scrollViewer.VerticalScrollBarVisibility != ScrollBarVisibility.Disabled)
+            {
+                return scrollViewer;
+            }
+
+            current = GetParent(current);
+        }
+
+        return null;
+    }
+
+    private static DependencyObject? GetParent(DependencyObject source)
+        => VisualTreeHelper.GetParent(source) ?? LogicalTreeHelper.GetParent(source);
 
     private static FlowDocument BuildDocument(string markdown)
     {
@@ -121,6 +163,8 @@ public sealed class MarkdownViewer : FlowDocumentScrollViewer
                 break;
             case HtmlBlock html:
                 target.Add(RenderCodeBlock(html.Lines.ToString(), "html"));
+                break;
+            case LinkReferenceDefinitionGroup:
                 break;
             default:
                 var fallback = block.ToString();
@@ -199,10 +243,16 @@ public sealed class MarkdownViewer : FlowDocumentScrollViewer
         };
         Button copyButton = new()
         {
-            Content = "\u590d\u5236",
-            Padding = new Thickness(8, 2, 8, 2),
-            FontSize = 10.5,
-            Cursor = Cursors.Hand
+            Width = 24,
+            Height = 24,
+            MinWidth = 0,
+            Padding = new Thickness(0),
+            Content = "\uE8C8",
+            FontFamily = new FontFamily("Segoe MDL2 Assets"),
+            FontSize = 11.5,
+            FontWeight = FontWeights.Normal,
+            Cursor = Cursors.Hand,
+            ToolTip = "\u590d\u5236\u4ee3\u7801"
         };
         copyButton.Click += (_, _) => Clipboard.SetText(code ?? string.Empty);
         Grid.SetColumn(copyButton, 1);

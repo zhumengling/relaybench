@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Json;
 using RelayBench.App.Infrastructure;
 using RelayBench.App.Services;
 using RelayBench.Core.Models;
@@ -19,6 +21,7 @@ public sealed partial class MainWindowViewModel
             new("STUN NAT 分类测试", $"{StunSummary}\n\n覆盖与复核：\n{StunCoverageSummary}\n\n分类测试过程：\n{StunTestSummary}\n\n属性详情：\n{StunAttributeSummary}"),
             new("接口模型列表", $"{ProxyModelCatalogSummary}\n\n{ProxyModelCatalogDetail}"),
             new("单站测试", $"{ProxyVerdictSummary}\n\n{ProxyCapabilityMatrixSummary}\n\n{ProxyKeyMetricsSummary}\n\n已管理入口参照：\n{ProxyManagedEntryAssessmentSummary}\n\n{ProxyIssueSummary}\n\n关键响应头：\n{ProxyHeadersSummary}\n\n原始摘要：\n{ProxySummary}\n\n原始明细：\n{ProxyDetail}"),
+            new("深测证据", BuildProbeTraceReportSection()),
             new("单站测试（稳定性）", $"{ProxyStabilityInsightSummary}\n\n{ProxyStabilitySummary}\n\n{ProxyStabilityDetail}"),
             new("单站测试（并发压测）", $"{ProxyConcurrencySummary}\n\n{ProxyConcurrencyDetail}"),
             new("批量对比", $"{ProxyBatchRecommendationSummary}\n\n{ProxyBatchSummary}\n\n{ProxyBatchDetail}"),
@@ -43,6 +46,7 @@ public sealed partial class MainWindowViewModel
             new("raw/stun-tests.txt", NormalizeArtifactContent($"{StunSummary}\n\n{StunCoverageSummary}\n\n{StunTestSummary}\n\n{StunAttributeSummary}"), "网络复核 / STUN 与 NAT 分类原始结果"),
             new("raw/proxy-model-catalog.txt", NormalizeArtifactContent($"{ProxyModelCatalogSummary}\n\n{ProxyModelCatalogDetail}"), "接口模型列表原始结果"),
             new("raw/proxy-single.txt", NormalizeArtifactContent($"{ProxyVerdictSummary}\n\n{ProxyCapabilityMatrixSummary}\n\n{ProxyKeyMetricsSummary}\n\n{ProxyManagedEntryAssessmentSummary}\n\n{ProxyIssueSummary}\n\n{ProxyHeadersSummary}\n\n{ProxySummary}\n\n{ProxyDetail}"), "单站测试原始结果"),
+            new("raw/probe-traces.json", BuildProbeTraceJsonArtifact(), "单站 / 稳定性 / 批量深测脱敏 Trace"),
             new("raw/proxy-stability.txt", NormalizeArtifactContent($"{ProxyStabilityInsightSummary}\n\n{ProxyStabilitySummary}\n\n{ProxyStabilityDetail}"), "单站测试稳定性原始结果"),
             new("raw/proxy-concurrency.txt", NormalizeArtifactContent($"{ProxyConcurrencySummary}\n\n{ProxyConcurrencyDetail}"), "单站测试并发压测原始结果"),
             new("raw/proxy-batch.txt", NormalizeArtifactContent($"{ProxyBatchRecommendationSummary}\n\n{ProxyBatchSummary}\n\n{ProxyBatchDetail}"), "批量对比原始结果"),
@@ -52,6 +56,103 @@ public sealed partial class MainWindowViewModel
             new("raw/port-scan-output.txt", NormalizeArtifactContent($"{PortScanSummary}\n\n{PortScanBatchSummary}\n\n{PortScanExportSummary}\n\n{PortScanDetail}\n\n{PortScanRawOutput}"), "端口扫描原始输出")
         ];
     }
+
+    private string BuildProbeTraceReportSection()
+    {
+        var rows = CollectProbeTraceExportRows().ToArray();
+        if (rows.Length == 0)
+        {
+            return "当前报告没有捕获到深测 Trace。运行单站深度测试、稳定性语义抽样或候选站点深测后，这里会记录脱敏输入、输出和判定证据。";
+        }
+
+        StringBuilder builder = new();
+        builder.AppendLine($"已捕获 {rows.Length} 条脱敏深测 Trace。完整 JSON 位于 raw/probe-traces.json。");
+        builder.AppendLine();
+
+        foreach (var row in rows.Take(24))
+        {
+            builder.AppendLine($"- {row.Source} / {row.Scenario} / {row.DisplayName} / {(row.Success ? "通过" : "待复核")}");
+        }
+
+        if (rows.Length > 24)
+        {
+            builder.AppendLine($"- 其余 {rows.Length - 24} 条见 raw/probe-traces.json。");
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    private string BuildProbeTraceJsonArtifact()
+    {
+        var rows = CollectProbeTraceExportRows().ToArray();
+        return JsonSerializer.Serialize(rows, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private IEnumerable<ProbeTraceExportRow> CollectProbeTraceExportRows()
+    {
+        foreach (var row in CollectScenarioTraceRows("单站测试", null, _lastProxySingleResult?.ScenarioResults))
+        {
+            yield return row;
+        }
+
+        if (_lastProxyStabilityResult?.RoundResults is not null)
+        {
+            foreach (var round in _lastProxyStabilityResult.RoundResults.Select((result, index) => (result, index)))
+            {
+                foreach (var row in CollectScenarioTraceRows($"稳定性第 {round.index + 1} 轮", round.index + 1, round.result.ScenarioResults))
+                {
+                    yield return row;
+                }
+            }
+        }
+
+        foreach (var batchRun in _proxyBatchChartRuns.Select((rows, index) => (rows, index)))
+        {
+            foreach (var probeRow in batchRun.rows)
+            {
+                var source = $"批量第 {batchRun.index + 1} 轮 / {probeRow.Entry.Name}";
+                foreach (var row in CollectScenarioTraceRows(source, batchRun.index + 1, probeRow.Result.ScenarioResults))
+                {
+                    yield return row;
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<ProbeTraceExportRow> CollectScenarioTraceRows(
+        string source,
+        int? round,
+        IReadOnlyList<ProxyProbeScenarioResult>? scenarios)
+    {
+        if (scenarios is null)
+        {
+            yield break;
+        }
+
+        foreach (var scenario in scenarios)
+        {
+            if (scenario.Trace is null)
+            {
+                continue;
+            }
+
+            yield return new ProbeTraceExportRow(
+                source,
+                round,
+                scenario.Scenario.ToString(),
+                scenario.DisplayName,
+                scenario.Success,
+                scenario.Trace);
+        }
+    }
+
+    private sealed record ProbeTraceExportRow(
+        string Source,
+        int? Round,
+        string Scenario,
+        string DisplayName,
+        bool Success,
+        ProxyProbeTrace Trace);
 
     private IReadOnlyList<DiagnosticReportImageArtifact> BuildReportImageArtifacts()
     {
@@ -332,6 +433,11 @@ public sealed partial class MainWindowViewModel
                     streamSuccessRate = _lastProxyStabilityResult?.StreamSuccessRate,
                     responsesSuccessCount = _lastProxyStabilityResult?.ResponsesSuccessCount,
                     structuredOutputSuccessCount = _lastProxyStabilityResult?.StructuredOutputSuccessCount,
+                    instructionFollowingSuccessCount = _lastProxyStabilityResult?.InstructionFollowingSuccessCount,
+                    instructionFollowingExecutedCount = _lastProxyStabilityResult?.InstructionFollowingExecutedCount,
+                    dataExtractionSuccessCount = _lastProxyStabilityResult?.DataExtractionSuccessCount,
+                    dataExtractionExecutedCount = _lastProxyStabilityResult?.DataExtractionExecutedCount,
+                    semanticStabilityRate = _lastProxyStabilityResult?.SemanticStabilityRate,
                     averageChatLatencyMs = _lastProxyStabilityResult?.AverageChatLatency?.TotalMilliseconds,
                     averageTtftMs = _lastProxyStabilityResult?.AverageStreamFirstTokenLatency?.TotalMilliseconds,
                     averageResponsesLatencyMs = _lastProxyStabilityResult?.AverageResponsesLatency?.TotalMilliseconds,

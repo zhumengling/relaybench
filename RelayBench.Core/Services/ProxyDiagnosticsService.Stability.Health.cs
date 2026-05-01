@@ -31,20 +31,44 @@ public sealed partial class ProxyDiagnosticsService
         double streamSuccessRate,
         TimeSpan? averageChatLatency,
         TimeSpan? averageTtft,
-        int maxConsecutiveFailures)
+        int maxConsecutiveFailures,
+        int semanticExecutedCount = 0,
+        double semanticStabilityRate = 0)
     {
-        var chatLatencyScore = ScoreLatency(averageChatLatency, 600, 6_000);
-        var ttftScore = ScoreLatency(averageTtft, 300, 4_000);
-        var failurePenalty = Math.Min(maxConsecutiveFailures * 8, 32);
+        var chatLatencyScore = ScoreLatency(averageChatLatency, 800, 8_000);
+        var ttftScore = ScoreLatency(averageTtft, 500, 5_000);
+        var failurePenalty = Math.Min(maxConsecutiveFailures * 6, 30);
+        var semanticPenalty = CalculateSemanticStabilityPenalty(semanticExecutedCount, semanticStabilityRate);
 
         var rawScore =
             (fullSuccessRate * 0.5) +
             (streamSuccessRate * 0.2) +
             (chatLatencyScore * 0.15) +
             (ttftScore * 0.15) -
-            failurePenalty;
+            failurePenalty -
+            semanticPenalty;
 
         return (int)Math.Clamp(Math.Round(rawScore), 0, 100);
+    }
+
+    private static int CalculateSemanticStabilityPenalty(int executedCount, double stabilityRate)
+    {
+        if (executedCount <= 0 || stabilityRate >= 90d)
+        {
+            return 0;
+        }
+
+        if (stabilityRate >= 70d)
+        {
+            return 3;
+        }
+
+        if (stabilityRate >= 50d)
+        {
+            return 6;
+        }
+
+        return 10;
     }
 
     private static double ScoreLatency(TimeSpan? latency, double bestMilliseconds, double worstMilliseconds)

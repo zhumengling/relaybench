@@ -119,14 +119,20 @@ public sealed partial class MainWindowViewModel
                 StopChatStreamingCommand.RaiseCanExecuteChanged();
                 AddChatImageAttachmentCommand.RaiseCanExecuteChanged();
                 AddChatTextFileAttachmentCommand.RaiseCanExecuteChanged();
+                AddChatAttachmentFilesCommand.RaiseCanExecuteChanged();
                 AddChatSelectedModelCommand.RaiseCanExecuteChanged();
                 ClearChatSelectedModelsCommand.RaiseCanExecuteChanged();
                 RemoveChatSelectedModelCommand.RaiseCanExecuteChanged();
                 RemoveChatAttachmentCommand.RaiseCanExecuteChanged();
                 NewChatSessionCommand.RaiseCanExecuteChanged();
                 DeleteChatSessionCommand.RaiseCanExecuteChanged();
+                BeginRenameChatSessionCommand.RaiseCanExecuteChanged();
+                CommitRenameChatSessionCommand.RaiseCanExecuteChanged();
                 EditChatMessageCommand.RaiseCanExecuteChanged();
                 CancelChatEditCommand.RaiseCanExecuteChanged();
+                RegenerateLastChatAnswerCommand.RaiseCanExecuteChanged();
+                ExportChatSessionMarkdownCommand.RaiseCanExecuteChanged();
+                ExportChatSessionTextCommand.RaiseCanExecuteChanged();
                 ApplyChatPresetCommand.RaiseCanExecuteChanged();
                 SaveChatPresetCommand.RaiseCanExecuteChanged();
                 DeleteChatPresetCommand.RaiseCanExecuteChanged();
@@ -194,6 +200,12 @@ public sealed partial class MainWindowViewModel
     private bool CanEditChatAttachments()
         => !IsChatStreaming;
 
+    private bool CanRegenerateLastChatAnswer()
+        => !IsChatStreaming && ChatMessages.Any(static message => message.IsUser);
+
+    private bool CanExportChatSession()
+        => !IsChatStreaming && ChatMessages.Count > 0;
+
     private async Task SendChatMessageAsync()
     {
         if (!CanSendChatMessage())
@@ -210,6 +222,7 @@ public sealed partial class MainWindowViewModel
             RemoveChatMessagesFromEditingPoint();
         }
 
+        var targetModels = GetChatTargetModels();
         var userMessage = new ChatMessage(
             Guid.NewGuid().ToString("N"),
             "user",
@@ -218,21 +231,8 @@ public sealed partial class MainWindowViewModel
             attachments,
             null,
             null);
-        var assistantMessage = new ChatMessage(
-            Guid.NewGuid().ToString("N"),
-            "assistant",
-            string.Empty,
-            DateTimeOffset.Now,
-            Array.Empty<ChatAttachment>(),
-            null,
-            null);
-
-        var targetModels = GetChatTargetModels();
-        var isMultiModel = targetModels.Length > 1;
         var userViewModel = new ChatMessageViewModel(userMessage);
-        var assistantViewModel = isMultiModel
-            ? ChatMessageViewModel.CreateMultiModelAnswer(targetModels)
-            : new ChatMessageViewModel(assistantMessage);
+        var assistantViewModel = CreateAssistantViewModel(targetModels);
         ChatMessages.Add(userViewModel);
         ChatMessages.Add(assistantViewModel);
         ChatInputText = string.Empty;
@@ -240,7 +240,14 @@ public sealed partial class MainWindowViewModel
         PendingChatAttachments.Clear();
         NotifyChatCollectionsChanged();
         SaveChatSession();
+        await StartChatGenerationAsync(assistantViewModel, attachments, targetModels);
+    }
 
+    private async Task StartChatGenerationAsync(
+        ChatMessageViewModel assistantViewModel,
+        IReadOnlyList<ChatAttachment> requestAttachments,
+        IReadOnlyList<string> targetModels)
+    {
         _currentChatCancellationSource?.Dispose();
         _currentChatCancellationSource = new CancellationTokenSource();
         IsChatStreaming = true;
@@ -253,12 +260,12 @@ public sealed partial class MainWindowViewModel
                 .Select(static message => message.ToCore())
                 .ToArray();
 
-            if (isMultiModel)
+            if (assistantViewModel.IsMultiModelAnswer)
             {
-                ChatStatusMessage = $"\u6b63\u5728\u540c\u65f6\u8bf7\u6c42 {targetModels.Length} \u4e2a\u6a21\u578b...";
+                ChatStatusMessage = $"\u6b63\u5728\u540c\u65f6\u8bf7\u6c42 {targetModels.Count} \u4e2a\u6a21\u578b...";
                 var token = _currentChatCancellationSource.Token;
                 var tasks = assistantViewModel.ModelAnswers
-                    .Select(answer => StreamChatModelAnswerAsync(BuildChatRequestOptions(answer.ModelName), history, attachments, answer, token))
+                    .Select(answer => StreamChatModelAnswerWithResolvedOptionsAsync(answer.ModelName, history, requestAttachments, answer, token))
                     .ToArray();
                 await Task.WhenAll(tasks);
                 ChatMetricsSummary = BuildMultiChatMetricsSummary(assistantViewModel.ModelAnswers);
@@ -270,9 +277,9 @@ public sealed partial class MainWindowViewModel
             else
             {
                 await StreamSingleChatAnswerAsync(
-                    BuildChatRequestOptions(targetModels.FirstOrDefault()),
+                    await BuildChatRequestOptionsAsync(targetModels.FirstOrDefault(), _currentChatCancellationSource.Token),
                     history,
-                    attachments,
+                    requestAttachments,
                     assistantViewModel,
                     _currentChatCancellationSource.Token);
             }
@@ -299,6 +306,23 @@ public sealed partial class MainWindowViewModel
             _currentChatCancellationSource = null;
             SaveChatSession();
         }
+    }
+
+    private static ChatMessageViewModel CreateAssistantViewModel(IReadOnlyList<string> targetModels)
+    {
+        if (targetModels.Count > 1)
+        {
+            return ChatMessageViewModel.CreateMultiModelAnswer(targetModels);
+        }
+
+        return new ChatMessageViewModel(new ChatMessage(
+            Guid.NewGuid().ToString("N"),
+            "assistant",
+            string.Empty,
+            DateTimeOffset.Now,
+            Array.Empty<ChatAttachment>(),
+            null,
+            null));
     }
 
     private Task StopChatStreamingAsync()
@@ -396,6 +420,17 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    private async Task StreamChatModelAnswerWithResolvedOptionsAsync(
+        string modelName,
+        IReadOnlyList<ChatMessage> history,
+        IReadOnlyList<ChatAttachment> attachments,
+        ChatModelAnswerViewModel answer,
+        CancellationToken cancellationToken)
+    {
+        var options = await BuildChatRequestOptionsAsync(modelName, cancellationToken);
+        await StreamChatModelAnswerAsync(options, history, attachments, answer, cancellationToken);
+    }
+
     private Task ClearChatSessionAsync()
     {
         ChatMessages.Clear();
@@ -445,6 +480,105 @@ public sealed partial class MainWindowViewModel
         LoadChatSession(nextItem.SessionId);
         ChatStatusMessage = "\u5df2\u5220\u9664\u4f1a\u8bdd\u3002";
         SaveChatDocument();
+        return Task.CompletedTask;
+    }
+
+    private Task BeginRenameChatSessionAsync(ChatSessionListItemViewModel? item)
+    {
+        if (item is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        item.DraftTitle = item.Title;
+        item.IsRenaming = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CommitRenameChatSessionAsync(ChatSessionListItemViewModel? item)
+    {
+        if (item is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        var title = item.DraftTitle.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            item.DraftTitle = item.Title;
+            item.IsRenaming = false;
+            return Task.CompletedTask;
+        }
+
+        var session = _chatSessionsDocument.Sessions.FirstOrDefault(session =>
+            string.Equals(session.SessionId, item.SessionId, StringComparison.Ordinal));
+        if (session is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        session.ManualTitle = title;
+        session.Title = TrimSessionTitle(title);
+        session.UpdatedAt = DateTimeOffset.Now;
+        item.Title = BuildChatSessionTitle(session);
+        item.UpdatedAt = session.UpdatedAt;
+        item.IsManualTitle = true;
+        item.IsRenaming = false;
+        SaveChatDocument();
+        ChatStatusMessage = "\u4f1a\u8bdd\u5df2\u91cd\u547d\u540d\u3002";
+        return Task.CompletedTask;
+    }
+
+    private static Task CancelRenameChatSessionAsync(ChatSessionListItemViewModel? item)
+    {
+        if (item is not null)
+        {
+            item.DraftTitle = item.Title;
+            item.IsRenaming = false;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task RegenerateLastChatAnswerAsync()
+    {
+        var userIndex = FindLastUserMessageIndex();
+        if (userIndex < 0)
+        {
+            ChatStatusMessage = "\u6ca1\u6709\u53ef\u91cd\u65b0\u751f\u6210\u7684\u7528\u6237\u6d88\u606f\u3002";
+            return;
+        }
+
+        var userMessage = ChatMessages[userIndex];
+        var requestAttachments = userMessage.Attachments
+            .Select(static attachment => attachment.Attachment)
+            .ToArray();
+        for (var index = ChatMessages.Count - 1; index > userIndex; index--)
+        {
+            ChatMessages.RemoveAt(index);
+        }
+
+        var targetModels = GetChatTargetModels();
+        var assistantViewModel = CreateAssistantViewModel(targetModels);
+        ChatMessages.Add(assistantViewModel);
+        ClearChatEditingState();
+        NotifyChatCollectionsChanged();
+        SaveChatSession();
+        ChatStatusMessage = "\u6b63\u5728\u91cd\u65b0\u751f\u6210\u6700\u540e\u4e00\u6b21\u56de\u7b54...";
+        await StartChatGenerationAsync(assistantViewModel, requestAttachments, targetModels);
+    }
+
+    private Task ExportChatSessionMarkdownAsync()
+    {
+        var path = _modelChatExportService.ExportMarkdown(GetCurrentChatSessionTitle(), ChatMessages.Select(static message => message.ToCore()).ToArray());
+        ChatStatusMessage = $"\u5df2\u5bfc\u51fa Markdown\uff1a{path}";
+        return Task.CompletedTask;
+    }
+
+    private Task ExportChatSessionTextAsync()
+    {
+        var path = _modelChatExportService.ExportText(GetCurrentChatSessionTitle(), ChatMessages.Select(static message => message.ToCore()).ToArray());
+        ChatStatusMessage = $"\u5df2\u5bfc\u51fa TXT\uff1a{path}";
         return Task.CompletedTask;
     }
 
@@ -575,6 +709,36 @@ public sealed partial class MainWindowViewModel
         return Task.CompletedTask;
     }
 
+    private Task AddChatAttachmentFilesAsync(string[]? filePaths)
+    {
+        if (filePaths is null || filePaths.Length == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        var imported = 0;
+        List<string> failures = [];
+        foreach (var filePath in filePaths.Where(static path => !string.IsNullOrWhiteSpace(path)))
+        {
+            try
+            {
+                PendingChatAttachments.Add(new ChatAttachmentViewModel(
+                    _chatAttachmentImportService.ImportFile(filePath)));
+                imported++;
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{System.IO.Path.GetFileName(filePath)}：{ex.Message}");
+            }
+        }
+
+        NotifyChatCollectionsChanged();
+        ChatStatusMessage = failures.Count == 0
+            ? $"\u5df2\u901a\u8fc7\u62d6\u62fd\u6dfb\u52a0 {imported} \u4e2a\u9644\u4ef6\u3002"
+            : $"\u5df2\u6dfb\u52a0 {imported} \u4e2a\u9644\u4ef6\uff0c{failures.Count} \u4e2a\u6587\u4ef6\u672a\u5bfc\u5165\uff1a{string.Join("；", failures.Take(3))}";
+        return Task.CompletedTask;
+    }
+
     private Task AddChatSelectedModelAsync()
     {
         var model = string.IsNullOrWhiteSpace(ChatCandidateModel) ? ProxyModel : ChatCandidateModel;
@@ -636,6 +800,28 @@ public sealed partial class MainWindowViewModel
         return Task.CompletedTask;
     }
 
+    private Task CopyChatMessageAsync(ChatMessageViewModel? message)
+    {
+        if (message?.CanCopy == true)
+        {
+            Clipboard.SetText(message.CopyText);
+            ChatStatusMessage = "\u6574\u6761\u6d88\u606f\u5df2\u590d\u5236\u3002";
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task CopyChatModelAnswerAsync(ChatModelAnswerViewModel? answer)
+    {
+        if (answer?.CanCopy == true)
+        {
+            Clipboard.SetText(answer.CopyText);
+            ChatStatusMessage = $"\u5df2\u590d\u5236 {answer.ModelName} \u7684\u56de\u7b54\u3002";
+        }
+
+        return Task.CompletedTask;
+    }
+
     private ChatRequestOptions BuildChatRequestOptions(string? modelName = null)
     {
         var temperature = double.TryParse(ChatTemperatureText, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedTemperature)
@@ -656,6 +842,33 @@ public sealed partial class MainWindowViewModel
             int.TryParse(ProxyTimeoutSecondsText, out var timeout) ? timeout : 60,
             reasoningEffort,
             reasoningEffort is not ChatReasoningEffort.Auto);
+    }
+
+    private async Task<ChatRequestOptions> BuildChatRequestOptionsAsync(
+        string? modelName,
+        CancellationToken cancellationToken)
+    {
+        var options = BuildChatRequestOptions(modelName);
+        try
+        {
+            var preferredWireApi = await _proxyEndpointModelCacheService.TryResolvePreferredWireApiAsync(
+                options.BaseUrl,
+                options.ApiKey,
+                options.Model,
+                cancellationToken);
+            return string.IsNullOrWhiteSpace(preferredWireApi)
+                ? options
+                : options with { PreferredWireApi = preferredWireApi };
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("ModelChat.ResolvePreferredWireApi", ex);
+            return options;
+        }
     }
 
     private bool TryAddChatSelectedModel(string? model, out string message)
@@ -958,7 +1171,12 @@ public sealed partial class MainWindowViewModel
         };
 
     private static ChatSessionListItemViewModel ToChatSessionListItem(ChatSessionSnapshot session)
-        => new(session.SessionId, BuildChatSessionTitle(session), session.UpdatedAt, session.Messages.Count);
+        => new(
+            session.SessionId,
+            BuildChatSessionTitle(session),
+            session.UpdatedAt,
+            session.Messages.Count,
+            !string.IsNullOrWhiteSpace(session.ManualTitle));
 
     private static ChatPromptPresetViewModel ToChatPresetViewModel(ChatPresetSnapshot preset)
         => new(
@@ -984,6 +1202,11 @@ public sealed partial class MainWindowViewModel
 
     private static string BuildChatSessionTitle(ChatSessionSnapshot session)
     {
+        if (!string.IsNullOrWhiteSpace(session.ManualTitle))
+        {
+            return TrimSessionTitle(session.ManualTitle);
+        }
+
         var firstUserMessage = session.Messages.FirstOrDefault(static message => string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(firstUserMessage?.Content))
         {
@@ -1012,6 +1235,7 @@ public sealed partial class MainWindowViewModel
             item.Title = BuildChatSessionTitle(session);
             item.UpdatedAt = session.UpdatedAt;
             item.MessageCount = session.Messages.Count;
+            item.IsManualTitle = !string.IsNullOrWhiteSpace(session.ManualTitle);
         }
 
         OnPropertyChanged(nameof(HasChatSessions));
@@ -1086,7 +1310,26 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(HasChatMessages));
         OnPropertyChanged(nameof(HasPendingChatAttachments));
         SendChatMessageCommand.RaiseCanExecuteChanged();
+        RegenerateLastChatAnswerCommand.RaiseCanExecuteChanged();
+        ExportChatSessionMarkdownCommand.RaiseCanExecuteChanged();
+        ExportChatSessionTextCommand.RaiseCanExecuteChanged();
     }
+
+    private int FindLastUserMessageIndex()
+    {
+        for (var index = ChatMessages.Count - 1; index >= 0; index--)
+        {
+            if (ChatMessages[index].IsUser)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private string GetCurrentChatSessionTitle()
+        => SelectedChatSession?.Title ?? BuildChatSessionTitle(GetActiveChatSession());
 
     private void RemoveChatMessagesFromEditingPoint()
     {

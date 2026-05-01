@@ -46,6 +46,20 @@ public sealed class AppStateSnapshot
 
     public bool ProxyEnableCacheMechanismTest { get; set; } = true;
 
+    public bool ProxyEnableInstructionFollowingTest { get; set; } = true;
+
+    public bool ProxyEnableDataExtractionTest { get; set; } = true;
+
+    public bool ProxyEnableStructuredOutputEdgeTest { get; set; } = true;
+
+    public bool ProxyEnableToolCallDeepTest { get; set; } = true;
+
+    public bool ProxyEnableReasonMathConsistencyTest { get; set; }
+
+    public bool ProxyEnableCodeBlockDisciplineTest { get; set; } = true;
+
+    public bool ProxyEnableSemanticStabilitySampling { get; set; }
+
     public bool ProxyEnableCacheIsolationTest { get; set; }
 
     public string ProxyCacheIsolationAlternateApiKey { get; set; } = string.Empty;

@@ -28,4 +28,5 @@ public sealed record ProxyProbeScenarioResult(
     double? MaxChunkGapMilliseconds = null,
     double? AverageChunkGapMilliseconds = null,
     string? RequestId = null,
-    string? TraceId = null);
+    string? TraceId = null,
+    ProxyProbeTrace? Trace = null);

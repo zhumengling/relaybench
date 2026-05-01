@@ -99,7 +99,8 @@ public sealed partial class ProxyDiagnosticsService
         int delayMilliseconds,
         IProgress<string>? progress = null,
         IProgress<ProxyDiagnosticsResult>? roundProgress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool includeSemanticStabilityProbes = false)
     {
         var clampedRounds = Math.Clamp(requestedRounds, 1, 50);
         var clampedDelay = Math.Clamp(delayMilliseconds, 0, 30_000);
@@ -134,6 +135,33 @@ public sealed partial class ProxyDiagnosticsService
         {
             progress?.Report($"正在运行接口稳定性第 {index + 1}/{clampedRounds} 轮...");
             var roundResult = await RunSingleCoreAsync(normalizedSettings, baseUri, null, cancellationToken);
+            if (includeSemanticStabilityProbes)
+            {
+                var semanticProbeIndex = index % 4;
+                roundResult = await RunSupplementalScenariosAsync(
+                    normalizedSettings,
+                    roundResult,
+                    includeProtocolCompatibility: false,
+                    includeErrorTransparency: false,
+                    includeStreamingIntegrity: false,
+                    includeOfficialReferenceIntegrity: false,
+                    officialReferenceBaseUrl: null,
+                    officialReferenceApiKey: null,
+                    officialReferenceModel: null,
+                    includeMultiModal: false,
+                    includeCacheMechanism: false,
+                    includeCacheIsolation: false,
+                    cacheIsolationAlternateApiKey: null,
+                    includeInstructionFollowing: semanticProbeIndex == 0,
+                    includeDataExtraction: semanticProbeIndex == 1,
+                    includeStructuredOutputEdge: semanticProbeIndex == 2,
+                    includeToolCallDeep: false,
+                    includeReasonMathConsistency: semanticProbeIndex == 3,
+                    includeCodeBlockDiscipline: false,
+                    progress: null,
+                    cancellationToken: cancellationToken);
+            }
+
             rounds.Add(roundResult);
             roundProgress?.Report(roundResult);
 

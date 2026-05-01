@@ -7,13 +7,23 @@ public sealed class ChatSessionListItemViewModel : ObservableObject
     private string _title;
     private DateTimeOffset _updatedAt;
     private int _messageCount;
+    private bool _isManualTitle;
+    private bool _isRenaming;
+    private string _draftTitle;
 
-    public ChatSessionListItemViewModel(string sessionId, string title, DateTimeOffset updatedAt, int messageCount)
+    public ChatSessionListItemViewModel(
+        string sessionId,
+        string title,
+        DateTimeOffset updatedAt,
+        int messageCount,
+        bool isManualTitle = false)
     {
         SessionId = sessionId;
         _title = title;
         _updatedAt = updatedAt;
         _messageCount = messageCount;
+        _isManualTitle = isManualTitle;
+        _draftTitle = title;
     }
 
     public string SessionId { get; }
@@ -53,6 +63,32 @@ public sealed class ChatSessionListItemViewModel : ObservableObject
                 OnPropertyChanged(nameof(Summary));
             }
         }
+    }
+
+    public bool IsManualTitle
+    {
+        get => _isManualTitle;
+        set => SetProperty(ref _isManualTitle, value);
+    }
+
+    public bool IsRenaming
+    {
+        get => _isRenaming;
+        set
+        {
+            if (SetProperty(ref _isRenaming, value))
+            {
+                OnPropertyChanged(nameof(IsNotRenaming));
+            }
+        }
+    }
+
+    public bool IsNotRenaming => !IsRenaming;
+
+    public string DraftTitle
+    {
+        get => _draftTitle;
+        set => SetProperty(ref _draftTitle, value);
     }
 
     public string UpdatedAtLabel => UpdatedAt.ToLocalTime().ToString("MM-dd HH:mm");

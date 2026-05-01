@@ -46,15 +46,24 @@ public sealed partial class ProxyDiagnosticsService
         }
 
         using var client = CreateClient(baseUri, normalizedSettings);
-        var chatPath = BuildApiPath(baseUri, "chat/completions");
+        var transport = await ResolveConversationProbeTransportAsync(
+            client,
+            baseUri,
+            normalizedSettings.Model,
+            baselineResult: null,
+            cancellationToken);
         var segmentCount = Math.Clamp(requestedSegmentCount, 24, 240);
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, chatPath)
+            using var request = new HttpRequestMessage(HttpMethod.Post, transport.Path)
             {
-                Content = new StringContent(BuildLongStreamingPayload(normalizedSettings.Model, segmentCount), System.Text.Encoding.UTF8, "application/json")
+                Content = new StringContent(
+                    BuildConversationWirePayload(transport.WireApi, BuildLongStreamingPayload(normalizedSettings.Model, segmentCount)),
+                    System.Text.Encoding.UTF8,
+                    "application/json")
             };
+            transport.RequestConfigurer?.Invoke(request);
 
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             var headers = ExtractInterestingHeaders(response);
@@ -85,7 +94,7 @@ public sealed partial class ProxyDiagnosticsService
                     null,
                     null,
                     $"长流稳定简测失败，状态码 {(int)response.StatusCode}。",
-                    $"POST {chatPath} 返回 {(int)response.StatusCode} {response.ReasonPhrase}。{bodySample}",
+                    $"POST {transport.Path} 返回 {(int)response.StatusCode} {response.ReasonPhrase}。{bodySample}",
                     bodySample,
                     requestId,
                     traceId);
@@ -94,9 +103,10 @@ public sealed partial class ProxyDiagnosticsService
             var streamingOutcome = await ReadStreamingResponseAsync(
                 response,
                 System.Diagnostics.Stopwatch.StartNew(),
-                TryParseChatStreamContent,
+                transport.StreamContentParser,
                 liveReporter,
-                cancellationToken);
+                cancellationToken,
+                transport.StreamDoneDetector);
             var observedSegments = LongStreamSegmentRegex.Matches(streamingOutcome.FullText)
                 .Select(static match => int.TryParse(match.Groups["segment"].Value, out var parsed) ? parsed : -1)
                 .Where(static value => value > 0)
@@ -104,12 +114,14 @@ public sealed partial class ProxyDiagnosticsService
             var expectedSequence = Enumerable.Range(1, segmentCount).ToArray();
             var sequenceIntegrityPassed = observedSegments.Length >= segmentCount &&
                                           observedSegments.Take(segmentCount).SequenceEqual(expectedSequence);
+            var practicalSequenceIntegrityPassed = sequenceIntegrityPassed ||
+                                                   HasPracticalLongStreamSequenceIntegrity(observedSegments, segmentCount);
             var actualSegmentCount = observedSegments.Length;
-            var success = streamingOutcome.ReceivedDone && sequenceIntegrityPassed && actualSegmentCount >= segmentCount;
+            var success = streamingOutcome.ReceivedDone && practicalSequenceIntegrityPassed;
 
             var summary =
                 success
-                    ? $"长流稳定简测通过：{actualSegmentCount}/{segmentCount} 段，DONE 正常，流速 {FormatStreamingSpeed(streamingOutcome.OutputTokensPerSecond)}。"
+                    ? $"长流稳定简测通过：{actualSegmentCount}/{segmentCount} 段，DONE 正常，严格顺序={(sequenceIntegrityPassed ? "通过" : "轻微偏差")}，流速 {FormatStreamingSpeed(streamingOutcome.OutputTokensPerSecond)}。"
                     : $"长流稳定简测未通过：实际 {actualSegmentCount}/{segmentCount} 段，DONE={(streamingOutcome.ReceivedDone ? "是" : "否")}，顺序校验={(sequenceIntegrityPassed ? "通过" : "失败")}。";
 
             return new ProxyStreamingStabilityResult(
@@ -166,4 +178,39 @@ public sealed partial class ProxyDiagnosticsService
 
     private static string FormatStreamingSpeed(double? value)
         => value is null ? "--" : $"{value:F1} tok/s";
+
+    private static bool HasPracticalLongStreamSequenceIntegrity(
+        IReadOnlyList<int> observedSegments,
+        int expectedSegmentCount)
+    {
+        if (expectedSegmentCount <= 0 || observedSegments.Count == 0)
+        {
+            return false;
+        }
+
+        var inRangeSegments = observedSegments
+            .Where(segment => segment >= 1 && segment <= expectedSegmentCount)
+            .ToArray();
+        if (inRangeSegments.Length == 0)
+        {
+            return false;
+        }
+
+        var requiredCount = (int)Math.Ceiling(expectedSegmentCount * 0.90d);
+        var distinctCoverage = inRangeSegments.Distinct().Count();
+        if (distinctCoverage < requiredCount || inRangeSegments.Length < requiredCount)
+        {
+            return false;
+        }
+
+        for (var index = 1; index < inRangeSegments.Length; index++)
+        {
+            if (inRangeSegments[index] < inRangeSegments[index - 1])
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

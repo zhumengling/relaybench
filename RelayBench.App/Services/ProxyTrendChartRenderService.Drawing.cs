@@ -8,6 +8,11 @@ namespace RelayBench.App.Services;
 
 public sealed partial class ProxyTrendChartRenderService
 {
+    private const double LatestValueBadgeWidth = 92;
+    private const double LatestValueBadgeHeight = 22;
+    private const double LatestValueBadgeGap = 10;
+    private const double LatestValueBadgeLaneWidth = LatestValueBadgeWidth + LatestValueBadgeGap + 12;
+
     private static MetricSeries BuildMetricSeries(
         string title,
         IReadOnlyList<ProxyTrendEntry> records,
@@ -27,9 +32,9 @@ public sealed partial class ProxyTrendChartRenderService
             accentColor);
     }
 
-    private static void DrawHeader(DrawingContext context, string targetLabel, IReadOnlyList<ProxyTrendEntry> records)
+    private void DrawHeader(DrawingContext context, string targetLabel, IReadOnlyList<ProxyTrendEntry> records)
     {
-        var headerRect = new Rect(14, 12, ChartWidth - 28, HeaderHeight - 14);
+        var headerRect = new Rect(14, 12, _chartWidth - 28, HeaderHeight - 14);
         context.DrawRoundedRectangle(CreateBrush(247, 249, 252), new Pen(CreateBrush(224, 231, 239), 1), headerRect, 14, 14);
 
         DrawText(context, "接口稳定性趋势图", new Point(28, 20), 21, FontWeights.SemiBold, CreateBrush(16, 24, 40));
@@ -100,7 +105,8 @@ public sealed partial class ProxyTrendChartRenderService
 
     private static void DrawSeries(DrawingContext context, Rect plotRect, MetricSeries series)
     {
-        var points = BuildPoints(plotRect, series);
+        var seriesRect = ReserveLatestValueBadgeLane(plotRect);
+        var points = BuildPoints(seriesRect, series);
         if (points.Count == 0)
         {
             DrawText(
@@ -131,9 +137,36 @@ public sealed partial class ProxyTrendChartRenderService
 
         var latestValue = series.Values.Last(value => value.HasValue)!.Value;
         var latestPoint = points[^1];
-        var badgeRect = new Rect(latestPoint.X - 78, latestPoint.Y - 28, 92, 22);
+        var badgeRect = ResolveValueBadgeRect(plotRect, latestPoint);
         context.DrawRoundedRectangle(CreateBrush(255, 255, 255), new Pen(CreateBrush(series.AccentColor.R, series.AccentColor.G, series.AccentColor.B), 1), badgeRect, 8, 8);
         DrawText(context, series.Formatter(latestValue), new Point(badgeRect.X + 8, badgeRect.Y + 3), 10.2, FontWeights.SemiBold, CreateBrush(16, 24, 40));
+    }
+
+    private static Rect ReserveLatestValueBadgeLane(Rect plotRect)
+    {
+        var reserveWidth = Math.Min(LatestValueBadgeLaneWidth, Math.Max(0, plotRect.Width * 0.18));
+        var width = Math.Max(120, plotRect.Width - reserveWidth);
+        return new Rect(plotRect.Left, plotRect.Top, width, plotRect.Height);
+    }
+
+    private static Rect ResolveValueBadgeRect(Rect boundsRect, Point point)
+    {
+        var x = point.X + LatestValueBadgeGap;
+        var y = point.Y - (LatestValueBadgeHeight / 2);
+
+        if (y < boundsRect.Top + 4)
+        {
+            y = point.Y + LatestValueBadgeGap;
+        }
+
+        if (y + LatestValueBadgeHeight > boundsRect.Bottom - 4)
+        {
+            y = point.Y - LatestValueBadgeHeight - LatestValueBadgeGap;
+        }
+
+        x = Math.Clamp(x, boundsRect.Left + 4, boundsRect.Right - LatestValueBadgeWidth - 4);
+        y = Math.Clamp(y, boundsRect.Top + 4, boundsRect.Bottom - LatestValueBadgeHeight - 4);
+        return new Rect(x, y, LatestValueBadgeWidth, LatestValueBadgeHeight);
     }
 
     private static List<Point> BuildPoints(Rect plotRect, MetricSeries series)

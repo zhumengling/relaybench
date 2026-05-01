@@ -48,7 +48,7 @@ public sealed partial class MainWindowViewModel
         => $"\u56FA\u5B9A\u6863\u4F4D\uFF1A{string.Join(" / ", DefaultProxyConcurrencyStagePlan)}\uFF1B\u6BCF\u6863 {DefaultProxyConcurrencyStageCycles} \u8F6E\uFF0C\u603B\u8BF7\u6C42\u6570 = \u5E76\u53D1\u6570 \u00D7 {DefaultProxyConcurrencyStageCycles}\u3002";
 
     public string ProxyConcurrencyThresholdHint
-        => "\u5224\u5B9A\u89C4\u5219\uFF1A\u6210\u529F\u7387 \u2265 95% \u4E14 429 = 0 \u3001\u8D85\u65F6 = 0 \u89C6\u4E3A\u7A33\u5B9A\u6863\uFF1B\u6210\u529F\u7387 < 80% \u3001\u51FA\u73B0\u8D85\u65F6\uFF0C\u6216 p95 TTFT \u8D85\u8FC7\u57FA\u7EBF 2 \u500D\u89C6\u4E3A\u9AD8\u98CE\u9669\u3002";
+        => "\u5224\u5B9A\u89C4\u5219\uFF1A\u6210\u529F\u7387 \u2265 95% \u4E14 429 = 0 \u3001\u8D85\u65F6 = 0 \u89C6\u4E3A\u7A33\u5B9A\u6863\uFF1B\u6210\u529F\u7387 \u2265 90% \u3001\u9650\u6D41 \u2264 1 \u4E14\u65E0\u8D85\u65F6/\u670D\u52A1\u5668\u9519\u8BEF\u89C6\u4E3A\u5B9E\u7528\u6863\uFF1B\u6210\u529F\u7387 < 80% \u3001\u51FA\u73B0\u8D85\u65F6\uFF0C\u6216 p95 TTFT \u8D85\u8FC7\u57FA\u7EBF 2 \u500D\u89C6\u4E3A\u9AD8\u98CE\u9669\u3002";
 
     private Task RunProxyConcurrencyPressureAsync()
         => ExecuteProxyBusyActionAsync(
@@ -168,6 +168,7 @@ public sealed partial class MainWindowViewModel
         builder.AppendLine($"\u6A21\u578B\uFF1A{(string.IsNullOrWhiteSpace(result.Model) ? "--" : result.Model)}");
         builder.AppendLine($"\u56FA\u5B9A\u6863\u4F4D\uFF1A{(result.Stages.Count == 0 ? string.Join(" / ", DefaultProxyConcurrencyStagePlan) : string.Join(" / ", result.Stages.Select(static stage => stage.Concurrency)))}");
         builder.AppendLine($"\u7A33\u5B9A\u5E76\u53D1\u4E0A\u9650\uFF1A{FormatProxyConcurrencyValue(result.StableConcurrencyLimit)}");
+        builder.AppendLine($"\u5B9E\u7528\u5E76\u53D1\u4E0A\u9650\uFF1A{FormatProxyConcurrencyValue(result.PracticalConcurrencyLimit)}");
         builder.AppendLine($"\u9650\u6D41\u8D77\u70B9\uFF1A{FormatProxyConcurrencyValue(result.RateLimitStartConcurrency)}");
         builder.AppendLine($"\u9AD8\u98CE\u9669\u6863\uFF1A{FormatProxyConcurrencyValue(result.HighRiskConcurrency)}");
         builder.AppendLine($"\u6458\u8981\uFF1A{result.Summary}");
@@ -220,6 +221,11 @@ public sealed partial class MainWindowViewModel
             return $"\u7A33 {stableConcurrency}";
         }
 
+        if (result.PracticalConcurrencyLimit is int practicalConcurrency)
+        {
+            return $"\u5B9E {practicalConcurrency}";
+        }
+
         if (result.RateLimitStartConcurrency is int rateLimitConcurrency)
         {
             return $"\u9650 {rateLimitConcurrency}";
@@ -255,6 +261,7 @@ public sealed partial class MainWindowViewModel
             result.Error,
             activate,
             result.StableConcurrencyLimit,
+            result.PracticalConcurrencyLimit,
             result.RateLimitStartConcurrency,
             result.HighRiskConcurrency);
     }
@@ -267,6 +274,7 @@ public sealed partial class MainWindowViewModel
         string? error,
         bool activate,
         int? stableConcurrencyLimit = null,
+        int? practicalConcurrencyLimit = null,
         int? rateLimitStartConcurrency = null,
         int? highRiskConcurrency = null,
         bool includePendingPlan = false)
@@ -312,6 +320,7 @@ public sealed partial class MainWindowViewModel
                     model,
                     stageArray,
                     stableConcurrencyLimit,
+                    practicalConcurrencyLimit,
                     rateLimitStartConcurrency,
                     highRiskConcurrency,
                     overallSummary,
@@ -454,6 +463,7 @@ public sealed partial class MainWindowViewModel
         string? model,
         IReadOnlyList<ProxyConcurrencyPressureStageResult> stages,
         int? stableConcurrencyLimit,
+        int? practicalConcurrencyLimit,
         int? rateLimitStartConcurrency,
         int? highRiskConcurrency,
         string? overallSummary,
@@ -464,6 +474,7 @@ public sealed partial class MainWindowViewModel
             $"\u6A21\u578B\uFF1A{(string.IsNullOrWhiteSpace(model) ? "--" : model)}",
             $"\u5DF2\u5B8C\u6210\u6863\u4F4D\uFF1A{stages.Count}",
             $"\u7A33\u5B9A\u5E76\u53D1\u4E0A\u9650\uFF1A{FormatProxyConcurrencyValue(stableConcurrencyLimit)}",
+            $"\u5B9E\u7528\u5E76\u53D1\u4E0A\u9650\uFF1A{FormatProxyConcurrencyValue(practicalConcurrencyLimit)}",
             $"\u9650\u6D41\u8D77\u70B9\uFF1A{FormatProxyConcurrencyValue(rateLimitStartConcurrency)}",
             $"\u9AD8\u98CE\u9669\u6863\uFF1A{FormatProxyConcurrencyValue(highRiskConcurrency)}",
             $"\u7ED3\u8BBA\uFF1A{overallSummary ?? "\u6B63\u5728\u91C7\u96C6\u4E2D"}",

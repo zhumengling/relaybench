@@ -46,7 +46,7 @@ public sealed partial class SplitRoutingDiagnosticsService
             errors.Length == 0 ? null : string.Join(" | ", errors));
     }
 
-    private static IReadOnlyList<string> NormalizeHosts(IEnumerable<string>? hosts)
+    internal static IReadOnlyList<string> NormalizeHosts(IEnumerable<string>? hosts)
     {
         var values = (hosts ?? DefaultHosts)
             .SelectMany(host => host.Split(['\r', '\n', ',', ';', '\t', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -113,7 +113,7 @@ public sealed partial class SplitRoutingDiagnosticsService
         }
     }
 
-    private static IReadOnlyList<string> ParseDohAddresses(string json)
+    internal static IReadOnlyList<string> ParseDohAddresses(string json)
     {
         using var document = JsonDocument.Parse(json);
         if (!document.RootElement.TryGetProperty("Answer", out var answers) || answers.ValueKind != JsonValueKind.Array)
@@ -133,7 +133,11 @@ public sealed partial class SplitRoutingDiagnosticsService
 
                 var type = typeElement.ValueKind == JsonValueKind.Number ? typeElement.GetInt32() : -1;
                 var value = dataElement.GetString();
-                return type is 1 or 28 && !string.IsNullOrWhiteSpace(value) ? value : null;
+                return type is 1 or 28 &&
+                       !string.IsNullOrWhiteSpace(value) &&
+                       IPAddress.TryParse(value, out _)
+                    ? value
+                    : null;
             })
             .Where(static value => !string.IsNullOrWhiteSpace(value))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -142,7 +146,7 @@ public sealed partial class SplitRoutingDiagnosticsService
             .ToArray();
     }
 
-    private static string BuildDnsComparisonSummary(
+    internal static string BuildDnsComparisonSummary(
         string host,
         IReadOnlyList<string> systemAddresses,
         IReadOnlyList<string> cloudflareAddresses,
@@ -156,7 +160,7 @@ public sealed partial class SplitRoutingDiagnosticsService
             $"系统 DNS 与 Google DoH 解析结果 {systemVsGoogle}。";
     }
 
-    private static bool IndicatesDnsSplit(SplitRoutingDnsView view)
+    internal static bool IndicatesDnsSplit(SplitRoutingDnsView view)
         => !SetEquals(view.SystemAddresses, view.CloudflareAddresses) ||
            !SetEquals(view.SystemAddresses, view.GoogleAddresses);
 

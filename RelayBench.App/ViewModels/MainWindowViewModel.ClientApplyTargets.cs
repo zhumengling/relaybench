@@ -41,12 +41,14 @@ public sealed partial class MainWindowViewModel
     }
 
     private static bool HasSucceededCodexTarget(ClientAppApplyResult result)
-        => result.TargetResults.Any(target => target.Protocol == ClientApplyProtocolKind.Responses && target.Succeeded);
+        => result.TargetResults.Any(target =>
+            (target.Protocol is ClientApplyProtocolKind.Responses or ClientApplyProtocolKind.OpenAiCompatible) &&
+            target.Succeeded);
 
     private static bool ShouldAskCodexChatMerge(
         IReadOnlyList<ClientApplyTargetSelection> selectedTargets,
         ClientAppApplyResult result)
-        => selectedTargets.Any(target => target.Protocol == ClientApplyProtocolKind.Responses) &&
+        => selectedTargets.Any(target => target.Protocol is ClientApplyProtocolKind.Responses or ClientApplyProtocolKind.OpenAiCompatible) &&
            HasSucceededCodexTarget(result);
 
     private static bool HasSucceededTarget(ClientAppApplyResult result)

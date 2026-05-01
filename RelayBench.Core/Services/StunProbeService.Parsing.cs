@@ -7,7 +7,7 @@ namespace RelayBench.Core.Services;
 
 public sealed partial class StunProbeService
 {
-    private static StunResponse ParseResponse(byte[] buffer, byte[] transactionId)
+    internal static StunResponse ParseResponse(byte[] buffer, byte[] transactionId)
     {
         if (buffer.Length < 20)
         {
@@ -173,7 +173,7 @@ public sealed partial class StunProbeService
                 Error);
     }
 
-    private sealed record StunResponse(
+    internal sealed record StunResponse(
         IPEndPoint? MappedEndPoint,
         IPEndPoint? OtherEndpoint,
         IPEndPoint? ChangedEndpoint,

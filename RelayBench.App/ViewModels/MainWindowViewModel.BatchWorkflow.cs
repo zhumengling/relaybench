@@ -439,6 +439,36 @@ public sealed partial class MainWindowViewModel
             parts.Add($"缓存命中 {FormatScenarioStatus(FindScenario(scenarios, ProxyProbeScenarioKind.CacheMechanism))}");
         }
 
+        if (executionPlan.EnableInstructionFollowingTest)
+        {
+            parts.Add($"指令遵循 {FormatScenarioStatus(FindScenario(scenarios, ProxyProbeScenarioKind.InstructionFollowing))}");
+        }
+
+        if (executionPlan.EnableDataExtractionTest)
+        {
+            parts.Add($"数据抽取 {FormatScenarioStatus(FindScenario(scenarios, ProxyProbeScenarioKind.DataExtraction))}");
+        }
+
+        if (executionPlan.EnableStructuredOutputEdgeTest)
+        {
+            parts.Add($"结构化边界 {FormatScenarioStatus(FindScenario(scenarios, ProxyProbeScenarioKind.StructuredOutputEdge))}");
+        }
+
+        if (executionPlan.EnableToolCallDeepTest)
+        {
+            parts.Add($"ToolCall 深测 {FormatScenarioStatus(FindScenario(scenarios, ProxyProbeScenarioKind.ToolCallDeep))}");
+        }
+
+        if (executionPlan.EnableReasonMathConsistencyTest)
+        {
+            parts.Add($"推理一致性 {FormatScenarioStatus(FindScenario(scenarios, ProxyProbeScenarioKind.ReasonMathConsistency))}");
+        }
+
+        if (executionPlan.EnableCodeBlockDisciplineTest)
+        {
+            parts.Add($"代码块纪律 {FormatScenarioStatus(FindScenario(scenarios, ProxyProbeScenarioKind.CodeBlockDiscipline))}");
+        }
+
         if (executionPlan.EnableCacheIsolationTest)
         {
             parts.Add($"缓存隔离 {FormatScenarioStatus(FindScenario(scenarios, ProxyProbeScenarioKind.CacheIsolation))}");

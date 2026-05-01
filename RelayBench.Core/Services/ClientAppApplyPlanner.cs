@@ -20,7 +20,8 @@ public sealed class ClientAppApplyPlanner
         foreach (var definition in TargetDefinitions)
         {
             var installed = installedNames.Count == 0 || installedNames.Contains(definition.DisplayName);
-            var protocolSupported = IsProtocolSupported(definition.Protocol, context);
+            var protocol = ResolveTargetProtocol(definition.Protocol, context);
+            var protocolSupported = IsProtocolSupported(protocol, context);
             var hasRequiredFields =
                 !string.IsNullOrWhiteSpace(context.BaseUrl) &&
                 !string.IsNullOrWhiteSpace(context.ApiKey) &&
@@ -31,16 +32,30 @@ public sealed class ClientAppApplyPlanner
             targets.Add(new ClientApplyTarget(
                 definition.Id,
                 definition.DisplayName,
-                definition.Protocol,
+                protocol,
                 installed,
                 selectable,
                 protocolSupported,
                 defaultSelected,
                 definition.ConfigSummary,
-                BuildDisabledReason(installed, protocolSupported, hasRequiredFields, definition.Protocol)));
+                BuildDisabledReason(installed, protocolSupported, hasRequiredFields, protocol)));
         }
 
         return targets;
+    }
+
+    private static ClientApplyProtocolKind ResolveTargetProtocol(
+        ClientApplyProtocolKind protocol,
+        ClientAppApplyPlanContext context)
+    {
+        if (protocol == ClientApplyProtocolKind.Responses &&
+            !context.ResponsesSupported &&
+            context.OpenAiCompatibleSupported)
+        {
+            return ClientApplyProtocolKind.OpenAiCompatible;
+        }
+
+        return protocol;
     }
 
     private static bool IsProtocolSupported(ClientApplyProtocolKind protocol, ClientAppApplyPlanContext context)
@@ -72,7 +87,7 @@ public sealed class ClientAppApplyPlanner
         {
             return protocol switch
             {
-                ClientApplyProtocolKind.Responses => "当前模型未通过 Responses API 探测。",
+                ClientApplyProtocolKind.Responses => "当前模型未通过 Responses 或 OpenAI Chat 探测。",
                 ClientApplyProtocolKind.OpenAiCompatible => "当前模型未通过 OpenAI 兼容探测。",
                 ClientApplyProtocolKind.Anthropic => "当前模型未通过 Anthropic Messages 探测。",
                 _ => "当前模型不支持该协议。"

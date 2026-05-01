@@ -31,11 +31,11 @@ public sealed partial class MainWindowViewModel
             var responsesSupported = result.ScenarioResults?
                 .FirstOrDefault(static item => item.Scenario == ProxyProbeScenarioKind.Responses)?
                 .Success == true;
-            RememberCodexResponsesCompatibility(
+            RememberCodexWireApiCompatibility(
                 settings.BaseUrl,
                 settings.ApiKey,
                 FirstNonEmpty(result.EffectiveModel, result.RequestedModel, settings.Model),
-                responsesSupported);
+                responsesSupported || result.ChatRequestSucceeded);
         }
         catch (Exception ex)
         {
@@ -59,11 +59,11 @@ public sealed partial class MainWindowViewModel
                     cancellationToken);
                 if (cached is not null)
                 {
-                    RememberCodexResponsesCompatibility(
+                    RememberCodexWireApiCompatibility(
                         settings.BaseUrl,
                         settings.ApiKey,
                         settings.Model,
-                        cached.ResponsesSupported == true);
+                        cached.ResponsesSupported == true || cached.ChatCompletionsSupported == true);
                 }
 
                 if (!string.IsNullOrWhiteSpace(cached?.PreferredWireApi))
@@ -76,11 +76,11 @@ public sealed partial class MainWindowViewModel
             StatusMessage = "正在检测接口链接方式（chat / responses / Anthropic messages）...";
             var result = await _proxyDiagnosticsService.ProbeProtocolAsync(settings, cancellationToken);
             await _proxyEndpointModelCacheService.SaveProtocolProbeAsync(settings, result, cancellationToken);
-            RememberCodexResponsesCompatibility(
+            RememberCodexWireApiCompatibility(
                 settings.BaseUrl,
                 settings.ApiKey,
                 settings.Model,
-                result.ResponsesSupported);
+                result.ResponsesSupported || result.ChatCompletionsSupported);
             if (!string.IsNullOrWhiteSpace(result.PreferredWireApi))
             {
                 StatusMessage = $"已识别 Codex 接口链接方式：{result.PreferredWireApi}。";
@@ -120,7 +120,9 @@ public sealed partial class MainWindowViewModel
 
         return new CodexApplyCachedModelInfo(
             cached?.ContextWindow ?? ResolveProxyModelContextWindow(model),
-            cached?.ResponsesSupported == true ? cached.PreferredWireApi : null);
+            cached is { ResponsesSupported: true } or { ChatCompletionsSupported: true }
+                ? cached.PreferredWireApi
+                : null);
     }
 
     private sealed record CodexApplyCachedModelInfo(

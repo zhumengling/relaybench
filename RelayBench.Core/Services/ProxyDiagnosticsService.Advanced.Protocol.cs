@@ -35,6 +35,18 @@ public sealed partial class ProxyDiagnosticsService
 
         string? cacheIsolationAlternateApiKey,
 
+        bool includeInstructionFollowing,
+
+        bool includeDataExtraction,
+
+        bool includeStructuredOutputEdge,
+
+        bool includeToolCallDeep,
+
+        bool includeReasonMathConsistency,
+
+        bool includeCodeBlockDiscipline,
+
         IProgress<ProxyDiagnosticsLiveProgress>? progress = null,
 
         CancellationToken cancellationToken = default)
@@ -53,7 +65,19 @@ public sealed partial class ProxyDiagnosticsService
 
              !includeCacheMechanism &&
 
-             !includeCacheIsolation) ||
+             !includeCacheIsolation &&
+
+             !includeInstructionFollowing &&
+
+             !includeDataExtraction &&
+
+             !includeStructuredOutputEdge &&
+
+             !includeToolCallDeep &&
+
+             !includeReasonMathConsistency &&
+
+             !includeCodeBlockDiscipline) ||
 
             !TryValidateSettings(settings, out var normalizedSettings, out var baseUri, out _))
 
@@ -85,7 +109,12 @@ public sealed partial class ProxyDiagnosticsService
 
         using var client = CreateClient(baseUri, normalizedSettings with { Model = effectiveModel });
 
-        var chatPath = BuildApiPath(baseUri, "chat/completions");
+        var conversationTransport = await ResolveConversationProbeTransportAsync(
+            client,
+            baseUri,
+            effectiveModel,
+            baselineResult,
+            cancellationToken);
 
         List<ProxyProbeScenarioResult> mergedScenarioResults = (baselineResult.ScenarioResults ?? Array.Empty<ProxyProbeScenarioResult>())
 
@@ -107,7 +136,19 @@ public sealed partial class ProxyDiagnosticsService
 
             includeCacheMechanism,
 
-            includeCacheIsolation);
+            includeCacheIsolation,
+
+            includeInstructionFollowing,
+
+            includeDataExtraction,
+
+            includeStructuredOutputEdge,
+
+            includeToolCallDeep,
+
+            includeReasonMathConsistency,
+
+            includeCodeBlockDiscipline);
 
 
 
@@ -151,9 +192,9 @@ public sealed partial class ProxyDiagnosticsService
 
         {
 
-            AddSupplementalScenario(await ProbeSystemPromptMappingScenarioAsync(client, chatPath, effectiveModel, cancellationToken));
+            AddSupplementalScenario(await ProbeSystemPromptMappingScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
 
-            AddSupplementalScenario(await ProbeFunctionCallingScenarioAsync(client, chatPath, effectiveModel, cancellationToken));
+            AddSupplementalScenario(await ProbeFunctionCallingScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
 
         }
 
@@ -163,7 +204,7 @@ public sealed partial class ProxyDiagnosticsService
 
         {
 
-            AddSupplementalScenario(await ProbeErrorTransparencyScenarioAsync(client, chatPath, effectiveModel, cancellationToken));
+            AddSupplementalScenario(await ProbeErrorTransparencyScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
 
         }
 
@@ -177,7 +218,7 @@ public sealed partial class ProxyDiagnosticsService
 
             {
 
-                AddSupplementalScenario(await ProbeStreamingIntegrityScenarioAsync(client, chatPath, effectiveModel, cancellationToken));
+                AddSupplementalScenario(await ProbeStreamingIntegrityScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
 
             }
 
@@ -305,7 +346,7 @@ public sealed partial class ProxyDiagnosticsService
 
                     using var officialClient = CreateClient(officialBaseUri, normalizedOfficialSettings);
 
-                    var officialChatPath = BuildApiPath(officialBaseUri, "chat/completions");
+                    var officialTransport = CreateConversationProbeTransport(officialClient, officialBaseUri, "chat");
 
                     AddSupplementalScenario(await ProbeOfficialReferenceIntegrityScenarioAsync(
 
@@ -313,9 +354,9 @@ public sealed partial class ProxyDiagnosticsService
 
                         officialClient,
 
-                        chatPath,
+                        conversationTransport,
 
-                        officialChatPath,
+                        officialTransport,
 
                         effectiveModel,
 
@@ -335,7 +376,7 @@ public sealed partial class ProxyDiagnosticsService
 
         {
 
-            AddSupplementalScenario(await ProbeMultiModalScenarioAsync(client, chatPath, effectiveModel, cancellationToken));
+            AddSupplementalScenario(await ProbeMultiModalScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
 
         }
 
@@ -349,7 +390,7 @@ public sealed partial class ProxyDiagnosticsService
 
             {
 
-                AddSupplementalScenario(await ProbeCacheMechanismScenarioAsync(client, chatPath, effectiveModel, cancellationToken));
+                AddSupplementalScenario(await ProbeCacheMechanismScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
 
             }
 
@@ -447,13 +488,67 @@ public sealed partial class ProxyDiagnosticsService
 
                     alternateClient,
 
-                    chatPath,
+                    conversationTransport,
+
+                    CreateConversationProbeTransport(alternateClient, baseUri, conversationTransport.WireApi),
 
                     effectiveModel,
 
                     cancellationToken));
 
             }
+
+        }
+
+
+
+        if (includeInstructionFollowing)
+
+        {
+
+            AddSupplementalScenario(await ProbeInstructionFollowingScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
+
+        }
+
+
+
+        if (includeDataExtraction)
+
+        {
+
+            AddSupplementalScenario(await ProbeDataExtractionScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
+
+        }
+
+        if (includeStructuredOutputEdge)
+
+        {
+
+            AddSupplementalScenario(await ProbeStructuredOutputEdgeScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
+
+        }
+
+        if (includeToolCallDeep)
+
+        {
+
+            AddSupplementalScenario(await ProbeToolCallDeepScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
+
+        }
+
+        if (includeReasonMathConsistency)
+
+        {
+
+            AddSupplementalScenario(await ProbeReasonMathConsistencyScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
+
+        }
+
+        if (includeCodeBlockDiscipline)
+
+        {
+
+            AddSupplementalScenario(await ProbeCodeBlockDisciplineScenarioAsync(client, conversationTransport, effectiveModel, cancellationToken));
 
         }
 
@@ -479,7 +574,19 @@ public sealed partial class ProxyDiagnosticsService
 
         bool includeCacheMechanism,
 
-        bool includeCacheIsolation)
+        bool includeCacheIsolation,
+
+        bool includeInstructionFollowing,
+
+        bool includeDataExtraction,
+
+        bool includeStructuredOutputEdge,
+
+        bool includeToolCallDeep,
+
+        bool includeReasonMathConsistency,
+
+        bool includeCodeBlockDiscipline)
 
         => (includeProtocolCompatibility ? 2 : 0) +
 
@@ -493,7 +600,19 @@ public sealed partial class ProxyDiagnosticsService
 
            (includeCacheMechanism ? 1 : 0) +
 
-           (includeCacheIsolation ? 1 : 0);
+           (includeCacheIsolation ? 1 : 0) +
+
+           (includeInstructionFollowing ? 1 : 0) +
+
+           (includeDataExtraction ? 1 : 0) +
+
+           (includeStructuredOutputEdge ? 1 : 0) +
+
+           (includeToolCallDeep ? 1 : 0) +
+
+           (includeReasonMathConsistency ? 1 : 0) +
+
+           (includeCodeBlockDiscipline ? 1 : 0);
 
 
 
@@ -505,7 +624,13 @@ public sealed partial class ProxyDiagnosticsService
             ProxyProbeScenarioKind.OfficialReferenceIntegrity or
             ProxyProbeScenarioKind.MultiModal or
             ProxyProbeScenarioKind.CacheMechanism or
-            ProxyProbeScenarioKind.CacheIsolation;
+            ProxyProbeScenarioKind.CacheIsolation or
+            ProxyProbeScenarioKind.InstructionFollowing or
+            ProxyProbeScenarioKind.DataExtraction or
+            ProxyProbeScenarioKind.StructuredOutputEdge or
+            ProxyProbeScenarioKind.ToolCallDeep or
+            ProxyProbeScenarioKind.ReasonMathConsistency or
+            ProxyProbeScenarioKind.CodeBlockDiscipline;
 
     private static ProxyDiagnosticsResult RebuildDiagnosticsResult(
         ProxyDiagnosticsResult baselineResult,
@@ -538,17 +663,16 @@ public sealed partial class ProxyDiagnosticsService
 
     private static async Task<ProxyProbeScenarioResult> ProbeSystemPromptMappingScenarioAsync(
         HttpClient client,
-        string path,
+        ConversationProbeTransport transport,
         string model,
         CancellationToken cancellationToken)
     {
-        var outcome = await ProbeJsonScenarioAsync(
+        var outcome = await ProbeJsonConversationScenarioAsync(
             client,
-            path,
+            transport,
             BuildSystemPromptPayload(model),
             ProxyProbeScenarioKind.SystemPromptMapping,
             "System Prompt",
-            ParseChatPreview,
             cancellationToken);
 
         if (!outcome.ScenarioResult.Success)
@@ -581,9 +705,227 @@ public sealed partial class ProxyDiagnosticsService
         };
     }
 
+    private static async Task<ProxyProbeScenarioResult> ProbeInstructionFollowingScenarioAsync(
+        HttpClient client,
+        ConversationProbeTransport transport,
+        string model,
+        CancellationToken cancellationToken)
+    {
+        var outcome = await ProbeJsonConversationScenarioAsync(
+            client,
+            transport,
+            BuildInstructionFollowingPayload(model),
+            ProxyProbeScenarioKind.InstructionFollowing,
+            "指令遵循",
+            cancellationToken);
+
+        return ApplySemanticProbeEvaluation(
+            outcome,
+            "指令遵循",
+            SemanticProbeEvaluator.EvaluateInstructionFollowing);
+    }
+
+    private static async Task<ProxyProbeScenarioResult> ProbeDataExtractionScenarioAsync(
+        HttpClient client,
+        ConversationProbeTransport transport,
+        string model,
+        CancellationToken cancellationToken)
+    {
+        var outcome = await ProbeJsonConversationScenarioAsync(
+            client,
+            transport,
+            BuildDataExtractionPayload(model),
+            ProxyProbeScenarioKind.DataExtraction,
+            "数据抽取",
+            cancellationToken);
+
+        return ApplySemanticProbeEvaluation(
+            outcome,
+            "数据抽取",
+            SemanticProbeEvaluator.EvaluateDataExtraction);
+    }
+
+    private static async Task<ProxyProbeScenarioResult> ProbeStructuredOutputEdgeScenarioAsync(
+        HttpClient client,
+        ConversationProbeTransport transport,
+        string model,
+        CancellationToken cancellationToken)
+    {
+        const string scenarioId = "SO-EDGE-01";
+        var outcome = await ProbeJsonConversationScenarioAsync(
+            client,
+            transport,
+            BuildStructuredOutputEdgePayload(model, scenarioId),
+            ProxyProbeScenarioKind.StructuredOutputEdge,
+            "结构化边界",
+            cancellationToken);
+
+        return ApplySemanticProbeEvaluation(
+            outcome,
+            "结构化边界",
+            preview => SemanticProbeEvaluator.EvaluateStructuredOutputEdge(scenarioId, preview));
+    }
+
+    private static async Task<ProxyProbeScenarioResult> ProbeToolCallDeepScenarioAsync(
+        HttpClient client,
+        ConversationProbeTransport transport,
+        string model,
+        CancellationToken cancellationToken)
+    {
+        var outcome = await ProbeJsonConversationScenarioAsync(
+            client,
+            transport,
+            BuildToolCallDeepPayload(model, "TC-DEEP-01"),
+            ProxyProbeScenarioKind.ToolCallDeep,
+            "ToolCall 深测",
+            cancellationToken,
+            static json => json);
+
+        if (!outcome.ScenarioResult.Success)
+        {
+            return outcome.ScenarioResult;
+        }
+
+        var evaluation = ToolCallProbeEvaluator.Evaluate(
+            "TC-DEEP-01",
+            outcome.Preview ?? outcome.ScenarioResult.Preview ?? string.Empty,
+            [new ToolCallExpectation("search_docs", new Dictionary<string, object?> { ["query"] = "relay cache isolation", ["limit"] = 5 })]);
+
+        if (evaluation.Success)
+        {
+            return outcome.ScenarioResult with
+            {
+                SemanticMatch = true,
+                Summary = evaluation.Summary,
+                Preview = evaluation.NormalizedPreview ?? outcome.ScenarioResult.Preview,
+                Trace = ApplyToolCallEvaluationToTrace(outcome.ScenarioResult.Trace, evaluation)
+            };
+        }
+
+        return outcome.ScenarioResult with
+        {
+            CapabilityStatus = "异常",
+            Success = false,
+            SemanticMatch = false,
+            Summary = evaluation.Summary,
+            Preview = evaluation.NormalizedPreview ?? outcome.ScenarioResult.Preview,
+            FailureKind = ProxyFailureKind.SemanticMismatch,
+            FailureStage = "ToolCall 深测",
+            Error = evaluation.Error ?? evaluation.Summary,
+            Trace = ApplyToolCallEvaluationToTrace(outcome.ScenarioResult.Trace, evaluation)
+        };
+    }
+
+    private static async Task<ProxyProbeScenarioResult> ProbeReasonMathConsistencyScenarioAsync(
+        HttpClient client,
+        ConversationProbeTransport transport,
+        string model,
+        CancellationToken cancellationToken)
+    {
+        const string scenarioId = "RM-CONS-01";
+        var outcome = await ProbeJsonConversationScenarioAsync(
+            client,
+            transport,
+            BuildReasonMathConsistencyPayload(model, scenarioId),
+            ProxyProbeScenarioKind.ReasonMathConsistency,
+            "推理一致性",
+            cancellationToken);
+
+        return ApplySemanticProbeEvaluation(
+            outcome,
+            "推理一致性",
+            preview => SemanticProbeEvaluator.EvaluateReasonMathConsistency(scenarioId, preview));
+    }
+
+    private static async Task<ProxyProbeScenarioResult> ProbeCodeBlockDisciplineScenarioAsync(
+        HttpClient client,
+        ConversationProbeTransport transport,
+        string model,
+        CancellationToken cancellationToken)
+    {
+        const string scenarioId = "CB-DISC-01";
+        var outcome = await ProbeJsonConversationScenarioAsync(
+            client,
+            transport,
+            BuildCodeBlockDisciplinePayload(model, scenarioId),
+            ProxyProbeScenarioKind.CodeBlockDiscipline,
+            "代码块纪律",
+            cancellationToken);
+
+        return ApplySemanticProbeEvaluation(
+            outcome,
+            "代码块纪律",
+            preview => SemanticProbeEvaluator.EvaluateCodeBlockDiscipline(scenarioId, preview));
+    }
+
+    private static ProxyProbeScenarioResult ApplySemanticProbeEvaluation(
+        JsonProbeOutcome outcome,
+        string displayName,
+        Func<string?, SemanticProbeEvaluation> evaluator)
+    {
+        if (!outcome.ScenarioResult.Success)
+        {
+            return outcome.ScenarioResult;
+        }
+
+        var preview = string.IsNullOrWhiteSpace(outcome.Preview)
+            ? outcome.ScenarioResult.Preview
+            : outcome.Preview;
+        var evaluation = evaluator(preview);
+        if (evaluation.Success)
+        {
+            return outcome.ScenarioResult with
+            {
+                SemanticMatch = true,
+                Summary = evaluation.Summary,
+                Preview = evaluation.NormalizedPreview ?? preview,
+                Trace = ApplySemanticEvaluationToTrace(outcome.ScenarioResult.Trace, evaluation)
+            };
+        }
+
+        return outcome.ScenarioResult with
+        {
+            CapabilityStatus = "异常",
+            Success = false,
+            SemanticMatch = false,
+            Summary = evaluation.Summary,
+            Preview = evaluation.NormalizedPreview ?? preview,
+            FailureKind = ProxyFailureKind.SemanticMismatch,
+            FailureStage = displayName,
+            Error = evaluation.Error ?? evaluation.Summary,
+            Trace = ApplySemanticEvaluationToTrace(outcome.ScenarioResult.Trace, evaluation)
+        };
+    }
+
+    private static ProxyProbeTrace? ApplySemanticEvaluationToTrace(
+        ProxyProbeTrace? trace,
+        SemanticProbeEvaluation evaluation)
+        => trace is null
+            ? null
+            : trace with
+            {
+                ExtractedOutput = evaluation.NormalizedPreview ?? trace.ExtractedOutput,
+                Checks = evaluation.Checks ?? trace.Checks,
+                Verdict = evaluation.Success ? "通过" : "异常",
+                FailureReason = evaluation.Success ? null : evaluation.Error ?? evaluation.Summary
+            };
+
+    private static ProxyProbeTrace? ApplyToolCallEvaluationToTrace(
+        ProxyProbeTrace? trace,
+        ToolCallProbeEvaluation evaluation)
+        => trace is null
+            ? null
+            : trace with
+            {
+                ExtractedOutput = evaluation.NormalizedPreview ?? trace.ExtractedOutput,
+                Checks = evaluation.Checks,
+                Verdict = evaluation.Success ? "通过" : "异常",
+                FailureReason = evaluation.Success ? null : evaluation.Error ?? evaluation.Summary
+            };
+
     private static async Task<ProxyProbeScenarioResult> ProbeFunctionCallingScenarioAsync(
         HttpClient client,
-        string path,
+        ConversationProbeTransport transport,
         string model,
         CancellationToken cancellationToken)
     {
@@ -595,10 +937,14 @@ public sealed partial class ProxyDiagnosticsService
 
         try
         {
-            using var firstRequest = new HttpRequestMessage(HttpMethod.Post, path)
+            using var firstRequest = new HttpRequestMessage(HttpMethod.Post, transport.Path)
             {
-                Content = new StringContent(BuildFunctionCallingProbePayload(model), Encoding.UTF8, "application/json")
+                Content = new StringContent(
+                    BuildConversationWirePayload(transport.WireApi, BuildFunctionCallingProbePayload(model)),
+                    Encoding.UTF8,
+                    "application/json")
             };
+            transport.RequestConfigurer?.Invoke(firstRequest);
 
             using var firstResponse = await client.SendAsync(firstRequest, cancellationToken);
             var firstStatusCode = (int)firstResponse.StatusCode;
@@ -673,13 +1019,20 @@ public sealed partial class ProxyDiagnosticsService
                     TraceId: firstTraceId);
             }
 
-            using var secondRequest = new HttpRequestMessage(HttpMethod.Post, path)
+            using var secondRequest = new HttpRequestMessage(HttpMethod.Post, transport.Path)
             {
                 Content = new StringContent(
-                    BuildFunctionCallingFollowUpPayload(model, toolCall.Id, toolCall.Name, toolCall.ArgumentsJson),
+                    BuildFunctionCallingFollowUpPayload(
+                        transport.WireApi,
+                        model,
+                        TryReadJsonStringProperty(firstBody, "id"),
+                        toolCall.Id,
+                        toolCall.Name,
+                        toolCall.ArgumentsJson),
                     Encoding.UTF8,
                     "application/json")
             };
+            transport.RequestConfigurer?.Invoke(secondRequest);
 
             using var secondResponse = await client.SendAsync(secondRequest, cancellationToken);
             var secondStatusCode = (int)secondResponse.StatusCode;
@@ -706,7 +1059,7 @@ public sealed partial class ProxyDiagnosticsService
                     secondTraceId ?? firstTraceId);
             }
 
-            var finalPreview = ParseChatPreview(secondBody) ?? BuildLooseSuccessPreview(secondBody);
+            var finalPreview = transport.JsonPreviewParser(secondBody) ?? BuildLooseSuccessPreview(secondBody);
             var semanticMatch = MatchesFunctionCallingFinalAnswer(finalPreview);
             var outputMetrics = BuildOutputMetrics(finalPreview, TryExtractOutputTokenCount(secondBody), stopwatch.Elapsed);
 
@@ -767,7 +1120,7 @@ public sealed partial class ProxyDiagnosticsService
 
     private static async Task<ProxyProbeScenarioResult> ProbeErrorTransparencyScenarioAsync(
         HttpClient client,
-        string path,
+        ConversationProbeTransport transport,
         string model,
         CancellationToken cancellationToken)
     {
@@ -775,10 +1128,11 @@ public sealed partial class ProxyDiagnosticsService
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, path)
+            using var request = new HttpRequestMessage(HttpMethod.Post, transport.Path)
             {
-                Content = new StringContent(BuildErrorTransparencyPayload(model), Encoding.UTF8, "application/json")
+                Content = new StringContent(BuildErrorTransparencyPayload(model, transport.WireApi), Encoding.UTF8, "application/json")
             };
+            transport.RequestConfigurer?.Invoke(request);
 
             using var response = await client.SendAsync(request, cancellationToken);
             var statusCode = (int)response.StatusCode;
@@ -793,7 +1147,7 @@ public sealed partial class ProxyDiagnosticsService
                 return new ProxyProbeScenarioResult(
                     ProxyProbeScenarioKind.ErrorTransparency,
                     "错误透传",
-                    "异常",
+                    "待复核",
                     false,
                     statusCode,
                     stopwatch.Elapsed,
@@ -802,11 +1156,11 @@ public sealed partial class ProxyDiagnosticsService
                     false,
                     0,
                     false,
-                    "故意构造的错误请求被错误地当成成功请求处理。",
+                    "故意构造的错误请求返回了成功状态，需要人工复核代理是否做了参数修正或错误吞并。",
                     BuildLooseSuccessPreview(body),
                     ProxyFailureKind.ProtocolMismatch,
                     "错误透传",
-                    "bad request 场景没有返回 4xx，说明当前接口的参数校验或错误映射存在异常。",
+                    "bad request 场景没有返回 4xx；可能是代理补全了参数，也可能是错误校验被吞并，建议查看原始响应后再判断。",
                     headers,
                     RequestId: requestId,
                     TraceId: traceId);
@@ -868,17 +1222,16 @@ public sealed partial class ProxyDiagnosticsService
 
     private static async Task<ProxyProbeScenarioResult> ProbeMultiModalScenarioAsync(
         HttpClient client,
-        string path,
+        ConversationProbeTransport transport,
         string model,
         CancellationToken cancellationToken)
     {
-        var outcome = await ProbeJsonScenarioAsync(
+        var outcome = await ProbeJsonConversationScenarioAsync(
             client,
-            path,
+            transport,
             BuildMultiModalPayload(model),
             ProxyProbeScenarioKind.MultiModal,
             "多模态",
-            ParseChatPreview,
             cancellationToken);
 
         if (!outcome.ScenarioResult.Success)
@@ -913,17 +1266,16 @@ public sealed partial class ProxyDiagnosticsService
 
     private static async Task<ProxyProbeScenarioResult> ProbeStreamingIntegrityScenarioAsync(
         HttpClient client,
-        string path,
+        ConversationProbeTransport transport,
         string model,
         CancellationToken cancellationToken)
     {
-        var nonStreamOutcome = await ProbeJsonScenarioAsync(
+        var nonStreamOutcome = await ProbeJsonConversationScenarioAsync(
             client,
-            path,
+            transport,
             BuildStreamingIntegrityPayload(model, stream: false),
             ProxyProbeScenarioKind.StreamingIntegrity,
             "流式完整性基准",
-            ParseChatPreview,
             cancellationToken);
 
         if (!nonStreamOutcome.ScenarioResult.Success)
@@ -943,13 +1295,12 @@ public sealed partial class ProxyDiagnosticsService
                 nonStreamOutcome.ScenarioResult.TraceId);
         }
 
-        var streamOutcome = await ProbeStreamingScenarioAsync(
+        var streamOutcome = await ProbeStreamingConversationScenarioAsync(
             client,
-            path,
+            transport,
             BuildStreamingIntegrityPayload(model, stream: true),
             ProxyProbeScenarioKind.StreamingIntegrity,
             "流式完整性流式复测",
-            TryParseChatStreamContent,
             static preview => !string.IsNullOrWhiteSpace(preview),
             cancellationToken);
 
@@ -1048,19 +1399,18 @@ public sealed partial class ProxyDiagnosticsService
     private static async Task<ProxyProbeScenarioResult> ProbeOfficialReferenceIntegrityScenarioAsync(
         HttpClient relayClient,
         HttpClient officialClient,
-        string relayPath,
-        string officialPath,
+        ConversationProbeTransport relayTransport,
+        ConversationProbeTransport officialTransport,
         string relayModel,
         string officialModel,
         CancellationToken cancellationToken)
     {
-        var relayOutcome = await ProbeJsonScenarioAsync(
+        var relayOutcome = await ProbeJsonConversationScenarioAsync(
             relayClient,
-            relayPath,
+            relayTransport,
             BuildOfficialReferenceIntegrityPayload(relayModel),
             ProxyProbeScenarioKind.OfficialReferenceIntegrity,
             "官方对照-待测接口",
-            ParseChatPreview,
             cancellationToken);
 
         if (!relayOutcome.ScenarioResult.Success)
@@ -1080,13 +1430,12 @@ public sealed partial class ProxyDiagnosticsService
                 relayOutcome.ScenarioResult.TraceId);
         }
 
-        var officialOutcome = await ProbeJsonScenarioAsync(
+        var officialOutcome = await ProbeJsonConversationScenarioAsync(
             officialClient,
-            officialPath,
+            officialTransport,
             BuildOfficialReferenceIntegrityPayload(officialModel),
             ProxyProbeScenarioKind.OfficialReferenceIntegrity,
             "官方对照-官方",
-            ParseChatPreview,
             cancellationToken);
 
         if (!officialOutcome.ScenarioResult.Success)
@@ -1205,17 +1554,16 @@ public sealed partial class ProxyDiagnosticsService
 
     private static async Task<ProxyProbeScenarioResult> ProbeCacheMechanismScenarioAsync(
         HttpClient client,
-        string path,
+        ConversationProbeTransport transport,
         string model,
         CancellationToken cancellationToken)
     {
-        var firstProbe = await ProbeStreamingScenarioAsync(
+        var firstProbe = await ProbeStreamingConversationScenarioAsync(
             client,
-            path,
+            transport,
             BuildCacheProbePayload(model),
             ProxyProbeScenarioKind.CacheMechanism,
             "缓存机制首轮",
-            TryParseChatStreamContent,
             MatchesCacheProbeExpectation,
             cancellationToken);
 
@@ -1236,13 +1584,12 @@ public sealed partial class ProxyDiagnosticsService
                 firstProbe.TraceId);
         }
 
-        var secondProbe = await ProbeStreamingScenarioAsync(
+        var secondProbe = await ProbeStreamingConversationScenarioAsync(
             client,
-            path,
+            transport,
             BuildCacheProbePayload(model),
             ProxyProbeScenarioKind.CacheMechanism,
             "缓存机制复测",
-            TryParseChatStreamContent,
             MatchesCacheProbeExpectation,
             cancellationToken);
 
@@ -1342,7 +1689,8 @@ public sealed partial class ProxyDiagnosticsService
     private static async Task<ProxyProbeScenarioResult> ProbeCacheIsolationScenarioAsync(
         HttpClient primaryClient,
         HttpClient alternateClient,
-        string path,
+        ConversationProbeTransport primaryTransport,
+        ConversationProbeTransport alternateTransport,
         string model,
         CancellationToken cancellationToken)
     {
@@ -1350,13 +1698,12 @@ public sealed partial class ProxyDiagnosticsService
         var expectedPrimary = BuildCacheIsolationExpectedOutput("A", secretA);
         var expectedAlternate = BuildCacheIsolationExpectedOutput("B", "none");
 
-        var primaryOutcome = await ProbeJsonScenarioAsync(
+        var primaryOutcome = await ProbeJsonConversationScenarioAsync(
             primaryClient,
-            path,
+            primaryTransport,
             BuildCacheIsolationPayload(model, expectedPrimary),
             ProxyProbeScenarioKind.CacheIsolation,
             "缓存隔离-A",
-            ParseChatPreview,
             cancellationToken);
 
         if (!primaryOutcome.ScenarioResult.Success)
@@ -1376,13 +1723,12 @@ public sealed partial class ProxyDiagnosticsService
                 primaryOutcome.ScenarioResult.TraceId);
         }
 
-        var alternateOutcome = await ProbeJsonScenarioAsync(
+        var alternateOutcome = await ProbeJsonConversationScenarioAsync(
             alternateClient,
-            path,
+            alternateTransport,
             BuildCacheIsolationPayload(model, expectedAlternate),
             ProxyProbeScenarioKind.CacheIsolation,
             "缓存隔离-B",
-            ParseChatPreview,
             cancellationToken);
 
         if (!alternateOutcome.ScenarioResult.Success)
@@ -1719,9 +2065,9 @@ public sealed partial class ProxyDiagnosticsService
             return false;
         }
 
-        return firstTtftMs.Value >= 700 &&
-               secondTtftMs.Value <= 350 &&
-               secondTtftMs.Value <= firstTtftMs.Value * 0.45 &&
+        return firstTtftMs.Value >= 500 &&
+               secondTtftMs.Value <= 400 &&
+               secondTtftMs.Value <= firstTtftMs.Value * 0.55 &&
                secondTtftMs.Value + 120 < firstTtftMs.Value;
     }
 
@@ -1739,7 +2085,23 @@ public sealed partial class ProxyDiagnosticsService
         toolCall = default;
 
         using var document = JsonDocument.Parse(json);
-        if (!document.RootElement.TryGetProperty("choices", out var choices) ||
+        if (TryParseOpenAiToolCallResponse(document.RootElement, out toolCall))
+        {
+            return true;
+        }
+
+        if (TryParseAnthropicToolCallResponse(document.RootElement, out toolCall))
+        {
+            return true;
+        }
+
+        return TryParseResponsesToolCallResponse(document.RootElement, out toolCall);
+    }
+
+    private static bool TryParseOpenAiToolCallResponse(JsonElement root, out (string Id, string Name, string ArgumentsJson) toolCall)
+    {
+        toolCall = default;
+        if (!root.TryGetProperty("choices", out var choices) ||
             choices.ValueKind != JsonValueKind.Array)
         {
             return false;
@@ -1765,9 +2127,7 @@ public sealed partial class ProxyDiagnosticsService
                 }
 
                 if (!functionElement.TryGetProperty("name", out var nameElement) ||
-                    nameElement.ValueKind != JsonValueKind.String ||
-                    !functionElement.TryGetProperty("arguments", out var argumentsElement) ||
-                    argumentsElement.ValueKind != JsonValueKind.String)
+                    nameElement.ValueKind != JsonValueKind.String)
                 {
                     continue;
                 }
@@ -1775,12 +2135,104 @@ public sealed partial class ProxyDiagnosticsService
                 toolCall = (
                     idElement.GetString() ?? "tool-call-1",
                     nameElement.GetString() ?? string.Empty,
-                    argumentsElement.GetString() ?? "{}");
+                    TryExtractToolCallArgumentsJson(functionElement));
                 return !string.IsNullOrWhiteSpace(toolCall.Name);
             }
         }
 
         return false;
+    }
+
+    private static bool TryParseAnthropicToolCallResponse(JsonElement root, out (string Id, string Name, string ArgumentsJson) toolCall)
+    {
+        toolCall = default;
+        if (!root.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var item in content.EnumerateArray())
+        {
+            if (!item.TryGetProperty("type", out var typeElement) ||
+                typeElement.ValueKind != JsonValueKind.String ||
+                !string.Equals(typeElement.GetString(), "tool_use", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var id = item.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.String
+                ? idElement.GetString() ?? "tool-call-1"
+                : "tool-call-1";
+            var name = item.TryGetProperty("name", out var nameElement) && nameElement.ValueKind == JsonValueKind.String
+                ? nameElement.GetString() ?? string.Empty
+                : string.Empty;
+            var argumentsJson = item.TryGetProperty("input", out var inputElement)
+                ? inputElement.ValueKind == JsonValueKind.String
+                    ? inputElement.GetString() ?? "{}"
+                    : inputElement.GetRawText()
+                : "{}";
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                toolCall = (id, name, argumentsJson);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryParseResponsesToolCallResponse(JsonElement root, out (string Id, string Name, string ArgumentsJson) toolCall)
+    {
+        toolCall = default;
+        if (!root.TryGetProperty("output", out var output) || output.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var item in output.EnumerateArray())
+        {
+            if (!item.TryGetProperty("type", out var typeElement) ||
+                typeElement.ValueKind != JsonValueKind.String ||
+                !string.Equals(typeElement.GetString(), "function_call", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var id = item.TryGetProperty("call_id", out var callIdElement) && callIdElement.ValueKind == JsonValueKind.String
+                ? callIdElement.GetString() ?? "tool-call-1"
+                : item.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.String
+                    ? idElement.GetString() ?? "tool-call-1"
+                    : "tool-call-1";
+            var name = item.TryGetProperty("name", out var nameElement) && nameElement.ValueKind == JsonValueKind.String
+                ? nameElement.GetString() ?? string.Empty
+                : string.Empty;
+            var argumentsJson = item.TryGetProperty("arguments", out var argumentsElement)
+                ? argumentsElement.ValueKind == JsonValueKind.String
+                    ? argumentsElement.GetString() ?? "{}"
+                    : argumentsElement.GetRawText()
+                : "{}";
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                toolCall = (id, name, argumentsJson);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string TryExtractToolCallArgumentsJson(JsonElement functionElement)
+    {
+        if (!functionElement.TryGetProperty("arguments", out var argumentsElement))
+        {
+            return "{}";
+        }
+
+        return argumentsElement.ValueKind == JsonValueKind.String
+            ? argumentsElement.GetString() ?? "{}"
+            : argumentsElement.GetRawText();
     }
 
     private static string? ExtractErrorPreview(string? body)
@@ -1851,8 +2303,6 @@ public sealed partial class ProxyDiagnosticsService
                normalized.Contains("mustprovide", StringComparison.Ordinal) ||
                normalized.Contains("mustbeprovided", StringComparison.Ordinal) ||
                normalized.Contains("oneof", StringComparison.Ordinal) ||
-               normalized.Contains("request", StringComparison.Ordinal) ||
-               normalized.Contains("message", StringComparison.Ordinal) ||
                normalized.Contains("messages", StringComparison.Ordinal) ||
                normalized.Contains("input", StringComparison.Ordinal) ||
                normalized.Contains("previousresponseid", StringComparison.Ordinal) ||

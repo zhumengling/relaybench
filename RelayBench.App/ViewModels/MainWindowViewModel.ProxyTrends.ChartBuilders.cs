@@ -302,6 +302,60 @@ public sealed partial class MainWindowViewModel
             items,
             ref order,
             scenarios,
+            ProxyProbeScenarioKind.InstructionFollowing,
+            "深度测试",
+            "语义稳定性",
+            "指令遵循",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "system 优先级与严格 JSON"));
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
+            ProxyProbeScenarioKind.DataExtraction,
+            "深度测试",
+            "语义稳定性",
+            "数据抽取",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "事实字段与数字保真"));
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
+            ProxyProbeScenarioKind.StructuredOutputEdge,
+            "深度测试",
+            "接口稳定性",
+            "结构化边界",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "JSON / CSV / 类型保真"));
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
+            ProxyProbeScenarioKind.ToolCallDeep,
+            "深度测试",
+            "应用接入可用性",
+            "ToolCall 深测",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "工具选择与参数精度"));
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
+            ProxyProbeScenarioKind.ReasonMathConsistency,
+            "语义稳定性",
+            "固定答案与中间量",
+            "推理一致性",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "答案与 CHECKS 契约"));
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
+            ProxyProbeScenarioKind.CodeBlockDiscipline,
+            "真实使用体验",
+            "代码块识别",
+            "代码块纪律",
+            detailOverride: scenario => BuildScenarioChartDetail(scenario, "单代码块、语言标签与修复点"));
+        AddScenarioChartItemIfPresent(
+            items,
+            ref order,
+            scenarios,
             ProxyProbeScenarioKind.CacheIsolation,
             "深度测试",
             "协议兼容、错误透传与缓存隔离",
@@ -372,7 +426,8 @@ public sealed partial class MainWindowViewModel
             ResolveScenarioMetricText(scenario),
             scenario.ReceivedDone,
             detailText,
-            scenario.Preview ?? scenario.Summary);
+            scenario.Preview ?? scenario.Summary,
+            scenario.Trace);
     }
 
     private static ProxySingleCapabilityChartItem CreateFinalScenarioChartItem(
@@ -415,7 +470,8 @@ public sealed partial class MainWindowViewModel
             ResolveScenarioMetricText(scenario),
             scenario.ReceivedDone,
             detailText,
-            previewText ?? scenario.Preview ?? scenario.Summary);
+            previewText ?? scenario.Preview ?? scenario.Summary,
+            scenario.Trace);
     }
 
     private static ProxySingleCapabilityChartItem CreateFinalScenarioPlaceholderItem(
@@ -737,6 +793,7 @@ public sealed partial class MainWindowViewModel
         =>
         [
             (ProxyProbeScenarioKind.Models, "/models"),
+            (ProxyProbeScenarioKind.AnthropicMessages, "Anthropic Messages"),
             (ProxyProbeScenarioKind.ChatCompletions, "普通对话"),
             (ProxyProbeScenarioKind.ChatCompletionsStream, "流式对话"),
             (ProxyProbeScenarioKind.Responses, "Responses"),

@@ -164,6 +164,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand ClearProxyBatchTemplateEmptyRowsCommand { get; }
 
+    public AsyncRelayCommand ToggleProxyBatchTemplateRowsTestInclusionCommand { get; }
+
     public AsyncRelayCommand<ProxyBatchEditorItemViewModel?> FetchProxyBatchTemplateRowModelsCommand { get; }
 
     public AsyncRelayCommand CloseProxyModelPickerCommand { get; }
@@ -197,6 +199,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand ToggleProxyChartViewCommand { get; }
 
     public AsyncRelayCommand ToggleProxyChartImageOnlyModeCommand { get; }
+
+    public AsyncRelayCommand<ProxySingleCapabilityChartRowViewModel?> OpenProbeTraceCommand { get; }
 
     public AsyncRelayCommand RunProxyCommand { get; }
 
@@ -266,9 +270,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand DeleteChatSessionCommand { get; }
 
+    public AsyncRelayCommand<ChatSessionListItemViewModel?> BeginRenameChatSessionCommand { get; }
+
+    public AsyncRelayCommand<ChatSessionListItemViewModel?> CommitRenameChatSessionCommand { get; }
+
+    public AsyncRelayCommand<ChatSessionListItemViewModel?> CancelRenameChatSessionCommand { get; }
+
+    public AsyncRelayCommand RegenerateLastChatAnswerCommand { get; }
+
+    public AsyncRelayCommand ExportChatSessionMarkdownCommand { get; }
+
+    public AsyncRelayCommand ExportChatSessionTextCommand { get; }
+
     public AsyncRelayCommand AddChatImageAttachmentCommand { get; }
 
     public AsyncRelayCommand AddChatTextFileAttachmentCommand { get; }
+
+    public AsyncRelayCommand<string[]?> AddChatAttachmentFilesCommand { get; }
 
     public AsyncRelayCommand ToggleChatSettingsPanelCommand { get; }
 
@@ -293,4 +311,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand DeleteChatPresetCommand { get; }
 
     public AsyncRelayCommand<ChatContentBlockViewModel?> CopyChatCodeBlockCommand { get; }
+
+    public AsyncRelayCommand<ChatMessageViewModel?> CopyChatMessageCommand { get; }
+
+    public AsyncRelayCommand<ChatModelAnswerViewModel?> CopyChatModelAnswerCommand { get; }
 }

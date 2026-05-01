@@ -37,20 +37,24 @@ public sealed partial class ProxyDiagnosticsService
         }
 
         using var client = CreateClient(baseUri, normalizedSettings);
-        var chatPath = BuildApiPath(baseUri, "chat/completions");
         List<ProxyMultiModelSpeedTestResult> results = new(models.Length);
 
         foreach (var model in models)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            var probe = await ProbeStreamingScenarioAsync(
+            var transport = await ResolveConversationProbeTransportAsync(
                 client,
-                chatPath,
+                baseUri,
+                model,
+                baselineResult: null,
+                cancellationToken);
+
+            var probe = await ProbeStreamingConversationScenarioAsync(
+                client,
+                transport,
                 BuildMultiModelSpeedPayload(model),
                 ProxyProbeScenarioKind.ChatCompletionsStream,
                 model,
-                TryParseChatStreamContent,
                 static preview => !string.IsNullOrWhiteSpace(preview),
                 cancellationToken);
 
@@ -69,28 +73,5 @@ public sealed partial class ProxyDiagnosticsService
     }
 
     private static string BuildMultiModelSpeedPayload(string model)
-    {
-        var payload = new
-        {
-            model,
-            max_tokens = GetChatProbeMaxTokens(model),
-            temperature = 0,
-            stream = true,
-            messages = new[]
-            {
-                new
-                {
-                    role = "system",
-                    content = "You are a speed probe. Reply with plain text only."
-                },
-                new
-                {
-                    role = "user",
-                    content = "Output the numbers 1 to 80 separated by spaces. Do not add any extra words."
-                }
-            }
-        };
-
-        return JsonSerializer.Serialize(payload);
-    }
+        => ProxyProbePayloadFactory.BuildMultiModelSpeedPayload(model);
 }

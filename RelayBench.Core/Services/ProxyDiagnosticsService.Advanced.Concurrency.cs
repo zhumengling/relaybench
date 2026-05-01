@@ -54,7 +54,12 @@ public sealed partial class ProxyDiagnosticsService
             }
         }
 
-        var chatPath = BuildApiPath(baseUri, "chat/completions");
+        var transport = await ResolveConversationProbeTransportAsync(
+            client,
+            baseUri,
+            effectiveModel,
+            baselineResult: null,
+            cancellationToken);
         List<ProxyConcurrencyPressureStageResult> stages = new(normalizedStages.Length);
 
         foreach (var concurrency in normalizedStages)
@@ -64,7 +69,7 @@ public sealed partial class ProxyDiagnosticsService
             var totalRequests = Math.Max(concurrency * DefaultConcurrencyPressureStageCycles, concurrency);
             var attempts = await RunConcurrencyPressureStageAsync(
                 client,
-                chatPath,
+                transport,
                 effectiveModel,
                 concurrency,
                 totalRequests,
@@ -76,6 +81,7 @@ public sealed partial class ProxyDiagnosticsService
         }
 
         var stableConcurrencyLimit = ResolveStableConcurrencyLimit(stages);
+        var practicalConcurrencyLimit = ResolvePracticalConcurrencyLimit(stages);
         var rateLimitStartConcurrency = stages
             .FirstOrDefault(static stage => stage.RateLimitedCount > 0)?
             .Concurrency;
@@ -83,6 +89,7 @@ public sealed partial class ProxyDiagnosticsService
         var summary = BuildConcurrencyPressureSummary(
             stages,
             stableConcurrencyLimit,
+            practicalConcurrencyLimit,
             rateLimitStartConcurrency,
             highRiskConcurrency);
 
@@ -95,7 +102,8 @@ public sealed partial class ProxyDiagnosticsService
             rateLimitStartConcurrency,
             highRiskConcurrency,
             summary,
-            null);
+            null,
+            practicalConcurrencyLimit);
     }
 
     private static int[] NormalizeConcurrencyPressureStages(IReadOnlyList<int>? stages)
@@ -112,7 +120,7 @@ public sealed partial class ProxyDiagnosticsService
 
     private static async Task<IReadOnlyList<ConcurrencyPressureAttemptResult>> RunConcurrencyPressureStageAsync(
         HttpClient client,
-        string chatPath,
+        ConversationProbeTransport transport,
         string model,
         int concurrency,
         int totalRequests,
@@ -127,7 +135,7 @@ public sealed partial class ProxyDiagnosticsService
                 {
                     return await RunConcurrencyPressureAttemptAsync(
                         client,
-                        chatPath,
+                        transport,
                         model,
                         concurrency,
                         attemptIndex,
@@ -145,20 +153,19 @@ public sealed partial class ProxyDiagnosticsService
 
     private static async Task<ConcurrencyPressureAttemptResult> RunConcurrencyPressureAttemptAsync(
         HttpClient client,
-        string chatPath,
+        ConversationProbeTransport transport,
         string model,
         int concurrency,
         int attemptIndex,
         CancellationToken cancellationToken)
     {
         var attemptTag = $"{concurrency:D2}-{attemptIndex:D3}-{Guid.NewGuid():N}";
-        var chatProbe = await ProbeJsonScenarioAsync(
+        var chatProbe = await ProbeJsonConversationScenarioAsync(
             client,
-            chatPath,
+            transport,
             BuildConcurrencyPressurePayload(model, stream: false, attemptTag),
             ProxyProbeScenarioKind.ChatCompletions,
             "\u5E76\u53D1\u666E\u901A\u5BF9\u8BDD",
-            ParseChatPreview,
             cancellationToken);
 
         if (!chatProbe.ScenarioResult.Success)
@@ -166,13 +173,12 @@ public sealed partial class ProxyDiagnosticsService
             return BuildFailedConcurrencyPressureAttempt(chatProbe.ScenarioResult, null);
         }
 
-        var streamProbe = await ProbeStreamingScenarioAsync(
+        var streamProbe = await ProbeStreamingConversationScenarioAsync(
             client,
-            chatPath,
+            transport,
             BuildConcurrencyPressurePayload(model, stream: true, attemptTag),
             ProxyProbeScenarioKind.ChatCompletionsStream,
             "\u5E76\u53D1\u6D41\u5F0F\u5BF9\u8BDD",
-            TryParseChatStreamContent,
             static preview => !string.IsNullOrWhiteSpace(preview),
             cancellationToken);
 
@@ -279,6 +285,27 @@ public sealed partial class ProxyDiagnosticsService
         return stableConcurrency;
     }
 
+    private static int? ResolvePracticalConcurrencyLimit(IReadOnlyList<ProxyConcurrencyPressureStageResult> stages)
+    {
+        int? practicalConcurrency = null;
+
+        foreach (var stage in stages)
+        {
+            var successRate = stage.TotalRequests == 0 ? 0d : (double)stage.SuccessCount / stage.TotalRequests;
+            var isPractical = successRate >= 0.90d &&
+                              stage.RateLimitedCount <= 1 &&
+                              stage.TimeoutCount == 0 &&
+                              stage.ServerErrorCount == 0;
+
+            if (isPractical)
+            {
+                practicalConcurrency = stage.Concurrency;
+            }
+        }
+
+        return practicalConcurrency;
+    }
+
     private static int? ResolveHighRiskConcurrency(IReadOnlyList<ProxyConcurrencyPressureStageResult> stages)
     {
         if (stages.Count == 0)
@@ -309,6 +336,7 @@ public sealed partial class ProxyDiagnosticsService
     private static string BuildConcurrencyPressureSummary(
         IReadOnlyList<ProxyConcurrencyPressureStageResult> stages,
         int? stableConcurrencyLimit,
+        int? practicalConcurrencyLimit,
         int? rateLimitStartConcurrency,
         int? highRiskConcurrency)
     {
@@ -320,35 +348,13 @@ public sealed partial class ProxyDiagnosticsService
         return
             $"\u5DF2\u5B8C\u6210 {stages.Count} \u4E2A\u5E76\u53D1\u6863\u4F4D\uFF1B" +
             $"\u7A33\u5B9A\u5E76\u53D1\u4E0A\u9650 {FormatConcurrencyValue(stableConcurrencyLimit)}\uFF1B" +
+            $"\u5B9E\u7528\u5E76\u53D1\u4E0A\u9650 {FormatConcurrencyValue(practicalConcurrencyLimit)}\uFF1B" +
             $"\u9650\u6D41\u8D77\u70B9 {FormatConcurrencyValue(rateLimitStartConcurrency)}\uFF1B" +
             $"\u9AD8\u98CE\u9669\u6863 {FormatConcurrencyValue(highRiskConcurrency)}\u3002";
     }
 
     private static string BuildConcurrencyPressurePayload(string model, bool stream, string attemptTag)
-    {
-        var payload = new
-        {
-            model,
-            max_tokens = GetChatProbeMaxTokens(model),
-            temperature = 0,
-            stream,
-            messages = new object[]
-            {
-                new
-                {
-                    role = "system",
-                    content = $"You are a concurrency pressure probe. Trace={attemptTag}. Reply with plain text only."
-                },
-                new
-                {
-                    role = "user",
-                    content = "Output the numbers 1 to 60 separated by spaces. Do not add markdown, labels, or extra words."
-                }
-            }
-        };
-
-        return JsonSerializer.Serialize(payload);
-    }
+        => ProxyProbePayloadFactory.BuildConcurrencyPressurePayload(model, stream, attemptTag);
 
     private static double? Average(IEnumerable<double?> values)
     {

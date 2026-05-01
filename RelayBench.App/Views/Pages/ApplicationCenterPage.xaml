@@ -3,14 +3,35 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             Style="{StaticResource MotionPageRootStyle}"
              mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="ApplicationCenterActionButtonStyle"
                TargetType="Button"
-               BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="MinWidth" Value="104" />
-            <Setter Property="Padding" Value="10,4" />
+               BasedOn="{StaticResource WorkbenchIconButtonStyle}">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="FontSize" Value="13" />
             <Setter Property="Margin" Value="0,8,8,0" />
+        </Style>
+
+        <Style x:Key="ApplicationCenterIconActionButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonStyle}">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+
+        <Style x:Key="ApplicationCenterMotionInsetPanelStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource MotionDialogPanelStyle}">
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="Background" Value="{StaticResource PanelBrushStrong}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
         </Style>
 
         <Style x:Key="ApplicationCenterMetaTextStyle"
@@ -87,8 +108,9 @@
                            HorizontalAlignment="Right"
                            VerticalAlignment="Center">
                     <Button Command="{Binding RunClientApiDiagnosticsCommand}"
-                            Style="{StaticResource PrimaryActionButtonStyle}"
-                            Content="&#x5F00;&#x59CB;&#x626B;&#x63CF;" />
+                            Style="{StaticResource WorkbenchIconButtonPrimaryStyle}"
+                            Content="&#xE768;"
+                            ToolTip="&#x5F00;&#x59CB;&#x626B;&#x63CF;" />
                 </WrapPanel>
             </Grid>
         </Border>
@@ -231,11 +253,13 @@
                                                             Orientation="Horizontal">
                                                     <Button Command="{Binding OpenRawTraceCommand}"
                                                             Style="{StaticResource ApplicationCenterActionButtonStyle}"
-                                                            Content="&#x539F;&#x59CB; Trace" />
+                                                            Content="&#xE946;"
+                                                            ToolTip="&#x539F;&#x59CB; Trace" />
                                                     <Button Command="{Binding RestoreDefaultConfigCommand}"
                                                             Style="{StaticResource ApplicationCenterActionButtonStyle}"
                                                             Visibility="{Binding HasRestoreDefaultConfigAction, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                            Content="&#x8FD8;&#x539F;&#x9ED8;&#x8BA4;" />
+                                                            Content="&#xE777;"
+                                                            ToolTip="&#x8FD8;&#x539F;&#x9ED8;&#x8BA4;" />
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -287,17 +311,17 @@
                         </StackPanel>
 
                         <Button Grid.Column="1"
-                                MinWidth="88"
                                 Margin="10,0,0,0"
-                                Padding="12,5"
+                                Style="{StaticResource ApplicationCenterIconActionButtonStyle}"
                                 VerticalAlignment="Top"
                                 Command="{Binding OpenApplicationCenterProxyEndpointHistoryCommand}"
-                                Content="&#x5386;&#x53F2;&#x63A5;&#x53E3;" />
+                                Content="&#xE81C;"
+                                ToolTip="&#x5386;&#x53F2;&#x63A5;&#x53E3;" />
                     </Grid>
 
                     <Border Grid.Row="1"
                             Margin="0,6,0,0"
-                            Style="{StaticResource InsetPanelBorderStyle}">
+                            Style="{StaticResource ApplicationCenterMotionInsetPanelStyle}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -332,10 +356,10 @@
                                          Text="{Binding ApplicationCenterModel, Mode=OneWay}" />
                                 <Button Grid.Row="1"
                                         Grid.Column="2"
-                                        MinWidth="86"
-                                        Padding="10,4"
+                                        Style="{StaticResource ApplicationCenterIconActionButtonStyle}"
                                         Command="{Binding FetchApplicationCenterProxyModelsCommand}"
-                                        Content="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                        Content="&#xE72C;"
+                                        ToolTip="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
                             </Grid>
 
                             <StackPanel Grid.Row="2"
@@ -349,7 +373,7 @@
                     </Border>
 
                     <Border Grid.Row="3"
-                            Style="{StaticResource InsetPanelBorderStyle}">
+                            Style="{StaticResource ApplicationCenterMotionInsetPanelStyle}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -364,8 +388,9 @@
                             <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="应用到 Codex" />
                             <Button Grid.Column="1"
                                     Command="{Binding ApplyCurrentInterfaceToCodexAppsCommand}"
-                                    Style="{StaticResource PrimaryActionButtonStyle}"
-                                    Content="&#x5E94;&#x7528;&#x5F53;&#x524D;&#x63A5;&#x53E3;" />
+                                    Style="{StaticResource WorkbenchIconButtonPrimaryStyle}"
+                                    Content="&#xE8FB;"
+                                    ToolTip="&#x5E94;&#x7528;&#x5F53;&#x524D;&#x63A5;&#x53E3;" />
 
                             <TextBlock Grid.Row="1"
                                        Grid.ColumnSpan="2"

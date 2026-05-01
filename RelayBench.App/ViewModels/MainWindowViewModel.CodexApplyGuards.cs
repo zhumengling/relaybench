@@ -5,15 +5,15 @@ namespace RelayBench.App.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private bool CanApplyEndpointToCodexApps(string? baseUrl, string? apiKey, string? model)
-        => IsCodexResponsesCompatible(baseUrl, apiKey, model);
+        => IsCodexWireApiCompatible(baseUrl, apiKey, model);
 
     private static string BuildCodexUnsupportedModelMessage(string? model)
-        => $"当前接口的模型“{FormatPreviewValue(model)}”不支持 Codex 需要的 Responses API，所以不能应用到 Codex。";
+        => $"当前接口的模型“{FormatPreviewValue(model)}”未通过 Codex 需要的 Responses 或 OpenAI Chat 探测，所以不能直接应用到 Codex。";
 
     private static string BuildCodexUnsupportedModelMessage(string entryName, string? model)
-        => $"“{entryName}”的接口模型“{FormatPreviewValue(model)}”不支持 Codex 需要的 Responses API，所以不能应用到 Codex。";
+        => $"“{entryName}”的接口模型“{FormatPreviewValue(model)}”未通过 Codex 需要的 Responses 或 OpenAI Chat 探测，所以不能直接应用到 Codex。";
 
-    private async Task<bool> ProbeCodexResponsesCompatibilityBeforeApplyAsync(
+    private async Task<bool> ProbeCodexWireApiCompatibilityBeforeApplyAsync(
         ProxyEndpointSettings settings,
         string? entryName = null)
     {
@@ -32,7 +32,7 @@ public sealed partial class MainWindowViewModel
             ? BuildCodexUnsupportedModelMessage(settings.Model)
             : BuildCodexUnsupportedModelMessage(entryName!, settings.Model);
         StatusMessage = message;
-        await ShowCodexResponsesUnsupportedNoticeAsync(message, settings, result);
+        await ShowCodexWireApiUnsupportedNoticeAsync(message, settings, result);
         return false;
     }
 
@@ -53,7 +53,7 @@ public sealed partial class MainWindowViewModel
         return result;
     }
 
-    private Task ShowCodexResponsesUnsupportedNoticeAsync(
+    private Task ShowCodexWireApiUnsupportedNoticeAsync(
         string message,
         ProxyEndpointSettings settings,
         ProxyEndpointProtocolProbeResult? probeResult = null)
@@ -64,9 +64,9 @@ public sealed partial class MainWindowViewModel
             $"模型：{FormatPreviewValue(settings.Model)}\n\n" +
             BuildProtocolProbeDetail(probeResult) +
             "\n\n" +
-            "原因：刚才的接口探测没有确认 /v1/responses 可用。Codex 当前配置只写入 wire_api = \"responses\"，" +
-            "如果接口不支持 Responses API，应用后会导致 Codex 不能正常请求。\n\n" +
-            "处理方式：换用支持 Responses API 的接口，或先在中转/本地服务里开启 Responses 兼容。",
+            "原因：刚才的接口探测没有确认 /v1/responses 或 /v1/chat/completions 可用。Codex 可以优先写入 wire_api = \"responses\"，" +
+            "也可以在 Responses 不通但 Chat Completions 通过时写入 wire_api = \"chat\"；两者都不通时应用后大概率不能正常请求。\n\n" +
+            "处理方式：换用支持 Responses 或 OpenAI Chat Completions 的接口，或先在中转/本地服务里开启对应兼容。",
             "知道了",
             "关闭");
 
@@ -97,17 +97,17 @@ public sealed partial class MainWindowViewModel
     private static string FormatSupportedLabel(string label, bool supported)
         => $"{label} {(supported ? "可用" : "不可用")}";
 
-    private bool IsCodexResponsesCompatible(string? baseUrl, string? apiKey, string? model)
-        => _codexResponsesCompatibilityByEndpointModel.TryGetValue(
-            BuildCodexResponsesCompatibilityKey(baseUrl, apiKey, model),
+    private bool IsCodexWireApiCompatible(string? baseUrl, string? apiKey, string? model)
+        => _codexWireApiCompatibilityByEndpointModel.TryGetValue(
+            BuildCodexWireApiCompatibilityKey(baseUrl, apiKey, model),
             out var supported) &&
            supported;
 
-    private void RememberCodexResponsesCompatibility(
+    private void RememberCodexWireApiCompatibility(
         string? baseUrl,
         string? apiKey,
         string? model,
-        bool responsesSupported)
+        bool wireApiSupported)
     {
         if (string.IsNullOrWhiteSpace(baseUrl) ||
             string.IsNullOrWhiteSpace(apiKey) ||
@@ -116,15 +116,15 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        _codexResponsesCompatibilityByEndpointModel[BuildCodexResponsesCompatibilityKey(baseUrl, apiKey, model)] =
-            responsesSupported;
+        _codexWireApiCompatibilityByEndpointModel[BuildCodexWireApiCompatibilityKey(baseUrl, apiKey, model)] =
+            wireApiSupported;
         ApplyCurrentInterfaceToCodexAppsCommand?.RaiseCanExecuteChanged();
         ApplyRankingRowToCodexAppsCommand?.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(ApplicationCenterApplyTargetSummary));
         OnPropertyChanged(nameof(ApplicationCenterApplyPreviewDetail));
     }
 
-    private static string BuildCodexResponsesCompatibilityKey(string? baseUrl, string? apiKey, string? model)
+    private static string BuildCodexWireApiCompatibilityKey(string? baseUrl, string? apiKey, string? model)
     {
         var normalizedBaseUrl = (baseUrl ?? string.Empty).Trim().TrimEnd('/').ToLowerInvariant();
         var normalizedApiKey = (apiKey ?? string.Empty).Trim();

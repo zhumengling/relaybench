@@ -16,7 +16,8 @@ public sealed partial class ProxyDiagnosticsService
         Stopwatch stopwatch,
         Func<string, string?> streamContentParser,
         Action<StreamingReadLiveProgress>? liveReporter,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<string, bool>? streamDoneDetector = null)
     {
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var reader = new StreamReader(stream);
@@ -120,7 +121,8 @@ public sealed partial class ProxyDiagnosticsService
                 }
 
                 var payload = line[5..].Trim();
-                if (payload == "[DONE]")
+                if (payload == "[DONE]" ||
+                    streamDoneDetector?.Invoke(payload) == true)
                 {
                     lock (syncRoot)
                     {
@@ -280,12 +282,18 @@ public sealed partial class ProxyDiagnosticsService
             {
                 return preview;
             }
+
+            return null;
         }
         catch
         {
         }
 
         var sample = ExtractBodySample(content);
+        if (!MatchProbeExpectation(sample))
+        {
+            return null;
+        }
         return string.Equals(sample, "未返回响应体。", StringComparison.Ordinal)
             ? null
             : sample;

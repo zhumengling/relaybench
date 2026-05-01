@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:infra="clr-namespace:RelayBench.App.Infrastructure"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             Style="{StaticResource MotionPageRootStyle}"
              mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="NetworkReviewSubmenuItemStyle"
@@ -17,10 +18,10 @@
 
         <Style x:Key="ReviewPaneBorderStyle"
                TargetType="Border">
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="Background" Value="#F8FBFF" />
+            <Setter Property="BorderBrush" Value="#D8E3F2" />
+            <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="12" />
         </Style>
 
@@ -83,8 +84,15 @@
                                       Margin="0,0,0,6"
                                       IsItemsHost="True"
                                       Background="Transparent" />
-                            <ContentPresenter Grid.Row="1"
-                                              ContentSource="SelectedContent" />
+                            <Border x:Name="TabContentBorder"
+                                    Grid.Row="1"
+                                    Padding="12"
+                                    Background="#F8FBFF"
+                                    BorderBrush="#D8E3F2"
+                                    BorderThickness="1"
+                                    CornerRadius="12">
+                                <ContentPresenter ContentSource="SelectedContent" />
+                            </Border>
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>

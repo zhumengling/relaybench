@@ -22,10 +22,11 @@ public sealed partial class ProxyDiagnosticsService
         var resolvedAddresses = await ResolveAddressesAsync(baseUri, cancellationToken);
 
         var modelPath = BuildApiPath(baseUri, "models");
-        var chatPath = BuildApiPath(baseUri, "chat/completions");
+        var anthropicPath = BuildApiPath(baseUri, "messages");
         var responsesPath = BuildApiPath(baseUri, "responses");
 
         List<ProxyProbeScenarioResult> scenarioResults = [];
+        const int baselineScenarioCount = 6;
 
         var modelsProbe = await ProbeModelsAsync(client, modelPath, settings.Model, cancellationToken);
         scenarioResults.Add(modelsProbe.ScenarioResult);
@@ -41,15 +42,47 @@ public sealed partial class ProxyDiagnosticsService
             modelsProbe.ModelCount,
             modelsProbe.SampleModels,
             modelsProbe.ScenarioResult,
-            scenarioResults);
+            scenarioResults,
+            baselineScenarioCount);
 
-        var chatProbe = await ProbeJsonScenarioAsync(
+        var anthropicProbe = await ProbeAnthropicMessagesScenarioAsync(
             client,
-            chatPath,
+            anthropicPath,
+            BuildAnthropicMessagesPayload(effectiveModel),
+            cancellationToken);
+        scenarioResults.Add(anthropicProbe.ScenarioResult);
+        ReportSingleProgress(
+            progress,
+            baseUri,
+            settings,
+            effectiveModel,
+            modelsProbe.ModelCount,
+            modelsProbe.SampleModels,
+            anthropicProbe.ScenarioResult,
+            scenarioResults,
+            baselineScenarioCount);
+
+        var responsesProbeForConversation = await ProbeJsonScenarioAsync(
+            client,
+            responsesPath,
+            BuildResponsesPayload(effectiveModel),
+            ProxyProbeScenarioKind.Responses,
+            "Responses",
+            ParseResponsesPreview,
+            cancellationToken);
+        var conversationTransport = CreateConversationProbeTransport(
+            client,
+            baseUri,
+            ResolvePreferredWireApi(
+                chatSupported: false,
+                responsesProbeForConversation.ScenarioResult.Success,
+                anthropicProbe.ScenarioResult.Success) ?? "chat");
+        var chatProbe = await ProbeJsonConversationScenarioAsync(
+            client,
+            conversationTransport,
             BuildChatPayload(effectiveModel, stream: false),
             ProxyProbeScenarioKind.ChatCompletions,
             "普通对话",
-            ParseChatPreview,
             cancellationToken);
         scenarioResults.Add(chatProbe.ScenarioResult);
         ReportSingleProgress(
@@ -60,28 +93,35 @@ public sealed partial class ProxyDiagnosticsService
             modelsProbe.ModelCount,
             modelsProbe.SampleModels,
             chatProbe.ScenarioResult,
-            scenarioResults);
+            scenarioResults,
+            baselineScenarioCount);
 
-        var streamPayload = BuildChatPayload(effectiveModel, stream: true);
+        var streamPayload = BuildConversationWirePayload(
+            conversationTransport.WireApi,
+            BuildChatPayload(effectiveModel, stream: true));
         var streamProbe = await ProbeStreamingScenarioAsync(
             client,
-            chatPath,
+            conversationTransport.Path,
             streamPayload,
             ProxyProbeScenarioKind.ChatCompletionsStream,
             "流式对话",
-            TryParseChatStreamContent,
+            conversationTransport.StreamContentParser,
             MatchProbeExpectation,
-            cancellationToken);
+            cancellationToken,
+            conversationTransport.RequestConfigurer,
+            conversationTransport.StreamDoneDetector);
         streamProbe = await SampleStreamingThroughputAsync(
             client,
-            chatPath,
+            conversationTransport.Path,
             streamPayload,
             streamProbe,
             "流式对话",
-            TryParseChatStreamContent,
+            conversationTransport.StreamContentParser,
             MatchProbeExpectation,
             streamThroughputSampleCount,
-            cancellationToken);
+            cancellationToken,
+            conversationTransport.RequestConfigurer,
+            conversationTransport.StreamDoneDetector);
         scenarioResults.Add(streamProbe);
         ReportSingleProgress(
             progress,
@@ -91,16 +131,10 @@ public sealed partial class ProxyDiagnosticsService
             modelsProbe.ModelCount,
             modelsProbe.SampleModels,
             streamProbe,
-            scenarioResults);
+            scenarioResults,
+            baselineScenarioCount);
 
-        var responsesProbe = await ProbeJsonScenarioAsync(
-            client,
-            responsesPath,
-            BuildResponsesPayload(effectiveModel),
-            ProxyProbeScenarioKind.Responses,
-            "Responses",
-            ParseResponsesPreview,
-            cancellationToken);
+        var responsesProbe = responsesProbeForConversation;
         scenarioResults.Add(responsesProbe.ScenarioResult);
         ReportSingleProgress(
             progress,
@@ -110,7 +144,8 @@ public sealed partial class ProxyDiagnosticsService
             modelsProbe.ModelCount,
             modelsProbe.SampleModels,
             responsesProbe.ScenarioResult,
-            scenarioResults);
+            scenarioResults,
+            baselineScenarioCount);
 
         var structuredOutputProbe = await ProbeJsonScenarioAsync(
             client,
@@ -129,7 +164,8 @@ public sealed partial class ProxyDiagnosticsService
             modelsProbe.ModelCount,
             modelsProbe.SampleModels,
             structuredOutputProbe.ScenarioResult,
-            scenarioResults);
+            scenarioResults,
+            baselineScenarioCount);
 
         var primaryFailure = SelectPrimaryFailure(scenarioResults);
         var verdict = BuildVerdict(scenarioResults);

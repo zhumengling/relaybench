@@ -5,6 +5,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Motion.xaml" />
                 <ResourceDictionary Source="Resources/WorkbenchTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

@@ -271,7 +271,7 @@ public sealed partial class MainWindowViewModel
             if (item.value.LatestIsPlaceholder && item.value.RunCount == 0)
             {
                 builder.AppendLine($"当前状态：{item.value.LatestPlaceholderMessage ?? "等待开始"}；历史：尚无已完成轮次。");
-                builder.AppendLine($"最近一轮五项：{BuildBatchCapabilityMatrix(item.value.LatestResult)}");
+                builder.AppendLine($"最近一轮基础协议：{BuildBatchCapabilityMatrix(item.value.LatestResult)}");
                 if (item.index < Math.Min(rows.Count, 5) - 1)
                 {
                     builder.AppendLine();
@@ -282,7 +282,7 @@ public sealed partial class MainWindowViewModel
 
             builder.AppendLine(
                 $"综合分：{BuildBatchComparisonCompositeText(item.value)}；{BuildBatchStabilityLabel(item.value)}；{BuildBatchCapabilityBreakdown(item.value, includeDeepHint: true)}；满 5 项 {item.value.FullPassRounds}/{Math.Max(item.value.RunCount, 1)} 轮；平均普通 {FormatMillisecondsValue(item.value.AverageChatLatencyMs)}；平均 TTFT {FormatMillisecondsValue(item.value.AverageTtftMs)}；独立吞吐 {FormatTokensPerSecond(item.value.AverageBenchmarkTokensPerSecond)}");
-            builder.AppendLine($"最近一轮五项：{BuildBatchCapabilityMatrix(item.value.LatestResult)}");
+            builder.AppendLine($"最近一轮基础协议：{BuildBatchCapabilityMatrix(item.value.LatestResult)}");
             if (item.value.LongStreamingExecutedRounds > 0)
             {
                 builder.AppendLine($"增强项长流：{item.value.LongStreamingPassRounds}/{item.value.LongStreamingExecutedRounds} 轮通过");
@@ -325,7 +325,7 @@ public sealed partial class MainWindowViewModel
             builder.AppendLine("深度测试：入口组模式不聚合，需查看单次诊断图表。");
             builder.AppendLine($"最近一轮时间：{item.value.LatestResult.CheckedAt:yyyy-MM-dd HH:mm:ss}");
             builder.AppendLine($"最近一轮判定：{BuildBatchComparisonVerdict(item.value)}");
-            builder.AppendLine($"最近一轮五项：{BuildBatchCapabilityMatrix(item.value.LatestResult)}");
+            builder.AppendLine($"最近一轮基础协议：{BuildBatchCapabilityMatrix(item.value.LatestResult)}");
             builder.AppendLine(BuildDialogCapabilityDetail(item.value.LatestResult));
             builder.AppendLine($"CDN / 边缘：{item.value.LatestResult.CdnSummary ?? "未识别"}");
             builder.AppendLine($"错误：{item.value.LatestResult.Error ?? "无"}");

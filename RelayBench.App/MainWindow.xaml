@@ -480,7 +480,7 @@
                 </Grid>
 
         <Grid x:Name="ProxyChartOverlay"
-              Panel.ZIndex="21"
+              Panel.ZIndex="20"
               Background="#660F172A"
               Visibility="Collapsed">
             <Border x:Name="ProxyChartOverlayPanel"
@@ -684,11 +684,12 @@
                                                     <ColumnDefinition Width="0.7*" />
                                                     <ColumnDefinition Width="0.55*" />
                                                     <ColumnDefinition Width="1.55*" />
-                                                    <ColumnDefinition Width="3.1*" />
+                                                    <ColumnDefinition Width="2.85*" />
+                                                    <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
 
                                                 <Border x:Name="RunningPulse"
-                                                        Grid.ColumnSpan="5"
+                                                        Grid.ColumnSpan="6"
                                                         Margin="-6,-4,-6,-4"
                                                         Background="#EAF5FF"
                                                         BorderBrush="#93C5FD"
@@ -872,6 +873,22 @@
                                                            TextTrimming="CharacterEllipsis"
                                                            MaxHeight="48"
                                                            Text="{Binding PreviewText}" />
+                                                <Button Grid.Column="5"
+                                                        Width="48"
+                                                        MinWidth="48"
+                                                        Height="28"
+                                                        Margin="10,0,0,0"
+                                                        Padding="0"
+                                                        VerticalAlignment="Center"
+                                                        Background="#F8FBFF"
+                                                        BorderBrush="#BFD7FF"
+                                                        Foreground="{StaticResource AccentBrush}"
+                                                        FontSize="11"
+                                                        Command="{Binding DataContext.OpenProbeTraceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="详情"
+                                                        ToolTip="查看输入输出与判定证据"
+                                                        Visibility="{Binding HasTrace, Converter={StaticResource BoolToVisibilityConverter}}" />
                                             </Grid>
                                         </Border>
                                         <DataTemplate.Triggers>
@@ -1500,7 +1517,7 @@
         </Grid>
 
         <Grid x:Name="ProxyModelPickerOverlay"
-              Panel.ZIndex="20"
+              Panel.ZIndex="35"
               Background="#660F172A"
               Visibility="Collapsed">
             <Border x:Name="ProxyModelPickerOverlayPanel"
@@ -1629,7 +1646,7 @@
         </Grid>
 
         <Grid x:Name="ProxyMultiModelPickerOverlay"
-              Panel.ZIndex="20"
+              Panel.ZIndex="35"
               Background="#660F172A"
               Visibility="Collapsed">
             <Border x:Name="ProxyMultiModelPickerOverlayPanel"
@@ -1788,7 +1805,7 @@
         </Grid>
 
         <Grid x:Name="OfficialApiTraceOverlay"
-              Panel.ZIndex="20"
+              Panel.ZIndex="30"
               Background="#660F172A"
               Visibility="Collapsed">
             <Border x:Name="OfficialApiTraceOverlayPanel"
@@ -1820,7 +1837,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x539F;&#x59CB;&#x8FD4;&#x56DE; / Trace" />
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="判定解读 / 原始 Trace" />
                             <TextBox Grid.Row="1"
                                      Margin="0,8,0,0"
                                      Style="{StaticResource ReadOnlyRawLogTextBoxStyle}"
@@ -1835,13 +1852,19 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock VerticalAlignment="Center"
                                        Style="{StaticResource SectionHintTextStyle}"
-                                       Text="这里保留原始返回，方便核对真实报错。" />
+                                       Text="上方先解释成功或失败原因，底部保留原始 Trace 供进一步排查。" />
                             <Button Grid.Column="1"
-                                    MinWidth="96"
+                                    MinWidth="104"
                                     Margin="12,0,0,0"
+                                    Command="{Binding CopyOfficialApiTraceDialogContentCommand}"
+                                    Content="复制 Trace" />
+                            <Button Grid.Column="2"
+                                    MinWidth="96"
+                                    Margin="8,0,0,0"
                                     Command="{Binding CloseOfficialApiTraceDialogCommand}"
                                     Content="&#x5173;&#x95ED;" />
                         </Grid>
@@ -1851,7 +1874,7 @@
         </Grid>
 
         <Grid x:Name="ProxyEndpointHistoryOverlay"
-              Panel.ZIndex="20"
+              Panel.ZIndex="30"
               Background="#660F172A"
               Visibility="Collapsed">
             <Border x:Name="ProxyEndpointHistoryOverlayPanel"
@@ -2077,7 +2100,7 @@
         </Grid>
 
         <Grid x:Name="AboutDialogOverlay"
-              Panel.ZIndex="20"
+              Panel.ZIndex="30"
               Background="#660F172A"
               Visibility="Collapsed">
             <Border x:Name="AboutDialogOverlayPanel"
@@ -2211,7 +2234,7 @@
         </Grid>
 
         <Grid x:Name="ClientApplyTargetOverlay"
-              Panel.ZIndex="20"
+              Panel.ZIndex="30"
               Background="#660F172A"
               Visibility="Collapsed">
             <Border x:Name="ClientApplyTargetOverlayPanel"
@@ -2344,7 +2367,7 @@
         </Grid>
 
         <Grid x:Name="ConfirmationDialogOverlay"
-              Panel.ZIndex="20"
+              Panel.ZIndex="40"
               Background="#660F172A"
               Visibility="Collapsed">
             <Border x:Name="ConfirmationDialogOverlayPanel"
@@ -2434,7 +2457,7 @@
         </Grid>
 
         <Grid x:Name="ProxyBatchEditorOverlay"
-              Panel.ZIndex="19"
+              Panel.ZIndex="30"
               Background="#660F172A"
               Visibility="Collapsed">
             <Border x:Name="ProxyBatchEditorOverlayPanel"
@@ -2601,6 +2624,10 @@
                                             Margin="8,0,0,0"
                                             Command="{Binding ClearProxyBatchTemplateEmptyRowsCommand}"
                                             Content="清理空白行" />
+                                    <Button MinWidth="104"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding ToggleProxyBatchTemplateRowsTestInclusionCommand}"
+                                            Content="{Binding ProxyBatchTemplateToggleAllTestText, Mode=OneWay}" />
                                 </WrapPanel>
 
                                 <Border Grid.Row="1"

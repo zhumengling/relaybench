@@ -97,6 +97,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         PasteProxyBatchTemplateRowsCommand = new AsyncRelayCommand(PasteProxyBatchTemplateRowsAsync, CanRun, onError: HandleNonFatalCommandException);
         ApplyProxyBatchTemplateDefaultsCommand = new AsyncRelayCommand(ApplyProxyBatchTemplateDefaultsAsync, CanRun, onError: HandleNonFatalCommandException);
         ClearProxyBatchTemplateEmptyRowsCommand = new AsyncRelayCommand(ClearProxyBatchTemplateEmptyRowsAsync, CanRun, onError: HandleNonFatalCommandException);
+        ToggleProxyBatchTemplateRowsTestInclusionCommand = new AsyncRelayCommand(ToggleProxyBatchTemplateRowsTestInclusionAsync, CanRun, onError: HandleNonFatalCommandException);
         FetchProxyBatchTemplateRowModelsCommand = new AsyncRelayCommand<ProxyBatchEditorItemViewModel?>(FetchProxyBatchTemplateRowModelsAsync, item => CanRun() && item is not null, onError: HandleNonFatalCommandException);
         CloseProxyModelPickerCommand = new AsyncRelayCommand(CloseProxyModelPickerAsync);
         OpenProxyTrendChartCommand = new AsyncRelayCommand(OpenProxyTrendChartAsync);
@@ -112,9 +113,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CloseProxyTrendChartCommand = new AsyncRelayCommand(CloseProxyTrendChartAsync);
         StopCurrentProxyTestCommand = new AsyncRelayCommand(StopCurrentProxyTestAsync, CanStopCurrentProxyTestAction);
         CloseOfficialApiTraceDialogCommand = new AsyncRelayCommand(CloseOfficialApiTraceDialogAsync);
+        CopyOfficialApiTraceDialogContentCommand = new AsyncRelayCommand(CopyOfficialApiTraceDialogContentAsync);
         RetryProxyChartCommand = new AsyncRelayCommand(RetryProxyChartAsync, CanRetryProxyChart, onError: HandleNonFatalCommandException);
         ToggleProxyChartViewCommand = new AsyncRelayCommand(ToggleProxyChartViewAsync, CanToggleProxyChartViewAction);
         ToggleProxyChartImageOnlyModeCommand = new AsyncRelayCommand(ToggleProxyChartImageOnlyModeAsync, CanToggleProxyChartImageOnlyModeAction);
+        OpenProbeTraceCommand = new AsyncRelayCommand<ProxySingleCapabilityChartRowViewModel?>(OpenProbeTraceAsync, row => row?.HasTrace == true, onError: HandleNonFatalCommandException);
         RunProxyCommand = new AsyncRelayCommand(RunProxyWithValidationAsync, CanRun);
         RunProxyDeepCommand = new AsyncRelayCommand(RunProxyDeepWithValidationAsync, CanRun);
         RunProxySeriesCommand = new AsyncRelayCommand(RunProxySeriesWithValidationAsync, CanRun);
@@ -149,8 +152,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ClearChatSessionCommand = new AsyncRelayCommand(ClearChatSessionAsync, onError: HandleNonFatalCommandException);
         NewChatSessionCommand = new AsyncRelayCommand(NewChatSessionAsync, CanEditChatAttachments, onError: HandleNonFatalCommandException);
         DeleteChatSessionCommand = new AsyncRelayCommand(DeleteChatSessionAsync, () => CanEditChatAttachments() && ChatSessions.Count > 0, onError: HandleNonFatalCommandException);
+        BeginRenameChatSessionCommand = new AsyncRelayCommand<ChatSessionListItemViewModel?>(BeginRenameChatSessionAsync, item => item is not null && CanEditChatAttachments(), onError: HandleNonFatalCommandException);
+        CommitRenameChatSessionCommand = new AsyncRelayCommand<ChatSessionListItemViewModel?>(CommitRenameChatSessionAsync, item => item is not null && CanEditChatAttachments(), onError: HandleNonFatalCommandException);
+        CancelRenameChatSessionCommand = new AsyncRelayCommand<ChatSessionListItemViewModel?>(CancelRenameChatSessionAsync, item => item is not null, onError: HandleNonFatalCommandException);
+        RegenerateLastChatAnswerCommand = new AsyncRelayCommand(RegenerateLastChatAnswerAsync, CanRegenerateLastChatAnswer, onError: HandleNonFatalCommandException);
+        ExportChatSessionMarkdownCommand = new AsyncRelayCommand(ExportChatSessionMarkdownAsync, CanExportChatSession, onError: HandleNonFatalCommandException);
+        ExportChatSessionTextCommand = new AsyncRelayCommand(ExportChatSessionTextAsync, CanExportChatSession, onError: HandleNonFatalCommandException);
         AddChatImageAttachmentCommand = new AsyncRelayCommand(AddChatImageAttachmentAsync, CanEditChatAttachments, onError: HandleNonFatalCommandException);
         AddChatTextFileAttachmentCommand = new AsyncRelayCommand(AddChatTextFileAttachmentAsync, CanEditChatAttachments, onError: HandleNonFatalCommandException);
+        AddChatAttachmentFilesCommand = new AsyncRelayCommand<string[]?>(AddChatAttachmentFilesAsync, files => files is { Length: > 0 } && CanEditChatAttachments(), onError: HandleNonFatalCommandException);
         ToggleChatSettingsPanelCommand = new AsyncRelayCommand(ToggleChatSettingsPanelAsync, onError: HandleNonFatalCommandException);
         CloseChatSettingsPanelCommand = new AsyncRelayCommand(CloseChatSettingsPanelAsync, onError: HandleNonFatalCommandException);
         AddChatSelectedModelCommand = new AsyncRelayCommand(AddChatSelectedModelAsync, CanEditChatAttachments, onError: HandleNonFatalCommandException);
@@ -163,6 +173,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SaveChatPresetCommand = new AsyncRelayCommand(SaveChatPresetAsync, CanEditChatAttachments, onError: HandleNonFatalCommandException);
         DeleteChatPresetCommand = new AsyncRelayCommand(DeleteChatPresetAsync, () => SelectedChatPreset?.IsBuiltIn == false && CanEditChatAttachments(), onError: HandleNonFatalCommandException);
         CopyChatCodeBlockCommand = new AsyncRelayCommand<ChatContentBlockViewModel?>(CopyChatCodeBlockAsync, block => block?.IsCode == true, onError: HandleNonFatalCommandException);
+        CopyChatMessageCommand = new AsyncRelayCommand<ChatMessageViewModel?>(CopyChatMessageAsync, message => message?.CanCopy == true, onError: HandleNonFatalCommandException);
+        CopyChatModelAnswerCommand = new AsyncRelayCommand<ChatModelAnswerViewModel?>(CopyChatModelAnswerAsync, answer => answer?.CanCopy == true, onError: HandleNonFatalCommandException);
 
         ResetIpRiskPresentation();
         LoadState();

@@ -8,6 +8,8 @@ public sealed class ChatSessionSnapshot
 
     public string Title { get; set; } = string.Empty;
 
+    public string ManualTitle { get; set; } = string.Empty;
+
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
 
     public string SystemPrompt { get; set; } = string.Empty;

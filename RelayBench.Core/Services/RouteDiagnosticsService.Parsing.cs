@@ -42,7 +42,7 @@ public sealed partial class RouteDiagnosticsService
         };
     }
 
-    private static List<RouteHopResult> ParseTraceHops(string standardOutput)
+    internal static List<RouteHopResult> ParseTraceHops(string standardOutput)
     {
         List<RouteHopResult> hops = [];
         foreach (var rawLine in standardOutput.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries))

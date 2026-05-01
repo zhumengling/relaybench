@@ -7,4 +7,5 @@ public sealed record CachedProxyEndpointModelInfo(
     string? PreferredWireApi,
     bool? ChatCompletionsSupported,
     bool? ResponsesSupported,
+    bool? AnthropicMessagesSupported,
     DateTimeOffset CheckedAt);

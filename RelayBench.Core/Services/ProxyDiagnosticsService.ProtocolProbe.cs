@@ -18,7 +18,7 @@ public sealed partial class ProxyDiagnosticsService
                 false,
                 false,
                 null,
-                "协议探测失败：接口配置无效。",
+                "Protocol probe failed: invalid endpoint settings.",
                 error);
         }
 
@@ -32,8 +32,8 @@ public sealed partial class ProxyDiagnosticsService
                 false,
                 false,
                 null,
-                "协议探测失败：缺少模型名称。",
-                "请先填写模型名称，再检测链接方式。");
+                "Protocol probe failed: model is missing.",
+                "Fill in a model name before probing protocol support.");
         }
 
         using var client = CreateClient(baseUri, normalizedSettings);
@@ -55,8 +55,8 @@ public sealed partial class ProxyDiagnosticsService
                     false,
                     false,
                     null,
-                    "协议探测失败：没有可用于探测的模型。",
-                    "缺少模型名称。");
+                    "Protocol probe failed: no model is available for probing.",
+                    "Model name is empty.");
             }
 
             return new ProxyEndpointProtocolProbeResult(
@@ -70,7 +70,7 @@ public sealed partial class ProxyDiagnosticsService
                 outcome.Summary,
                 outcome.ChatCompletionsSupported || outcome.ResponsesSupported || outcome.AnthropicMessagesSupported
                     ? null
-                    : "chat/completions、responses 与 Anthropic messages 均未通过。");
+                    : "messages, responses and chat/completions probes all failed.");
         }
         catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
         {
@@ -82,12 +82,12 @@ public sealed partial class ProxyDiagnosticsService
                 false,
                 false,
                 null,
-                $"协议探测失败：{ex.Message}",
+                $"Protocol probe failed: {ex.Message}",
                 ex.Message);
         }
     }
 
-    private static async Task<ProtocolWireProbeOutcome?> ProbeEndpointWireApiAsync(
+    private static async Task<ProxyWireApiDecision?> ProbeEndpointWireApiAsync(
         HttpClient client,
         Uri baseUri,
         string requestedModel,
@@ -100,16 +100,16 @@ public sealed partial class ProxyDiagnosticsService
             return null;
         }
 
-        var chatPath = BuildApiPath(baseUri, "chat/completions");
-        var responsesPath = BuildApiPath(baseUri, "responses");
-        var chatProbe = await ProbeJsonScenarioAsync(
+        var anthropicPath = BuildApiPath(baseUri, "messages");
+        var anthropicProbe = await ProbeAnthropicMessagesScenarioAsync(
             client,
-            chatPath,
-            BuildChatPayload(probeModel, stream: false),
-            ProxyProbeScenarioKind.ChatCompletions,
-            "普通对话",
-            ParseChatPreview,
+            anthropicPath,
+            BuildAnthropicMessagesPayload(probeModel),
             cancellationToken);
+        var anthropicSupported = anthropicProbe.ScenarioResult.Success;
+        List<ProxyProbeScenarioResult> scenarioResults = [anthropicProbe.ScenarioResult];
+
+        var responsesPath = BuildApiPath(baseUri, "responses");
         var responsesProbe = await ProbeJsonScenarioAsync(
             client,
             responsesPath,
@@ -118,24 +118,29 @@ public sealed partial class ProxyDiagnosticsService
             "Responses",
             ParseResponsesPreview,
             cancellationToken);
-        var anthropicPath = BuildApiPath(baseUri, "messages");
-        var anthropicProbe = await ProbeAnthropicMessagesScenarioAsync(
-            client,
-            anthropicPath,
-            BuildAnthropicMessagesPayload(probeModel),
-            cancellationToken);
+        var responsesSupported = responsesProbe.ScenarioResult.Success;
+        scenarioResults.Add(responsesProbe.ScenarioResult);
 
-        var chatSupported = chatProbe.ScenarioResult.Success &&
-                            IsModelEligibleForChatCompletions(probeModel);
-        var responsesSupported = responsesProbe.ScenarioResult.Success &&
-                                 IsModelEligibleForResponses(probeModel);
-        var anthropicSupported = anthropicProbe.ScenarioResult.Success &&
-                                 IsModelEligibleForAnthropicMessages(probeModel);
+        var chatSupported = false;
+        if (ShouldProbeChatCompletionsForProtocolProbe(anthropicSupported, responsesSupported))
+        {
+            var chatPath = BuildApiPath(baseUri, "chat/completions");
+            var chatProbe = await ProbeJsonScenarioAsync(
+                client,
+                chatPath,
+                BuildChatPayload(probeModel, stream: false),
+                ProxyProbeScenarioKind.ChatCompletions,
+                "OpenAI Chat Completions",
+                ParseChatPreview,
+                cancellationToken);
+            chatSupported = chatProbe.ScenarioResult.Success;
+            scenarioResults.Add(chatProbe.ScenarioResult);
+        }
+
         var preferredWireApi = ResolvePreferredWireApi(
-            baseUri.ToString(),
-            probeModel,
             chatSupported,
-            responsesSupported);
+            responsesSupported,
+            anthropicSupported);
         var summary = BuildProtocolProbeSummary(
             probeModel,
             chatSupported,
@@ -143,20 +148,23 @@ public sealed partial class ProxyDiagnosticsService
             anthropicSupported,
             preferredWireApi);
 
-        return new ProtocolWireProbeOutcome(
+        return new ProxyWireApiDecision(
             probeModel,
             chatSupported,
             responsesSupported,
             anthropicSupported,
             preferredWireApi,
-            summary);
+            summary,
+            scenarioResults);
     }
 
     private static async Task<JsonProbeOutcome> ProbeAnthropicMessagesScenarioAsync(
         HttpClient client,
         string path,
         string payload,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ProxyProbeScenarioKind scenario = ProxyProbeScenarioKind.AnthropicMessages,
+        string displayName = "Anthropic Messages")
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -166,12 +174,7 @@ public sealed partial class ProxyDiagnosticsService
             {
                 Content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json")
             };
-            request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
-            var apiKey = client.DefaultRequestHeaders.Authorization?.Parameter;
-            if (!string.IsNullOrWhiteSpace(apiKey))
-            {
-                request.Headers.TryAddWithoutValidation("x-api-key", apiKey);
-            }
+            ConfigureAnthropicMessagesRequest(request, client);
 
             using var response = await client.SendAsync(request, cancellationToken);
             var statusCode = (int)response.StatusCode;
@@ -181,14 +184,29 @@ public sealed partial class ProxyDiagnosticsService
             var requestId = ExtractRequestId(headers);
             var traceId = ExtractTraceId(headers);
 
+            JsonProbeOutcome BuildOutcome(ProxyProbeScenarioResult result, string? outcomePreview)
+                => new(
+                    result with
+                    {
+                        Trace = BuildProbeTrace(
+                            client,
+                            path,
+                            payload,
+                            result,
+                            content,
+                            headers,
+                            outcomePreview)
+                    },
+                    outcomePreview);
+
             if (!response.IsSuccessStatusCode)
             {
-                var failureKind = ClassifyResponseFailure(ProxyProbeScenarioKind.ChatCompletions, statusCode, content);
+                var failureKind = ClassifyResponseFailure(scenario, statusCode, content);
                 var bodySample = ExtractBodySample(content);
-                return new JsonProbeOutcome(
+                return BuildOutcome(
                     new ProxyProbeScenarioResult(
-                        ProxyProbeScenarioKind.ChatCompletions,
-                        "Anthropic Messages",
+                        scenario,
+                        displayName,
                         DescribeCapability(failureKind, false),
                         false,
                         statusCode,
@@ -198,11 +216,11 @@ public sealed partial class ProxyDiagnosticsService
                         false,
                         0,
                         null,
-                        $"Anthropic Messages 失败，状态码 {statusCode}。",
+                        $"{displayName} failed with HTTP {statusCode}.",
                         bodySample,
                         failureKind,
-                        "Anthropic Messages",
-                        $"POST {path} 返回 {statusCode} {response.ReasonPhrase}。{bodySample}",
+                        displayName,
+                        $"POST {path} returned {statusCode} {response.ReasonPhrase}. {bodySample}",
                         headers,
                         RequestId: requestId,
                         TraceId: traceId),
@@ -212,11 +230,12 @@ public sealed partial class ProxyDiagnosticsService
             var preview = ParseAnthropicMessagesPreview(content) ?? BuildLooseSuccessPreview(content);
             if (!string.IsNullOrWhiteSpace(preview))
             {
-                return new JsonProbeOutcome(
+                var outputMetrics = BuildOutputMetrics(preview, TryExtractOutputTokenCount(content), stopwatch.Elapsed);
+                return BuildOutcome(
                     new ProxyProbeScenarioResult(
-                        ProxyProbeScenarioKind.ChatCompletions,
-                        "Anthropic Messages",
-                        "支持",
+                        scenario,
+                        displayName,
+                        "Supported",
                         true,
                         statusCode,
                         stopwatch.Elapsed,
@@ -225,22 +244,28 @@ public sealed partial class ProxyDiagnosticsService
                         false,
                         0,
                         null,
-                        "Anthropic Messages 可用，已拿到可读返回内容。",
+                        $"{displayName} is available through Anthropic Messages.",
                         preview,
                         null,
-                        "Anthropic Messages",
+                        displayName,
                         null,
                         headers,
+                        OutputTokenCount: outputMetrics.OutputTokenCount,
+                        OutputTokenCountEstimated: outputMetrics.OutputTokenCountEstimated,
+                        OutputCharacterCount: outputMetrics.OutputCharacterCount,
+                        GenerationDuration: outputMetrics.GenerationDuration,
+                        OutputTokensPerSecond: outputMetrics.OutputTokensPerSecond,
+                        EndToEndTokensPerSecond: outputMetrics.EndToEndTokensPerSecond,
                         RequestId: requestId,
                         TraceId: traceId),
                     preview);
             }
 
-            return new JsonProbeOutcome(
+            return BuildOutcome(
                 new ProxyProbeScenarioResult(
-                    ProxyProbeScenarioKind.ChatCompletions,
-                    "Anthropic Messages",
-                    "异常",
+                    scenario,
+                    displayName,
+                    "Needs review",
                     false,
                     statusCode,
                     stopwatch.Elapsed,
@@ -249,11 +274,11 @@ public sealed partial class ProxyDiagnosticsService
                     false,
                     0,
                     null,
-                    "Anthropic Messages 返回成功，但没有解析到可读内容，建议复核。",
+                    $"{displayName} returned success but no readable content was extracted.",
                     ExtractBodySample(content),
                     ProxyFailureKind.ProtocolMismatch,
-                    "Anthropic Messages",
-                    "Anthropic Messages 返回成功，但没有解析到可读内容。",
+                    displayName,
+                    $"{displayName} returned success but no readable content was extracted.",
                     headers),
                 null);
         }
@@ -263,8 +288,8 @@ public sealed partial class ProxyDiagnosticsService
             var failureKind = ClassifyException(ex);
             return new JsonProbeOutcome(
                 new ProxyProbeScenarioResult(
-                    ProxyProbeScenarioKind.ChatCompletions,
-                    "Anthropic Messages",
+                    scenario,
+                    displayName,
                     DescribeCapability(failureKind, false),
                     false,
                     null,
@@ -274,14 +299,24 @@ public sealed partial class ProxyDiagnosticsService
                     false,
                     0,
                     null,
-                    $"Anthropic Messages 请求失败：{DescribeFailureKind(failureKind)}。",
+                    $"{displayName} request failed: {DescribeFailureKind(failureKind)}.",
                     null,
                     failureKind,
-                    "Anthropic Messages",
-                    $"POST {path} 请求失败：{ex.Message}",
+                    displayName,
+                    $"POST {path} request failed: {ex.Message}",
                     RequestId: null,
                     TraceId: null),
                 null);
+        }
+    }
+
+    private static void ConfigureAnthropicMessagesRequest(HttpRequestMessage request, HttpClient client)
+    {
+        request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
+        var apiKey = client.DefaultRequestHeaders.Authorization?.Parameter;
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            request.Headers.TryAddWithoutValidation("x-api-key", apiKey);
         }
     }
 
@@ -298,17 +333,21 @@ public sealed partial class ProxyDiagnosticsService
         return likelyChatModel ?? sampleModels.FirstOrDefault() ?? normalizedRequested;
     }
 
-    private static string? ResolvePreferredWireApi(
-        string baseUrl,
-        string model,
-        bool chatSupported,
+    private static bool ShouldProbeChatCompletionsForProtocolProbe(
+        bool anthropicSupported,
         bool responsesSupported)
-    {
-        _ = baseUrl;
-        _ = model;
-        _ = chatSupported;
-        return responsesSupported ? "responses" : null;
-    }
+        => ProxyWireApiProbeService.ShouldProbeChatCompletions(
+            anthropicSupported,
+            responsesSupported);
+
+    private static string? ResolvePreferredWireApi(
+        bool chatSupported,
+        bool responsesSupported,
+        bool anthropicSupported)
+        => ProxyWireApiProbeService.ResolvePreferredWireApi(
+            chatSupported,
+            responsesSupported,
+            anthropicSupported);
 
     private static string BuildProtocolProbeSummary(
         string model,
@@ -316,65 +355,12 @@ public sealed partial class ProxyDiagnosticsService
         bool responsesSupported,
         bool anthropicSupported,
         string? preferredWireApi)
-    {
-        var chatText = chatSupported ? "chat 可用" : "chat 不可用";
-        var responsesText = responsesSupported ? "responses 可用" : "responses 不可用";
-        var anthropicText = anthropicSupported ? "Anthropic messages 可用" : "Anthropic messages 不可用";
-        var preferredText = string.IsNullOrWhiteSpace(preferredWireApi)
-            ? "Codex 需要 responses，暂不可应用"
-            : $"Codex 可写入 wire_api={preferredWireApi}";
-        return $"协议探测模型：{model}；{chatText}，{responsesText}，{anthropicText}；{preferredText}。";
-    }
-
-    private static bool IsModelEligibleForChatCompletions(string? model)
-        => !LooksLikeNonChatModel(model);
-
-    private static bool IsModelEligibleForResponses(string? model)
-    {
-        var normalized = NormalizeProtocolModelName(model);
-        if (string.IsNullOrWhiteSpace(normalized) ||
-            IsModelEligibleForAnthropicMessages(normalized) ||
-            LooksLikeNonChatModel(normalized))
-        {
-            return false;
-        }
-
-        string[] allowedMarkers =
-        [
-            "gpt-",
-            "chatgpt-",
-            "openai",
-            "o1",
-            "o3",
-            "o4",
-            "o5",
-            "codex"
-        ];
-
-        return allowedMarkers.Any(marker => normalized.StartsWith(marker, StringComparison.Ordinal) ||
-                                            normalized.Contains($"/{marker}", StringComparison.Ordinal));
-    }
-
-    private static bool IsModelEligibleForAnthropicMessages(string? model)
-    {
-        var normalized = NormalizeProtocolModelName(model);
-        if (string.IsNullOrWhiteSpace(normalized) ||
-            LooksLikeNonChatModel(normalized))
-        {
-            return false;
-        }
-
-        string[] anthropicMarkers =
-        [
-            "claude",
-            "anthropic",
-            "sonnet",
-            "haiku",
-            "opus"
-        ];
-
-        return anthropicMarkers.Any(marker => normalized.Contains(marker, StringComparison.Ordinal));
-    }
+        => ProxyWireApiProbeService.BuildSummary(
+            model,
+            chatSupported,
+            responsesSupported,
+            anthropicSupported,
+            preferredWireApi);
 
     private static string NormalizeProtocolModelName(string? model)
     {

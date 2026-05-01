@@ -24,6 +24,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly DiagnosticReportService _diagnosticReportService = new();
     private readonly ChatConversationService _chatConversationService = new();
     private readonly ChatAttachmentImportService _chatAttachmentImportService = new();
+    private readonly ModelChatExportService _modelChatExportService = new();
     private readonly ChatSessionStore _chatSessionStore = new();
     private ChatSessionsDocument _chatSessionsDocument = new();
     private readonly AppStateStore _appStateStore = new();
@@ -106,7 +107,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _proxyMultiModelCatalogFilterText = string.Empty;
     private string? _selectedProxyCatalogModel;
     private readonly Dictionary<string, int> _proxyModelContextWindows = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, bool> _codexResponsesCompatibilityByEndpointModel = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, bool> _codexWireApiCompatibilityByEndpointModel = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _proxySelectedMultiModelNames = [];
     private string _proxyModelCatalogSummary = "拉取后显示模型数量和推荐项。";
     private string _proxyModelCatalogDetail = "尚未拉取模型列表。";

@@ -168,7 +168,8 @@ public sealed partial class ProxyDiagnosticsService
         ProxyProbeScenarioKind scenario,
         string displayName,
         Func<string, string?> previewParser,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<HttpRequestMessage>? requestConfigurer = null)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -178,6 +179,7 @@ public sealed partial class ProxyDiagnosticsService
             {
                 Content = new StringContent(payload, Encoding.UTF8, "application/json")
             };
+            requestConfigurer?.Invoke(request);
 
             using var response = await client.SendAsync(request, cancellationToken);
             var statusCode = (int)response.StatusCode;
@@ -187,12 +189,27 @@ public sealed partial class ProxyDiagnosticsService
             var requestId = ExtractRequestId(headers);
             var traceId = ExtractTraceId(headers);
 
+            JsonProbeOutcome BuildOutcome(ProxyProbeScenarioResult result, string? outcomePreview)
+                => new(
+                    result with
+                    {
+                        Trace = BuildProbeTrace(
+                            client,
+                            path,
+                            payload,
+                            result,
+                            content,
+                            headers,
+                            outcomePreview)
+                    },
+                    outcomePreview);
+
             if (!response.IsSuccessStatusCode)
             {
                 var responseFailureKind = ClassifyResponseFailure(scenario, statusCode, content);
                 var bodySample = ExtractBodySample(content);
                 var responseError = $"POST {path} 返回 {statusCode} {response.ReasonPhrase}。{bodySample}";
-                return new JsonProbeOutcome(
+                return BuildOutcome(
                     new ProxyProbeScenarioResult(
                         scenario,
                         displayName,
@@ -228,7 +245,7 @@ public sealed partial class ProxyDiagnosticsService
                     var fallbackPreview = BuildLooseSuccessPreview(content);
                     if (!string.IsNullOrWhiteSpace(fallbackPreview))
                     {
-                        return new JsonProbeOutcome(
+                        return BuildOutcome(
                             new ProxyProbeScenarioResult(
                                 scenario,
                                 displayName,
@@ -260,7 +277,7 @@ public sealed partial class ProxyDiagnosticsService
                 }
 
                 var error = $"{displayName}返回 200，但结构无法按兼容格式解析：{ex.Message}";
-                return new JsonProbeOutcome(
+                return BuildOutcome(
                     new ProxyProbeScenarioResult(
                         scenario,
                         displayName,
@@ -293,7 +310,7 @@ public sealed partial class ProxyDiagnosticsService
                 if (!string.IsNullOrWhiteSpace(normalizedPreview))
                 {
                     var outputMetrics = BuildOutputMetrics(normalizedPreview, TryExtractOutputTokenCount(content), stopwatch.Elapsed);
-                    return new JsonProbeOutcome(
+                    return BuildOutcome(
                         new ProxyProbeScenarioResult(
                             scenario,
                             displayName,
@@ -323,7 +340,7 @@ public sealed partial class ProxyDiagnosticsService
                         normalizedPreview);
                 }
 
-                return new JsonProbeOutcome(
+                return BuildOutcome(
                     new ProxyProbeScenarioResult(
                         scenario,
                         displayName,
@@ -355,7 +372,7 @@ public sealed partial class ProxyDiagnosticsService
                 : $"{displayName}返回成功，但语义校验未通过。";
             var structuredOutputMetrics = BuildOutputMetrics(preview, TryExtractOutputTokenCount(content), stopwatch.Elapsed);
 
-            return new JsonProbeOutcome(
+            return BuildOutcome(
                 new ProxyProbeScenarioResult(
                     scenario,
                     displayName,
@@ -412,6 +429,23 @@ public sealed partial class ProxyDiagnosticsService
         }
     }
 
+    private static ProxyProbeTrace BuildProbeTrace(
+        HttpClient client,
+        string path,
+        string payload,
+        ProxyProbeScenarioResult result,
+        string? responseBody,
+        IReadOnlyList<string>? responseHeaders,
+        string? extractedOutput)
+        => ProxyProbeTraceBuilder.Build(
+            client,
+            path,
+            payload,
+            result,
+            responseBody,
+            responseHeaders,
+            extractedOutput);
+
     private static async Task<ProxyProbeScenarioResult> ProbeStreamingScenarioAsync(
         HttpClient client,
         string path,
@@ -420,7 +454,9 @@ public sealed partial class ProxyDiagnosticsService
         string displayName,
         Func<string, string?> streamContentParser,
         Func<string?, bool>? semanticMatcher,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<HttpRequestMessage>? requestConfigurer = null,
+        Func<string, bool>? streamDoneDetector = null)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -430,6 +466,7 @@ public sealed partial class ProxyDiagnosticsService
             {
                 Content = new StringContent(payload, Encoding.UTF8, "application/json")
             };
+            requestConfigurer?.Invoke(request);
 
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             var statusCode = (int)response.StatusCode;
@@ -469,7 +506,13 @@ public sealed partial class ProxyDiagnosticsService
             StreamingProbeOutcome streamOutcome;
             try
             {
-                streamOutcome = await ReadStreamingResponseAsync(response, stopwatch, streamContentParser, liveReporter: null, cancellationToken);
+                streamOutcome = await ReadStreamingResponseAsync(
+                    response,
+                    stopwatch,
+                    streamContentParser,
+                    liveReporter: null,
+                    cancellationToken,
+                    streamDoneDetector);
             }
             catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
             {

@@ -17,29 +17,69 @@ internal static class ChatSseParser
     }
 
     public static bool IsDone(string data)
-        => string.Equals(data, "[DONE]", StringComparison.OrdinalIgnoreCase);
+    {
+        if (string.Equals(data, "[DONE]", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(data);
+            if (!document.RootElement.TryGetProperty("type", out var typeElement) ||
+                typeElement.ValueKind != JsonValueKind.String)
+            {
+                return false;
+            }
+
+            var type = typeElement.GetString();
+            return string.Equals(type, "message_stop", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(type, "response.completed", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     public static string? TryExtractDelta(string data)
     {
-        using var document = JsonDocument.Parse(data);
-        var root = document.RootElement;
-
-        if (TryExtractChatCompletionsDelta(root, out var chatDelta))
+        JsonDocument document;
+        try
         {
-            return chatDelta;
+            document = JsonDocument.Parse(data);
+        }
+        catch
+        {
+            return null;
         }
 
-        if (TryExtractResponsesDelta(root, out var responsesDelta))
+        using (document)
         {
-            return responsesDelta;
-        }
+            var root = document.RootElement;
 
-        if (root.TryGetProperty("error", out var error))
-        {
-            return TryExtractErrorMessage(error);
-        }
+            if (TryExtractChatCompletionsDelta(root, out var chatDelta))
+            {
+                return chatDelta;
+            }
 
-        return null;
+            if (TryExtractResponsesDelta(root, out var responsesDelta))
+            {
+                return responsesDelta;
+            }
+
+            if (TryExtractAnthropicDelta(root, out var anthropicDelta))
+            {
+                return anthropicDelta;
+            }
+
+            if (root.TryGetProperty("error", out var error))
+            {
+                return TryExtractErrorMessage(error);
+            }
+
+            return null;
+        }
     }
 
     public static string? TryExtractError(string body)
@@ -79,6 +119,40 @@ internal static class ChatSseParser
             content.ValueKind == JsonValueKind.String)
         {
             delta = content.GetString();
+            return !string.IsNullOrEmpty(delta);
+        }
+
+        return false;
+    }
+
+    private static bool TryExtractAnthropicDelta(JsonElement root, out string? delta)
+    {
+        delta = null;
+        if (root.TryGetProperty("type", out var typeElement) &&
+            typeElement.ValueKind == JsonValueKind.String &&
+            string.Equals(typeElement.GetString(), "content_block_delta", StringComparison.OrdinalIgnoreCase) &&
+            root.TryGetProperty("delta", out var deltaElement))
+        {
+            if (deltaElement.TryGetProperty("text", out var text) &&
+                text.ValueKind == JsonValueKind.String)
+            {
+                delta = text.GetString();
+                return !string.IsNullOrEmpty(delta);
+            }
+        }
+
+        if (root.TryGetProperty("content_block", out var contentBlock) &&
+            contentBlock.TryGetProperty("text", out var contentBlockText) &&
+            contentBlockText.ValueKind == JsonValueKind.String)
+        {
+            delta = contentBlockText.GetString();
+            return !string.IsNullOrEmpty(delta);
+        }
+
+        if (root.TryGetProperty("completion", out var completion) &&
+            completion.ValueKind == JsonValueKind.String)
+        {
+            delta = completion.GetString();
             return !string.IsNullOrEmpty(delta);
         }
 

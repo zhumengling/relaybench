@@ -227,7 +227,7 @@ public sealed partial class RouteDiagnosticsService
         }
     }
 
-    private static IReadOnlyList<string> ParseDnsJsonAddresses(string json)
+    internal static IReadOnlyList<string> ParseDnsJsonAddresses(string json)
     {
         try
         {
@@ -249,7 +249,14 @@ public sealed partial class RouteDiagnosticsService
 
                     var recordType = typeElement.ValueKind == JsonValueKind.Number ? typeElement.GetInt32() : -1;
                     var value = dataElement.GetString();
-                    return recordType is 1 or 28 && !string.IsNullOrWhiteSpace(value) ? value : null;
+                    if (recordType is not 1 and not 28 ||
+                        string.IsNullOrWhiteSpace(value) ||
+                        !IPAddress.TryParse(value, out var address))
+                    {
+                        return null;
+                    }
+
+                    return address.ToString();
                 })
                 .Where(static value => !string.IsNullOrWhiteSpace(value))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -274,7 +281,7 @@ public sealed partial class RouteDiagnosticsService
     private static bool ContainsSyntheticBenchmarkAddress(IEnumerable<string> addresses)
         => addresses.Any(value => IPAddress.TryParse(value, out var address) && IsSyntheticBenchmarkAddress(address));
 
-    private static bool IsPublicRoutableAddress(IPAddress address)
+    internal static bool IsPublicRoutableAddress(IPAddress address)
     {
         if (IPAddress.IsLoopback(address))
         {

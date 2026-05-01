@@ -106,7 +106,7 @@ public sealed class BasicNetworkDiagnosticsService
         }
     }
 
-    private static string TranslatePingStatus(IPStatus status)
+    internal static string TranslatePingStatus(IPStatus status)
         => status switch
         {
             IPStatus.Success => "成功",

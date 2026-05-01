@@ -27,6 +27,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         string OfficialReferenceModel,
         bool EnableMultiModalTest,
         bool EnableCacheMechanismTest,
+        bool EnableInstructionFollowingTest,
+        bool EnableDataExtractionTest,
+        bool EnableStructuredOutputEdgeTest,
+        bool EnableToolCallDeepTest,
+        bool EnableReasonMathConsistencyTest,
+        bool EnableCodeBlockDisciplineTest,
         bool EnableCacheIsolationTest,
         string CacheIsolationAlternateApiKey,
         IReadOnlyList<string> MultiModelBenchmarkModels);
@@ -425,6 +431,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             executionPlan.EnableOfficialReferenceIntegrityTest ||
             executionPlan.EnableMultiModalTest ||
             executionPlan.EnableCacheMechanismTest ||
+            executionPlan.EnableInstructionFollowingTest ||
+            executionPlan.EnableDataExtractionTest ||
+            executionPlan.EnableStructuredOutputEdgeTest ||
+            executionPlan.EnableToolCallDeepTest ||
+            executionPlan.EnableReasonMathConsistencyTest ||
+            executionPlan.EnableCodeBlockDisciplineTest ||
             executionPlan.EnableCacheIsolationTest;
         var hasCapabilityMatrix = executionPlan.Mode == ProxySingleExecutionMode.Deep &&
                                   HasConfiguredProxyCapabilityModels();
@@ -512,6 +524,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 executionPlan.EnableCacheMechanismTest,
                 executionPlan.EnableCacheIsolationTest,
                 executionPlan.CacheIsolationAlternateApiKey,
+                executionPlan.EnableInstructionFollowingTest,
+                executionPlan.EnableDataExtractionTest,
+                executionPlan.EnableStructuredOutputEdgeTest,
+                executionPlan.EnableToolCallDeepTest,
+                executionPlan.EnableReasonMathConsistencyTest,
+                executionPlan.EnableCodeBlockDisciplineTest,
                 progress,
                 cancellationToken);
         }
@@ -565,17 +583,36 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 UpdateGlobalTaskProgress("\u591A\u6A21\u4E2D", 94d);
             }
 
-            StatusMessage = $"\u6B63\u5728\u8FD0\u884C\u591A\u6A21\u578B tok/s \u5BF9\u6BD4\uff08{executionPlan.MultiModelBenchmarkModels.Count} \u4E2A\uff09...";
-            if (updateSingleChartPhases)
+            List<ProxyMultiModelSpeedTestResult> multiModelResults = [];
+            var multiModelBenchmarkModels = executionPlan.MultiModelBenchmarkModels;
+            for (var index = 0; index < multiModelBenchmarkModels.Count; index++)
             {
-                ShowSingleProxySupplementalChartPhase(result, "\u591A\u6A21\u578B\u6D4B\u901F", StatusMessage);
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+                var model = multiModelBenchmarkModels[index];
+                StatusMessage = $"\u6B63\u5728\u8FD0\u884C\u591A\u6A21\u578B tok/s \u5BF9\u6BD4\uff08{index + 1}/{multiModelBenchmarkModels.Count}\uff09\uff1A{model}";
+                if (updateSingleChartPhases)
+                {
+                    ShowSingleProxySupplementalChartPhase(
+                        result with { MultiModelSpeedResults = multiModelResults.ToArray() },
+                        "\u591A\u6A21\u578B\u6D4B\u901F",
+                        StatusMessage);
+                }
 
-            var multiModelResults = await _proxyDiagnosticsService.RunMultiModelSpeedTestAsync(
-                settings,
-                executionPlan.MultiModelBenchmarkModels,
-                cancellationToken);
-            result = result with { MultiModelSpeedResults = multiModelResults };
+                var currentModelResults = await _proxyDiagnosticsService.RunMultiModelSpeedTestAsync(
+                    settings,
+                    [model],
+                    cancellationToken);
+                multiModelResults.AddRange(currentModelResults);
+                result = result with { MultiModelSpeedResults = multiModelResults.ToArray() };
+
+                if (updateSingleChartPhases)
+                {
+                    ShowSingleProxySupplementalChartPhase(
+                        result,
+                        "\u591A\u6A21\u578B\u6D4B\u901F",
+                        $"\u591A\u6A21\u578B tok/s \u5BF9\u6BD4\u5DF2\u5B8C\u6210 {index + 1}/{multiModelBenchmarkModels.Count}\uff1A{model}");
+                }
+            }
         }
 
         if (updateGlobalTaskProgressPhases)
@@ -619,6 +656,36 @@ public sealed partial class MainWindowViewModel : ObservableObject
             sections.Add("缓存机制");
         }
 
+        if (executionPlan.EnableInstructionFollowingTest)
+        {
+            sections.Add("指令遵循");
+        }
+
+        if (executionPlan.EnableDataExtractionTest)
+        {
+            sections.Add("数据抽取");
+        }
+
+        if (executionPlan.EnableStructuredOutputEdgeTest)
+        {
+            sections.Add("结构化边界");
+        }
+
+        if (executionPlan.EnableToolCallDeepTest)
+        {
+            sections.Add("ToolCall 深测");
+        }
+
+        if (executionPlan.EnableReasonMathConsistencyTest)
+        {
+            sections.Add("推理一致性");
+        }
+
+        if (executionPlan.EnableCodeBlockDisciplineTest)
+        {
+            sections.Add("代码块纪律");
+        }
+
         if (executionPlan.EnableCacheIsolationTest)
         {
             sections.Add("缓存隔离");
@@ -643,6 +710,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             false,
             false,
             false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
             string.Empty,
             Array.Empty<string>());
 
@@ -659,6 +732,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             string.Empty,
             ProxyEnableMultiModalTest,
             ProxyEnableCacheMechanismTest,
+            ProxyEnableInstructionFollowingTest,
+            ProxyEnableDataExtractionTest,
+            ProxyEnableStructuredOutputEdgeTest,
+            ProxyEnableToolCallDeepTest,
+            ProxyEnableReasonMathConsistencyTest,
+            ProxyEnableCodeBlockDisciplineTest,
             false,
             string.Empty,
             GetSelectedProxyMultiModelNames());
@@ -722,7 +801,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             delayMilliseconds,
             progress,
             roundProgress,
-            cancellationToken);
+            cancellationToken,
+            includeSemanticStabilityProbes: ProxyEnableSemanticStabilitySampling);
 
         ApplyProxyStabilityResult(result);
         ShowFinalProxySeriesChart(result);

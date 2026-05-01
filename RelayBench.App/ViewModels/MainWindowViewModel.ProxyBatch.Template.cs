@@ -183,6 +183,31 @@ public sealed partial class MainWindowViewModel
         return Task.CompletedTask;
     }
 
+    private Task ToggleProxyBatchTemplateRowsTestInclusionAsync()
+    {
+        var meaningfulRows = ProxyBatchTemplateDraftItems
+            .Where(item => !IsEmptyProxyBatchTemplateDraftRow(item))
+            .ToArray();
+        var rows = meaningfulRows.Length > 0
+            ? meaningfulRows
+            : ProxyBatchTemplateDraftItems.ToArray();
+        var includeAll = rows.Any(item => !item.IncludeInBatchTest);
+
+        ExecuteWithoutProxyBatchTemplateDraftSync(() =>
+        {
+            foreach (var row in rows)
+            {
+                row.IncludeInBatchTest = includeAll;
+            }
+        });
+
+        RefreshProxyBatchTemplateDraftState();
+        StatusMessage = includeAll
+            ? $"已将当前站点 {rows.Length} 个入口全部设为加入测试。"
+            : $"已将当前站点 {rows.Length} 个入口全部设为跳过测试。";
+        return Task.CompletedTask;
+    }
+
     private Task FetchProxyBatchTemplateRowModelsAsync(ProxyBatchEditorItemViewModel? row)
     {
         if (row is null)
