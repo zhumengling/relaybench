@@ -783,6 +783,7 @@
                                     </Grid.ColumnDefinitions>
                                     <ComboBox ItemsSource="{Binding ProxyCatalogModels}"
                                               SelectedItem="{Binding ChatCandidateModel, Mode=TwoWay}"
+                                              IsDropDownOpen="{Binding IsChatCandidateModelDropDownOpen, Mode=TwoWay}"
                                               Style="{StaticResource CompactComboBoxStyle}" />
                                     <WrapPanel Grid.Column="2">
                                         <Button Margin="0,0,6,0"

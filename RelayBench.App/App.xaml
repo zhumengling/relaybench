@@ -7,6 +7,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Resources/Motion.xaml" />
                 <ResourceDictionary Source="Resources/WorkbenchTheme.xaml" />
+                <ResourceDictionary Source="Resources/AdvancedTestLabTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using RelayBench.App.Infrastructure;
+using RelayBench.App.ViewModels.AdvancedTesting;
 using RelayBench.Core.Models;
 
 namespace RelayBench.App.ViewModels;
@@ -10,6 +11,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         SpeedTestProfiles = new ObservableCollection<SpeedTestProfile>(_cloudflareSpeedTestService.GetProfiles());
         PortScanProfiles = new ObservableCollection<PortScanProfile>(_portScanDiagnosticsService.GetProfiles());
+        AdvancedTestLab = new AdvancedTestLabViewModel(() => new(
+            ProxyBaseUrl,
+            ProxyApiKey,
+            ProxyModel,
+            ProxyIgnoreTlsErrors,
+            ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300)));
 
         DashboardCards =
         [
@@ -107,6 +114,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OpenBatchDeepComparisonChartCommand = new AsyncRelayCommand(OpenBatchDeepComparisonChartAsync);
         OpenProxyEndpointHistoryCommand = new AsyncRelayCommand(OpenProxyEndpointHistoryAsync);
         OpenApplicationCenterProxyEndpointHistoryCommand = new AsyncRelayCommand(OpenApplicationCenterProxyEndpointHistoryAsync);
+        OpenAdvancedTestLabProxyEndpointHistoryCommand = new AsyncRelayCommand(OpenAdvancedTestLabProxyEndpointHistoryAsync);
         CloseProxyEndpointHistoryCommand = new AsyncRelayCommand(CloseProxyEndpointHistoryAsync);
         ApplyProxyEndpointHistoryItemCommand = new AsyncRelayCommand<ProxyEndpointHistoryItemViewModel?>(ApplyProxyEndpointHistoryItemAsync);
         ClearProxyEndpointHistoryCommand = new AsyncRelayCommand(ClearProxyEndpointHistoryAsync);

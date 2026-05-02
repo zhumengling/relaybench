@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using RelayBench.App.Infrastructure;
 using RelayBench.App.Services;
+using RelayBench.App.ViewModels.AdvancedTesting;
 using RelayBench.Core.Models;
 
 namespace RelayBench.App.ViewModels;
@@ -60,12 +61,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<SelectionOption> WorkbenchPageOptions { get; } =
     [
         new("interface-diagnostics", "\u5355\u7ad9\u6d4b\u8bd5"),
-        new("model-chat", "\u5927\u6a21\u578b\u5bf9\u8bdd"),
+        new("advanced-test-lab", "高级测试"),
         new("batch-evaluation", "批量评测"),
+        new("model-chat", "\u5927\u6a21\u578b\u5bf9\u8bdd"),
         new("application-center", "应用接入"),
         new("network-review", "网络复核"),
         new("history-reports", "历史报告")
     ];
+
+    public AdvancedTestLabViewModel AdvancedTestLab { get; }
 
     public ObservableCollection<SelectionOption> SingleStationModeOptions { get; } =
     [
@@ -183,6 +187,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand OpenProxyEndpointHistoryCommand { get; }
 
     public AsyncRelayCommand OpenApplicationCenterProxyEndpointHistoryCommand { get; }
+
+    public AsyncRelayCommand OpenAdvancedTestLabProxyEndpointHistoryCommand { get; }
 
     public AsyncRelayCommand CloseProxyEndpointHistoryCommand { get; }
 

@@ -360,12 +360,7 @@ public sealed class ChatConversationService
             : new Uri($"{baseUri.AbsoluteUri}/", UriKind.Absolute);
 
     private static string BuildApiPath(Uri baseUri, string endpoint)
-    {
-        var normalizedPath = baseUri.AbsolutePath.TrimEnd('/');
-        return normalizedPath.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
-            ? endpoint
-            : $"v1/{endpoint}";
-    }
+        => EndpointPathBuilder.BuildOpenAiCompatiblePath(baseUri, endpoint);
 
     private static ChatMessageMetrics BuildMetrics(
         TimeSpan elapsed,

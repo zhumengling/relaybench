@@ -106,6 +106,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _proxyModelCatalogFilterText = string.Empty;
     private string _proxyMultiModelCatalogFilterText = string.Empty;
     private string? _selectedProxyCatalogModel;
+    private bool _isChatCandidateModelDropDownOpen;
     private readonly Dictionary<string, int> _proxyModelContextWindows = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, bool> _codexWireApiCompatibilityByEndpointModel = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _proxySelectedMultiModelNames = [];

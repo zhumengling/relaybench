@@ -43,15 +43,7 @@ public sealed partial class ProxyDiagnosticsService
     }
 
     private static string BuildApiPath(Uri baseUri, string endpoint)
-    {
-        var normalizedPath = baseUri.AbsolutePath.TrimEnd('/');
-        if (normalizedPath.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
-        {
-            return endpoint;
-        }
-
-        return $"v1/{endpoint}";
-    }
+        => EndpointPathBuilder.BuildOpenAiCompatiblePath(baseUri, endpoint);
 
     private static IReadOnlyList<string> ParseModelIds(string json)
         => ParseModelCatalogItems(json)
@@ -333,6 +325,11 @@ public sealed partial class ProxyDiagnosticsService
     private static string? ParseChatPreview(string json)
     {
         using var document = JsonDocument.Parse(json);
+        if (ModelResponseTextExtractor.TryExtractAssistantText(document.RootElement) is { } extracted)
+        {
+            return extracted;
+        }
+
         if (!document.RootElement.TryGetProperty("choices", out var choices) || choices.ValueKind != JsonValueKind.Array)
         {
             return null;
@@ -502,13 +499,17 @@ public sealed partial class ProxyDiagnosticsService
     private static string? ParseResponsesPreview(string json)
     {
         using var document = JsonDocument.Parse(json);
-        return TryExtractResponsesText(document.RootElement);
+        return ModelResponseTextExtractor.TryExtractAssistantText(document.RootElement);
     }
 
     private static string? ParseAnthropicMessagesPreview(string json)
     {
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
+        if (ModelResponseTextExtractor.TryExtractAssistantText(root) is { } extracted)
+        {
+            return extracted;
+        }
 
         if (!root.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
         {
@@ -562,33 +563,7 @@ public sealed partial class ProxyDiagnosticsService
 
     private static string? TryExtractResponsesText(JsonElement root)
     {
-        if (root.TryGetProperty("output_text", out var outputText) && outputText.ValueKind == JsonValueKind.String)
-        {
-            return outputText.GetString();
-        }
-
-        if (!root.TryGetProperty("output", out var output) || output.ValueKind != JsonValueKind.Array)
-        {
-            return null;
-        }
-
-        foreach (var outputItem in output.EnumerateArray())
-        {
-            if (!outputItem.TryGetProperty("content", out var contentItems) || contentItems.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            foreach (var contentItem in contentItems.EnumerateArray())
-            {
-                if (contentItem.TryGetProperty("text", out var textElement) && textElement.ValueKind == JsonValueKind.String)
-                {
-                    return textElement.GetString();
-                }
-            }
-        }
-
-        return null;
+        return ModelResponseTextExtractor.TryExtractAssistantText(root);
     }
 
     private static string? ParseStructuredOutputText(string rawText)

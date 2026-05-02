@@ -29,24 +29,36 @@ public sealed partial class MainWindowViewModel
 
     public string ProxyEndpointHistorySummary
         => ProxyEndpointHistoryItems.Count == 0
-            ? "还没有保存过接口。填入接口并运行、拉取模型、加入入口组或关闭程序后会自动记录。"
+            ? "还没有保存过接口。填写接口并运行、拉取模型、加入入口组或关闭程序后会自动记录。"
             : $"已保存 {ProxyEndpointHistoryItems.Count} 组接口，按最近使用时间倒序显示；点击任一项即可回填{ProxyEndpointHistoryTargetDisplayName}。";
 
     public string ProxyEndpointHistoryTargetDisplayName
-        => _proxyEndpointHistoryApplyTarget == ProxyEndpointHistoryApplyTarget.ApplicationCenter
-            ? "应用接入"
-            : "单站测试";
+        => _proxyEndpointHistoryApplyTarget switch
+        {
+            ProxyEndpointHistoryApplyTarget.ApplicationCenter => "应用接入",
+            ProxyEndpointHistoryApplyTarget.AdvancedTestLab => "高级测试",
+            _ => "单站测试"
+        };
 
     public string ProxyEndpointHistoryApplyHint
-        => _proxyEndpointHistoryApplyTarget == ProxyEndpointHistoryApplyTarget.ApplicationCenter
-            ? "点击“使用选中项”后，会把接口地址、API Key、模型回填到应用接入的当前接口；单站测试里的当前接口不会被改动。"
-            : "点击“使用选中项”后，会把接口地址、API Key、模型回填到单站测试输入框；应用接入里的当前接口不会被改动。";
+        => _proxyEndpointHistoryApplyTarget switch
+        {
+            ProxyEndpointHistoryApplyTarget.ApplicationCenter =>
+                "点击“使用选中项”后，会把接口地址、API Key、模型回填到应用接入的当前接口；单站测试里的当前接口不会被改动。",
+            ProxyEndpointHistoryApplyTarget.AdvancedTestLab =>
+                "点击“使用选中项”后，会把接口地址、API Key、模型回填到高级测试顶部配置；单站测试和应用接入当前接口不会被改动。",
+            _ =>
+                "点击“使用选中项”后，会把接口地址、API Key、模型回填到单站测试输入框；应用接入里的当前接口不会被改动。"
+        };
 
     private Task OpenProxyEndpointHistoryAsync()
         => OpenProxyEndpointHistoryAsync(ProxyEndpointHistoryApplyTarget.SingleStation);
 
     private Task OpenApplicationCenterProxyEndpointHistoryAsync()
         => OpenProxyEndpointHistoryAsync(ProxyEndpointHistoryApplyTarget.ApplicationCenter);
+
+    private Task OpenAdvancedTestLabProxyEndpointHistoryAsync()
+        => OpenProxyEndpointHistoryAsync(ProxyEndpointHistoryApplyTarget.AdvancedTestLab);
 
     private Task OpenProxyEndpointHistoryAsync(ProxyEndpointHistoryApplyTarget applyTarget)
     {
@@ -79,6 +91,17 @@ public sealed partial class MainWindowViewModel
             ApplicationCenterBaseUrl = item.BaseUrl;
             ApplicationCenterApiKey = item.ApiKey;
             ApplicationCenterModel = item.Model;
+        }
+        else if (_proxyEndpointHistoryApplyTarget == ProxyEndpointHistoryApplyTarget.AdvancedTestLab)
+        {
+            AdvancedTestLab.AdvancedBaseUrl = item.BaseUrl;
+            AdvancedTestLab.AdvancedApiKey = item.ApiKey;
+            AdvancedTestLab.AdvancedModel = item.Model;
+            if (!string.IsNullOrWhiteSpace(item.Model) &&
+                !AdvancedTestLab.AdvancedModelOptions.Contains(item.Model, StringComparer.OrdinalIgnoreCase))
+            {
+                AdvancedTestLab.AdvancedModelOptions.Add(item.Model);
+            }
         }
         else
         {
@@ -140,6 +163,7 @@ public sealed partial class MainWindowViewModel
     {
         RememberProxyEndpoint(ProxyBaseUrl, ProxyApiKey, ProxyModel, countUse);
         RememberProxyEndpoint(ApplicationCenterBaseUrl, ApplicationCenterApiKey, ApplicationCenterModel, countUse);
+        RememberProxyEndpoint(AdvancedTestLab.AdvancedBaseUrl, AdvancedTestLab.AdvancedApiKey, AdvancedTestLab.AdvancedModel, countUse);
 
         foreach (var item in ProxyBatchEditorItems)
         {
@@ -238,6 +262,7 @@ public sealed partial class MainWindowViewModel
     private enum ProxyEndpointHistoryApplyTarget
     {
         SingleStation,
-        ApplicationCenter
+        ApplicationCenter,
+        AdvancedTestLab
     }
 }

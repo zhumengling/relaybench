@@ -74,7 +74,20 @@ public sealed partial class MainWindowViewModel
     public string ChatCandidateModel
     {
         get => _chatCandidateModel;
-        set => SetProperty(ref _chatCandidateModel, value);
+        set
+        {
+            if (SetProperty(ref _chatCandidateModel, value) &&
+                !string.IsNullOrWhiteSpace(value))
+            {
+                IsChatCandidateModelDropDownOpen = false;
+            }
+        }
+    }
+
+    public bool IsChatCandidateModelDropDownOpen
+    {
+        get => _isChatCandidateModelDropDownOpen;
+        set => SetProperty(ref _isChatCandidateModelDropDownOpen, value);
     }
 
     public ChatSessionListItemViewModel? SelectedChatSession
@@ -739,18 +752,55 @@ public sealed partial class MainWindowViewModel
         return Task.CompletedTask;
     }
 
-    private Task AddChatSelectedModelAsync()
+    private async Task AddChatSelectedModelAsync()
     {
-        var model = string.IsNullOrWhiteSpace(ChatCandidateModel) ? ProxyModel : ChatCandidateModel;
+        if (ProxyCatalogModels.Count == 0)
+        {
+            await FetchChatCandidateModelsAsync();
+            if (ProxyCatalogModels.Count > 0)
+            {
+                ChatCandidateModel = string.Empty;
+                IsChatCandidateModelDropDownOpen = true;
+                ChatStatusMessage = "已拉取模型列表，请先在待选模型里选择一个模型，再点击加入。";
+            }
+            else if (string.IsNullOrWhiteSpace(ChatStatusMessage))
+            {
+                ChatStatusMessage = "没有获取到可选模型，请检查接口地址和 Key 后重试。";
+            }
+
+            return;
+        }
+
+        var model = ChatCandidateModel;
+        if (string.IsNullOrWhiteSpace(model))
+        {
+            IsChatCandidateModelDropDownOpen = true;
+            ChatStatusMessage = "请先在待选模型里选择一个模型，再点击加入。";
+            return;
+        }
+
         if (!TryAddChatSelectedModel(model, out var message))
         {
             ChatStatusMessage = message;
-            return Task.CompletedTask;
+            return;
         }
 
         ChatStatusMessage = message;
         SaveChatSession();
-        return Task.CompletedTask;
+    }
+
+    private async Task FetchChatCandidateModelsAsync()
+    {
+        SetProxyModelPickerTarget(ProxyModelPickerTarget.DefaultModel);
+        if (!TryBuildProxyModelCatalogSettings(ProxyModelPickerTarget.DefaultModel, out var settings, out var message))
+        {
+            ChatStatusMessage = message;
+            return;
+        }
+
+        await ExecuteBusyActionAsync(
+            "正在拉取对话多模型候选列表...",
+            () => FetchProxyModelsCoreAsync(settings, openModelPicker: false));
     }
 
     private Task ClearChatSelectedModelsAsync()

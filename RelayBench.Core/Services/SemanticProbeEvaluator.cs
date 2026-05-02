@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using RelayBench.Core.Models;
 
 namespace RelayBench.Core.Services;
@@ -127,6 +128,8 @@ public static class SemanticProbeEvaluator
         {
             checkpointsOk = checkpointsOk &&
                 (ContainsNormalizedCheckpoint(checksLine, "split 4") ||
+                 ContainsNormalizedCheckpoint(checksLine, $"split {expectedAnswer}") ||
+                 ContainsNormalizedCheckpoint(checksLine, $"each {expectedAnswer}") ||
                  ContainsNormalizedCheckpoint(checksLine, $"per person {expectedAnswer}"));
         }
         checks.Add(new ProxyProbeEvaluationCheck(
@@ -469,8 +472,8 @@ public static class SemanticProbeEvaluator
 
     private static bool ReasonMathAnswerEquals(string actual, string expected)
     {
-        if (decimal.TryParse(actual, NumberStyles.Number, CultureInfo.InvariantCulture, out var actualDecimal) &&
-            decimal.TryParse(expected, NumberStyles.Number, CultureInfo.InvariantCulture, out var expectedDecimal))
+        if (decimal.TryParse(expected, NumberStyles.Number, CultureInfo.InvariantCulture, out var expectedDecimal) &&
+            TryExtractDecimalAnswer(actual, out var actualDecimal))
         {
             return actualDecimal == expectedDecimal;
         }
@@ -502,6 +505,18 @@ public static class SemanticProbeEvaluator
         {
             answer = lines[1].Trim();
             checksLine = lines[3].Trim();
+            return answer.Length > 0 && checksLine.Length > 0;
+        }
+
+        var normalized = string.Join('\n', lines);
+        var match = Regex.Match(
+            normalized,
+            @"\bANSWER\b\s*:?\s*(?<answer>.*?)(?=\bCHECKS\b\s*:?)\bCHECKS\b\s*:?\s*(?<checks>.+)$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        if (match.Success)
+        {
+            answer = match.Groups["answer"].Value.Trim();
+            checksLine = match.Groups["checks"].Value.Trim();
             return answer.Length > 0 && checksLine.Length > 0;
         }
 
@@ -556,6 +571,19 @@ public static class SemanticProbeEvaluator
         => value.Replace(" ", string.Empty, StringComparison.Ordinal)
             .Replace("\t", string.Empty, StringComparison.Ordinal)
             .Trim();
+
+    private static bool TryExtractDecimalAnswer(string value, out decimal answer)
+    {
+        answer = default;
+        if (decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out answer))
+        {
+            return true;
+        }
+
+        var match = Regex.Match(value, @"[-+]?\d+(?:\.\d+)?");
+        return match.Success &&
+               decimal.TryParse(match.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out answer);
+    }
 
     private static bool HasOnlyLimitedSurroundingText(string? value, string fullBlock)
     {

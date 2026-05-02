@@ -1,0 +1,628 @@
+<UserControl x:Class="RelayBench.App.Views.Pages.AdvancedTestLabPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:infra="clr-namespace:RelayBench.App.Infrastructure"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             Style="{StaticResource MotionPageRootStyle}"
+             mc:Ignorable="d">
+    <Grid DataContext="{Binding AdvancedTestLab}"
+          MinHeight="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Style="{StaticResource CommandBarBorderStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="230" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                               Text="测试实验室" />
+                    <TextBlock Margin="0,3,0,0"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               Text="{Binding EndpointSummary}" />
+                </StackPanel>
+
+                <Grid Grid.Column="2"
+                      VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="260" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                   Text="接口地址" />
+                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                 Text="{Binding AdvancedBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                   Text="API Key" />
+                        <PasswordBox Style="{StaticResource CompactSecretInputPasswordBoxStyle}"
+                                     infra:PasswordBoxAssistant.BoundPassword="{Binding AdvancedApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+
+                    <Button Grid.Column="4"
+                            Command="{Binding DataContext.OpenAdvancedTestLabProxyEndpointHistoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Content="&#xE81C;"
+                            Style="{StaticResource AdvancedLabConfigIconButtonStyle}"
+                            ToolTip="历史接口" />
+
+                    <StackPanel Grid.Column="6">
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                   Text="模型" />
+                        <Grid x:Name="AdvancedModelPickerRoot">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Style="{StaticResource AdvancedLabModelPickerBorderStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="34" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0"
+                                             Style="{StaticResource AdvancedLabModelPickerTextBoxStyle}"
+                                             Text="{Binding AdvancedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <ToggleButton Grid.Column="1"
+                                                  IsChecked="{Binding IsAdvancedModelMenuOpen, Mode=TwoWay}"
+                                                  Style="{StaticResource AdvancedLabModelDropDownToggleStyle}"
+                                                  ToolTip="&#x9009;&#x62E9;&#x5DF2;&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                                </Grid>
+                            </Border>
+                            <Popup AllowsTransparency="True"
+                                   DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                   Focusable="False"
+                                   IsOpen="{Binding IsAdvancedModelMenuOpen, Mode=TwoWay}"
+                                   Placement="Bottom"
+                                   PlacementTarget="{Binding ElementName=AdvancedModelPickerRoot}"
+                                   PopupAnimation="None"
+                                   StaysOpen="False">
+                                <Border MinWidth="{Binding PlacementTarget.ActualWidth, RelativeSource={RelativeSource AncestorType=Popup}}"
+                                        Margin="0,6,0,0"
+                                        Padding="5"
+                                        Background="#FFFFFF"
+                                        BorderBrush="#BFDBFE"
+                                        BorderThickness="1.5"
+                                        CornerRadius="10">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="28"
+                                                          Direction="270"
+                                                          Opacity="0.18"
+                                                          ShadowDepth="6"
+                                                          Color="#1E293B" />
+                                    </Border.Effect>
+                                    <ListBox ItemsSource="{Binding AdvancedModelOptions}"
+                                             SelectedItem="{Binding AdvancedModelOptionSelection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource AdvancedLabModelOptionListBoxStyle}" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </StackPanel>
+
+                    <Button Grid.Column="7"
+                            Command="{Binding FetchAdvancedModelsCommand}"
+                            Content="&#xE72C;"
+                            Style="{StaticResource AdvancedLabConfigIconButtonStyle}"
+                            ToolTip="{Binding FetchAdvancedModelsButtonText}" />
+                </Grid>
+
+                <WrapPanel Grid.Column="4"
+                           VerticalAlignment="Center">
+                    <Button Command="{Binding StartCommand}"
+                            Content="&#xE768;"
+                            Style="{StaticResource AdvancedLabPrimaryIconButtonStyle}"
+                            ToolTip="{Binding StartButtonText}" />
+                    <Button Command="{Binding StopCommand}"
+                            Content="&#xE71A;"
+                            Style="{StaticResource AdvancedLabIconButtonStyle}"
+                            ToolTip="{Binding StopButtonText}" />
+                    <Button Command="{Binding RetryFailedCommand}"
+                            Content="&#xE72C;"
+                            Style="{StaticResource AdvancedLabIconButtonStyle}"
+                            ToolTip="重试失败项" />
+                    <Button Command="{Binding ExportReportCommand}"
+                            Content="&#xE74E;"
+                            Style="{StaticResource AdvancedLabIconButtonStyle}"
+                            ToolTip="导出报告" />
+                    <Button Command="{Binding CopyDiagnosticSummaryCommand}"
+                            Content="&#xE8C8;"
+                            Style="{StaticResource AdvancedLabIconButtonStyle}"
+                            ToolTip="复制诊断摘要" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1"
+              Margin="0,8,0,0"
+              MinHeight="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="270" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="312" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Style="{StaticResource AdvancedLabPanelStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                   Text="测试套件" />
+                        <TextBlock Margin="0,3,0,8"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="按场景组合探针，勾选后参与运行。" />
+                    </StackPanel>
+
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding Suites}"
+                             SelectedItem="{Binding SelectedSuite, Mode=TwoWay}"
+                             ItemContainerStyle="{StaticResource AdvancedLabSuiteListBoxItemStyle}"
+                             Style="{StaticResource AdvancedLabSuiteListBoxStyle}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <CheckBox Grid.Row="0"
+                                              Grid.Column="0"
+                                              Margin="0,1,8,0"
+                                              VerticalAlignment="Top"
+                                              IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                                    <TextBlock Grid.Row="0"
+                                               Grid.Column="1"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"
+                                               Text="{Binding DisplayName}" />
+                                    <Border Grid.Row="0"
+                                            Grid.Column="2"
+                                            Style="{StaticResource AdvancedLabBadgeStyle}">
+                                        <TextBlock FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{Binding RiskBrush}"
+                                                   Text="{Binding RiskText}" />
+                                    </Border>
+                                    <TextBlock Grid.Row="1"
+                                               Grid.Column="1"
+                                               Grid.ColumnSpan="2"
+                                               Margin="0,4,0,0"
+                                               LineHeight="18"
+                                               MaxHeight="54"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               TextTrimming="CharacterEllipsis"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding Description}" />
+                                    <TextBlock Grid.Row="2"
+                                               Grid.Column="1"
+                                               Grid.ColumnSpan="2"
+                                               Margin="0,5,0,0"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               FontSize="10.5"
+                                               LineHeight="16"
+                                               MaxHeight="32"
+                                               TextTrimming="CharacterEllipsis"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding CaseCount, StringFormat={}{0} 个测试项}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Column="2"
+                  MinHeight="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="120" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        Style="{StaticResource AdvancedLabPanelStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                       Text="{Binding SelectedSuite.DisplayName, TargetNullValue=当前测试项}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding CurrentStatusText}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1"
+                                    MinWidth="210"
+                                    VerticalAlignment="Center">
+                            <TextBlock HorizontalAlignment="Right"
+                                       Foreground="{StaticResource MutedBrush}"
+                                       FontSize="11"
+                                       Text="{Binding OverallProgress, StringFormat=进度 {0:0}%}" />
+                            <ProgressBar Margin="0,6,0,0"
+                                         Maximum="100"
+                                         Value="{Binding OverallProgress, Mode=OneWay}"
+                                         Style="{StaticResource AdvancedLabProgressBarStyle}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="1"
+                        Margin="0,8,0,0"
+                        Padding="0"
+                        Style="{StaticResource AdvancedLabPanelStyle}">
+                    <DataGrid AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              IsReadOnly="True"
+                              ItemsSource="{Binding VisibleTestCases}"
+                              SelectedItem="{Binding SelectedCase, Mode=TwoWay}">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="44">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Width="1.25*"
+                                                Binding="{Binding DisplayName}"
+                                                Header="测试项" />
+                            <DataGridTextColumn Width="84"
+                                                Binding="{Binding CategoryText}"
+                                                Header="分类" />
+                            <DataGridTemplateColumn Width="92"
+                                                    Header="状态">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border HorizontalAlignment="Left"
+                                                Background="{Binding StatusBrush}"
+                                                CornerRadius="999"
+                                                Padding="8,3">
+                                            <TextBlock FontSize="10.5"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{Binding StatusForeground}"
+                                                       Text="{Binding StatusText}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Width="64"
+                                                Binding="{Binding ScoreText}"
+                                                Header="分数" />
+                            <DataGridTextColumn Width="78"
+                                                Binding="{Binding DurationText}"
+                                                Header="耗时" />
+                            <DataGridTemplateColumn Width="116"
+                                                    Header="详情">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Command="{Binding DataContext.OpenErrorDetailCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="&#xE946;"
+                                                    Style="{StaticResource AdvancedLabIconButtonStyle}"
+                                                    ToolTip="查看判定解读" />
+                                            <Button Command="{Binding DataContext.OpenRawRequestCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="&#xE8A5;"
+                                                    Style="{StaticResource AdvancedLabIconButtonStyle}"
+                                                    ToolTip="查看原始请求" />
+                                            <Button Command="{Binding DataContext.OpenRawResponseCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="&#xE8A6;"
+                                                    Style="{StaticResource AdvancedLabIconButtonStyle}"
+                                                    ToolTip="查看原始响应" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+
+                <Border Grid.Row="2"
+                        Margin="0,8,0,0"
+                        Style="{StaticResource AdvancedLabSoftPanelStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                   Text="实时日志" />
+                        <ListBox Grid.Row="1"
+                                 Margin="0,5,0,0"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 ItemsSource="{Binding Logs}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock FontFamily="Cascadia Mono, Consolas"
+                                               FontSize="11"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               TextWrapping="NoWrap">
+                                        <Run Text="{Binding TimeText, Mode=OneWay}" />
+                                        <Run Text="  " />
+                                        <Run Text="{Binding Level, Mode=OneWay}" />
+                                        <Run Text="  " />
+                                        <Run Text="{Binding Message, Mode=OneWay}" />
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Grid Grid.Column="4"
+                  MinHeight="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        Style="{StaticResource AdvancedLabPanelStyle}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                   Text="场景评分" />
+                        <TextBlock Margin="0,3,0,10"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="按真实接入场景聚合结果。" />
+                        <ItemsControl ItemsSource="{Binding ScenarioScores}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,8"
+                                            Style="{StaticResource AdvancedLabMetricCardStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding Name}" />
+                                                <TextBlock Margin="0,3,0,0"
+                                                           Style="{StaticResource SectionHintTextStyle}"
+                                                           TextWrapping="Wrap"
+                                                           Text="{Binding Description}" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1"
+                                                       Margin="12,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="23"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{Binding ScoreBrush}"
+                                                       Text="{Binding ScoreText}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Row="1"
+                        Margin="0,8,0,0"
+                        Style="{StaticResource AdvancedLabPanelStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                   Text="当前选中" />
+                        <TextBlock Grid.Row="1"
+                                   Margin="0,3,0,10"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding SelectedCase.Description, TargetNullValue=点击中间任一测试项查看说明。}" />
+                        <Border Grid.Row="2"
+                                Style="{StaticResource AdvancedLabSoftPanelStyle}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="结果摘要" />
+                                <TextBlock Margin="0,4,0,0"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource TextBrush}"
+                                           Text="{Binding SelectedCase.Summary, TargetNullValue=暂无结果}" />
+                                <TextBlock Margin="0,12,0,0"
+                                           Style="{StaticResource FieldLabelTextStyle}"
+                                           Text="风险等级" />
+                                <TextBlock Margin="0,4,0,0"
+                                           FontWeight="SemiBold"
+                                           Foreground="{Binding SelectedCase.RiskBrush}"
+                                           Text="{Binding SelectedCase.RiskText, TargetNullValue=-}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <Grid Panel.ZIndex="35"
+              Background="#660F172A"
+              Visibility="{Binding IsStopConfirmationOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Width="560"
+                    MaxHeight="420"
+                    Padding="14"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="{StaticResource PanelBrushStrong}"
+                    BorderBrush="{StaticResource PanelBorderBrush}"
+                    BorderThickness="1.5"
+                    CornerRadius="14"
+                    Style="{StaticResource DashboardOverlayPanelStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="10" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="10" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource DialogTitleTextStyle}"
+                                   Text="停止高级测试" />
+                        <Border Margin="0,6,0,0"
+                                Style="{StaticResource DialogAccentTagBorderStyle}">
+                            <TextBlock Style="{StaticResource DialogTagTextStyle}"
+                                       Foreground="{StaticResource WarningBrush}"
+                                       Text="请先确认" />
+                        </Border>
+                    </StackPanel>
+
+                    <Border Grid.Row="2"
+                            Style="{StaticResource DialogSectionBorderStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="38"
+                                    Height="38"
+                                    Background="#FFF7ED"
+                                    BorderBrush="#FED7AA"
+                                    BorderThickness="1"
+                                    CornerRadius="12">
+                                <TextBlock HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           FontSize="18"
+                                           Foreground="#F97316"
+                                           Text="&#xE7BA;" />
+                            </Border>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextBrush}"
+                                           Text="确定要停止当前高级测试吗？" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           TextWrapping="Wrap"
+                                           Text="正在运行的请求会在当前步骤结束或取消后停止，已完成的结果会保留。" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="4"
+                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="取消后测试继续运行。" />
+                            <WrapPanel Grid.Column="1"
+                                       HorizontalAlignment="Right">
+                                <Button MinWidth="104"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding CancelStopCommand}"
+                                        Content="继续测试" />
+                                <Button MinWidth="128"
+                                        Margin="8,0,0,0"
+                                        Command="{Binding ConfirmStopCommand}"
+                                        Content="停止测试"
+                                        Style="{StaticResource PrimaryActionButtonStyle}" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Panel.ZIndex="30"
+              Background="#660F172A"
+              Visibility="{Binding IsDetailDialogOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Width="820"
+                    MaxHeight="620"
+                    Padding="14"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource DashboardOverlayPanelStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                       Text="{Binding DetailDialogTitle}" />
+                            <TextBlock Margin="0,3,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="内容已默认脱敏，可复制给开发者排查。" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Command="{Binding CloseDetailDialogCommand}"
+                                Content="&#xE711;"
+                                Style="{StaticResource AdvancedLabIconButtonStyle}"
+                                ToolTip="关闭" />
+                    </Grid>
+                    <TextBox Grid.Row="1"
+                             Margin="0,12,0,0"
+                             AcceptsReturn="True"
+                             AcceptsTab="True"
+                             FontFamily="Cascadia Mono, Consolas"
+                             FontSize="12"
+                             HorizontalScrollBarVisibility="Auto"
+                             IsReadOnly="True"
+                             Text="{Binding DetailDialogContent, Mode=OneWay}"
+                             TextWrapping="NoWrap"
+                             VerticalScrollBarVisibility="Auto" />
+                    <TextBlock Grid.Row="2"
+                               Margin="0,10,0,0"
+                               Style="{StaticResource SectionHintTextStyle}"
+                               Text="导出报告也会使用脱敏后的请求、响应和诊断信息。" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

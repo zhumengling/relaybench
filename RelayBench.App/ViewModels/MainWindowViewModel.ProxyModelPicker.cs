@@ -68,13 +68,16 @@ public sealed partial class MainWindowViewModel
             () => FetchProxyModelsCoreAsync(settings));
     }
 
-    private async Task FetchProxyModelsCoreAsync(ProxyEndpointSettings settings)
+    private async Task FetchProxyModelsCoreAsync(ProxyEndpointSettings settings, bool openModelPicker = true)
     {
         var result = await _proxyDiagnosticsService.FetchModelsAsync(settings);
         ApplyProxyModelCatalogResult(result);
         await CacheProxyModelCatalogResultAsync(settings, result);
-        IsProxyModelPickerOpen = true;
-        IsProxyMultiModelPickerOpen = false;
+        if (openModelPicker)
+        {
+            IsProxyModelPickerOpen = true;
+            IsProxyMultiModelPickerOpen = false;
+        }
         DashboardCards[3].Status = result.Success ? "模型已拉取" : "模型拉取失败";
         DashboardCards[3].Detail = result.Summary;
         StatusMessage = result.Summary;
