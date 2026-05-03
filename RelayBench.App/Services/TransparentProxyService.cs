@@ -598,7 +598,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
         TransparentProxyServerConfig config,
         bool streamRequested)
     {
-        var directBody = ApplyExplicitPrefixModelSelection(requestBody, route);
+        var directBody = ApplyRouteModelSelection(requestBody, route, out var clientModel);
         return
         [
             new TransparentProxyPreparedRequest(
@@ -607,7 +607,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 directBody,
                 route.Headers,
                 false,
-                TryReadRequestModel(directBody) ?? string.Empty)
+                string.IsNullOrWhiteSpace(clientModel) ? TryReadRequestModel(directBody) ?? string.Empty : clientModel)
         ];
     }
 
@@ -1085,17 +1085,20 @@ public sealed class TransparentProxyService : IAsyncDisposable
             return true;
         }
 
-        var prefix = route.Prefix.Trim().Trim('/');
-        if (!string.IsNullOrWhiteSpace(prefix) &&
-            model.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase))
-        {
-            model = model[(prefix.Length + 1)..];
-            return route.Models.Count == 0 ||
-                   route.Models.Contains(model, StringComparer.OrdinalIgnoreCase);
-        }
-
+        model = StripRoutePrefix(model, route);
         return route.Models.Count == 0 ||
-               route.Models.Contains(model, StringComparer.OrdinalIgnoreCase);
+               route.ModelMappings.Any(mapping =>
+                   string.Equals(mapping.Name, model, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(mapping.EffectiveAlias, model, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string StripRoutePrefix(string model, TransparentProxyRoute route)
+    {
+        var prefix = route.Prefix.Trim().Trim('/');
+        return !string.IsNullOrWhiteSpace(prefix) &&
+               model.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase)
+            ? model[(prefix.Length + 1)..]
+            : model;
     }
 
     private IReadOnlyList<TransparentProxyRoute> BuildCandidateRoutes(
@@ -1422,9 +1425,10 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
     }
 
-    private static byte[] ApplyExplicitPrefixModelSelection(byte[] requestBody, TransparentProxyRoute route)
+    private static byte[] ApplyRouteModelSelection(byte[] requestBody, TransparentProxyRoute route, out string clientModel)
     {
-        if (requestBody.Length == 0 || string.IsNullOrWhiteSpace(route.Prefix))
+        clientModel = string.Empty;
+        if (requestBody.Length == 0)
         {
             return requestBody;
         }
@@ -1440,20 +1444,40 @@ public sealed class TransparentProxyService : IAsyncDisposable
             var model = obj.TryGetPropertyValue("model", out var modelNode)
                 ? modelNode?.GetValue<string>()
                 : null;
-            var prefix = route.Prefix.Trim().Trim('/');
-            if (string.IsNullOrWhiteSpace(model) ||
-                !model.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(model))
             {
                 return requestBody;
             }
 
-            obj["model"] = model[(prefix.Length + 1)..];
+            clientModel = model.Trim();
+            var upstreamModel = ResolveUpstreamModel(clientModel, route);
+            if (string.Equals(upstreamModel, clientModel, StringComparison.Ordinal))
+            {
+                return requestBody;
+            }
+
+            obj["model"] = upstreamModel;
             return JsonSerializer.SerializeToUtf8Bytes(obj);
         }
         catch
         {
             return requestBody;
         }
+    }
+
+    private static string ResolveUpstreamModel(string clientModel, TransparentProxyRoute route)
+    {
+        var model = StripRoutePrefix(clientModel.Trim(), route);
+        foreach (var mapping in route.ModelMappings)
+        {
+            if (string.Equals(mapping.Name, model, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(mapping.EffectiveAlias, model, StringComparison.OrdinalIgnoreCase))
+            {
+                return mapping.Name;
+            }
+        }
+
+        return model;
     }
 
     private static string? TryReadRequestModel(byte[] requestBody)
@@ -1685,8 +1709,12 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
     private static IEnumerable<string> BuildRouteVisibleModels(TransparentProxyRoute route, IReadOnlyList<string> models)
     {
-        foreach (var model in models)
+        var mappings = route.ModelMappings.Count > 0
+            ? route.ModelMappings
+            : models.Select(static model => new TransparentProxyModelMapping(model, string.Empty)).ToArray();
+        foreach (var mapping in mappings)
         {
+            var model = mapping.EffectiveAlias;
             if (string.IsNullOrWhiteSpace(model))
             {
                 continue;
@@ -1937,14 +1965,20 @@ public sealed class TransparentProxyRoute
         IReadOnlyList<string>? models = null,
         int priority = 0,
         string? prefix = null,
-        IReadOnlyDictionary<string, string>? headers = null)
+        IReadOnlyDictionary<string, string>? headers = null,
+        IReadOnlyList<TransparentProxyModelMapping>? modelMappings = null)
     {
         Id = id;
         Name = name;
         BaseUrl = baseUrl;
         ApiKey = apiKey;
         Model = model;
-        Models = NormalizeModels(models, model);
+        ModelMappings = NormalizeModelMappings(modelMappings, models, model);
+        Models = ModelMappings
+            .Select(static mapping => mapping.Name)
+            .Where(static item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         Priority = Math.Max(0, priority);
         Prefix = prefix?.Trim().Trim('/') ?? string.Empty;
         Headers = new Dictionary<string, string>(
@@ -1968,6 +2002,8 @@ public sealed class TransparentProxyRoute
     public string Model { get; }
 
     public IReadOnlyList<string> Models { get; }
+
+    public IReadOnlyList<TransparentProxyModelMapping> ModelMappings { get; }
 
     public int Priority { get; }
 
@@ -2005,7 +2041,8 @@ public sealed class TransparentProxyRoute
             Models,
             Priority,
             Prefix,
-            Headers)
+            Headers,
+            ModelMappings)
         {
             CircuitOpenUntil = CircuitOpenUntil
         };
@@ -2025,20 +2062,75 @@ public sealed class TransparentProxyRoute
             models,
             Priority,
             Prefix,
-            Headers)
+            Headers,
+            MergeModelMappings(models, ModelMappings))
         {
             CircuitOpenUntil = CircuitOpenUntil
         };
 
     internal DateTimeOffset CircuitOpenUntil { get; set; } = DateTimeOffset.MinValue;
 
-    private static IReadOnlyList<string> NormalizeModels(IReadOnlyList<string>? models, string fallbackModel)
-        => (models ?? Array.Empty<string>())
-            .Append(fallbackModel)
-            .Where(static model => !string.IsNullOrWhiteSpace(model))
-            .Select(static model => model.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+    private static IReadOnlyList<TransparentProxyModelMapping> NormalizeModelMappings(
+        IReadOnlyList<TransparentProxyModelMapping>? mappings,
+        IReadOnlyList<string>? models,
+        string fallbackModel)
+    {
+        List<TransparentProxyModelMapping> normalized = [];
+        foreach (var mapping in mappings ?? Array.Empty<TransparentProxyModelMapping>())
+        {
+            AddModelMapping(normalized, mapping.Name, mapping.Alias);
+        }
+
+        foreach (var model in models ?? Array.Empty<string>())
+        {
+            AddModelMapping(normalized, model, string.Empty);
+        }
+
+        AddModelMapping(normalized, fallbackModel, string.Empty);
+        return normalized.ToArray();
+    }
+
+    private static IReadOnlyList<TransparentProxyModelMapping> MergeModelMappings(
+        IReadOnlyList<string> models,
+        IReadOnlyList<TransparentProxyModelMapping> existing)
+    {
+        var aliasByName = existing
+            .Where(static mapping => !string.IsNullOrWhiteSpace(mapping.Name))
+            .GroupBy(static mapping => mapping.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(static group => group.Key, static group => group.First().Alias, StringComparer.OrdinalIgnoreCase);
+        List<TransparentProxyModelMapping> merged = [];
+        foreach (var model in models)
+        {
+            var name = model?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            AddModelMapping(merged, name, aliasByName.TryGetValue(name, out var alias) ? alias : name);
+        }
+
+        return merged.ToArray();
+    }
+
+    private static void AddModelMapping(List<TransparentProxyModelMapping> mappings, string? name, string? alias)
+    {
+        var normalizedName = name?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedName) ||
+            mappings.Any(item => string.Equals(item.Name, normalizedName, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        var normalizedAlias = alias?.Trim() ?? string.Empty;
+        mappings.Add(new TransparentProxyModelMapping(normalizedName, normalizedAlias));
+    }
+}
+
+public sealed record TransparentProxyModelMapping(string Name, string Alias)
+{
+    public string EffectiveAlias
+        => string.IsNullOrWhiteSpace(Alias) ? Name.Trim() : Alias.Trim();
 }
 
 public sealed record TransparentProxyServerConfig(
