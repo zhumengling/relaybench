@@ -64,6 +64,7 @@ public sealed partial class MainWindowViewModel
             {
                 OnPropertyChanged(nameof(NavigationRailWidth));
                 OnPropertyChanged(nameof(NavigationRailGapWidth));
+                OnPropertyChanged(nameof(NavigationRailHeaderGapWidth));
                 OnPropertyChanged(nameof(NavigationRailToggleGlyph));
                 OnPropertyChanged(nameof(NavigationRailToggleToolTip));
             }
@@ -71,13 +72,16 @@ public sealed partial class MainWindowViewModel
     }
 
     public string NavigationRailWidth
-        => IsNavigationRailCollapsed ? "66" : "224";
+        => IsNavigationRailCollapsed ? "50" : "224";
 
     public string NavigationRailGapWidth
-        => IsNavigationRailCollapsed ? "8" : "12";
+        => IsNavigationRailCollapsed ? "6" : "12";
+
+    public string NavigationRailHeaderGapWidth
+        => IsNavigationRailCollapsed ? "0" : "8";
 
     public string NavigationRailToggleGlyph
-        => IsNavigationRailCollapsed ? "\uE700" : "\uE711";
+        => IsNavigationRailCollapsed ? "\uE76C" : "\uE76B";
 
     public string NavigationRailToggleToolTip
         => IsNavigationRailCollapsed ? "展开主菜单" : "收起主菜单";

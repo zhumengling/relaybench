@@ -10,20 +10,35 @@
         <Style x:Key="SingleStationToolbarIconButtonStyle"
                TargetType="Button"
                BasedOn="{StaticResource WorkbenchIconButtonStyle}">
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="34" />
-            <Setter Property="FontSize" Value="13.5" />
-            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="FontSize" Value="12.6" />
+            <Setter Property="Margin" Value="0,0,5,0" />
         </Style>
 
         <Style x:Key="SingleStationMotionInsetPanelStyle"
                TargetType="Border"
                BasedOn="{StaticResource MotionDialogPanelStyle}">
-            <Setter Property="Padding" Value="10" />
+            <Setter Property="Padding" Value="8" />
             <Setter Property="Background" Value="{StaticResource PanelBrushStrong}" />
             <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="10" />
+        </Style>
+
+        <Style x:Key="SingleStationCompactMetricCardStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource MetricCardBorderStyle}">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="MinHeight" Value="48" />
+        </Style>
+
+        <Style x:Key="SingleStationCompactMetricValueTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource MetricValueTextStyle}">
+            <Setter Property="FontSize" Value="15.8" />
+            <Setter Property="LineHeight" Value="19" />
+            <Setter Property="MaxHeight" Value="21" />
         </Style>
     </UserControl.Resources>
 
@@ -35,15 +50,17 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Style="{StaticResource CommandBarBorderStyle}">
+        <Border Grid.Row="0"
+                Padding="8,6"
+                Style="{StaticResource CommandBarBorderStyle}">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="520" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="190" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="170" />
-                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="2.4*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="136" />
+                    <ColumnDefinition Width="6" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
@@ -77,7 +94,8 @@
         </Border>
 
         <Border Grid.Row="1"
-                Margin="0,8,0,0"
+                Margin="0,4,0,0"
+                Padding="8,6"
                 Style="{StaticResource SectionPanelBorderStyle}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -96,9 +114,9 @@
                       VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="8" />
-                        <ColumnDefinition Width="178" />
-                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="154" />
+                        <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock VerticalAlignment="Center"
@@ -153,16 +171,16 @@
 
                 <Grid Grid.Row="1"
                       Grid.ColumnSpan="3"
-                      Margin="0,6,0,0"
+                      Margin="0,4,0,0"
                       Visibility="{Binding IsSingleStationStabilityMode, Converter={StaticResource BoolToVisibilityConverter}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="132" />
                         <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="132" />
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0">
@@ -437,7 +455,7 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="2" Margin="0,8,0,0">
+        <Grid Grid.Row="2" Margin="0,4,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="8" />
@@ -450,11 +468,11 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource MetricCardBorderStyle}">
+            <Border Grid.Column="0" Style="{StaticResource SingleStationCompactMetricCardStyle}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource MetricLabelTextStyle}" Text="总判定" />
-                    <TextBlock Margin="0,8,0,0"
-                               Style="{StaticResource MetricValueTextStyle}"
+                    <TextBlock Margin="0,3,0,0"
+                               Style="{StaticResource SingleStationCompactMetricValueTextStyle}"
                                Text="{Binding SingleStationKpiVerdictText}" />
                     <TextBlock Margin="0,4,0,0"
                                Style="{StaticResource SectionHintTextStyle}"
@@ -462,44 +480,44 @@
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="2" Style="{StaticResource MetricCardBorderStyle}">
+            <Border Grid.Column="2" Style="{StaticResource SingleStationCompactMetricCardStyle}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource MetricLabelTextStyle}" Text="普通延迟" />
-                    <TextBlock Margin="0,8,0,0"
-                               Style="{StaticResource MetricValueTextStyle}"
+                    <TextBlock Margin="0,3,0,0"
+                               Style="{StaticResource SingleStationCompactMetricValueTextStyle}"
                                Foreground="{StaticResource AccentBrush}"
                                Text="{Binding SingleStationKpiLatencyText}" />
                     <TextBlock Margin="0,4,0,0" Style="{StaticResource SectionHintTextStyle}" Text="Chat Completions" />
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="4" Style="{StaticResource MetricCardBorderStyle}">
+            <Border Grid.Column="4" Style="{StaticResource SingleStationCompactMetricCardStyle}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource MetricLabelTextStyle}" Text="TTFT" />
-                    <TextBlock Margin="0,8,0,0"
-                               Style="{StaticResource MetricValueTextStyle}"
+                    <TextBlock Margin="0,3,0,0"
+                               Style="{StaticResource SingleStationCompactMetricValueTextStyle}"
                                Foreground="{StaticResource WarningBrush}"
                                Text="{Binding SingleStationKpiTtftText}" />
                     <TextBlock Margin="0,4,0,0" Style="{StaticResource SectionHintTextStyle}" Text="首 Token 响应" />
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="6" Style="{StaticResource MetricCardBorderStyle}">
+            <Border Grid.Column="6" Style="{StaticResource SingleStationCompactMetricCardStyle}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource MetricLabelTextStyle}" Text="吞吐" />
-                    <TextBlock Margin="0,8,0,0"
-                               Style="{StaticResource MetricValueTextStyle}"
+                    <TextBlock Margin="0,3,0,0"
+                               Style="{StaticResource SingleStationCompactMetricValueTextStyle}"
                                Foreground="{StaticResource SuccessBrush}"
                                Text="{Binding SingleStationKpiThroughputText}" />
                     <TextBlock Margin="0,4,0,0" Style="{StaticResource SectionHintTextStyle}" Text="tok/s 参考" />
                 </StackPanel>
             </Border>
 
-            <Border Grid.Column="8" Style="{StaticResource MetricCardBorderStyle}">
+            <Border Grid.Column="8" Style="{StaticResource SingleStationCompactMetricCardStyle}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource MetricLabelTextStyle}" Text="协议支持" />
-                    <TextBlock Margin="0,8,0,0"
-                               Style="{StaticResource MetricValueTextStyle}"
+                    <TextBlock Margin="0,3,0,0"
+                               Style="{StaticResource SingleStationCompactMetricValueTextStyle}"
                                Foreground="{StaticResource LiveBrush}"
                                Text="{Binding SingleStationKpiProtocolText}" />
                     <TextBlock Margin="0,4,0,0" Style="{StaticResource SectionHintTextStyle}" Text="能力矩阵" />
@@ -508,7 +526,8 @@
         </Grid>
 
         <Border Grid.Row="3"
-                Margin="0,8,0,0"
+                Margin="0,4,0,0"
+                Padding="8"
                 Style="{StaticResource SectionPanelBorderStyle}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -521,8 +540,8 @@
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="320" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="292" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.ColumnSpan="3"
@@ -532,8 +551,8 @@
                 <Border Grid.Row="1"
                         Grid.Column="0"
                         Grid.ColumnSpan="3"
-                        Margin="0,6,0,0"
-                        Padding="10,8"
+                        Margin="0,4,0,0"
+                        Padding="8,6"
                         Background="#F8FBFF"
                         BorderBrush="#D6E4FF"
                         BorderThickness="1"
@@ -572,19 +591,19 @@
                         </DockPanel>
 
                         <Border Grid.Row="1"
-                                Margin="0,7,0,0"
-                                Padding="6"
+                                Margin="0,5,0,0"
+                                Padding="5"
                                 Background="#FFFFFF"
                                 BorderBrush="#E3ECF7"
                                 BorderThickness="1"
                                 CornerRadius="12">
-                            <Grid MinHeight="178">
+                            <Grid MinHeight="330">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
 
-                                <Border Padding="10,4"
+                                <Border Padding="8,3"
                                         Background="#F8FBFF"
                                         BorderBrush="#E3ECF7"
                                         BorderThickness="0,0,0,1"
@@ -610,7 +629,7 @@
 
                                 <ScrollViewer Grid.Row="1"
                                               Style="{StaticResource WorkbenchScrollViewerStyle}"
-                                              Margin="0,6,0,0"
+                                              Margin="0,4,0,0"
                                               VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Disabled"
                                               Visibility="{Binding HasSingleStationInlineChartRows, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -618,8 +637,8 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Border x:Name="InlineSingleChartRow"
-                                                        Margin="0,0,0,6"
-                                                        Padding="10,7"
+                                                        Margin="0,0,0,5"
+                                                        Padding="8,6"
                                                         Background="#FBFDFF"
                                                         BorderBrush="#D9E6F7"
                                                         BorderThickness="1"
@@ -774,7 +793,7 @@
                         Grid.Column="0"
                         Grid.ColumnSpan="3"
                         Margin="0,4,0,0"
-                        Padding="10,8"
+                        Padding="8,6"
                         Style="{StaticResource InsetPanelBorderStyle}"
                         Visibility="{Binding IsSingleStationConcurrencyMode, Converter={StaticResource BoolToVisibilityConverter}}">
                     <Grid>
@@ -807,7 +826,7 @@
                                 BorderBrush="{StaticResource PanelBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="10">
-                            <Grid MinHeight="250">
+                            <Grid MinHeight="320">
                                 <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
                                               VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Disabled"
@@ -957,11 +976,12 @@
 
                 <TextBox Grid.Row="4"
                          Grid.ColumnSpan="3"
-                         Margin="0,8,0,0"
+                         Margin="0"
                          MinHeight="112"
                          MaxHeight="150"
                          Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
-                         Text="{Binding SingleStationResultSummary, Mode=OneWay}" />
+                         Text="{Binding SingleStationResultSummary, Mode=OneWay}"
+                         Visibility="Collapsed" />
                 <Border Grid.Row="5"
                         Grid.ColumnSpan="3"
                         Margin="0,8,0,0">

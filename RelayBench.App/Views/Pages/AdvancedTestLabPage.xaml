@@ -1,6 +1,7 @@
 <UserControl x:Class="RelayBench.App.Views.Pages.AdvancedTestLabPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="AdvancedTestLabPageRoot"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:infra="clr-namespace:RelayBench.App.Infrastructure"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -170,13 +171,15 @@
 
         <Grid Grid.Row="1"
               Margin="0,8,0,0"
+              HorizontalAlignment="Stretch"
+              ClipToBounds="True"
               MinHeight="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="232" />
+                <ColumnDefinition Width="216" MinWidth="208" MaxWidth="224" />
                 <ColumnDefinition Width="8" />
-                <ColumnDefinition Width="500" />
+                <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="8" />
-                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="164" MinWidth="156" MaxWidth="168" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
@@ -262,6 +265,7 @@
             </Border>
 
             <Grid Grid.Column="2"
+                  ClipToBounds="True"
                   MinHeight="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -344,6 +348,7 @@
                 <Border Grid.Row="2"
                         Margin="0,8,0,0"
                         Padding="0"
+                        ClipToBounds="True"
                         Style="{StaticResource AdvancedLabPanelStyle}">
                     <DataGrid AutoGenerateColumns="False"
                               CanUserAddRows="False"
@@ -456,6 +461,7 @@
             </Grid>
 
             <Grid Grid.Column="4"
+                  Panel.ZIndex="2"
                   MinHeight="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />

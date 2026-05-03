@@ -123,7 +123,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        Opacity = 0;
+        Opacity = 1d;
         InitializeComponent();
 
         _viewModel = new MainWindowViewModel();
@@ -919,23 +919,20 @@ public partial class MainWindow : Window
 
         _hasPlayedWindowOpenAnimation = true;
         var (scale, translate) = EnsureElementTransforms(MainShellBorder);
+        Opacity = 1d;
+        MainShellBorder.Opacity = 1d;
         if (ShouldReduceMotion())
         {
-            Opacity = 1d;
-            MainShellBorder.Opacity = 1d;
             scale.ScaleX = 1d;
             scale.ScaleY = 1d;
             translate.Y = 0d;
             return;
         }
 
-        MainShellBorder.Opacity = 0d;
         scale.ScaleX = WindowOpenInitialScale;
         scale.ScaleY = WindowOpenInitialScale;
         translate.Y = WindowOpenInitialOffsetY;
 
-        AnimateDouble(this, Window.OpacityProperty, 0d, 1d, WindowOpenDurationMs, CreateEaseOut());
-        AnimateDouble(MainShellBorder, UIElement.OpacityProperty, 0d, 1d, WindowOpenDurationMs, CreateEaseOut());
         AnimateDouble(scale, ScaleTransform.ScaleXProperty, scale.ScaleX, 1d, WindowOpenDurationMs, CreateEaseOut());
         AnimateDouble(scale, ScaleTransform.ScaleYProperty, scale.ScaleY, 1d, WindowOpenDurationMs, CreateEaseOut());
         AnimateDouble(translate, TranslateTransform.YProperty, translate.Y, 0d, WindowOpenDurationMs, CreateEaseOut());

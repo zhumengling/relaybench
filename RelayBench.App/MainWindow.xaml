@@ -322,8 +322,18 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0"
-                            Style="{StaticResource NavigationRailBorderStyle}">
+                    <Border Grid.Column="0">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource NavigationRailBorderStyle}">
+                                <Setter Property="Padding" Value="14" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNavigationRailCollapsed}" Value="True">
+                                        <Setter Property="Padding" Value="6" />
+                                        <Setter Property="CornerRadius" Value="10" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <Grid ClipToBounds="True">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -335,7 +345,7 @@
                             <Grid Grid.Row="0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="{Binding NavigationRailHeaderGapWidth}" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <Button Width="30"
@@ -380,8 +390,17 @@
                                      ItemContainerStyle="{StaticResource NavigationListBoxItemStyle}"
                                      ItemsSource="{Binding WorkbenchPageOptions}"
                                      SelectedValuePath="Key"
-                                     SelectedValue="{Binding SelectedWorkbenchPageKey, Mode=TwoWay}"
-                                     Style="{StaticResource NavigationListBoxStyle}">
+                                     SelectedValue="{Binding SelectedWorkbenchPageKey, Mode=TwoWay}">
+                                <ListBox.Style>
+                                    <Style TargetType="ListBox" BasedOn="{StaticResource NavigationListBoxStyle}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsNavigationRailCollapsed}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ListBox.Style>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Grid ToolTip="{Binding DisplayName}">
@@ -419,9 +438,49 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
 
+                            <ListBox Grid.Row="2"
+                                     Margin="0,8,0,0"
+                                     HorizontalContentAlignment="Center"
+                                     ItemContainerStyle="{StaticResource NavigationCollapsedListBoxItemStyle}"
+                                     ItemsSource="{Binding WorkbenchPageOptions}"
+                                     SelectedValuePath="Key"
+                                     SelectedValue="{Binding SelectedWorkbenchPageKey, Mode=TwoWay}">
+                                <ListBox.Style>
+                                    <Style TargetType="ListBox" BasedOn="{StaticResource NavigationCollapsedListBoxStyle}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsNavigationRailCollapsed}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ListBox.Style>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Width="18"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="14.5"
+                                                   TextAlignment="Center"
+                                                   ToolTip="{Binding DisplayName}"
+                                                   Text="{Binding IconGlyph}" />
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
                             <Border Grid.Row="3"
-                                    Margin="0,10,0,0"
-                                    Style="{StaticResource NavigationAboutBorderStyle}">
+                                    Margin="0,10,0,0">
+                                <Border.Style>
+                                    <Style TargetType="Border" BasedOn="{StaticResource NavigationAboutBorderStyle}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsNavigationRailCollapsed}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
                                 <StackPanel>
                                     <TextBlock Text="关于">
                                         <TextBlock.Style>

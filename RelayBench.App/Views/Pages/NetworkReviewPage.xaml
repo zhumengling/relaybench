@@ -8,12 +8,73 @@
              mc:Ignorable="d">
     <UserControl.Resources>
         <Style x:Key="NetworkReviewSubmenuItemStyle"
-               TargetType="ListBoxItem"
-               BasedOn="{StaticResource NavigationListBoxItemStyle}">
-            <Setter Property="MinHeight" Value="34" />
-            <Setter Property="Padding" Value="10,6" />
+               TargetType="ListBoxItem">
+            <Setter Property="MinHeight" Value="30" />
+            <Setter Property="Padding" Value="10,4" />
             <Setter Property="Margin" Value="0,0,6,0" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="#F8FAFC"
+                                BorderBrush="#E2E8F0"
+                                BorderThickness="1"
+                                CornerRadius="999"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#EFF6FF" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#BFDBFE" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#EAF3FF" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#93C5FD" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="NetworkReviewSubmenuTitleIconStyle"
+               TargetType="Border">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Background" Value="#EFF6FF" />
+            <Setter Property="BorderBrush" Value="#BFDBFE" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+
+        <Style x:Key="NetworkReviewSubmenuTitleTextStyle"
+               TargetType="TextBlock"
+               BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LineHeight" Value="18" />
+            <Setter Property="MaxHeight" Value="20" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <Style x:Key="NetworkReviewSubmenuMetaPillStyle"
+               TargetType="Border">
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="#D8E3F2" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
         </Style>
 
         <Style x:Key="ReviewPaneBorderStyle"
@@ -265,6 +326,7 @@
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0"
+                    Padding="10,8"
                     Style="{StaticResource SectionPanelBorderStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -272,15 +334,41 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x5DE5;&#x5177;&#x7D22;&#x5F15;" />
-                        <TextBlock Margin="0,3,0,0"
-                                   Style="{StaticResource SectionHintTextStyle}"
-                                   Text="&#x9009;&#x62E9;&#x4E00;&#x4E2A;&#x590D;&#x6838;&#x5DE5;&#x5177;&#xFF0C;&#x53F3;&#x4FA7;&#x4FDD;&#x7559;&#x5F53;&#x524D;&#x5DE5;&#x4F5C;&#x533A;&#x3002;"
-                                   TextWrapping="Wrap" />
-                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource NetworkReviewSubmenuTitleIconStyle}">
+                            <TextBlock HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="14"
+                                       Foreground="{StaticResource AccentBrush}"
+                                       Text="&#xE774;" />
+                        </Border>
+                        <StackPanel Grid.Column="2"
+                                    VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource NetworkReviewSubmenuTitleTextStyle}"
+                                       Text="&#x590D;&#x6838;&#x5DE5;&#x5177;" />
+                            <TextBlock Margin="0,2,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="&#x6309;&#x573A;&#x666F;&#x5207;&#x6362;&#x68C0;&#x6D4B;&#xFF0C;&#x4FDD;&#x7559;&#x5F53;&#x524D;&#x5DE5;&#x4F5C;&#x533A;&#x3002;"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Border Grid.Column="3"
+                                VerticalAlignment="Center"
+                                Style="{StaticResource NetworkReviewSubmenuMetaPillStyle}">
+                            <TextBlock FontSize="10.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource MutedBrush}"
+                                       Text="&#x6A2A;&#x5411;&#x5207;&#x6362;" />
+                        </Border>
+                    </Grid>
                     <ListBox Grid.Row="1"
-                             Margin="0,8,0,0"
+                             Margin="0,6,0,0"
                              ItemsSource="{Binding NetworkReviewToolOptions}"
                              SelectedValuePath="Key"
                              SelectedValue="{Binding SelectedNetworkReviewToolKey, Mode=TwoWay}"
