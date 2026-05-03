@@ -152,7 +152,181 @@
 
                     <Grid Grid.Row="1"
                           Margin="0,6,0,0">
-                        <ItemsControl ItemsSource="{Binding ClientApiStatusRows}">
+                        <Border Background="#FDFEFF"
+                                BorderBrush="#D9E6F7"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                ClipToBounds="True"
+                                Visibility="{Binding HasClientApiStatusRows, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid MinWidth="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="32" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Grid Margin="10,0"
+                                      VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.05*" />
+                                        <ColumnDefinition Width="104" />
+                                        <ColumnDefinition Width="1.45*" />
+                                        <ColumnDefinition Width="1.65*" />
+                                        <ColumnDefinition Width="74" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                               Text="&#x5E94;&#x7528;" />
+                                    <TextBlock Grid.Column="1"
+                                               Style="{StaticResource FieldLabelTextStyle}"
+                                               Text="&#x72B6;&#x6001;" />
+                                    <TextBlock Grid.Column="2"
+                                               Style="{StaticResource FieldLabelTextStyle}"
+                                               Text="&#x5F53;&#x524D;&#x5165;&#x53E3;" />
+                                    <TextBlock Grid.Column="3"
+                                               Style="{StaticResource FieldLabelTextStyle}"
+                                               Text="&#x914D;&#x7F6E; / &#x94FE;&#x8DEF;" />
+                                    <TextBlock Grid.Column="4"
+                                               HorizontalAlignment="Right"
+                                               Style="{StaticResource FieldLabelTextStyle}"
+                                               Text="&#x64CD;&#x4F5C;" />
+                                </Grid>
+
+                                <ItemsControl Grid.Row="1"
+                                              ItemsSource="{Binding ClientApiStatusRows}">
+                                    <ItemsControl.ItemContainerStyle>
+                                        <Style TargetType="ContentPresenter">
+                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                        </Style>
+                                    </ItemsControl.ItemContainerStyle>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border MinHeight="62"
+                                                    Padding="10,7"
+                                                    BorderBrush="#E4ECF7"
+                                                    BorderThickness="0,1,0,0">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#FFFFFF" />
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="#F7FBFF" />
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Grid MinWidth="0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="1.05*" />
+                                                        <ColumnDefinition Width="104" />
+                                                        <ColumnDefinition Width="1.45*" />
+                                                        <ColumnDefinition Width="1.65*" />
+                                                        <ColumnDefinition Width="74" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel Grid.Column="0"
+                                                                Margin="0,0,12,0"
+                                                                MinWidth="0"
+                                                                VerticalAlignment="Center">
+                                                        <TextBlock FontSize="12.8"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextWrapping="NoWrap"
+                                                                   ToolTip="{Binding Name}"
+                                                                   Text="{Binding Name}" />
+                                                        <TextBlock Margin="0,2,0,0"
+                                                                   FontSize="10.5"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource MutedBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextWrapping="NoWrap"
+                                                                   ToolTip="{Binding Provider}"
+                                                                   Text="{Binding Provider}" />
+                                                    </StackPanel>
+
+                                                    <Border Grid.Column="1"
+                                                            Margin="0,0,12,0"
+                                                            Padding="7,3"
+                                                            MinWidth="82"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Center"
+                                                            Background="{Binding StatusBackground}"
+                                                            BorderBrush="{Binding StatusForeground}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="999">
+                                                        <TextBlock FontSize="10.5"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{Binding StatusForeground}"
+                                                                   TextAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextWrapping="NoWrap"
+                                                                   ToolTip="{Binding AvailabilityText}"
+                                                                   Text="{Binding AvailabilityText}" />
+                                                    </Border>
+
+                                                    <StackPanel Grid.Column="2"
+                                                                Margin="0,0,14,0"
+                                                                MinWidth="0"
+                                                                VerticalAlignment="Center">
+                                                        <TextBlock FontFamily="Cascadia Mono, Consolas"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource TextBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextWrapping="NoWrap"
+                                                                   ToolTip="{Binding EndpointText}"
+                                                                   Text="{Binding EndpointText}" />
+                                                        <TextBlock Margin="0,2,0,0"
+                                                                   FontSize="10.2"
+                                                                   Foreground="{StaticResource MutedBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextWrapping="NoWrap"
+                                                                   ToolTip="{Binding EndpointMetaText}"
+                                                                   Text="{Binding EndpointMetaText}" />
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="3"
+                                                                Margin="0,0,12,0"
+                                                                MinWidth="0"
+                                                                VerticalAlignment="Center">
+                                                        <TextBlock FontSize="11.5"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource TextBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextWrapping="NoWrap"
+                                                                   ToolTip="{Binding StateText}"
+                                                                   Text="{Binding StateText}" />
+                                                        <TextBlock Margin="0,2,0,0"
+                                                                   Style="{StaticResource SectionHintTextStyle}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   TextWrapping="NoWrap"
+                                                                   ToolTip="{Binding AccessDetailText}"
+                                                                   Text="{Binding AccessDetailText}" />
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="4"
+                                                                Orientation="Horizontal"
+                                                                HorizontalAlignment="Right"
+                                                                VerticalAlignment="Center">
+                                                        <Button Command="{Binding OpenRawTraceCommand}"
+                                                                Style="{StaticResource ApplicationCenterIconActionButtonStyle}"
+                                                                Content="&#xE946;"
+                                                                ToolTip="&#x539F;&#x59CB; Trace" />
+                                                        <Button Command="{Binding RestoreDefaultConfigCommand}"
+                                                                Style="{StaticResource ApplicationCenterIconActionButtonStyle}"
+                                                                Margin="0"
+                                                                Visibility="{Binding HasRestoreDefaultConfigAction, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                Content="&#xE777;"
+                                                                ToolTip="&#x8FD8;&#x539F;&#x9ED8;&#x8BA4;" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                        </Border>
+
+                        <ItemsControl Visibility="Collapsed"
+                                      ItemsSource="{Binding ClientApiStatusRows}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <UniformGrid Columns="2" />

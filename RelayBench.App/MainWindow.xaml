@@ -769,30 +769,36 @@
                             </TextBlock.Style>
                         </TextBlock>
                         <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
-                                      HorizontalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto"
                                       CanContentScroll="False"
                                       Visibility="{Binding IsNativeSingleCapabilityChartVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                             <ItemsControl Margin="0,0,0,4"
                                           ItemsSource="{Binding ProxyChartDialogSingleCapabilityRows}">
+                                <ItemsControl.ItemContainerStyle>
+                                    <Style TargetType="ContentPresenter">
+                                        <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                    </Style>
+                                </ItemsControl.ItemContainerStyle>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border x:Name="NativeChartRow"
-                                                Margin="0,0,0,5"
-                                                Padding="10,7"
+                                                Margin="0,0,0,4"
+                                                Padding="10,6"
+                                                MinHeight="54"
                                                 Background="{StaticResource PanelBrushStrong}"
                                                 BorderBrush="{StaticResource PanelBorderBrush}"
                                                 BorderThickness="1"
-                                                CornerRadius="14"
+                                                CornerRadius="10"
                                                 ClipToBounds="False">
-                                            <Grid>
+                                            <Grid MinWidth="0">
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="2.15*" />
-                                                    <ColumnDefinition Width="0.7*" />
-                                                    <ColumnDefinition Width="0.55*" />
-                                                    <ColumnDefinition Width="1.55*" />
-                                                    <ColumnDefinition Width="2.85*" />
-                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="2.05*" />
+                                                    <ColumnDefinition Width="98" />
+                                                    <ColumnDefinition Width="72" />
+                                                    <ColumnDefinition Width="164" />
+                                                    <ColumnDefinition Width="2.35*" />
+                                                    <ColumnDefinition Width="56" />
                                                 </Grid.ColumnDefinitions>
 
                                                 <Border x:Name="RunningPulse"
@@ -819,23 +825,31 @@
                                                     </Border.Triggers>
                                                 </Border>
 
-                                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                                <StackPanel Grid.Column="0"
+                                                            Margin="0,0,12,0"
+                                                            MinWidth="0"
+                                                            VerticalAlignment="Center">
                                                     <TextBlock FontSize="12.2"
                                                                FontWeight="SemiBold"
                                                                Foreground="{StaticResource TextBrush}"
                                                                TextTrimming="CharacterEllipsis"
+                                                               TextWrapping="NoWrap"
+                                                               ToolTip="{Binding Name}"
                                                                Text="{Binding Name}" />
                                                     <TextBlock Margin="0,3,0,0"
                                                                FontSize="10.4"
                                                                Foreground="{StaticResource MutedBrush}"
                                                                TextTrimming="CharacterEllipsis"
+                                                               TextWrapping="NoWrap"
+                                                               ToolTip="{Binding DetailText}"
                                                                Text="{Binding DetailText}" />
                                                 </StackPanel>
                                                 <Border x:Name="StatusBadge"
                                                         Grid.Column="1"
                                                         Margin="0,1,10,0"
-                                                        Padding="8,2"
-                                                        HorizontalAlignment="Left"
+                                                        Padding="7,2"
+                                                        MinWidth="78"
+                                                        HorizontalAlignment="Stretch"
                                                         VerticalAlignment="Top"
                                                         Background="#F1F5F9"
                                                         BorderBrush="#CBD5E1"
@@ -845,19 +859,27 @@
                                                                FontSize="10.3"
                                                                FontWeight="SemiBold"
                                                                Foreground="{StaticResource MutedBrush}"
+                                                               TextAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
                                                                Text="{Binding StatusText}" />
                                                 </Border>
-                                                <StackPanel Grid.Column="2" Margin="0,0,10,0">
+                                                <StackPanel Grid.Column="2"
+                                                            Margin="0,0,10,0"
+                                                            VerticalAlignment="Center">
                                                     <TextBlock FontSize="12"
                                                                FontWeight="SemiBold"
                                                                Foreground="{StaticResource TextBrush}"
+                                                               TextTrimming="CharacterEllipsis"
                                                                Text="{Binding StatusCodeText}" />
                                                     <TextBlock Margin="0,3,0,0"
                                                                FontSize="10"
                                                                Foreground="{StaticResource MutedBrush}"
+                                                               TextTrimming="CharacterEllipsis"
                                                                Text="{Binding ReceivedDoneText}" />
                                                 </StackPanel>
-                                                <StackPanel Grid.Column="3" Margin="0,0,14,0">
+                                                <StackPanel Grid.Column="3"
+                                                            Margin="0,0,14,0"
+                                                            VerticalAlignment="Center">
                                                     <DockPanel LastChildFill="True">
                                                         <TextBlock DockPanel.Dock="Left"
                                                                    FontSize="10.8"
@@ -869,6 +891,7 @@
                                                                        FontWeight="SemiBold"
                                                                        Foreground="{StaticResource TextBrush}"
                                                                        TextTrimming="CharacterEllipsis"
+                                                                       TextWrapping="NoWrap"
                                                                        Text="{Binding MetricText}" />
                                                             <TextBlock Margin="4,0,0,0"
                                                                        FontSize="12.4"
@@ -974,17 +997,19 @@
                                                     </ProgressBar>
                                                 </StackPanel>
                                                 <TextBlock Grid.Column="4"
+                                                           Margin="0,0,10,0"
+                                                           VerticalAlignment="Center"
                                                            FontSize="11.2"
                                                            Foreground="{StaticResource TextBrush}"
-                                                           TextWrapping="Wrap"
+                                                           TextWrapping="NoWrap"
                                                            TextTrimming="CharacterEllipsis"
-                                                           MaxHeight="48"
+                                                           ToolTip="{Binding PreviewText}"
                                                            Text="{Binding PreviewText}" />
                                                 <Button Grid.Column="5"
                                                         Width="48"
                                                         MinWidth="48"
                                                         Height="28"
-                                                        Margin="10,0,0,0"
+                                                        Margin="0"
                                                         Padding="0"
                                                         VerticalAlignment="Center"
                                                         Background="#F8FBFF"
