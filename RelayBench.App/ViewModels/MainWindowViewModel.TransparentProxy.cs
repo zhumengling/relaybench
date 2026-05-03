@@ -115,6 +115,25 @@ public sealed partial class MainWindowViewModel
         private set => SetProperty(ref _isTransparentProxyRouteSettingsOpen, value);
     }
 
+    public bool IsTransparentProxyLogExpanded
+    {
+        get => _isTransparentProxyLogExpanded;
+        private set
+        {
+            if (SetProperty(ref _isTransparentProxyLogExpanded, value))
+            {
+                OnPropertyChanged(nameof(TransparentProxyLogExpandIcon));
+                OnPropertyChanged(nameof(TransparentProxyLogExpandToolTip));
+            }
+        }
+    }
+
+    public string TransparentProxyLogExpandIcon
+        => IsTransparentProxyLogExpanded ? "\uE73F" : "\uE740";
+
+    public string TransparentProxyLogExpandToolTip
+        => IsTransparentProxyLogExpanded ? "收起日志" : "展开日志";
+
     public TransparentProxyRouteEditorItemViewModel? TransparentProxyRouteSettingsItem
     {
         get => _transparentProxyRouteSettingsItem;
@@ -655,6 +674,12 @@ public sealed partial class MainWindowViewModel
     private Task ClearTransparentProxyLogsAsync()
     {
         TransparentProxyLogs.Clear();
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleTransparentProxyLogExpandedAsync()
+    {
+        IsTransparentProxyLogExpanded = !IsTransparentProxyLogExpanded;
         return Task.CompletedTask;
     }
 

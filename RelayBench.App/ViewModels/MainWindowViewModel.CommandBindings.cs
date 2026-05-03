@@ -289,6 +289,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand ClearTransparentProxyLogsCommand { get; }
 
+    public AsyncRelayCommand ToggleTransparentProxyLogExpandedCommand { get; }
+
     public AsyncRelayCommand RunIpRiskReviewCommand { get; }
 
     public AsyncRelayCommand ConfirmConfirmationDialogCommand { get; }

@@ -787,9 +787,31 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="6" />
-                    <RowDefinition Height="3.2*" />
+                    <RowDefinition>
+                        <RowDefinition.Style>
+                            <Style TargetType="RowDefinition">
+                                <Setter Property="Height" Value="3.2*" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsTransparentProxyLogExpanded}" Value="True">
+                                        <Setter Property="Height" Value="2.05*" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </RowDefinition.Style>
+                    </RowDefinition>
                     <RowDefinition Height="6" />
-                    <RowDefinition Height="0.85*" />
+                    <RowDefinition>
+                        <RowDefinition.Style>
+                            <Style TargetType="RowDefinition">
+                                <Setter Property="Height" Value="0.85*" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsTransparentProxyLogExpanded}" Value="True">
+                                        <Setter Property="Height" Value="2*" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </RowDefinition.Style>
+                    </RowDefinition>
                 </Grid.RowDefinitions>
 
                 <UniformGrid Grid.Row="0"
@@ -989,22 +1011,22 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionTitleTextStyle}"
-                                       Text="脱敏日志" />
-                            <TextBlock Margin="0,3,0,0"
-                                       Style="{StaticResource SectionHintTextStyle}"
-                                       Text="只记录路由、状态和耗时，不展示密钥正文。" />
+                        <StackPanel Grid.Column="1"
+                                    HorizontalAlignment="Right"
+                                    Orientation="Horizontal">
+                            <Button Command="{Binding ToggleTransparentProxyLogExpandedCommand}"
+                                    Content="{Binding TransparentProxyLogExpandIcon, Mode=OneWay}"
+                                    Style="{StaticResource GatewayIconButtonStyle}"
+                                    ToolTip="{Binding TransparentProxyLogExpandToolTip, Mode=OneWay}" />
+                            <Button Command="{Binding ClearTransparentProxyLogsCommand}"
+                                    Content="&#xE74D;"
+                                    Style="{StaticResource GatewayIconButtonStyle}"
+                                    ToolTip="清空日志" />
                         </StackPanel>
-                        <Button Grid.Column="1"
-                                Command="{Binding ClearTransparentProxyLogsCommand}"
-                                Content="&#xE74D;"
-                                Style="{StaticResource GatewayIconButtonStyle}"
-                                ToolTip="清空日志" />
 
                         <DataGrid Grid.Row="1"
                                   Grid.ColumnSpan="2"
-                                  Margin="0,8,0,0"
+                                  Margin="0,4,0,0"
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="False"
                                   CanUserDeleteRows="False"

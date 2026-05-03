@@ -133,6 +133,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _isTransparentProxyListenSettingsOpen;
     private bool _isTransparentProxyProviderSettingsOpen;
     private bool _isTransparentProxyRouteSettingsOpen;
+    private bool _isTransparentProxyLogExpanded;
     private TransparentProxyRouteEditorItemViewModel? _transparentProxyRouteSettingsItem;
     private bool _isTransparentProxyRunning;
     private string _transparentProxyStatusSummary = "本地透明代理未启动。";

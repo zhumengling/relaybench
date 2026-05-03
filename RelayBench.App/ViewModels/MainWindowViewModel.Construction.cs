@@ -166,6 +166,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         MoveTransparentProxyRouteEditorItemDownCommand = new AsyncRelayCommand(MoveTransparentProxyRouteEditorItemDownAsync, () => SelectedTransparentProxyRouteEditorItem is not null, onError: HandleNonFatalCommandException);
         CopyTransparentProxyEndpointCommand = new AsyncRelayCommand(CopyTransparentProxyEndpointAsync, onError: HandleNonFatalCommandException);
         ClearTransparentProxyLogsCommand = new AsyncRelayCommand(ClearTransparentProxyLogsAsync);
+        ToggleTransparentProxyLogExpandedCommand = new AsyncRelayCommand(ToggleTransparentProxyLogExpandedAsync);
         RunIpRiskReviewCommand = new AsyncRelayCommand(RunIpRiskReviewWithGlobalProgressAsync, CanRun);
         ConfirmConfirmationDialogCommand = new AsyncRelayCommand(ConfirmConfirmationDialogAsync);
         CancelConfirmationDialogCommand = new AsyncRelayCommand(CancelConfirmationDialogAsync);
