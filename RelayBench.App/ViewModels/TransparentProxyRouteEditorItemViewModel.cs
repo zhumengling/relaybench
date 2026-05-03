@@ -57,6 +57,7 @@ public sealed class TransparentProxyRouteEditorItemViewModel : ObservableObject
             if (SetProperty(ref _modelsText, value ?? string.Empty))
             {
                 OnPropertyChanged(nameof(Model));
+                OnPropertyChanged(nameof(Models));
                 OnPropertyChanged(nameof(ModelCountText));
                 OnPropertyChanged(nameof(ModelPreviewText));
             }
@@ -66,7 +67,13 @@ public sealed class TransparentProxyRouteEditorItemViewModel : ObservableObject
     public string HeadersText
     {
         get => _headersText;
-        set => SetProperty(ref _headersText, value ?? string.Empty);
+        set
+        {
+            if (SetProperty(ref _headersText, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(Headers));
+            }
+        }
     }
 
     public string ApiKey

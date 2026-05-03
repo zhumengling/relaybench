@@ -98,7 +98,7 @@
             <Setter Property="IsHitTestVisible" Value="False" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
-                    <Setter Property="MaxHeight" Value="560" />
+                    <Setter Property="MaxHeight" Value="1200" />
                     <Setter Property="Margin" Value="0,0,0,8" />
                     <Setter Property="Opacity" Value="1" />
                     <Setter Property="IsHitTestVisible" Value="True" />
@@ -106,7 +106,7 @@
                         <BeginStoryboard>
                             <Storyboard>
                                 <DoubleAnimation Storyboard.TargetProperty="MaxHeight"
-                                                 To="560"
+                                                 To="1200"
                                                  Duration="0:0:0.18">
                                     <DoubleAnimation.EasingFunction>
                                         <CubicEase EasingMode="EaseOut" />
@@ -389,13 +389,20 @@
                         </TextBlock>
                     </StackPanel>
 
-                    <ScrollViewer Grid.Row="1"
-                                  Margin="0,6,0,0"
-                                  HorizontalScrollBarVisibility="Disabled"
-                                  VerticalScrollBarVisibility="Auto"
-                                  Visibility="{Binding IsTransparentProxySettingsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <StackPanel>
-                            <Button Command="{Binding ToggleTransparentProxyListenSettingsCommand}"
+                    <Grid Grid.Row="1"
+                          Margin="0,6,0,0"
+                          MinHeight="0"
+                          Visibility="{Binding IsTransparentProxySettingsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                            <Button Grid.Row="0"
+                                    Command="{Binding ToggleTransparentProxyListenSettingsCommand}"
                                     Tag="{Binding IsTransparentProxyListenSettingsOpen}"
                                     Style="{StaticResource GatewayDrawerMenuButtonStyle}"
                                     ToolTip="展开或收起监听设置">
@@ -414,7 +421,8 @@
                                 </DockPanel>
                             </Button>
 
-                            <Border Tag="{Binding IsTransparentProxyListenSettingsOpen}"
+                            <Border Grid.Row="1"
+                                    Tag="{Binding IsTransparentProxyListenSettingsOpen}"
                                     Style="{StaticResource GatewayAccordionPanelStyle}">
                                 <Grid>
                                      <Grid.RowDefinitions>
@@ -455,7 +463,8 @@
                                 </Grid>
                             </Border>
 
-                            <Border Tag="{Binding IsTransparentProxyListenSettingsOpen}"
+                            <Border Grid.Row="2"
+                                    Tag="{Binding IsTransparentProxyListenSettingsOpen}"
                                     Style="{StaticResource GatewayAccordionPanelStyle}">
                                 <Grid>
                                      <Grid.RowDefinitions>
@@ -503,7 +512,8 @@
                                 </Grid>
                             </Border>
 
-                            <Button Command="{Binding ToggleTransparentProxyProviderSettingsCommand}"
+                            <Button Grid.Row="3"
+                                    Command="{Binding ToggleTransparentProxyProviderSettingsCommand}"
                                     Tag="{Binding IsTransparentProxyProviderSettingsOpen}"
                                     Style="{StaticResource GatewayDrawerMenuButtonStyle}"
                                     ToolTip="展开或收起提供商">
@@ -522,12 +532,15 @@
                                 </DockPanel>
                             </Button>
 
-                            <Border Tag="{Binding IsTransparentProxyProviderSettingsOpen}"
+                            <Border Grid.Row="4"
+                                    VerticalAlignment="Stretch"
+                                    Tag="{Binding IsTransparentProxyProviderSettingsOpen}"
                                     Style="{StaticResource GatewayAccordionPanelStyle}">
-                                <Grid MinHeight="216">
+                                <Grid MinHeight="0"
+                                      VerticalAlignment="Stretch">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
                                         <RowDefinition Height="0" />
                                     </Grid.RowDefinitions>
 
@@ -560,7 +573,8 @@
 
                                     <DataGrid Grid.Row="1"
                                               Margin="0,6,0,0"
-                                              MaxHeight="176"
+                                              MinHeight="0"
+                                              VerticalAlignment="Stretch"
                                               AutoGenerateColumns="False"
                                               CanUserAddRows="False"
                                               CanUserDeleteRows="False"
@@ -654,8 +668,7 @@
                                     </Expander>
                                 </Grid>
                             </Border>
-                        </StackPanel>
-                    </ScrollViewer>
+                    </Grid>
                 </Grid>
             </Border>
 
@@ -764,7 +777,7 @@
                                                     ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
                                                     Binding="{Binding PriorityText}"
                                                     Header="#" />
-                                <DataGridTemplateColumn Width="106" MinWidth="88" Header="名称">
+                                <DataGridTemplateColumn Width="112" MinWidth="92" Header="名称">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Style="{StaticResource GatewayCellTextStyle}"
@@ -773,7 +786,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Width="165" MinWidth="132" Header="Base URL">
+                                <DataGridTemplateColumn Width="2.4*" MinWidth="260" Header="Base URL">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Style="{StaticResource GatewayMonoCellTextStyle}"
@@ -782,7 +795,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Width="64" MinWidth="58" Header="模型">
+                                <DataGridTemplateColumn Width="62" MinWidth="56" Header="模型">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Style="{StaticResource GatewayMonoCellTextStyle}"
@@ -822,13 +835,13 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Width="68"
-                                                    MinWidth="58"
+                                <DataGridTextColumn Width="62"
+                                                    MinWidth="52"
                                                     ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
                                                     Binding="{Binding StatsText}"
                                                     Header="统计" />
-                                <DataGridTextColumn Width="48"
-                                                    MinWidth="44"
+                                <DataGridTextColumn Width="46"
+                                                    MinWidth="42"
                                                     ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
                                                     Binding="{Binding LatencyText}"
                                                     Header="延迟" />
@@ -1015,12 +1028,13 @@
               Panel.ZIndex="40"
               Background="#66111827"
               Visibility="{Binding IsTransparentProxyRouteSettingsOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Width="460"
+            <Border Width="780"
+                    MinHeight="540"
                     MaxWidth="{Binding ActualWidth, ElementName=TransparentProxyPageRoot}"
-                    MaxHeight="430"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Margin="48,74,0,0"
+                    MaxHeight="620"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Margin="16"
                     Padding="14"
                     Style="{StaticResource DashboardOverlayPanelStyle}"
                     infra:MotionAssist.LoadedOffsetY="10"
@@ -1053,12 +1067,17 @@
                                 ToolTip="关闭" />
                     </Grid>
 
-                    <ScrollViewer Grid.Row="1"
-                                  Margin="0,12,0,12"
-                                  HorizontalScrollBarVisibility="Disabled"
-                                  VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <Grid>
+                    <Grid Grid.Row="1"
+                          Margin="0,12,0,12"
+                          MinHeight="0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="1.35*" />
                                     <ColumnDefinition Width="10" />
@@ -1087,7 +1106,8 @@
                                 </StackPanel>
                             </Grid>
 
-                            <StackPanel Margin="0,10,0,0">
+                            <StackPanel Grid.Row="1"
+                                        Margin="0,10,0,0">
                                 <TextBlock Style="{StaticResource FieldLabelTextStyle}"
                                            Text="Base URL" />
                                 <TextBox FontFamily="Cascadia Mono, Consolas"
@@ -1095,7 +1115,8 @@
                                          Text="{Binding TransparentProxyRouteSettingsItem.BaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
 
-                            <StackPanel Margin="0,10,0,0">
+                            <StackPanel Grid.Row="2"
+                                        Margin="0,10,0,0">
                                 <TextBlock Style="{StaticResource FieldLabelTextStyle}"
                                            Text="API Key" />
                                 <PasswordBox Height="30"
@@ -1106,15 +1127,24 @@
                                            Text="留空时继承客户端 Authorization；填写后对该节点覆盖为 Bearer token。" />
                             </StackPanel>
 
-                            <Grid Margin="0,10,0,0">
+                            <Grid Grid.Row="3"
+                                  Margin="0,10,0,0"
+                                  MinHeight="0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="12" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
 
-                                <StackPanel Grid.Column="0">
-                                    <DockPanel LastChildFill="True">
+                                <Grid Grid.Column="0"
+                                      MinHeight="0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <DockPanel Grid.Row="0"
+                                               LastChildFill="True">
                                         <Button DockPanel.Dock="Right"
                                                 Command="{Binding FetchTransparentProxyRouteEditorItemModelsCommand}"
                                                 CommandParameter="{Binding TransparentProxyRouteSettingsItem}"
@@ -1125,28 +1155,49 @@
                                                    Style="{StaticResource FieldLabelTextStyle}"
                                                    Text="Model list" />
                                     </DockPanel>
-                                    <TextBox MinHeight="150"
-                                             MaxHeight="190"
-                                             AcceptsReturn="True"
-                                             AcceptsTab="True"
-                                             FontFamily="Cascadia Mono, Consolas"
-                                             FontSize="11.4"
-                                             HorizontalScrollBarVisibility="Disabled"
-                                             Padding="8,6"
-                                             Style="{StaticResource {x:Type TextBox}}"
-                                             TextWrapping="Wrap"
-                                             VerticalScrollBarVisibility="Auto"
-                                             Text="{Binding TransparentProxyRouteSettingsItem.ModelsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <TextBlock Margin="0,4,0,0"
+                                    <DataGrid Grid.Row="1"
+                                              Margin="0,6,0,0"
+                                              AutoGenerateColumns="False"
+                                              CanUserAddRows="False"
+                                              CanUserDeleteRows="False"
+                                              ColumnHeaderStyle="{StaticResource GatewayCompactDataGridHeaderStyle}"
+                                              EnableColumnVirtualization="True"
+                                              EnableRowVirtualization="True"
+                                              GridLinesVisibility="Horizontal"
+                                              HeadersVisibility="Column"
+                                              IsReadOnly="True"
+                                              ItemsSource="{Binding TransparentProxyRouteSettingsItem.Models}"
+                                              MinColumnWidth="0"
+                                              RowHeight="28"
+                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                              VirtualizingPanel.IsVirtualizing="True"
+                                              VirtualizingPanel.VirtualizationMode="Recycling">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Width="*"
+                                                                MinWidth="140"
+                                                                Binding="{Binding}"
+                                                                ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
+                                                                Header="Model ID" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <TextBlock Grid.Row="2"
+                                               Margin="0,4,0,0"
                                                Style="{StaticResource SectionHintTextStyle}"
                                                Text="{Binding TransparentProxyRouteSettingsItem.ModelPreviewText, Mode=OneWay}" />
-                                </StackPanel>
+                                </Grid>
 
-                                <StackPanel Grid.Column="2">
+                                <Grid Grid.Column="2"
+                                      MinHeight="0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
                                     <TextBlock Style="{StaticResource FieldLabelTextStyle}"
                                                Text="Custom headers" />
-                                    <TextBox MinHeight="150"
-                                             MaxHeight="190"
+                                    <TextBox Grid.Row="1"
+                                             Margin="0,6,0,0"
+                                             MinHeight="0"
                                              AcceptsReturn="True"
                                              AcceptsTab="True"
                                              FontFamily="Cascadia Mono, Consolas"
@@ -1158,10 +1209,9 @@
                                              VerticalScrollBarVisibility="Auto"
                                              ToolTip="每行一个 Header: value"
                                              Text="{Binding TransparentProxyRouteSettingsItem.HeadersText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
+                                </Grid>
                             </Grid>
-                        </StackPanel>
-                    </ScrollViewer>
+                    </Grid>
 
                     <DockPanel Grid.Row="2" LastChildFill="False">
                         <TextBlock DockPanel.Dock="Left"
