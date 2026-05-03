@@ -550,9 +550,8 @@ public sealed partial class MainWindowViewModel
             return "--";
         }
 
-        var estimateSuffix = scenario.OutputTokenCountEstimated ? "（估算）" : string.Empty;
         var charPart = scenario.OutputCharacterCount is > 0 ? $" / {scenario.OutputCharacterCount} 字符" : string.Empty;
-        return $"{tokenCount} token{estimateSuffix}{charPart}";
+        return $"{tokenCount} token{charPart}";
     }
 
     private static string BuildLongStreamingDigest(ProxyStreamingStabilityResult? result)

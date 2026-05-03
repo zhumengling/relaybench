@@ -50,7 +50,7 @@ public sealed class ProxyStabilityTrendChartRowViewModel
 
     public string Tone { get; }
 
-    public string RunningText => IsRunning ? "实时中" : string.Empty;
+    public string RunningText => string.Empty;
 
     public static IReadOnlyList<ProxyStabilityTrendChartRowViewModel> CreateRows(
         IReadOnlyList<ProxyTrendEntry> entries,

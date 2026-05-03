@@ -893,12 +893,6 @@
                                                                        TextTrimming="CharacterEllipsis"
                                                                        TextWrapping="NoWrap"
                                                                        Text="{Binding MetricText}" />
-                                                            <TextBlock Margin="4,0,0,0"
-                                                                       FontSize="12.4"
-                                                                       FontWeight="SemiBold"
-                                                                       Foreground="{StaticResource TextBrush}"
-                                                                       Text="实时中"
-                                                                       Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}" />
                                                         </StackPanel>
                                                     </DockPanel>
                                                     <ProgressBar Margin="0,4,0,0"

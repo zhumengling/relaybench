@@ -412,7 +412,7 @@ public sealed partial class MainWindowViewModel
             : row.LatestStage switch
         {
             ProxyBatchProbeStage.Completed => $"{row.CompositeScore:F1} 分",
-            ProxyBatchProbeStage.Throughput => row.LatestResult.ThroughputBenchmarkResult?.IsLive == true ? "tok/s 实时中" : "tok/s 已出",
+            ProxyBatchProbeStage.Throughput => row.LatestResult.ThroughputBenchmarkResult?.IsLive == true ? "tok/s" : "tok/s 已出",
             _ => $"基 {row.LatestCompletedBaselineCount}/{row.LatestTotalBaselineCount}"
         };
 

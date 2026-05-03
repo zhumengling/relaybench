@@ -743,12 +743,8 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
         }
 
         var suffix = sampleCount > 1
-            ? estimated
-                ? $"（{sampleCount}次均值，估算）"
-                : $"（{sampleCount}次均值）"
-            : estimated
-                ? "（估算）"
-                : string.Empty;
+            ? $"（{sampleCount}次均值）"
+            : string.Empty;
         return $"{value.Value:F1} tok/s{suffix}";
     }
 
