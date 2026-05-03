@@ -97,9 +97,7 @@ public partial class MainWindow : Window
     };
     private readonly Dictionary<string, OverlayAnimationState> _overlayAnimations = [];
     private Forms.NotifyIcon? _notifyIcon;
-    private Forms.ToolStripMenuItem? _proxyTrayMenuItem;
-    private Forms.ToolStripMenuItem? _tokenMeterTrayMenuItem;
-    private Forms.ToolStripMenuItem? _openLogDirectoryTrayMenuItem;
+    private TrayMenuWindow? _trayMenuWindow;
     private FloatingTokenMeterWindow? _floatingTokenMeterWindow;
     private TokenMeterWindowState? _tokenMeterWindowState;
     private ProxyChartHitRegion? _activeProxyChartHitRegion;
@@ -192,26 +190,108 @@ public partial class MainWindow : Window
             Icon = CreateTrayIcon(),
             Visible = true
         };
-        _notifyIcon.DoubleClick += (_, _) => RestoreMainWindow(showTransparentProxy: false);
+        _notifyIcon.MouseDoubleClick += NotifyIcon_OnMouseDoubleClick;
+        _notifyIcon.MouseUp += NotifyIcon_OnMouseUp;
 
-        Forms.ContextMenuStrip menu = new();
-        menu.Items.Add("打开 RelayBench", null, (_, _) => RestoreMainWindow(showTransparentProxy: false));
-        _proxyTrayMenuItem = new Forms.ToolStripMenuItem();
-        _proxyTrayMenuItem.Click += (_, _) => ToggleTransparentProxyFromTray();
-        menu.Items.Add(_proxyTrayMenuItem);
-        _tokenMeterTrayMenuItem = new Forms.ToolStripMenuItem();
-        _tokenMeterTrayMenuItem.Click += (_, _) => ToggleFloatingTokenMeter();
-        menu.Items.Add(_tokenMeterTrayMenuItem);
-        menu.Items.Add(new Forms.ToolStripMenuItem("后台运行：开") { Checked = true, Enabled = false });
-        _openLogDirectoryTrayMenuItem = new Forms.ToolStripMenuItem("打开日志目录");
-        _openLogDirectoryTrayMenuItem.Click += (_, _) => OpenRelayBenchLogDirectory();
-        menu.Items.Add(_openLogDirectoryTrayMenuItem);
-        menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("退出 RelayBench", null, async (_, _) => await ExitFromTrayAsync());
-        menu.Opening += (_, _) => UpdateTrayMenuText();
-        _notifyIcon.ContextMenuStrip = menu;
+        _notifyIcon.ContextMenuStrip = null;
         UpdateTrayMenuText();
     }
+
+    private void NotifyIcon_OnMouseDoubleClick(object? sender, Forms.MouseEventArgs e)
+    {
+        if (e.Button != Forms.MouseButtons.Left)
+        {
+            return;
+        }
+
+        CloseTrayMenu();
+        RestoreMainWindow(showTransparentProxy: false);
+    }
+
+    private void NotifyIcon_OnMouseUp(object? sender, Forms.MouseEventArgs e)
+    {
+        if (e.Button != Forms.MouseButtons.Right)
+        {
+            return;
+        }
+
+        ShowTrayMenu();
+    }
+
+    private void ShowTrayMenu()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(ShowTrayMenu);
+            return;
+        }
+
+        var cursorPositionPixels = Forms.Cursor.Position;
+        var transform = GetDeviceToDipTransform();
+        var cursorPosition = transform.Transform(new Point(cursorPositionPixels.X, cursorPositionPixels.Y));
+        var workArea = GetWorkAreaInDip(cursorPositionPixels, transform);
+
+        if (_trayMenuWindow is { IsVisible: true } visibleMenu)
+        {
+            ApplyTrayMenuState(visibleMenu);
+            visibleMenu.PreparePlacement(cursorPosition, workArea);
+            visibleMenu.Activate();
+            return;
+        }
+
+        TrayMenuWindow menu = new();
+        _trayMenuWindow = menu;
+        menu.OpenMainWindowRequested += (_, _) => RestoreMainWindow(showTransparentProxy: false);
+        menu.ToggleTransparentProxyRequested += (_, _) => ToggleTransparentProxyFromTray();
+        menu.ToggleTokenMeterRequested += (_, _) => ToggleFloatingTokenMeter();
+        menu.OpenLogDirectoryRequested += (_, _) => OpenRelayBenchLogDirectory();
+        menu.ExitRequested += async (_, _) => await ExitFromTrayAsync();
+        menu.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_trayMenuWindow, menu))
+            {
+                _trayMenuWindow = null;
+            }
+        };
+
+        ApplyTrayMenuState(menu);
+        menu.PreparePlacement(cursorPosition, workArea);
+        menu.Show();
+        menu.Activate();
+    }
+
+    private Matrix GetDeviceToDipTransform()
+    {
+        try
+        {
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget is not null)
+            {
+                return source.CompositionTarget.TransformFromDevice;
+            }
+        }
+        catch
+        {
+        }
+
+        return Matrix.Identity;
+    }
+
+    private static Rect GetWorkAreaInDip(Drawing.Point cursorPositionPixels, Matrix transformFromDevice)
+    {
+        var workingArea = Forms.Screen.FromPoint(cursorPositionPixels).WorkingArea;
+        var topLeft = transformFromDevice.Transform(new Point(workingArea.Left, workingArea.Top));
+        var bottomRight = transformFromDevice.Transform(new Point(workingArea.Right, workingArea.Bottom));
+        return new Rect(topLeft, bottomRight);
+    }
+
+    private void ApplyTrayMenuState(TrayMenuWindow menu)
+        => menu.ApplyState(
+            _viewModel?.IsTransparentProxyRunning == true,
+            _isTokenMeterVisible);
+
+    private void CloseTrayMenu()
+        => _trayMenuWindow?.RequestClose();
 
     private static bool ShouldReduceMotion()
         => !SystemParameters.ClientAreaAnimation;
@@ -253,22 +333,17 @@ public partial class MainWindow : Window
 
     private void UpdateTrayMenuText()
     {
-        if (_proxyTrayMenuItem is not null)
+        var isProxyRunning = _viewModel?.IsTransparentProxyRunning == true;
+        if (_notifyIcon is not null)
         {
-            _proxyTrayMenuItem.Text = _viewModel?.IsTransparentProxyRunning == true
-                ? "停止透明代理"
-                : "启动透明代理";
+            _notifyIcon.Text = isProxyRunning
+                ? "RelayBench - 透明代理运行中"
+                : "RelayBench";
         }
 
-        if (_tokenMeterTrayMenuItem is not null)
+        if (_trayMenuWindow is { IsVisible: true } trayMenuWindow)
         {
-            var isProxyRunning = _viewModel?.IsTransparentProxyRunning == true;
-            _tokenMeterTrayMenuItem.Enabled = isProxyRunning;
-            _tokenMeterTrayMenuItem.Text = !isProxyRunning
-                ? "Token 悬浮窗（启动后可用）"
-                : _isTokenMeterVisible
-                    ? "隐藏 Token 悬浮窗"
-                    : "显示 Token 悬浮窗";
+            ApplyTrayMenuState(trayMenuWindow);
         }
     }
 
@@ -572,6 +647,12 @@ public partial class MainWindow : Window
 
     private void DisposeTrayIcon()
     {
+        if (_trayMenuWindow is not null)
+        {
+            _trayMenuWindow.Close();
+            _trayMenuWindow = null;
+        }
+
         if (_notifyIcon is null)
         {
             return;
