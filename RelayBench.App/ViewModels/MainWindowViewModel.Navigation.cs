@@ -55,6 +55,33 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    public bool IsNavigationRailCollapsed
+    {
+        get => _isNavigationRailCollapsed;
+        private set
+        {
+            if (SetProperty(ref _isNavigationRailCollapsed, value))
+            {
+                OnPropertyChanged(nameof(NavigationRailWidth));
+                OnPropertyChanged(nameof(NavigationRailGapWidth));
+                OnPropertyChanged(nameof(NavigationRailToggleGlyph));
+                OnPropertyChanged(nameof(NavigationRailToggleToolTip));
+            }
+        }
+    }
+
+    public string NavigationRailWidth
+        => IsNavigationRailCollapsed ? "66" : "224";
+
+    public string NavigationRailGapWidth
+        => IsNavigationRailCollapsed ? "8" : "12";
+
+    public string NavigationRailToggleGlyph
+        => IsNavigationRailCollapsed ? "\uE700" : "\uE711";
+
+    public string NavigationRailToggleToolTip
+        => IsNavigationRailCollapsed ? "展开主菜单" : "收起主菜单";
+
     public bool IsInterfaceDiagnosticsPageActive
         => string.Equals(SelectedWorkbenchPageKey, WorkbenchPageInterfaceDiagnostics, StringComparison.Ordinal);
 
@@ -172,5 +199,11 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(IsHistoryReportsPageActive));
         OnPropertyChanged(nameof(CurrentPageTitle));
         OnPropertyChanged(nameof(CurrentPageSubtitle));
+    }
+
+    private Task ToggleNavigationRailAsync()
+    {
+        IsNavigationRailCollapsed = !IsNavigationRailCollapsed;
+        return Task.CompletedTask;
     }
 }

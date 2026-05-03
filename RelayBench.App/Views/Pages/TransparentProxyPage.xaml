@@ -18,10 +18,10 @@
         <Style x:Key="GatewayMetricTileStyle"
                TargetType="Border"
                BasedOn="{StaticResource InsetPanelBorderStyle}">
-            <Setter Property="MinHeight" Value="62" />
-            <Setter Property="MinWidth" Value="116" />
-            <Setter Property="Padding" Value="12,9" />
-            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="MinHeight" Value="50" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Margin" Value="0,0,6,0" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="ClipToBounds" Value="True" />
         </Style>
@@ -30,7 +30,7 @@
                TargetType="TextBlock"
                BasedOn="{StaticResource {x:Type TextBlock}}">
             <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
-            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontSize" Value="16" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="LineHeight" Value="22" />
             <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
@@ -274,27 +274,32 @@
                                          <RowDefinition Height="Auto" />
                                          <RowDefinition Height="Auto" />
                                          <RowDefinition Height="Auto" />
-                                         <RowDefinition Height="Auto" />
                                      </Grid.RowDefinitions>
 
                                      <TextBlock Style="{StaticResource FieldLabelTextStyle}"
                                                 Text="监听" />
-                                     <StackPanel Grid.Row="1"
-                                                 Margin="0,7,0,0">
-                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                   Text="端口" />
-                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                                 Text="{Binding TransparentProxyPortText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                     </StackPanel>
-                                     <StackPanel Grid.Row="2"
-                                                 Margin="0,7,0,0">
-                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                   Text="并发上限" />
-                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                                 Text="{Binding TransparentProxyMaxConcurrencyText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                     </StackPanel>
-                                     <TextBox Grid.Row="3"
-                                              Margin="0,8,0,0"
+                                     <Grid Grid.Row="1"
+                                           Margin="0,7,0,0">
+                                         <Grid.ColumnDefinitions>
+                                             <ColumnDefinition Width="*" />
+                                             <ColumnDefinition Width="8" />
+                                             <ColumnDefinition Width="*" />
+                                         </Grid.ColumnDefinitions>
+                                         <StackPanel Grid.Column="0">
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                       Text="端口" />
+                                            <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                     Text="{Binding TransparentProxyPortText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                         </StackPanel>
+                                         <StackPanel Grid.Column="2">
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                       Text="并发上限" />
+                                            <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                     Text="{Binding TransparentProxyMaxConcurrencyText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                         </StackPanel>
+                                     </Grid>
+                                     <TextBox Grid.Row="2"
+                                              Margin="0,7,0,0"
                                              FontFamily="Cascadia Mono, Consolas"
                                              IsReadOnly="True"
                                              Style="{StaticResource CompactInputTextBoxStyle}"
@@ -310,29 +315,34 @@
                                          <RowDefinition Height="Auto" />
                                          <RowDefinition Height="Auto" />
                                          <RowDefinition Height="Auto" />
-                                         <RowDefinition Height="Auto" />
                                      </Grid.RowDefinitions>
 
                                      <TextBlock Style="{StaticResource FieldLabelTextStyle}"
                                                 Text="保护" />
-                                     <StackPanel Grid.Row="1"
-                                                 Margin="0,7,0,0">
-                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                   Text="每分钟上限" />
-                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                                 Text="{Binding TransparentProxyRateLimitPerMinuteText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                     </StackPanel>
-                                     <StackPanel Grid.Row="2"
-                                                 Margin="0,7,0,0">
-                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                   Text="缓存 TTL 秒" />
-                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                                 Text="{Binding TransparentProxyCacheTtlSecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    </StackPanel>
+                                     <Grid Grid.Row="1"
+                                           Margin="0,7,0,0">
+                                         <Grid.ColumnDefinitions>
+                                             <ColumnDefinition Width="*" />
+                                             <ColumnDefinition Width="8" />
+                                             <ColumnDefinition Width="*" />
+                                         </Grid.ColumnDefinitions>
+                                         <StackPanel Grid.Column="0">
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                       Text="每分钟上限" />
+                                            <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                     Text="{Binding TransparentProxyRateLimitPerMinuteText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                         </StackPanel>
+                                         <StackPanel Grid.Column="2">
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                       Text="缓存 TTL 秒" />
+                                            <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                     Text="{Binding TransparentProxyCacheTtlSecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                    </Grid>
 
-                                     <UniformGrid Grid.Row="3"
+                                     <UniformGrid Grid.Row="2"
                                                   Margin="0,8,0,0"
-                                                 Columns="1">
+                                                 Columns="2">
                                         <CheckBox Content="启用 fallback"
                                                   IsChecked="{Binding TransparentProxyEnableFallback, Mode=TwoWay}" />
                                         <CheckBox Margin="0,5,0,0"
@@ -475,48 +485,47 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <ScrollViewer Grid.Row="0"
-                              HorizontalScrollBarVisibility="Auto"
-                              VerticalScrollBarVisibility="Disabled">
-                    <WrapPanel>
-                    <Border Width="116" Style="{StaticResource GatewayMetricTileStyle}">
+                <UniformGrid Grid.Row="0"
+                             Width="520"
+                             HorizontalAlignment="Left"
+                             Columns="3">
+                    <Border Style="{StaticResource GatewayMetricTileStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="总请求" />
                             <TextBlock Style="{StaticResource GatewayMetricValueTextStyle}" Text="{Binding TransparentProxyTotalRequestsText, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
-                    <Border Width="116" Style="{StaticResource GatewayMetricTileStyle}">
+                    <Border Style="{StaticResource GatewayMetricTileStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="成功率" />
                             <TextBlock Style="{StaticResource GatewayMetricValueTextStyle}" Text="{Binding TransparentProxySuccessRateText, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
-                    <Border Width="116" Style="{StaticResource GatewayMetricTileStyle}">
+                    <Border Style="{StaticResource GatewayMetricTileStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="活跃" />
                             <TextBlock Style="{StaticResource GatewayMetricValueTextStyle}" Text="{Binding TransparentProxyActiveRequestsText, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
-                    <Border Width="116" Style="{StaticResource GatewayMetricTileStyle}">
+                    <Border Style="{StaticResource GatewayMetricTileStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="Fallback" />
                             <TextBlock Style="{StaticResource GatewayMetricValueTextStyle}" Text="{Binding TransparentProxyFallbackRequestsText, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
-                    <Border Width="116" Style="{StaticResource GatewayMetricTileStyle}">
+                    <Border Style="{StaticResource GatewayMetricTileStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="缓存命中" />
                             <TextBlock Style="{StaticResource GatewayMetricValueTextStyle}" Text="{Binding TransparentProxyCacheHitsText, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
-                    <Border Width="116" Style="{StaticResource GatewayMetricTileStyle}" Margin="0">
+                    <Border Style="{StaticResource GatewayMetricTileStyle}" Margin="0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="P95" />
                             <TextBlock Style="{StaticResource GatewayMetricValueTextStyle}" Text="{Binding TransparentProxyP95LatencyText, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
-                    </WrapPanel>
-                </ScrollViewer>
+                </UniformGrid>
 
                 <Border Grid.Row="2" Style="{StaticResource SectionPanelBorderStyle}">
                     <Grid>

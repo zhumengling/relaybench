@@ -9,10 +9,10 @@
     <UserControl.Resources>
         <Style x:Key="NetworkReviewSubmenuItemStyle"
                TargetType="ListBoxItem"
-               BasedOn="{StaticResource PresetCardListBoxItemStyle}">
-            <Setter Property="MinHeight" Value="38" />
+               BasedOn="{StaticResource NavigationListBoxItemStyle}">
+            <Setter Property="MinHeight" Value="34" />
             <Setter Property="Padding" Value="10,6" />
-            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Margin" Value="0,0,6,0" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
 
@@ -258,13 +258,13 @@
                   Background="Transparent">
         <Grid Margin="0,0,2,0"
               MinHeight="{Binding ActualHeight, ElementName=NetworkReviewRootScroll}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="236" />
-                <ColumnDefinition Width="10" />
-                <ColumnDefinition Width="*" MinWidth="780" />
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="8" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-            <Border Grid.Column="0"
+            <Border Grid.Row="0"
                     Style="{StaticResource SectionPanelBorderStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -280,14 +280,14 @@
                                    TextWrapping="Wrap" />
                     </StackPanel>
                     <ListBox Grid.Row="1"
-                             Margin="0,10,0,0"
+                             Margin="0,8,0,0"
                              ItemsSource="{Binding NetworkReviewToolOptions}"
                              SelectedValuePath="Key"
                              SelectedValue="{Binding SelectedNetworkReviewToolKey, Mode=TwoWay}"
                              Style="{StaticResource PresetCardListBoxStyle}">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <StackPanel />
+                                <WrapPanel />
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                         <ListBox.ItemContainerStyle>
@@ -305,7 +305,7 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Column="2"
+            <Border Grid.Row="2"
                     Style="{StaticResource SectionPanelBorderStyle}">
                 <Grid>
                     <Grid.RowDefinitions>

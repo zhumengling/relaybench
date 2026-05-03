@@ -317,14 +317,14 @@
                 <Grid Grid.Row="0"
                       Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="224" />
-                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="{Binding NavigationRailWidth}" />
+                        <ColumnDefinition Width="{Binding NavigationRailGapWidth}" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
                     <Border Grid.Column="0"
                             Style="{StaticResource NavigationRailBorderStyle}">
-                        <Grid>
+                        <Grid ClipToBounds="True">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -332,12 +332,48 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}"
-                                   Text="&#x5DE5;&#x4F5C;&#x53F0;&#x5BFC;&#x822A;" />
-                        <TextBlock Grid.Row="1"
-                                       Margin="0,3,0,0"
-                                       Style="{StaticResource SectionHintTextStyle}"
-                                       Text="按任务切换页面：先做单站测试，再做数据安全、批量评测、对话实测、应用接入与网络复核。" />
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Width="30"
+                                        Height="30"
+                                        Command="{Binding ToggleNavigationRailCommand}"
+                                        Content="{Binding NavigationRailToggleGlyph}"
+                                        Style="{StaticResource WorkbenchIconButtonStyle}"
+                                        ToolTip="{Binding NavigationRailToggleToolTip}" />
+                                <TextBlock Grid.Column="2"
+                                           VerticalAlignment="Center"
+                                           Text="&#x5DE5;&#x4F5C;&#x53F0;&#x5BFC;&#x822A;"
+                                           TextTrimming="CharacterEllipsis">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SectionTitleTextStyle}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsNavigationRailCollapsed}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,5,0,0"
+                                       Text="按任务切换页面：先做单站测试，再做数据安全、批量评测、对话实测、应用接入与网络复核。">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsNavigationRailCollapsed}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
 
                             <ListBox Grid.Row="2"
                                      Margin="0,8,0,0"
@@ -348,9 +384,37 @@
                                      Style="{StaticResource NavigationListBoxStyle}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <TextBlock FontSize="11.2"
-                                                   FontWeight="SemiBold"
-                                                   Text="{Binding DisplayName}" />
+                                        <Grid ToolTip="{Binding DisplayName}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="8" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Width="18"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="14.5"
+                                                       TextAlignment="Center"
+                                                       Text="{Binding IconGlyph}" />
+                                            <TextBlock Grid.Column="2"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="11.2"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding DisplayName}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DataContext.IsNavigationRailCollapsed, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
@@ -359,8 +423,18 @@
                                     Margin="0,10,0,0"
                                     Style="{StaticResource NavigationAboutBorderStyle}">
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                               Text="关于" />
+                                    <TextBlock Text="关于">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource FieldLabelTextStyle}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsNavigationRailCollapsed}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <Button Margin="0,4,0,0"
                                             Command="{Binding OpenAboutDialogCommand}"
                                             Style="{StaticResource NavigationAboutLinkButtonStyle}"
@@ -378,7 +452,18 @@
                                                        Foreground="{StaticResource AccentBrush}"
                                                        FontSize="10.2"
                                                        FontWeight="SemiBold"
-                                                       Text="查看项目信息" />
+                                                       Text="查看项目信息">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsNavigationRailCollapsed}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>

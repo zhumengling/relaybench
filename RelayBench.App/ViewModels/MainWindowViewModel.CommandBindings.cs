@@ -66,14 +66,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<SelectionOption> WorkbenchPageOptions { get; } =
     [
-        new("interface-diagnostics", "\u5355\u7ad9\u6d4b\u8bd5"),
-        new("advanced-test-lab", "数据安全"),
-        new("batch-evaluation", "批量评测"),
-        new("transparent-proxy", "透明代理"),
-        new("model-chat", "\u5927\u6a21\u578b\u5bf9\u8bdd"),
-        new("application-center", "应用接入"),
-        new("network-review", "网络复核"),
-        new("history-reports", "历史报告")
+        new("interface-diagnostics", "\u5355\u7ad9\u6d4b\u8bd5", "\uE8F1"),
+        new("advanced-test-lab", "数据安全", "\uE72E"),
+        new("batch-evaluation", "批量评测", "\uE9D2"),
+        new("transparent-proxy", "透明代理", "\uE968"),
+        new("model-chat", "\u5927\u6a21\u578b\u5bf9\u8bdd", "\uE8BD"),
+        new("application-center", "应用接入", "\uECAA"),
+        new("network-review", "网络复核", "\uE774"),
+        new("history-reports", "历史报告", "\uE81C")
     ];
 
     public AdvancedTestLabViewModel AdvancedTestLab { get; }
@@ -292,6 +292,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand CloseAboutDialogCommand { get; }
 
     public AsyncRelayCommand OpenProjectHomepageCommand { get; }
+
+    public AsyncRelayCommand ToggleNavigationRailCommand { get; }
 
     public AsyncRelayCommand SendChatMessageCommand { get; }
 

@@ -37,44 +37,37 @@
 
         <Border Grid.Row="0" Style="{StaticResource CommandBarBorderStyle}">
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="6" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="380" />
+                    <ColumnDefinition Width="520" />
                     <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="190" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="170" />
                     <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Row="0"
-                            Grid.ColumnSpan="5">
+                <StackPanel Grid.Column="0">
                     <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x63A5;&#x53E3;&#x5730;&#x5740;" />
                     <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
                              ToolTip="{Binding ProxyBaseUrl}"
                              Text="{Binding ProxyBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="2"
-                            Grid.Column="0">
+                <StackPanel Grid.Column="2">
                     <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="API Key" />
                     <PasswordBox Style="{StaticResource CompactSecretInputPasswordBoxStyle}"
                                  infra:PasswordBoxAssistant.BoundPassword="{Binding ProxyApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="2"
-                            Grid.Column="2">
+                <StackPanel Grid.Column="4">
                     <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x6A21;&#x578B;" />
                     <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
                              ToolTip="{Binding ProxyModel}"
                              Text="{Binding ProxyModel, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
 
-                <Button Grid.Row="2"
-                        Grid.Column="4"
+                <Button Grid.Column="6"
                         VerticalAlignment="Bottom"
                         Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                         Command="{Binding FetchProxyModelsCommand}"
@@ -98,13 +91,43 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Row="0" Grid.Column="0">
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="测试模式" />
-                    <TextBlock Margin="0,2,0,0"
+                <Grid Grid.Row="0"
+                      Grid.Column="0"
+                      VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="178" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center"
+                               Style="{StaticResource SectionTitleTextStyle}"
+                               Text="测试模式" />
+                    <ComboBox Grid.Column="2"
+                              Style="{StaticResource CompactComboBoxStyle}"
+                              ItemsSource="{Binding SingleStationModeOptions}"
+                              TextSearch.TextPath="DisplayName"
+                              SelectedValuePath="Key"
+                              SelectedValue="{Binding SelectedSingleStationModeKey, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Foreground="#101828"
+                                           FontSize="11.1"
+                                           FontWeight="SemiBold"
+                                           Text="{Binding DisplayName}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Grid.Column="4"
+                               VerticalAlignment="Center"
+                               MaxHeight="18"
                                Style="{StaticResource SectionHintTextStyle}"
                                ToolTip="{Binding SingleStationModeDescription}"
+                               TextTrimming="CharacterEllipsis"
+                               TextWrapping="NoWrap"
                                Text="{Binding SingleStationModeDescription}" />
-                </StackPanel>
+                </Grid>
 
                 <WrapPanel Grid.Row="0"
                            Grid.Column="2"
@@ -128,25 +151,7 @@
                             ToolTip="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;" />
                 </WrapPanel>
 
-                <ComboBox Grid.Row="1"
-                          Grid.ColumnSpan="3"
-                          Margin="0,6,0,0"
-                          Style="{StaticResource CompactComboBoxStyle}"
-                          ItemsSource="{Binding SingleStationModeOptions}"
-                          TextSearch.TextPath="DisplayName"
-                          SelectedValuePath="Key"
-                          SelectedValue="{Binding SelectedSingleStationModeKey, Mode=TwoWay}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Foreground="#101828"
-                                       FontSize="11.1"
-                                       FontWeight="SemiBold"
-                                       Text="{Binding DisplayName}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-
-                <Grid Grid.Row="2"
+                <Grid Grid.Row="1"
                       Grid.ColumnSpan="3"
                       Margin="0,6,0,0"
                       Visibility="{Binding IsSingleStationStabilityMode, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -179,7 +184,7 @@
                               IsChecked="{Binding ProxyEnableSemanticStabilitySampling, Mode=TwoWay}" />
                 </Grid>
 
-                <Border Grid.Row="2"
+                <Border Grid.Row="1"
                         Grid.ColumnSpan="3"
                         Margin="0,6,0,0"
                         Style="{StaticResource InsetPanelBorderStyle}"
@@ -406,7 +411,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Row="2"
+                <Border Grid.Row="1"
                         Grid.ColumnSpan="3"
                         Margin="0,6,0,0"
                         Style="{StaticResource InsetPanelBorderStyle}"

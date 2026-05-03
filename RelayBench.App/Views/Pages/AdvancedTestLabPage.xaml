@@ -50,13 +50,13 @@
                       Margin="0,8,0,0"
                       VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="220" />
+                        <ColumnDefinition Width="430" />
                         <ColumnDefinition Width="8" />
-                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="150" />
                         <ColumnDefinition Width="8" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="8" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="150" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
@@ -172,11 +172,11 @@
               Margin="0,8,0,0"
               MinHeight="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="270" />
-                <ColumnDefinition Width="10" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="10" />
-                <ColumnDefinition Width="312" />
+                <ColumnDefinition Width="232" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="500" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="180" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
@@ -365,11 +365,11 @@
                                                 ElementStyle="{StaticResource AdvancedLabGridTextColumnElementStyle}"
                                                 Binding="{Binding DisplayName}"
                                                 Header="测试项" />
-                            <DataGridTextColumn Width="84"
+                            <DataGridTextColumn Width="68"
                                                 ElementStyle="{StaticResource AdvancedLabGridTextColumnElementStyle}"
                                                 Binding="{Binding CategoryText}"
                                                 Header="分类" />
-                            <DataGridTemplateColumn Width="92"
+                            <DataGridTemplateColumn Width="72"
                                                     Header="状态">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -385,15 +385,15 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Width="64"
+                            <DataGridTextColumn Width="48"
                                                 ElementStyle="{StaticResource AdvancedLabGridTextColumnElementStyle}"
                                                 Binding="{Binding ScoreText}"
                                                 Header="分数" />
-                            <DataGridTextColumn Width="78"
+                            <DataGridTextColumn Width="0"
                                                 ElementStyle="{StaticResource AdvancedLabGridTextColumnElementStyle}"
                                                 Binding="{Binding DurationText}"
                                                 Header="耗时" />
-                            <DataGridTemplateColumn Width="116"
+                            <DataGridTemplateColumn Width="126"
                                                     Header="详情">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>

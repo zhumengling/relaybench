@@ -181,6 +181,15 @@ public partial class ModelChatPage : UserControl
             return;
         }
 
+        if (e.Key == Key.Enter &&
+            ChatInputTextBox.IsKeyboardFocusWithin &&
+            Keyboard.Modifiers != ModifierKeys.Shift)
+        {
+            ExecuteIfPossible(viewModel.SendChatMessageCommand);
+            e.Handled = true;
+            return;
+        }
+
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Enter)
         {
             ExecuteIfPossible(viewModel.SendChatMessageCommand);

@@ -168,6 +168,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OpenAboutDialogCommand = new AsyncRelayCommand(OpenAboutDialogAsync);
         CloseAboutDialogCommand = new AsyncRelayCommand(CloseAboutDialogAsync);
         OpenProjectHomepageCommand = new AsyncRelayCommand(OpenProjectHomepageAsync);
+        ToggleNavigationRailCommand = new AsyncRelayCommand(ToggleNavigationRailAsync);
         SendChatMessageCommand = new AsyncRelayCommand(SendChatMessageAsync, CanSendChatMessage, onError: HandleNonFatalCommandException);
         StopChatStreamingCommand = new AsyncRelayCommand(StopChatStreamingAsync, CanStopChatStreaming);
         ClearChatSessionCommand = new AsyncRelayCommand(ClearChatSessionAsync, onError: HandleNonFatalCommandException);

@@ -152,51 +152,52 @@
 
                     <Grid Grid.Row="1"
                           Margin="0,6,0,0">
-                        <DataGrid ItemsSource="{Binding ClientApiStatusRows}"
-                                  AutoGenerateColumns="False"
-                                  CanUserAddRows="False"
-                                  CanUserDeleteRows="False"
-                                  IsReadOnly="True"
-                                  HeadersVisibility="Column"
-                                  RowHeight="42"
-                                  MinHeight="240"
-                                  EnableRowVirtualization="True"
-                                  EnableColumnVirtualization="True"
-                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                  VirtualizingPanel.IsVirtualizing="True"
-                                  VirtualizingPanel.VirtualizationMode="Recycling">
-                            <DataGrid.Columns>
-                                <DataGridTemplateColumn Header="&#x5E94;&#x7528;" Width="190" MinWidth="160">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-                                                <TextBlock FontSize="12"
+                        <ItemsControl ItemsSource="{Binding ClientApiStatusRows}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,8,8"
+                                            Padding="12,10"
+                                            Background="#FBFDFF"
+                                            BorderBrush="#D9E6F7"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="8" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="6" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock FontSize="13"
                                                            FontWeight="SemiBold"
                                                            Foreground="{StaticResource TextBrush}"
                                                            TextTrimming="CharacterEllipsis"
                                                            ToolTip="{Binding Name}"
                                                            Text="{Binding Name}" />
-                                                <TextBlock Grid.Row="1"
-                                                           FontSize="10.2"
+                                                <TextBlock Margin="0,2,0,0"
+                                                           FontSize="10.6"
                                                            FontWeight="SemiBold"
                                                            Foreground="{StaticResource MutedBrush}"
                                                            TextTrimming="CharacterEllipsis"
                                                            ToolTip="{Binding Provider}"
                                                            Text="{Binding Provider}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="&#x72B6;&#x6001;" Width="126" MinWidth="118">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Border Padding="8,3"
-                                                    HorizontalAlignment="Left"
+                                            </StackPanel>
+                                            <Border Grid.Column="1"
+                                                    Padding="8,3"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Top"
                                                     Background="{Binding StatusBackground}"
                                                     BorderBrush="{Binding StatusForeground}"
                                                     BorderThickness="1"
@@ -208,45 +209,43 @@
                                                            ToolTip="{Binding AvailabilityText}"
                                                            Text="{Binding AvailabilityText}" />
                                             </Border>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="&#x5F53;&#x524D;&#x5165;&#x53E3;" Width="260" MinWidth="220">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Style="{StaticResource ApplicationCenterTagTextStyle}"
-                                                       Foreground="{StaticResource TextBrush}"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       ToolTip="{Binding EndpointText}"
-                                                       Text="{Binding EndpointText}" />
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="&#x63A5;&#x5165;&#x8DEF;&#x5F84;" Width="*" MinWidth="260">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
-                                                </Grid.RowDefinitions>
-                                                <TextBlock Foreground="{StaticResource TextBrush}"
+
+                                            <Border Grid.Row="2"
+                                                    Grid.ColumnSpan="2"
+                                                    Style="{StaticResource ApplicationCenterStateBorderStyle}">
+                                                <StackPanel>
+                                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                               Text="当前入口" />
+                                                    <TextBlock Margin="0,2,0,0"
+                                                               FontFamily="Cascadia Mono, Consolas"
+                                                               FontSize="11.2"
+                                                               Foreground="{StaticResource TextBrush}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding EndpointText}"
+                                                               Text="{Binding EndpointText}" />
+                                                </StackPanel>
+                                            </Border>
+
+                                            <StackPanel Grid.Row="4"
+                                                        Grid.Column="0"
+                                                        Margin="0,0,10,0">
+                                                <TextBlock FontSize="12"
+                                                           Foreground="{StaticResource TextBrush}"
+                                                           FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis"
                                                            ToolTip="{Binding StateText}"
                                                            Text="{Binding StateText}" />
-                                                <TextBlock Grid.Row="1"
+                                                <TextBlock Margin="0,2,0,0"
                                                            Style="{StaticResource SectionHintTextStyle}"
                                                            TextTrimming="CharacterEllipsis"
                                                            ToolTip="{Binding AccessDetailText}"
                                                            Text="{Binding AccessDetailText}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Header="Trace" Width="96" MinWidth="88">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Row="4"
+                                                        Grid.Column="1"
+                                                        Orientation="Horizontal"
+                                                        HorizontalAlignment="Right">
                                                 <Button Command="{Binding OpenRawTraceCommand}"
                                                         Style="{StaticResource ApplicationCenterActionButtonStyle}"
                                                         Margin="0,0,6,0"
@@ -259,11 +258,11 @@
                                                         Content="&#xE777;"
                                                         ToolTip="&#x8FD8;&#x539F;&#x9ED8;&#x8BA4;" />
                                             </StackPanel>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
                         <TextBlock HorizontalAlignment="Center"
                                    VerticalAlignment="Center"

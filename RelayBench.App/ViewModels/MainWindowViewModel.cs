@@ -48,6 +48,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string? _chatEditingMessageId;
 
     private bool _isBusy;
+    private bool _isNavigationRailCollapsed;
     private bool _isChatStreaming;
     private string _statusMessage = "准备就绪，随时可以开始诊断。";
     private string _chatInputText = string.Empty;
