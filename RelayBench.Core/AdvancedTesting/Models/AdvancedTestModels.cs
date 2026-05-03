@@ -12,7 +12,8 @@ public enum AdvancedTestCategory
     Stability,
     Concurrency,
     Rag,
-    ModelConsistency
+    ModelConsistency,
+    SecurityRedTeam
 }
 
 public enum AdvancedTestStatus
@@ -54,6 +55,13 @@ public enum AdvancedErrorKind
     UsageMissing,
     UsageSuspicious,
     ModelMismatchSuspected,
+    PromptInjectionSuspected,
+    SystemPromptLeak,
+    SensitiveDataLeak,
+    UnauthorizedToolCall,
+    RagPoisoningSuspected,
+    UnsafeUrlOrCommand,
+    JailbreakSuspected,
     Unknown
 }
 

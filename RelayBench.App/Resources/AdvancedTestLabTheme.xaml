@@ -35,6 +35,27 @@
         <Setter Property="Background" Value="#F8FAFC" />
     </Style>
 
+    <Style x:Key="AdvancedLabWarningStripStyle"
+           TargetType="Border"
+           BasedOn="{StaticResource MotionPanelStyle}">
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="MaxHeight" Value="56" />
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="Background" Value="#FFF7ED" />
+        <Setter Property="BorderBrush" Value="#FED7AA" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Effect" Value="{x:Null}" />
+    </Style>
+
+    <Style x:Key="AdvancedLabRiskPillStyle" TargetType="Border">
+        <Setter Property="Padding" Value="9,4" />
+        <Setter Property="CornerRadius" Value="999" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="BorderBrush" Value="#CBD5E1" />
+        <Setter Property="Background" Value="#F8FAFC" />
+    </Style>
+
     <Style x:Key="AdvancedLabIconButtonStyle"
            TargetType="Button"
            BasedOn="{StaticResource WorkbenchIconButtonStyle}">

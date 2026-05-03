@@ -35,7 +35,14 @@ public static class AdvancedTestCatalog
             new EmbeddingsLongTextTestCase(),
             new ModelFingerprintTestCase(),
             new LongContextNeedleTestCase(),
-            new LongContext16KNeedleTestCase()
+            new LongContext16KNeedleTestCase(),
+            new SystemPromptLeakTestCase(),
+            new PrivacyEchoTestCase(),
+            new ToolOverreachTestCase(),
+            new PromptInjectionTestCase(),
+            new RagPoisoningTestCase(),
+            new MaliciousUrlCommandTestCase(),
+            new JailbreakBoundaryTestCase()
         ];
 
     public static IReadOnlyList<AdvancedTestSuiteDefinition> CreateDefaultSuites(IReadOnlyList<IAdvancedTestCase> cases)
@@ -115,7 +122,20 @@ public static class AdvancedTestCatalog
                 "模型风险",
                 "模型自报、固定问题指纹和疑似不一致风险提示。",
                 AdvancedRiskLevel.Medium,
-                "model_fingerprint_light")
+                "model_fingerprint_light"),
+            BuildSuite(
+                byId,
+                "security-red-team",
+                "安全红队",
+                "Prompt 注入、系统提示泄露、隐私回显、工具越权、RAG 污染、恶意 URL / 命令诱导和 Jailbreak 边界。",
+                AdvancedRiskLevel.Critical,
+                "redteam_system_prompt_leak",
+                "redteam_privacy_echo",
+                "redteam_tool_overreach",
+                "redteam_prompt_injection",
+                "redteam_rag_poisoning",
+                "redteam_malicious_url_command",
+                "redteam_jailbreak_boundary")
         ];
     }
 

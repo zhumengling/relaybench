@@ -144,6 +144,7 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
                 }
 
                 RefreshVisibleCases();
+                OnPropertyChanged(nameof(IsSecuritySuiteActive));
             }
         }
     }
@@ -305,6 +306,67 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
     }
 
     public bool HasAnyResult => TestCases.Any(static item => item.Status is AdvancedTestStatus.Passed or AdvancedTestStatus.Partial or AdvancedTestStatus.Failed);
+
+    public bool IsSecuritySuiteActive
+        => string.Equals(SelectedSuite?.SuiteId, "security-red-team", StringComparison.OrdinalIgnoreCase);
+
+    public bool HasRedTeamResult
+        => TestCases.Any(static item =>
+            item.Definition.Category == AdvancedTestCategory.SecurityRedTeam &&
+            item.Status is AdvancedTestStatus.Passed or AdvancedTestStatus.Partial or AdvancedTestStatus.Failed);
+
+    public string RedTeamRiskText
+    {
+        get
+        {
+            var results = GetRedTeamResultItems();
+            if (results.Length == 0)
+            {
+                return "未运行";
+            }
+
+            if (results.Any(static item => item.Status == AdvancedTestStatus.Failed && item.RiskLevel == AdvancedRiskLevel.Critical))
+            {
+                return "严重";
+            }
+
+            if (results.Any(static item => item.Status == AdvancedTestStatus.Failed))
+            {
+                return "高";
+            }
+
+            return results.Any(static item => item.Status == AdvancedTestStatus.Partial)
+                ? "中"
+                : "低";
+        }
+    }
+
+    public string RedTeamRiskBrush
+        => RedTeamRiskText switch
+        {
+            "严重" => "#7F1D1D",
+            "高" => "#DC2626",
+            "中" => "#D97706",
+            "低" => "#059669",
+            _ => "#64748B"
+        };
+
+    public string RedTeamRiskDetail
+    {
+        get
+        {
+            var results = GetRedTeamResultItems();
+            if (results.Length == 0)
+            {
+                return "红队风险未运行。";
+            }
+
+            var passed = results.Count(static item => item.Status == AdvancedTestStatus.Passed);
+            var partial = results.Count(static item => item.Status == AdvancedTestStatus.Partial);
+            var failed = results.Count(static item => item.Status == AdvancedTestStatus.Failed);
+            return $"红队风险：通过 {passed}，复核 {partial}，失败 {failed}。";
+        }
+    }
 
     public bool CanStart => !IsRunning && BuildConfiguredEndpoint().IsComplete;
 
@@ -662,6 +724,7 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
         {
             builder.AppendLine($"总分: {_lastResult.Scores.Overall:0.0}");
             builder.AppendLine($"Codex: {_lastResult.Scores.CodexFit:0.0}, Agent: {_lastResult.Scores.AgentFit:0.0}, RAG: {_lastResult.Scores.RagFit:0.0}, 聊天: {_lastResult.Scores.ChatExperience:0.0}");
+            builder.AppendLine($"红队风险: {RedTeamRiskText}，{RedTeamRiskDetail}");
         }
 
         foreach (var item in TestCases.Where(static item => item.Status is AdvancedTestStatus.Passed or AdvancedTestStatus.Partial or AdvancedTestStatus.Failed))
@@ -708,11 +771,22 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
     private void OnResultStateChanged()
     {
         OnPropertyChanged(nameof(HasAnyResult));
+        OnPropertyChanged(nameof(HasRedTeamResult));
+        OnPropertyChanged(nameof(RedTeamRiskText));
+        OnPropertyChanged(nameof(RedTeamRiskBrush));
+        OnPropertyChanged(nameof(RedTeamRiskDetail));
         OnPropertyChanged(nameof(CanRetryFailed));
         OnPropertyChanged(nameof(CanExportReport));
         OnPropertyChanged(nameof(SelectedCaseCount));
         RefreshCommands();
     }
+
+    private AdvancedTestCaseViewModel[] GetRedTeamResultItems()
+        => TestCases
+            .Where(static item =>
+                item.Definition.Category == AdvancedTestCategory.SecurityRedTeam &&
+                item.Status is AdvancedTestStatus.Passed or AdvancedTestStatus.Partial or AdvancedTestStatus.Failed)
+            .ToArray();
 
     private void RefreshCommands()
     {

@@ -26,6 +26,8 @@ public sealed class AdvancedReportExporter
         builder.AppendLine($"- RAG Fit: {result.Scores.RagFit:0.0}");
         builder.AppendLine($"- Chat Experience: {result.Scores.ChatExperience:0.0}");
         builder.AppendLine();
+        AppendRedTeamRisk(builder, result);
+        builder.AppendLine();
         builder.AppendLine("## Results");
         builder.AppendLine();
         builder.AppendLine("| Test | Status | Score | Risk | Error | Summary |");
@@ -55,4 +57,40 @@ public sealed class AdvancedReportExporter
 
     private static string Escape(string value)
         => value.Replace("|", "\\|").Replace("\r", " ").Replace("\n", " ");
+
+    private static void AppendRedTeamRisk(StringBuilder builder, AdvancedTestRunResult result)
+    {
+        var redTeamResults = result.Results
+            .Where(static item => item.Category == AdvancedTestCategory.SecurityRedTeam)
+            .ToArray();
+        if (redTeamResults.Length == 0)
+        {
+            builder.AppendLine("## Red Team Risk");
+            builder.AppendLine();
+            builder.AppendLine("- Status: Not run");
+            return;
+        }
+
+        var failed = redTeamResults.Where(static item => item.Status == AdvancedTestStatus.Failed).ToArray();
+        var partial = redTeamResults.Where(static item => item.Status == AdvancedTestStatus.Partial).ToArray();
+        var passed = redTeamResults.Count(static item => item.Status == AdvancedTestStatus.Passed);
+        var status = failed.Any(static item => item.RiskLevel == AdvancedRiskLevel.Critical)
+            ? "Critical"
+            : failed.Length > 0
+                ? "High"
+                : partial.Length > 0
+                    ? "Medium"
+                    : "Low";
+
+        builder.AppendLine("## Red Team Risk");
+        builder.AppendLine();
+        builder.AppendLine($"- Status: {status}");
+        builder.AppendLine($"- Passed: {passed}");
+        builder.AppendLine($"- Partial: {partial.Length}");
+        builder.AppendLine($"- Failed: {failed.Length}");
+        if (failed.Length > 0)
+        {
+            builder.AppendLine($"- Failures: {Escape(string.Join(", ", failed.Select(static item => item.DisplayName)))}");
+        }
+    }
 }

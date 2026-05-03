@@ -49,6 +49,8 @@ public sealed partial class SensitiveDataRedactor : ISensitiveDataRedactor
 
         var redacted = RedactAuthorizationRegex().Replace(value, "$1***");
         redacted = RedactKeyValueRegex().Replace(redacted, "$1***");
+        redacted = RedactRedTeamKeyRegex().Replace(redacted, "sk-rb-redteam-***");
+        redacted = RedactRedTeamCanaryRegex().Replace(redacted, "RB-SEC-CANARY-***");
         redacted = RedactUrlQuery(redacted);
         redacted = TryRedactJson(redacted);
         return redacted;
@@ -181,4 +183,10 @@ public sealed partial class SensitiveDataRedactor : ISensitiveDataRedactor
 
     [GeneratedRegex(@"(?i)\b((?:api[_-]?key|access[_-]?token|token|secret|password)\s*[:=]\s*)['""]?[^'""\s,;&]+")]
     private static partial Regex RedactKeyValueRegex();
+
+    [GeneratedRegex(@"(?i)\bsk-rb-redteam-[A-Za-z0-9_-]+")]
+    private static partial Regex RedactRedTeamKeyRegex();
+
+    [GeneratedRegex(@"(?i)\bRB-SEC-CANARY-[A-Za-z0-9_-]+")]
+    private static partial Regex RedactRedTeamCanaryRegex();
 }

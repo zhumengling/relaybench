@@ -247,6 +247,7 @@
                   MinHeight="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="120" />
                 </Grid.RowDefinitions>
@@ -268,6 +269,19 @@
                         <StackPanel Grid.Column="1"
                                     MinWidth="210"
                                     VerticalAlignment="Center">
+                            <Border Margin="0,0,0,6"
+                                    HorizontalAlignment="Right"
+                                    Style="{StaticResource AdvancedLabRiskPillStyle}"
+                                    Visibility="{Binding HasRedTeamResult, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock FontSize="11"
+                                           TextWrapping="NoWrap">
+                                    <Run Foreground="{StaticResource MutedBrush}"
+                                         Text="红队风险 " />
+                                    <Run FontWeight="SemiBold"
+                                         Foreground="{Binding RedTeamRiskBrush}"
+                                         Text="{Binding RedTeamRiskText, Mode=OneWay}" />
+                                </TextBlock>
+                            </Border>
                             <TextBlock HorizontalAlignment="Right"
                                        Foreground="{StaticResource MutedBrush}"
                                        FontSize="11"
@@ -281,6 +295,33 @@
                 </Border>
 
                 <Border Grid.Row="1"
+                        Margin="0,8,0,0"
+                        Style="{StaticResource AdvancedLabWarningStripStyle}"
+                        infra:MotionAssist.LoadedOffsetY="6"
+                        infra:MotionAssist.TransitionDurationMs="160"
+                        infra:MotionAssist.UseVisibilityTransition="True"
+                        Visibility="{Binding IsSecuritySuiteActive, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="15"
+                                   Foreground="#C2410C"
+                                   Text="&#xE7BA;" />
+                        <TextBlock Grid.Column="2"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Foreground="#9A3412"
+                                   TextWrapping="Wrap"
+                                   Text="安全红队只使用合成 canary，不会执行工具、访问 URL 或运行命令。结果用于风险探测，不等同于安全审计结论。" />
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="2"
                         Margin="0,8,0,0"
                         Padding="0"
                         Style="{StaticResource AdvancedLabPanelStyle}">
@@ -356,7 +397,7 @@
                     </DataGrid>
                 </Border>
 
-                <Border Grid.Row="2"
+                <Border Grid.Row="3"
                         Margin="0,8,0,0"
                         Style="{StaticResource AdvancedLabSoftPanelStyle}">
                     <Grid>
