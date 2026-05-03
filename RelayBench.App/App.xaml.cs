@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 using RelayBench.App.Infrastructure;
@@ -9,6 +10,9 @@ namespace RelayBench.App;
 public partial class App : Application
 {
     private static string StartupLogPath => RelayBenchPaths.StartupLogPath;
+    private Mutex? _singleInstanceMutex;
+    private SingleInstanceActivationService? _singleInstanceActivationService;
+    private bool _ownsSingleInstanceMutex;
 
     public App()
     {
@@ -19,6 +23,15 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (!TryBecomePrimaryInstance())
+        {
+            _ = SingleInstanceActivationService.TrySendActivationRequestAsync(TimeSpan.FromSeconds(2))
+                .GetAwaiter()
+                .GetResult();
+            Shutdown(0);
+            return;
+        }
+
         ResetStartupLog();
         WriteStartupLog("应用启动开始。");
         WriteStartupLog($"应用目录：{AppContext.BaseDirectory}");
@@ -32,6 +45,7 @@ public partial class App : Application
             ShutdownMode = ShutdownMode.OnMainWindowClose;
             MainWindow = new MainWindow();
             MainWindow.Show();
+            StartSingleInstanceActivationService();
 
             WriteStartupLog("主窗口已创建并显示。");
         }
@@ -50,7 +64,80 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         WriteStartupLog($"应用退出。Code={e.ApplicationExitCode}");
+        DisposeSingleInstanceResources();
         base.OnExit(e);
+    }
+
+    private bool TryBecomePrimaryInstance()
+    {
+        try
+        {
+            _singleInstanceMutex = new Mutex(
+                initiallyOwned: true,
+                SingleInstanceActivationService.MutexName,
+                out var createdNew);
+            _ownsSingleInstanceMutex = createdNew;
+            if (createdNew)
+            {
+                return true;
+            }
+
+            _singleInstanceMutex.Dispose();
+            _singleInstanceMutex = null;
+            return false;
+        }
+        catch (Exception ex)
+        {
+            TryWriteStartupLog(path =>
+            {
+                EnsureStartupLogDirectory(path);
+                File.AppendAllText(
+                    path,
+                    $"[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}] Single instance guard failed, continuing startup.{Environment.NewLine}{ex}{Environment.NewLine}",
+                    new UTF8Encoding(false));
+            });
+            return true;
+        }
+    }
+
+    private void StartSingleInstanceActivationService()
+    {
+        _singleInstanceActivationService = new SingleInstanceActivationService(() =>
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (MainWindow is MainWindow mainWindow)
+                {
+                    mainWindow.RestoreFromExternalActivation();
+                }
+            });
+        });
+        _singleInstanceActivationService.Start();
+    }
+
+    private void DisposeSingleInstanceResources()
+    {
+        _singleInstanceActivationService?.Dispose();
+        _singleInstanceActivationService = null;
+        if (_singleInstanceMutex is null)
+        {
+            return;
+        }
+
+        if (_ownsSingleInstanceMutex)
+        {
+            try
+            {
+                _singleInstanceMutex.ReleaseMutex();
+            }
+            catch (ApplicationException)
+            {
+            }
+        }
+
+        _singleInstanceMutex.Dispose();
+        _singleInstanceMutex = null;
+        _ownsSingleInstanceMutex = false;
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

@@ -474,6 +474,17 @@ public partial class MainWindow : Window
     public void ToggleFloatingTokenMeterFromUi()
         => ToggleFloatingTokenMeter();
 
+    public void RestoreFromExternalActivation()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(RestoreFromExternalActivation);
+            return;
+        }
+
+        RestoreMainWindow(showTransparentProxy: false);
+    }
+
     private void ShowFloatingTokenMeter()
     {
         if (_viewModel is null || !_viewModel.IsTransparentProxyRunning)
@@ -545,7 +556,11 @@ public partial class MainWindow : Window
         Opacity = 1d;
         MainShellBorder.Opacity = 1d;
         ClampWindowToCurrentWorkArea();
+        var wasTopmost = Topmost;
+        Topmost = true;
+        Topmost = wasTopmost;
         Activate();
+        Focus();
     }
 
     private void ClampWindowToCurrentWorkArea()
