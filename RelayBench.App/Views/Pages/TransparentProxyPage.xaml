@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:infra="clr-namespace:RelayBench.App.Infrastructure"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             PreviewMouseDown="TransparentProxyPageRoot_OnPreviewMouseDown"
              Style="{StaticResource MotionPageRootStyle}"
              mc:Ignorable="d">
     <UserControl.Resources>
@@ -171,6 +172,24 @@
                     <Setter Property="Foreground" Value="#0F62FE" />
                 </DataTrigger>
             </Style.Triggers>
+        </Style>
+
+        <Style x:Key="GatewayDrawerMenuGlyphStyle" TargetType="TextBlock">
+            <Setter Property="Width" Value="20" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="LineHeight" Value="16" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        </Style>
+
+        <Style x:Key="GatewayDrawerMenuTextStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="4,0,2,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LineHeight" Value="16" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
         </Style>
 
         <Style x:Key="GatewayAccordionPanelStyle"
@@ -420,6 +439,7 @@
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
+                    x:Name="TransparentProxySettingsDrawerHost"
                     Style="{StaticResource GatewaySettingsDrawerPanelStyle}">
                 <Grid MinHeight="0">
                     <Grid.RowDefinitions>
@@ -479,17 +499,26 @@
                                     Tag="{Binding IsTransparentProxyListenSettingsOpen}"
                                     Style="{StaticResource GatewayDrawerMenuButtonStyle}"
                                     ToolTip="展开或收起监听设置">
-                                <DockPanel LastChildFill="True">
+                                <DockPanel LastChildFill="False"
+                                           VerticalAlignment="Center">
                                     <TextBlock DockPanel.Dock="Left"
                                                Width="20"
                                                FontFamily="Segoe MDL2 Assets"
                                                FontSize="13"
+                                               LineHeight="16"
+                                               TextAlignment="Center"
+                                               VerticalAlignment="Center"
                                                Text="&#xE968;" />
-                                    <TextBlock FontWeight="SemiBold"
+                                    <TextBlock VerticalAlignment="Center"
+                                               FontWeight="SemiBold"
+                                               LineHeight="16"
                                                Text="监听设置" />
                                     <TextBlock DockPanel.Dock="Right"
                                                FontFamily="Segoe MDL2 Assets"
                                                FontSize="11"
+                                               LineHeight="16"
+                                               TextAlignment="Center"
+                                               VerticalAlignment="Center"
                                                Text="&#xE70D;" />
                                 </DockPanel>
                             </Button>
@@ -590,17 +619,26 @@
                                     Tag="{Binding IsTransparentProxyProviderSettingsOpen}"
                                     Style="{StaticResource GatewayDrawerMenuButtonStyle}"
                                     ToolTip="展开或收起提供商">
-                                <DockPanel LastChildFill="True">
+                                <DockPanel LastChildFill="False"
+                                           VerticalAlignment="Center">
                                     <TextBlock DockPanel.Dock="Left"
                                                Width="20"
                                                FontFamily="Segoe MDL2 Assets"
                                                FontSize="13"
+                                               LineHeight="16"
+                                               TextAlignment="Center"
+                                               VerticalAlignment="Center"
                                                Text="&#xE774;" />
-                                    <TextBlock FontWeight="SemiBold"
+                                    <TextBlock VerticalAlignment="Center"
+                                               FontWeight="SemiBold"
+                                               LineHeight="16"
                                                Text="提供商" />
                                     <TextBlock DockPanel.Dock="Right"
                                                FontFamily="Segoe MDL2 Assets"
                                                FontSize="11"
+                                               LineHeight="16"
+                                               TextAlignment="Center"
+                                               VerticalAlignment="Center"
                                                Text="&#xE70D;" />
                                 </DockPanel>
                             </Button>
