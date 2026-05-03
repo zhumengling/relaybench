@@ -5,4 +5,13 @@ public sealed record ChatMessageMetrics(
     TimeSpan? FirstTokenLatency,
     int OutputCharacterCount,
     double? CharactersPerSecond,
-    string WireApi);
+    string WireApi)
+{
+    public int OutputTokenCount { get; init; }
+
+    public bool OutputTokenCountEstimated { get; init; }
+
+    public TimeSpan? TokenThroughputWindow { get; init; }
+
+    public double? TokensPerSecond { get; init; }
+}

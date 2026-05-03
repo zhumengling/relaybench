@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using RelayBench.Core.Models;
+using RelayBench.Core.Support;
 
 namespace RelayBench.Core.Services;
 
@@ -31,7 +32,7 @@ public sealed class ChatConversationService
         {
             var stopwatch = Stopwatch.StartNew();
             TimeSpan? firstTokenLatency = null;
-            var outputCharacters = 0;
+            StringBuilder outputBuilder = new();
 
             using var client = CreateClient(baseUri, normalizedOptions);
             var path = BuildApiPath(baseUri, ToEndpointName(wireApi));
@@ -57,7 +58,7 @@ public sealed class ChatConversationService
                     failureUpdate = new ChatStreamUpdate(
                         ChatStreamUpdateKind.Failed,
                         null,
-                        BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
+                        BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi),
                         BuildHttpFailureMessage((int)response.StatusCode, response.ReasonPhrase, body));
                 }
 
@@ -73,7 +74,7 @@ public sealed class ChatConversationService
                 failureUpdate = new ChatStreamUpdate(
                     ChatStreamUpdateKind.Failed,
                     null,
-                    BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
+                    BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi),
                     BuildExceptionFailureMessage(ex));
             }
 
@@ -107,7 +108,7 @@ public sealed class ChatConversationService
                         failureUpdate = new ChatStreamUpdate(
                             ChatStreamUpdateKind.Failed,
                             null,
-                            BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
+                            BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi),
                             BuildExceptionFailureMessage(ex));
                         break;
                     }
@@ -149,14 +150,14 @@ public sealed class ChatConversationService
                     }
 
                     firstTokenLatency ??= stopwatch.Elapsed;
-                    outputCharacters += delta.Length;
+                    outputBuilder.Append(delta);
                     yield return new ChatStreamUpdate(ChatStreamUpdateKind.Delta, delta, null, null);
                 }
             }
 
             if (failureUpdate is not null)
             {
-                if (outputCharacters > 0)
+                if (outputBuilder.Length > 0)
                 {
                     yield return failureUpdate;
                     yield break;
@@ -172,10 +173,10 @@ public sealed class ChatConversationService
                 failureUpdate = new ChatStreamUpdate(
                     ChatStreamUpdateKind.Failed,
                     null,
-                    BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
+                    BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi),
                     "stream ended before a terminal event.");
 
-                if (outputCharacters > 0)
+                if (outputBuilder.Length > 0)
                 {
                     yield return failureUpdate;
                     yield break;
@@ -189,7 +190,7 @@ public sealed class ChatConversationService
             yield return new ChatStreamUpdate(
                 ChatStreamUpdateKind.Completed,
                 null,
-                BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputCharacters, wireApi),
+                BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi),
                 null);
             yield break;
         }
@@ -365,13 +366,53 @@ public sealed class ChatConversationService
     private static ChatMessageMetrics BuildMetrics(
         TimeSpan elapsed,
         TimeSpan? firstTokenLatency,
-        int outputCharacters,
+        string outputText,
         string wireApi)
     {
+        var outputCharacters = outputText.Length;
         double? charactersPerSecond = elapsed.TotalSeconds > 0
             ? outputCharacters / elapsed.TotalSeconds
             : null;
-        return new ChatMessageMetrics(elapsed, firstTokenLatency, outputCharacters, charactersPerSecond, wireApi);
+        var outputTokenCount = TokenCountEstimator.EstimateOutputTokens(outputText);
+        var generationDuration = firstTokenLatency is { } ttft && elapsed > ttft
+            ? elapsed - ttft
+            : elapsed;
+        var throughputWindow = ResolveThroughputWindow(elapsed, generationDuration, outputTokenCount);
+        var tokensPerSecond = outputTokenCount > 0 && throughputWindow > TimeSpan.Zero
+            ? outputTokenCount / throughputWindow.TotalSeconds
+            : (double?)null;
+
+        return new ChatMessageMetrics(elapsed, firstTokenLatency, outputCharacters, charactersPerSecond, wireApi)
+        {
+            OutputTokenCount = outputTokenCount,
+            OutputTokenCountEstimated = outputTokenCount > 0,
+            TokenThroughputWindow = throughputWindow > TimeSpan.Zero ? throughputWindow : null,
+            TokensPerSecond = tokensPerSecond
+        };
+    }
+
+    private static TimeSpan ResolveThroughputWindow(
+        TimeSpan elapsed,
+        TimeSpan generationDuration,
+        int outputTokenCount)
+    {
+        if (generationDuration <= TimeSpan.Zero || elapsed <= TimeSpan.Zero || elapsed <= generationDuration)
+        {
+            return generationDuration;
+        }
+
+        if (generationDuration < TimeSpan.FromMilliseconds(20))
+        {
+            return elapsed;
+        }
+
+        if (outputTokenCount is > 0 and < 8 &&
+            generationDuration < TimeSpan.FromMilliseconds(120))
+        {
+            return elapsed;
+        }
+
+        return generationDuration;
     }
 
     private static string BuildHttpFailureMessage(int statusCode, string? reasonPhrase, string body)

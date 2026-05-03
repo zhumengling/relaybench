@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using RelayBench.App.Infrastructure;
+using RelayBench.App.Services;
 using RelayBench.Core.Models;
 using RelayBench.Core.Services;
 
@@ -143,13 +144,7 @@ public sealed class ChatMessageViewModel : ObservableObject
                 return string.Empty;
             }
 
-            var ttft = Metrics.FirstTokenLatency is null
-                ? "TTFT --"
-                : $"TTFT {Metrics.FirstTokenLatency.Value.TotalMilliseconds:F0} ms";
-            var speed = Metrics.CharactersPerSecond is null
-                ? "-- chars/s"
-                : $"{Metrics.CharactersPerSecond.Value:F1} chars/s";
-            return $"{Metrics.WireApi} | {Metrics.Elapsed.TotalMilliseconds:F0} ms | {ttft} | {speed}";
+            return ChatMetricsSummaryFormatter.Format(Metrics);
         }
     }
 

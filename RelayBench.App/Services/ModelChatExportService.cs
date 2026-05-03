@@ -116,15 +116,7 @@ public sealed class ModelChatExportService
     }
 
     private static string BuildMetricsSummary(ChatMessageMetrics metrics)
-    {
-        var ttft = metrics.FirstTokenLatency is null
-            ? "TTFT --"
-            : $"TTFT {metrics.FirstTokenLatency.Value.TotalMilliseconds:F0} ms";
-        var speed = metrics.CharactersPerSecond is null
-            ? "-- chars/s"
-            : $"{metrics.CharactersPerSecond.Value:F1} chars/s";
-        return $"{metrics.WireApi} | {metrics.Elapsed.TotalMilliseconds:F0} ms | {ttft} | {speed}";
-    }
+        => ChatMetricsSummaryFormatter.Format(metrics);
 
     private static string ToRoleLabel(string role)
         => role switch

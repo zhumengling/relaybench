@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Windows;
 using Microsoft.Win32;
 using RelayBench.App.Infrastructure;
+using RelayBench.App.Services;
 using RelayBench.Core.Models;
 
 namespace RelayBench.App.ViewModels;
@@ -1004,13 +1005,7 @@ public sealed partial class MainWindowViewModel
             return;
         }
 
-        var ttft = metrics.FirstTokenLatency is null
-            ? "TTFT --"
-            : $"TTFT {metrics.FirstTokenLatency.Value.TotalMilliseconds:F0} ms";
-        var speed = metrics.CharactersPerSecond is null
-            ? "-- chars/s"
-            : $"{metrics.CharactersPerSecond.Value:F1} chars/s";
-        ChatMetricsSummary = $"{metrics.WireApi} | {metrics.Elapsed.TotalMilliseconds:F0} ms | {ttft} | {speed}";
+        ChatMetricsSummary = ChatMetricsSummaryFormatter.Format(metrics);
     }
 
     private void LoadChatSession()
