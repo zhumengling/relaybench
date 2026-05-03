@@ -261,6 +261,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand AddTransparentProxyRouteEditorItemCommand { get; }
 
+    public AsyncRelayCommand ToggleTransparentProxySettingsDrawerCommand { get; }
+
+    public AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?> OpenTransparentProxyRouteSettingsCommand { get; }
+
+    public AsyncRelayCommand<TransparentProxyRouteViewModel?> OpenTransparentProxyRuntimeRouteSettingsCommand { get; }
+
+    public AsyncRelayCommand CloseTransparentProxyRouteSettingsCommand { get; }
+
+    public AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?> FetchTransparentProxyRouteEditorItemModelsCommand { get; }
+
     public AsyncRelayCommand RemoveTransparentProxyRouteEditorItemCommand { get; }
 
     public AsyncRelayCommand MoveTransparentProxyRouteEditorItemUpCommand { get; }

@@ -136,7 +136,7 @@ public sealed class AppStateSnapshot
 
     public string TransparentProxyCacheTtlSecondsText { get; set; } = "60";
 
-    public bool TransparentProxyRewriteModel { get; set; } = true;
+    public bool TransparentProxyRewriteModel { get; set; }
 
     public List<RunHistoryEntry> HistoryEntries { get; set; } = [];
 

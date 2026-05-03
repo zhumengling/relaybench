@@ -152,6 +152,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RefreshTransparentProxyRoutesCommand = new AsyncRelayCommand(RefreshTransparentProxyRoutesFromWorkspaceAsync, onError: HandleNonFatalCommandException);
         ProbeTransparentProxyProtocolsCommand = new AsyncRelayCommand(ProbeTransparentProxyProtocolsAsync, CanRun, onError: HandleNonFatalCommandException);
         AddTransparentProxyRouteEditorItemCommand = new AsyncRelayCommand(AddTransparentProxyRouteEditorItemAsync, onError: HandleNonFatalCommandException);
+        ToggleTransparentProxySettingsDrawerCommand = new AsyncRelayCommand(ToggleTransparentProxySettingsDrawerAsync, onError: HandleNonFatalCommandException);
+        OpenTransparentProxyRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?>(OpenTransparentProxyRouteSettingsAsync, item => item is not null, onError: HandleNonFatalCommandException);
+        OpenTransparentProxyRuntimeRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteViewModel?>(OpenTransparentProxyRuntimeRouteSettingsAsync, route => route is not null, onError: HandleNonFatalCommandException);
+        CloseTransparentProxyRouteSettingsCommand = new AsyncRelayCommand(CloseTransparentProxyRouteSettingsAsync, onError: HandleNonFatalCommandException);
+        FetchTransparentProxyRouteEditorItemModelsCommand = new AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?>(FetchTransparentProxyRouteEditorItemModelsAsync, item => item is not null, onError: HandleNonFatalCommandException);
         RemoveTransparentProxyRouteEditorItemCommand = new AsyncRelayCommand(RemoveTransparentProxyRouteEditorItemAsync, () => SelectedTransparentProxyRouteEditorItem is not null, onError: HandleNonFatalCommandException);
         MoveTransparentProxyRouteEditorItemUpCommand = new AsyncRelayCommand(MoveTransparentProxyRouteEditorItemUpAsync, () => SelectedTransparentProxyRouteEditorItem is not null, onError: HandleNonFatalCommandException);
         MoveTransparentProxyRouteEditorItemDownCommand = new AsyncRelayCommand(MoveTransparentProxyRouteEditorItemDownAsync, () => SelectedTransparentProxyRouteEditorItem is not null, onError: HandleNonFatalCommandException);

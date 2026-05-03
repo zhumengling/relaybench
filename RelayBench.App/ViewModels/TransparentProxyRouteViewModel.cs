@@ -28,6 +28,9 @@ public sealed class TransparentProxyRouteViewModel : ObservableObject
         Name = route.Name;
         BaseUrl = route.BaseUrl;
         Model = route.Model;
+        Models = route.Models;
+        ConfiguredPriority = route.Priority;
+        Prefix = route.Prefix;
         ApiKeyPreview = BuildApiKeyPreview(route.ApiKey);
         ApplyProtocol(
             route.PreferredWireApi,
@@ -41,13 +44,19 @@ public sealed class TransparentProxyRouteViewModel : ObservableObject
 
     public int Priority { get; }
 
-    public string PriorityText => Priority <= 0 ? "-" : $"P{Priority}";
+    public int ConfiguredPriority { get; }
+
+    public string PriorityText => ConfiguredPriority > 0 ? $"P{ConfiguredPriority}" : (Priority <= 0 ? "-" : $"#{Priority}");
 
     public string Name { get; }
 
     public string BaseUrl { get; }
 
     public string Model { get; }
+
+    public IReadOnlyList<string> Models { get; }
+
+    public string Prefix { get; }
 
     public string ApiKeyPreview { get; }
 
@@ -106,6 +115,12 @@ public sealed class TransparentProxyRouteViewModel : ObservableObject
     }
 
     public string EndpointText => ProbeTraceRedactor.RedactUrl(BaseUrl);
+
+    public string ModelPoolText => Models.Count == 0 ? "pass-through" : $"{Models.Count} models";
+
+    public string ModelPoolToolTip => Models.Count == 0 ? "Pass through request model." : string.Join("\n", Models.Take(24));
+
+    public string PrefixText => string.IsNullOrWhiteSpace(Prefix) ? "-" : $"{Prefix}/";
 
     public string ModelText => string.IsNullOrWhiteSpace(Model) ? "使用请求模型" : Model;
 

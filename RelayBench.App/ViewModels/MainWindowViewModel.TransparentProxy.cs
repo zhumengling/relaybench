@@ -91,6 +91,24 @@ public sealed partial class MainWindowViewModel
         set => SetProperty(ref _transparentProxyRewriteModel, value);
     }
 
+    public bool IsTransparentProxySettingsDrawerOpen
+    {
+        get => _isTransparentProxySettingsDrawerOpen;
+        private set => SetProperty(ref _isTransparentProxySettingsDrawerOpen, value);
+    }
+
+    public bool IsTransparentProxyRouteSettingsOpen
+    {
+        get => _isTransparentProxyRouteSettingsOpen;
+        private set => SetProperty(ref _isTransparentProxyRouteSettingsOpen, value);
+    }
+
+    public TransparentProxyRouteEditorItemViewModel? TransparentProxyRouteSettingsItem
+    {
+        get => _transparentProxyRouteSettingsItem;
+        private set => SetProperty(ref _transparentProxyRouteSettingsItem, value);
+    }
+
     public bool IsTransparentProxyRunning
     {
         get => _isTransparentProxyRunning;
@@ -246,7 +264,7 @@ public sealed partial class MainWindowViewModel
             TransparentProxyEnableFallback,
             TransparentProxyEnableCache,
             ParseBoundedInt(TransparentProxyCacheTtlSecondsText, fallback: 60, min: 1, max: 3600),
-            TransparentProxyRewriteModel,
+            false,
             ProxyIgnoreTlsErrors,
             ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300));
 
@@ -294,7 +312,7 @@ public sealed partial class MainWindowViewModel
             IsEnabled = true,
             Name = $"路由 {index}",
             BaseUrl = string.Empty,
-            Model = ProxyModel,
+            ModelsText = string.Empty,
             ApiKey = string.Empty
         };
         AttachTransparentProxyRouteEditorItem(item);
@@ -302,6 +320,94 @@ public sealed partial class MainWindowViewModel
         SelectedTransparentProxyRouteEditorItem = item;
         UpdateTransparentProxyRoutesTextFromEditor();
         return Task.CompletedTask;
+    }
+
+    private Task ToggleTransparentProxySettingsDrawerAsync()
+    {
+        IsTransparentProxySettingsDrawerOpen = !IsTransparentProxySettingsDrawerOpen;
+        return Task.CompletedTask;
+    }
+
+    private Task OpenTransparentProxyRouteSettingsAsync(TransparentProxyRouteEditorItemViewModel? item)
+    {
+        if (item is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        SelectedTransparentProxyRouteEditorItem = item;
+        TransparentProxyRouteSettingsItem = item;
+        IsTransparentProxyRouteSettingsOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private Task OpenTransparentProxyRuntimeRouteSettingsAsync(TransparentProxyRouteViewModel? route)
+    {
+        if (route is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        var item = TransparentProxyRouteEditorItems.FirstOrDefault(editor =>
+            string.Equals(BuildTransparentProxyRouteId(editor.Name, editor.BaseUrl, editor.Prefix), route.Id, StringComparison.OrdinalIgnoreCase));
+        if (item is not null)
+        {
+            return OpenTransparentProxyRouteSettingsAsync(item);
+        }
+
+        TransparentProxyStatusSummary = "未找到可编辑的路由节点。";
+        return Task.CompletedTask;
+    }
+
+    private Task CloseTransparentProxyRouteSettingsAsync()
+    {
+        IsTransparentProxyRouteSettingsOpen = false;
+        TransparentProxyRouteSettingsItem = null;
+        UpdateTransparentProxyRoutesTextFromEditor();
+        SaveState();
+        return Task.CompletedTask;
+    }
+
+    private async Task FetchTransparentProxyRouteEditorItemModelsAsync(TransparentProxyRouteEditorItemViewModel? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(item.BaseUrl))
+        {
+            throw new InvalidOperationException("请先填写 Base URL。");
+        }
+
+        if (string.IsNullOrWhiteSpace(item.ApiKey))
+        {
+            throw new InvalidOperationException("请先填写 API Key。");
+        }
+
+        var settings = new ProxyEndpointSettings(
+            item.BaseUrl,
+            item.ApiKey,
+            item.Models.FirstOrDefault() ?? ProxyModel,
+            ProxyIgnoreTlsErrors,
+            ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300));
+        var catalog = await _proxyDiagnosticsService.FetchModelsAsync(settings);
+        await CacheProxyModelCatalogResultAsync(settings, catalog, CancellationToken.None);
+        if (!catalog.Success)
+        {
+            throw new InvalidOperationException(catalog.Error ?? catalog.Summary);
+        }
+
+        var models = catalog.ModelItems is { Count: > 0 }
+            ? catalog.ModelItems.Select(static model => model.Id)
+            : catalog.Models;
+        item.ModelsText = string.Join(Environment.NewLine, models
+            .Where(static model => !string.IsNullOrWhiteSpace(model))
+            .Select(static model => model.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase));
+        UpdateTransparentProxyRoutesTextFromEditor();
+        SaveState();
+        TransparentProxyProtocolSummary = $"模型列表：{item.Name} 已拉取 {item.Models.Count} 个模型。";
     }
 
     private Task RemoveTransparentProxyRouteEditorItemAsync()
@@ -384,6 +490,7 @@ public sealed partial class MainWindowViewModel
                     forceProbe: true,
                     fetchCatalogModels: true,
                     CancellationToken.None);
+                ApplyHydratedTransparentProxyRoutesToEditor(hydratedRoutes);
                 RefreshTransparentProxyRoutePreview();
                 if (IsTransparentProxyRunning)
                 {
@@ -439,6 +546,7 @@ public sealed partial class MainWindowViewModel
                 return;
             }
 
+            ApplyHydratedTransparentProxyRoutesToEditor(hydratedRoutes);
             RefreshTransparentProxyRoutePreview();
             if (IsTransparentProxyRunning)
             {
@@ -542,12 +650,13 @@ public sealed partial class MainWindowViewModel
             var modelNames = fetchCatalogModels
                 ? await FetchTransparentProxyRouteModelsAsync(route, cancellationToken)
                 : BuildTransparentProxyRouteProbeModels(route);
+            var hydratedRoute = route.WithModels(modelNames);
 
             TransparentProxyProtocolSnapshot? routeSnapshot = null;
             foreach (var model in modelNames)
             {
                 var snapshot = await ResolveTransparentProxyModelProtocolAsync(
-                    route,
+                    hydratedRoute,
                     model,
                     forceProbe,
                     cancellationToken);
@@ -565,7 +674,7 @@ public sealed partial class MainWindowViewModel
                     cachedModels++;
                 }
 
-                if (string.Equals(model, route.Model, StringComparison.OrdinalIgnoreCase) || routeSnapshot is null)
+                if (routeSnapshot is null)
                 {
                     routeSnapshot = snapshot;
                 }
@@ -574,12 +683,12 @@ public sealed partial class MainWindowViewModel
             if (routeSnapshot is null)
             {
                 skippedRoutes++;
-                hydratedRoutes.Add(route);
+                hydratedRoutes.Add(hydratedRoute);
                 continue;
             }
 
-            _transparentProxyProtocolSnapshots[route.Id] = routeSnapshot;
-            hydratedRoutes.Add(route.WithProtocol(
+            _transparentProxyProtocolSnapshots[hydratedRoute.Id] = routeSnapshot;
+            hydratedRoutes.Add(hydratedRoute.WithProtocol(
                 routeSnapshot.PreferredWireApi,
                 routeSnapshot.ChatCompletionsSupported,
                 routeSnapshot.ResponsesSupported,
@@ -602,7 +711,7 @@ public sealed partial class MainWindowViewModel
             return fallbackModels;
         }
 
-        var settings = BuildTransparentProxyEndpointSettings(route, route.Model);
+        var settings = BuildTransparentProxyEndpointSettings(route, route.Models.FirstOrDefault() ?? ProxyModel);
         var catalog = await _proxyDiagnosticsService.FetchModelsAsync(settings, cancellationToken);
         await CacheProxyModelCatalogResultAsync(settings, catalog, cancellationToken);
         if (!catalog.Success)
@@ -614,7 +723,7 @@ public sealed partial class MainWindowViewModel
             ? catalog.ModelItems.Select(static item => item.Id)
             : catalog.Models;
         return models
-            .Append(route.Model)
+            .Concat(route.Models)
             .Where(static model => !string.IsNullOrWhiteSpace(model))
             .Select(static model => model.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -622,9 +731,9 @@ public sealed partial class MainWindowViewModel
     }
 
     private static IReadOnlyList<string> BuildTransparentProxyRouteProbeModels(TransparentProxyRoute route)
-        => string.IsNullOrWhiteSpace(route.Model)
+        => route.Models.Count == 0
             ? Array.Empty<string>()
-            : [route.Model.Trim()];
+            : route.Models;
 
     private async Task<TransparentProxyProtocolSnapshot?> ResolveTransparentProxyModelProtocolAsync(
         TransparentProxyRoute route,
@@ -675,7 +784,7 @@ public sealed partial class MainWindowViewModel
         => new(
             route.BaseUrl,
             route.ApiKey,
-            model,
+            string.IsNullOrWhiteSpace(model) ? "relaybench-proxy" : model,
             ProxyIgnoreTlsErrors,
             ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300));
 
@@ -788,13 +897,54 @@ public sealed partial class MainWindowViewModel
         RefreshTransparentProxyRoutePreview();
     }
 
+    private void ApplyHydratedTransparentProxyRoutesToEditor(IReadOnlyList<TransparentProxyRoute> hydratedRoutes)
+    {
+        if (hydratedRoutes.Count == 0 || TransparentProxyRouteEditorItems.Count == 0)
+        {
+            return;
+        }
+
+        var byId = hydratedRoutes
+            .GroupBy(static route => route.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(static group => group.Key, static group => group.First(), StringComparer.OrdinalIgnoreCase);
+        var changed = false;
+        _isRefreshingTransparentProxyRouteEditor = true;
+        try
+        {
+            foreach (var item in TransparentProxyRouteEditorItems)
+            {
+                var id = BuildTransparentProxyRouteId(item.Name, item.BaseUrl, item.Prefix);
+                if (!byId.TryGetValue(id, out var route) || route.Models.Count == 0)
+                {
+                    continue;
+                }
+
+                var modelsText = string.Join(Environment.NewLine, route.Models);
+                if (!string.Equals(item.ModelsText, modelsText, StringComparison.Ordinal))
+                {
+                    item.ModelsText = modelsText;
+                    changed = true;
+                }
+            }
+        }
+        finally
+        {
+            _isRefreshingTransparentProxyRouteEditor = false;
+        }
+
+        if (changed)
+        {
+            UpdateTransparentProxyRoutesTextFromEditor();
+        }
+    }
+
     private string BuildTransparentProxyRoutesTextFromEditor()
         => string.Join(
             Environment.NewLine,
             TransparentProxyRouteEditorItems.Select(static item =>
             {
                 var prefix = item.IsEnabled ? string.Empty : "# ";
-                return $"{prefix}{EscapeRouteField(item.Name)} | {EscapeRouteField(item.BaseUrl)} | {EscapeRouteField(item.Model)} | {EscapeRouteField(item.ApiKey)}";
+                return $"{prefix}v2 | {EscapeRouteField(item.Name)} | {EscapeRouteField(item.BaseUrl)} | {EscapeRouteField(item.ApiKey)} | {EscapeRouteField(JoinRouteModels(item.Models))} | {EscapeRouteField(item.PriorityText)} | {EscapeRouteField(item.Prefix)} | {EscapeRouteField(SerializeHeaders(item.Headers))}";
             }));
 
     private static IReadOnlyList<TransparentProxyRouteEditorItemViewModel> ParseTransparentProxyRouteEditorItems(string text)
@@ -823,7 +973,20 @@ public sealed partial class MainWindowViewModel
             string baseUrl;
             string model;
             string apiKey;
-            if (parts.Length >= 4)
+            string priorityText = string.Empty;
+            string routePrefix = string.Empty;
+            string headersText = string.Empty;
+            if (parts.Length >= 8 && string.Equals(parts[0], "v2", StringComparison.OrdinalIgnoreCase))
+            {
+                name = parts[1];
+                baseUrl = parts[2];
+                apiKey = parts[3];
+                model = parts[4];
+                priorityText = parts[5];
+                routePrefix = parts[6];
+                headersText = parts[7].Replace(";", Environment.NewLine, StringComparison.Ordinal);
+            }
+            else if (parts.Length >= 4)
             {
                 name = parts[0];
                 baseUrl = parts[1];
@@ -854,7 +1017,10 @@ public sealed partial class MainWindowViewModel
                 IsEnabled = isEnabled,
                 Name = string.IsNullOrWhiteSpace(name) ? $"路由 {items.Count + 1}" : name,
                 BaseUrl = baseUrl,
-                Model = model,
+                ModelsText = model.Replace(",", Environment.NewLine, StringComparison.Ordinal),
+                PriorityText = priorityText,
+                Prefix = routePrefix,
+                HeadersText = headersText,
                 ApiKey = apiKey
             });
         }
@@ -912,7 +1078,20 @@ public sealed partial class MainWindowViewModel
             string baseUrl;
             string model;
             string apiKey;
-            if (parts.Length >= 4)
+            string priorityText = string.Empty;
+            string routePrefix = string.Empty;
+            string headersText = string.Empty;
+            if (parts.Length >= 8 && string.Equals(parts[0], "v2", StringComparison.OrdinalIgnoreCase))
+            {
+                name = parts[1];
+                baseUrl = parts[2];
+                apiKey = parts[3];
+                model = parts[4];
+                priorityText = parts[5];
+                routePrefix = parts[6];
+                headersText = parts[7].Replace(";", Environment.NewLine, StringComparison.Ordinal);
+            }
+            else if (parts.Length >= 4)
             {
                 name = parts[0];
                 baseUrl = parts[1];
@@ -944,12 +1123,17 @@ public sealed partial class MainWindowViewModel
             }
 
             name = string.IsNullOrWhiteSpace(name) ? $"路由 {routes.Count + 1}" : name;
+            var models = SplitRouteModels(model);
             routes.Add(new TransparentProxyRoute(
-                BuildTransparentProxyRouteId(name, baseUrl, model),
+                BuildTransparentProxyRouteId(name, baseUrl, routePrefix),
                 name,
                 baseUrl.Trim(),
                 apiKey.Trim(),
-                model.Trim()));
+                models.FirstOrDefault() ?? string.Empty,
+                models: models,
+                priority: ParseTransparentProxyPriority(priorityText),
+                prefix: routePrefix,
+                headers: ParseRouteHeaders(headersText)));
         }
 
         return routes;
@@ -1133,9 +1317,52 @@ public sealed partial class MainWindowViewModel
             .Replace("\n", " ", StringComparison.Ordinal)
             .Trim();
 
-    private static string BuildTransparentProxyRouteId(string name, string baseUrl, string model)
+    private static string JoinRouteModels(IEnumerable<string> models)
+        => string.Join(",", models
+            .Where(static model => !string.IsNullOrWhiteSpace(model))
+            .Select(static model => model.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase));
+
+    private static IReadOnlyList<string> SplitRouteModels(string value)
+        => (value ?? string.Empty)
+            .Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(static model => !string.IsNullOrWhiteSpace(model))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private static int ParseTransparentProxyPriority(string value)
+        => int.TryParse((value ?? string.Empty).Trim(), out var priority) ? Math.Max(0, priority) : 0;
+
+    private static string SerializeHeaders(IReadOnlyDictionary<string, string> headers)
+        => string.Join(";", headers
+            .Where(static pair => !string.IsNullOrWhiteSpace(pair.Key))
+            .Select(static pair => $"{pair.Key.Trim()}: {pair.Value?.Trim()}"));
+
+    private static IReadOnlyDictionary<string, string> ParseRouteHeaders(string value)
     {
-        var input = $"{name}|{baseUrl}|{model}";
+        Dictionary<string, string> headers = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in (value ?? string.Empty).Split([';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var separator = line.IndexOf(':');
+            if (separator <= 0)
+            {
+                continue;
+            }
+
+            var name = line[..separator].Trim();
+            var headerValue = line[(separator + 1)..].Trim();
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                headers[name] = headerValue;
+            }
+        }
+
+        return headers;
+    }
+
+    private static string BuildTransparentProxyRouteId(string name, string baseUrl, string routeKey)
+    {
+        var input = $"{name}|{baseUrl}|{routeKey}";
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexString(hash[..8]);
     }

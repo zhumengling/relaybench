@@ -365,8 +365,26 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 return;
             }
 
+            if (IsModelsListRequest(method, pathAndQuery))
+            {
+                Interlocked.Increment(ref _successRequests);
+                var modelsPayload = await BuildModelsListPayloadAsync(
+                    context.Request,
+                    client,
+                    config,
+                    pathAndQuery,
+                    serverCancellationToken);
+                await WriteJsonResponseAsync(context, 200, modelsPayload, serverCancellationToken);
+                var elapsed = GetElapsedMilliseconds(startedAt);
+                TrackLatency(elapsed);
+                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "INFO", method, pathAndQuery, "models", 200, elapsed, "已返回透明代理聚合模型列表。"));
+                PublishMetrics();
+                return;
+            }
+
             TransparentProxyUpstreamAttempt? lastAttempt = null;
-            var candidateRoutes = BuildCandidateRoutes(config);
+            var requestedModel = TryReadRequestModel(requestBody);
+            var candidateRoutes = BuildCandidateRoutes(config, requestedModel);
             if (candidateRoutes.Count == 0)
             {
                 Interlocked.Increment(ref _failedRequests);
@@ -580,65 +598,17 @@ public sealed class TransparentProxyService : IAsyncDisposable
         TransparentProxyServerConfig config,
         bool streamRequested)
     {
-        var rewrittenBody = MaybeRewriteModel(requestBody, route, config.RewriteModel);
-        if (!IsOpenAiChatCompletionsRequest(method, pathAndQuery) || rewrittenBody.Length == 0)
-        {
-            var inferredWireApi = InferWireApiFromPath(pathAndQuery);
-            return
-            [
-                new TransparentProxyPreparedRequest(
-                    inferredWireApi,
-                    BuildUpstreamUrl(route.BaseUrl, pathAndQuery),
-                    rewrittenBody,
-                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-                    false,
-                    ResolveRequestModel(rewrittenBody, route))
-            ];
-        }
-
-        var relativePath = ExtractRelativePath(pathAndQuery);
-        var query = ExtractQuery(pathAndQuery);
-        var requestBodyText = Encoding.UTF8.GetString(rewrittenBody);
-        List<TransparentProxyPreparedRequest> preparedRequests = [];
-
-        foreach (var wireApi in BuildWireApiAttempts(route))
-        {
-            try
-            {
-                var prepared = AdvancedWireRequestBuilder.PreparePostJson(
-                    relativePath,
-                    requestBodyText,
-                    wireApi,
-                    streamRequested);
-                var upstreamPath = string.IsNullOrWhiteSpace(query)
-                    ? prepared.RelativePath
-                    : $"{prepared.RelativePath}{query}";
-                preparedRequests.Add(new TransparentProxyPreparedRequest(
-                    prepared.WireApi,
-                    BuildUpstreamUrl(route.BaseUrl, upstreamPath),
-                    Encoding.UTF8.GetBytes(prepared.RequestBody),
-                    prepared.ExtraHeaders,
-                    !string.Equals(prepared.WireApi, ProxyWireApiProbeService.ChatCompletionsWireApi, StringComparison.Ordinal),
-                    ResolveRequestModel(Encoding.UTF8.GetBytes(prepared.RequestBody), route)));
-            }
-            catch
-            {
-                if (preparedRequests.Count == 0)
-                {
-                    preparedRequests.Add(new TransparentProxyPreparedRequest(
-                        ProxyWireApiProbeService.ChatCompletionsWireApi,
-                        BuildUpstreamUrl(route.BaseUrl, pathAndQuery),
-                        rewrittenBody,
-                        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-                        false,
-                        ResolveRequestModel(rewrittenBody, route)));
-                }
-
-                break;
-            }
-        }
-
-        return preparedRequests;
+        var directBody = ApplyExplicitPrefixModelSelection(requestBody, route);
+        return
+        [
+            new TransparentProxyPreparedRequest(
+                InferWireApiFromPath(pathAndQuery),
+                BuildUpstreamUrl(route.BaseUrl, pathAndQuery),
+                directBody,
+                route.Headers,
+                false,
+                TryReadRequestModel(directBody) ?? string.Empty)
+        ];
     }
 
     private static IReadOnlyList<string> BuildWireApiAttempts(TransparentProxyRoute route)
@@ -1107,11 +1077,37 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
     }
 
-    private IReadOnlyList<TransparentProxyRoute> BuildCandidateRoutes(TransparentProxyServerConfig config)
+    private static bool CanRouteServeModel(TransparentProxyRoute route, string? requestedModel)
+    {
+        var model = requestedModel?.Trim();
+        if (string.IsNullOrWhiteSpace(model))
+        {
+            return true;
+        }
+
+        var prefix = route.Prefix.Trim().Trim('/');
+        if (!string.IsNullOrWhiteSpace(prefix) &&
+            model.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase))
+        {
+            model = model[(prefix.Length + 1)..];
+            return route.Models.Count == 0 ||
+                   route.Models.Contains(model, StringComparer.OrdinalIgnoreCase);
+        }
+
+        return route.Models.Count == 0 ||
+               route.Models.Contains(model, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private IReadOnlyList<TransparentProxyRoute> BuildCandidateRoutes(
+        TransparentProxyServerConfig config,
+        string? requestedModel)
     {
         if (!config.EnableFallback || config.Routes.Count <= 1)
         {
-            return config.Routes.Take(1).ToArray();
+            return config.Routes
+                .Where(route => CanRouteServeModel(route, requestedModel))
+                .Take(1)
+                .ToArray();
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -1121,10 +1117,15 @@ public sealed class TransparentProxyService : IAsyncDisposable
             for (var index = 0; index < config.Routes.Count; index++)
             {
                 var route = config.Routes[index];
+                if (!CanRouteServeModel(route, requestedModel))
+                {
+                    continue;
+                }
+
                 if (!_routeStates.TryGetValue(route.Id, out var state) ||
                     state.IsCircuitAvailable(now, CircuitTimeoutSeconds))
                 {
-                    available.Add((route, index, CalculateRouteScheduleScore(state, index)));
+                    available.Add((route, index, CalculateRouteScheduleScore(state, index, route.Priority)));
                 }
             }
 
@@ -1136,9 +1137,12 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
     }
 
-    private static double CalculateRouteScheduleScore(TransparentProxyRouteRuntimeState? state, int priority)
+    private static double CalculateRouteScheduleScore(
+        TransparentProxyRouteRuntimeState? state,
+        int routeIndex,
+        int configuredPriority)
     {
-        var score = priority * 8d;
+        var score = routeIndex * 8d - Math.Max(0, configuredPriority) * 32d;
         if (state is null || state.Sent <= 0)
         {
             return score;
@@ -1418,9 +1422,9 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
     }
 
-    private static byte[] MaybeRewriteModel(byte[] requestBody, TransparentProxyRoute route, bool rewriteModel)
+    private static byte[] ApplyExplicitPrefixModelSelection(byte[] requestBody, TransparentProxyRoute route)
     {
-        if (!rewriteModel || requestBody.Length == 0 || string.IsNullOrWhiteSpace(route.Model))
+        if (requestBody.Length == 0 || string.IsNullOrWhiteSpace(route.Prefix))
         {
             return requestBody;
         }
@@ -1433,12 +1437,40 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 return requestBody;
             }
 
-            obj["model"] = route.Model;
+            var model = obj.TryGetPropertyValue("model", out var modelNode)
+                ? modelNode?.GetValue<string>()
+                : null;
+            var prefix = route.Prefix.Trim().Trim('/');
+            if (string.IsNullOrWhiteSpace(model) ||
+                !model.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase))
+            {
+                return requestBody;
+            }
+
+            obj["model"] = model[(prefix.Length + 1)..];
             return JsonSerializer.SerializeToUtf8Bytes(obj);
         }
         catch
         {
             return requestBody;
+        }
+    }
+
+    private static string? TryReadRequestModel(byte[] requestBody)
+    {
+        if (requestBody.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(requestBody);
+            return TryReadStringProperty(document.RootElement, "model");
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -1486,6 +1518,189 @@ public sealed class TransparentProxyService : IAsyncDisposable
         return queryIndex >= 0 ? pathAndQuery[queryIndex..] : string.Empty;
     }
 
+    private static bool IsModelsListRequest(string method, string pathAndQuery)
+    {
+        if (!string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var relativePath = ExtractRelativePath(pathAndQuery);
+        return relativePath.Equals("models", StringComparison.OrdinalIgnoreCase) ||
+               relativePath.Equals("v1/models", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<object> BuildModelsListPayloadAsync(
+        HttpListenerRequest source,
+        HttpClient client,
+        TransparentProxyServerConfig config,
+        string pathAndQuery,
+        CancellationToken cancellationToken)
+    {
+        List<TransparentProxyRouteModels> routeModels = [];
+        List<TransparentProxyRoute> updatedRoutes = [];
+        foreach (var route in config.Routes)
+        {
+            var models = await FetchRouteModelIdsForListAsync(
+                source,
+                client,
+                config,
+                route,
+                pathAndQuery,
+                cancellationToken);
+            var hydratedRoute = models.Count > 0
+                ? route.WithModels(models)
+                : route;
+            updatedRoutes.Add(hydratedRoute);
+            routeModels.Add(new TransparentProxyRouteModels(
+                hydratedRoute,
+                hydratedRoute.Models));
+        }
+
+        UpdateRoutesFromModelsList(config, updatedRoutes);
+        return BuildModelsListPayload(routeModels);
+    }
+
+    private void UpdateRoutesFromModelsList(
+        TransparentProxyServerConfig config,
+        IReadOnlyList<TransparentProxyRoute> routes)
+    {
+        lock (_syncRoot)
+        {
+            if (!ReferenceEquals(_config, config))
+            {
+                return;
+            }
+
+            _config = config with { Routes = routes.ToArray() };
+        }
+    }
+
+    private static async Task<IReadOnlyList<string>> FetchRouteModelIdsForListAsync(
+        HttpListenerRequest source,
+        HttpClient client,
+        TransparentProxyServerConfig config,
+        TransparentProxyRoute route,
+        string pathAndQuery,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using CancellationTokenSource requestCancellationSource =
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            requestCancellationSource.CancelAfter(
+                TimeSpan.FromSeconds(Math.Clamp(config.UpstreamTimeoutSeconds, 5, 30)));
+
+            using var request = CreateUpstreamRequest(
+                source,
+                "GET",
+                BuildUpstreamUrl(route.BaseUrl, pathAndQuery),
+                route,
+                Array.Empty<byte>(),
+                ProxyWireApiProbeService.ChatCompletionsWireApi,
+                route.Headers);
+            using var response = await client.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                requestCancellationSource.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                return Array.Empty<string>();
+            }
+
+            var bytes = await response.Content.ReadAsByteArrayAsync(requestCancellationSource.Token);
+            return ParseModelIds(bytes);
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    private static IReadOnlyList<string> ParseModelIds(byte[] bytes)
+    {
+        if (bytes.Length == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(bytes);
+            if (document.RootElement.ValueKind == JsonValueKind.Object &&
+                document.RootElement.TryGetProperty("data", out var data) &&
+                data.ValueKind == JsonValueKind.Array)
+            {
+                return data.EnumerateArray()
+                    .Select(static item => TryReadStringProperty(item, "id"))
+                    .Where(static id => !string.IsNullOrWhiteSpace(id))
+                    .Select(static id => id!.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+
+            if (document.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                return document.RootElement.EnumerateArray()
+                    .Select(static item =>
+                        item.ValueKind == JsonValueKind.String
+                            ? item.GetString()
+                            : TryReadStringProperty(item, "id"))
+                    .Where(static id => !string.IsNullOrWhiteSpace(id))
+                    .Select(static id => id!.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+        }
+        catch
+        {
+        }
+
+        return Array.Empty<string>();
+    }
+
+    private static object BuildModelsListPayload(IReadOnlyList<TransparentProxyRouteModels> routeModels)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var models = routeModels
+            .SelectMany(routeModel => BuildRouteVisibleModels(routeModel.Route, routeModel.Models)
+                .Select(model => new
+                {
+                    id = model,
+                    @object = "model",
+                    created = now,
+                    owned_by = string.IsNullOrWhiteSpace(routeModel.Route.Name) ? "relaybench" : routeModel.Route.Name
+                }))
+            .GroupBy(static item => item.id, StringComparer.OrdinalIgnoreCase)
+            .Select(static group => group.First())
+            .OrderBy(static item => item.id, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return new
+        {
+            @object = "list",
+            data = models
+        };
+    }
+
+    private static IEnumerable<string> BuildRouteVisibleModels(TransparentProxyRoute route, IReadOnlyList<string> models)
+    {
+        foreach (var model in models)
+        {
+            if (string.IsNullOrWhiteSpace(model))
+            {
+                continue;
+            }
+
+            yield return model.Trim();
+            var prefix = route.Prefix.Trim().Trim('/');
+            if (!string.IsNullOrWhiteSpace(prefix))
+            {
+                yield return $"{prefix}/{model.Trim()}";
+            }
+        }
+    }
+
     private static string InferWireApiFromPath(string pathAndQuery)
     {
         var relativePath = ExtractRelativePath(pathAndQuery);
@@ -1504,11 +1719,6 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
     private static string ResolveRequestModel(byte[] requestBody, TransparentProxyRoute route)
     {
-        if (!string.IsNullOrWhiteSpace(route.Model))
-        {
-            return route.Model.Trim();
-        }
-
         try
         {
             using var document = JsonDocument.Parse(requestBody);
@@ -1723,13 +1933,23 @@ public sealed class TransparentProxyRoute
         bool? chatCompletionsSupported = null,
         bool? responsesSupported = null,
         bool? anthropicMessagesSupported = null,
-        DateTimeOffset? protocolCheckedAt = null)
+        DateTimeOffset? protocolCheckedAt = null,
+        IReadOnlyList<string>? models = null,
+        int priority = 0,
+        string? prefix = null,
+        IReadOnlyDictionary<string, string>? headers = null)
     {
         Id = id;
         Name = name;
         BaseUrl = baseUrl;
         ApiKey = apiKey;
         Model = model;
+        Models = NormalizeModels(models, model);
+        Priority = Math.Max(0, priority);
+        Prefix = prefix?.Trim().Trim('/') ?? string.Empty;
+        Headers = new Dictionary<string, string>(
+            headers ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+            StringComparer.OrdinalIgnoreCase);
         PreferredWireApi = ProxyWireApiProbeService.NormalizeWireApi(preferredWireApi);
         ChatCompletionsSupported = chatCompletionsSupported;
         ResponsesSupported = responsesSupported;
@@ -1746,6 +1966,14 @@ public sealed class TransparentProxyRoute
     public string ApiKey { get; }
 
     public string Model { get; }
+
+    public IReadOnlyList<string> Models { get; }
+
+    public int Priority { get; }
+
+    public string Prefix { get; }
+
+    public IReadOnlyDictionary<string, string> Headers { get; }
 
     public string? PreferredWireApi { get; }
 
@@ -1773,12 +2001,44 @@ public sealed class TransparentProxyRoute
             chatCompletionsSupported,
             responsesSupported,
             anthropicMessagesSupported,
-            protocolCheckedAt)
+            protocolCheckedAt,
+            Models,
+            Priority,
+            Prefix,
+            Headers)
+        {
+            CircuitOpenUntil = CircuitOpenUntil
+        };
+
+    public TransparentProxyRoute WithModels(IReadOnlyList<string> models)
+        => new(
+            Id,
+            Name,
+            BaseUrl,
+            ApiKey,
+            Model,
+            PreferredWireApi,
+            ChatCompletionsSupported,
+            ResponsesSupported,
+            AnthropicMessagesSupported,
+            ProtocolCheckedAt,
+            models,
+            Priority,
+            Prefix,
+            Headers)
         {
             CircuitOpenUntil = CircuitOpenUntil
         };
 
     internal DateTimeOffset CircuitOpenUntil { get; set; } = DateTimeOffset.MinValue;
+
+    private static IReadOnlyList<string> NormalizeModels(IReadOnlyList<string>? models, string fallbackModel)
+        => (models ?? Array.Empty<string>())
+            .Append(fallbackModel)
+            .Where(static model => !string.IsNullOrWhiteSpace(model))
+            .Select(static model => model.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 }
 
 public sealed record TransparentProxyServerConfig(
@@ -1858,6 +2118,10 @@ internal sealed record TransparentProxyPreparedRequest(
     IReadOnlyDictionary<string, string> ExtraHeaders,
     bool NormalizeToChatCompletions,
     string ResponseModel);
+
+internal sealed record TransparentProxyRouteModels(
+    TransparentProxyRoute Route,
+    IReadOnlyList<string> Models);
 
 internal enum TransparentProxyCircuitState
 {

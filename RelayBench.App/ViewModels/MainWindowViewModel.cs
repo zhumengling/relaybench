@@ -128,7 +128,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _transparentProxyEnableFallback = true;
     private bool _transparentProxyEnableCache = true;
     private string _transparentProxyCacheTtlSecondsText = "60";
-    private bool _transparentProxyRewriteModel = true;
+    private bool _transparentProxyRewriteModel;
+    private bool _isTransparentProxySettingsDrawerOpen;
+    private bool _isTransparentProxyRouteSettingsOpen;
+    private TransparentProxyRouteEditorItemViewModel? _transparentProxyRouteSettingsItem;
     private bool _isTransparentProxyRunning;
     private string _transparentProxyStatusSummary = "本地透明代理未启动。";
     private string _transparentProxyMetricsSummary = "等待请求进入本地入口。";
