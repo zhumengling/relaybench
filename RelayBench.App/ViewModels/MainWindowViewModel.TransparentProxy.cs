@@ -97,6 +97,18 @@ public sealed partial class MainWindowViewModel
         private set => SetProperty(ref _isTransparentProxySettingsDrawerOpen, value);
     }
 
+    public bool IsTransparentProxyListenSettingsOpen
+    {
+        get => _isTransparentProxyListenSettingsOpen;
+        private set => SetProperty(ref _isTransparentProxyListenSettingsOpen, value);
+    }
+
+    public bool IsTransparentProxyProviderSettingsOpen
+    {
+        get => _isTransparentProxyProviderSettingsOpen;
+        private set => SetProperty(ref _isTransparentProxyProviderSettingsOpen, value);
+    }
+
     public bool IsTransparentProxyRouteSettingsOpen
     {
         get => _isTransparentProxyRouteSettingsOpen;
@@ -325,6 +337,36 @@ public sealed partial class MainWindowViewModel
     private Task ToggleTransparentProxySettingsDrawerAsync()
     {
         IsTransparentProxySettingsDrawerOpen = !IsTransparentProxySettingsDrawerOpen;
+        if (!IsTransparentProxySettingsDrawerOpen)
+        {
+            IsTransparentProxyListenSettingsOpen = false;
+            IsTransparentProxyProviderSettingsOpen = false;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleTransparentProxyListenSettingsAsync()
+    {
+        var shouldOpen = !IsTransparentProxyListenSettingsOpen;
+        IsTransparentProxyListenSettingsOpen = shouldOpen;
+        if (shouldOpen)
+        {
+            IsTransparentProxyProviderSettingsOpen = false;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task ToggleTransparentProxyProviderSettingsAsync()
+    {
+        var shouldOpen = !IsTransparentProxyProviderSettingsOpen;
+        IsTransparentProxyProviderSettingsOpen = shouldOpen;
+        if (shouldOpen)
+        {
+            IsTransparentProxyListenSettingsOpen = false;
+        }
+
         return Task.CompletedTask;
     }
 

@@ -67,6 +67,77 @@
             <Setter Property="Margin" Value="0,0,5,0" />
         </Style>
 
+        <Style x:Key="GatewayDrawerMenuButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="#F8FAFC" />
+            <Setter Property="BorderBrush" Value="#E2E8F0" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                    <Setter Property="Background" Value="#EFF6FF" />
+                    <Setter Property="BorderBrush" Value="#93C5FD" />
+                    <Setter Property="Foreground" Value="#0F62FE" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="GatewayAccordionPanelStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource InsetPanelBorderStyle}">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="MaxHeight" Value="0" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                    <Setter Property="MaxHeight" Value="560" />
+                    <Setter Property="Margin" Value="0,0,0,8" />
+                    <Setter Property="Opacity" Value="1" />
+                    <Setter Property="IsHitTestVisible" Value="True" />
+                    <DataTrigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="MaxHeight"
+                                                 To="560"
+                                                 Duration="0:0:0.18">
+                                    <DoubleAnimation.EasingFunction>
+                                        <CubicEase EasingMode="EaseOut" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                 To="1"
+                                                 Duration="0:0:0.14" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.EnterActions>
+                    <DataTrigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="MaxHeight"
+                                                 To="0"
+                                                 Duration="0:0:0.16">
+                                    <DoubleAnimation.EasingFunction>
+                                        <CubicEase EasingMode="EaseIn" />
+                                    </DoubleAnimation.EasingFunction>
+                                </DoubleAnimation>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                 To="0"
+                                                 Duration="0:0:0.10" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.ExitActions>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="GatewayBadgeBorderStyle" TargetType="Border">
             <Setter Property="Padding" Value="7,2" />
             <Setter Property="BorderThickness" Value="1" />
@@ -290,7 +361,7 @@
                                 Content="&#xE713;"
                                 Style="{StaticResource GatewayIconButtonStyle}"
                                 ToolTip="&#x5C55;&#x5F00;&#x6216;&#x6536;&#x8D77;&#x5165;&#x53E3;&#x8BBE;&#x7F6E;" />
-                        <TextBlock Text="入口设置">
+                        <TextBlock Visibility="Collapsed" Text="入口设置">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource SectionTitleTextStyle}">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -303,6 +374,7 @@
                             </TextBlock.Style>
                         </TextBlock>
                         <TextBlock Margin="0,3,0,0"
+                                   Visibility="Collapsed"
                                    Text="{Binding TransparentProxyHealthSummary, Mode=OneWay}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
@@ -323,8 +395,27 @@
                                   VerticalScrollBarVisibility="Auto"
                                   Visibility="{Binding IsTransparentProxySettingsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel>
-                            <Border Padding="8,6"
-                                    Style="{StaticResource InsetPanelBorderStyle}">
+                            <Button Command="{Binding ToggleTransparentProxyListenSettingsCommand}"
+                                    Tag="{Binding IsTransparentProxyListenSettingsOpen}"
+                                    Style="{StaticResource GatewayDrawerMenuButtonStyle}"
+                                    ToolTip="展开或收起监听设置">
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left"
+                                               Width="20"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="13"
+                                               Text="&#xE968;" />
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="监听设置" />
+                                    <TextBlock DockPanel.Dock="Right"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="11"
+                                               Text="&#xE70D;" />
+                                </DockPanel>
+                            </Button>
+
+                            <Border Tag="{Binding IsTransparentProxyListenSettingsOpen}"
+                                    Style="{StaticResource GatewayAccordionPanelStyle}">
                                 <Grid>
                                      <Grid.RowDefinitions>
                                          <RowDefinition Height="Auto" />
@@ -364,9 +455,8 @@
                                 </Grid>
                             </Border>
 
-                            <Border Margin="0,6,0,0"
-                                    Padding="8,6"
-                                    Style="{StaticResource InsetPanelBorderStyle}">
+                            <Border Tag="{Binding IsTransparentProxyListenSettingsOpen}"
+                                    Style="{StaticResource GatewayAccordionPanelStyle}">
                                 <Grid>
                                      <Grid.RowDefinitions>
                                          <RowDefinition Height="Auto" />
@@ -413,10 +503,28 @@
                                 </Grid>
                             </Border>
 
-                            <Expander Margin="0,6,0,0"
-                                      Header="结构化路由"
-                                      IsExpanded="True">
-                                <Grid Margin="0,6,0,0" MinHeight="216">
+                            <Button Command="{Binding ToggleTransparentProxyProviderSettingsCommand}"
+                                    Tag="{Binding IsTransparentProxyProviderSettingsOpen}"
+                                    Style="{StaticResource GatewayDrawerMenuButtonStyle}"
+                                    ToolTip="展开或收起提供商">
+                                <DockPanel LastChildFill="True">
+                                    <TextBlock DockPanel.Dock="Left"
+                                               Width="20"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="13"
+                                               Text="&#xE774;" />
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="提供商" />
+                                    <TextBlock DockPanel.Dock="Right"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="11"
+                                               Text="&#xE70D;" />
+                                </DockPanel>
+                            </Button>
+
+                            <Border Tag="{Binding IsTransparentProxyProviderSettingsOpen}"
+                                    Style="{StaticResource GatewayAccordionPanelStyle}">
+                                <Grid MinHeight="216">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
@@ -545,7 +653,7 @@
                                         </Grid>
                                     </Expander>
                                 </Grid>
-                            </Expander>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>

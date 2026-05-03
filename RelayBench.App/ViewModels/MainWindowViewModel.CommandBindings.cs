@@ -263,6 +263,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand ToggleTransparentProxySettingsDrawerCommand { get; }
 
+    public AsyncRelayCommand ToggleTransparentProxyListenSettingsCommand { get; }
+
+    public AsyncRelayCommand ToggleTransparentProxyProviderSettingsCommand { get; }
+
     public AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?> OpenTransparentProxyRouteSettingsCommand { get; }
 
     public AsyncRelayCommand<TransparentProxyRouteViewModel?> OpenTransparentProxyRuntimeRouteSettingsCommand { get; }

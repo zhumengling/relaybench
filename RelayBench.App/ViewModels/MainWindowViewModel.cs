@@ -130,6 +130,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _transparentProxyCacheTtlSecondsText = "60";
     private bool _transparentProxyRewriteModel;
     private bool _isTransparentProxySettingsDrawerOpen;
+    private bool _isTransparentProxyListenSettingsOpen;
+    private bool _isTransparentProxyProviderSettingsOpen;
     private bool _isTransparentProxyRouteSettingsOpen;
     private TransparentProxyRouteEditorItemViewModel? _transparentProxyRouteSettingsItem;
     private bool _isTransparentProxyRunning;

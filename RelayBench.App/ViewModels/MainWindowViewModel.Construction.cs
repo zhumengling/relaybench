@@ -153,6 +153,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ProbeTransparentProxyProtocolsCommand = new AsyncRelayCommand(ProbeTransparentProxyProtocolsAsync, CanRun, onError: HandleNonFatalCommandException);
         AddTransparentProxyRouteEditorItemCommand = new AsyncRelayCommand(AddTransparentProxyRouteEditorItemAsync, onError: HandleNonFatalCommandException);
         ToggleTransparentProxySettingsDrawerCommand = new AsyncRelayCommand(ToggleTransparentProxySettingsDrawerAsync, onError: HandleNonFatalCommandException);
+        ToggleTransparentProxyListenSettingsCommand = new AsyncRelayCommand(ToggleTransparentProxyListenSettingsAsync, onError: HandleNonFatalCommandException);
+        ToggleTransparentProxyProviderSettingsCommand = new AsyncRelayCommand(ToggleTransparentProxyProviderSettingsAsync, onError: HandleNonFatalCommandException);
         OpenTransparentProxyRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?>(OpenTransparentProxyRouteSettingsAsync, item => item is not null, onError: HandleNonFatalCommandException);
         OpenTransparentProxyRuntimeRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteViewModel?>(OpenTransparentProxyRuntimeRouteSettingsAsync, route => route is not null, onError: HandleNonFatalCommandException);
         CloseTransparentProxyRouteSettingsCommand = new AsyncRelayCommand(CloseTransparentProxyRouteSettingsAsync, onError: HandleNonFatalCommandException);
