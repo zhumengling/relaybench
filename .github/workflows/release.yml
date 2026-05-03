@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Build and publish release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore and build
+        shell: pwsh
+        run: dotnet build .\RelayBenchSuite.slnx -c Release -v minimal
+
+      - name: Publish packages
+        shell: pwsh
+        run: .\publish.ps1 -Configuration Release -Runtime win-x64 -OutputRoot release
+
+      - name: Resolve release metadata
+        id: meta
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content -LiteralPath .\Directory.Build.props
+          $version = [string]$props.Project.PropertyGroup.Version
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Version is empty."
+          }
+
+          $tag = "v$version"
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $tag = $env:GITHUB_REF_NAME
+          }
+
+          $expectedTag = "v$version"
+          if ($tag -ne $expectedTag) {
+            throw "Tag '$tag' does not match project version '$expectedTag'."
+          }
+
+          $notesPath = Join-Path $pwd "docs\releases\$tag.md"
+          if (-not (Test-Path -LiteralPath $notesPath)) {
+            $notesPath = Join-Path $pwd "release\$tag-notes.md"
+            Set-Content -LiteralPath $notesPath -Encoding utf8 -Value @"
+          RelayBench $tag
+
+          更新内容：
+          - 发布 Windows x64 framework-dependent 与 self-contained 安装包。
+          - 保持源码仓库只包含源码、文档和发布自动化配置。
+          "@
+          }
+
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "title=RelayBench $tag" >> $env:GITHUB_OUTPUT
+          "notes=$notesPath" >> $env:GITHUB_OUTPUT
+
+      - name: Create or update GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ steps.meta.outputs.tag }}"
+          $title = "${{ steps.meta.outputs.title }}"
+          $notes = "${{ steps.meta.outputs.notes }}"
+          $assets = @(
+            "release\relaybench-$tag-win-x64-framework-dependent.zip",
+            "release\relaybench-$tag-win-x64-framework-dependent.sha256.txt",
+            "release\relaybench-$tag-win-x64-self-contained.zip",
+            "release\relaybench-$tag-win-x64-self-contained.sha256.txt"
+          )
+
+          if (gh release view $tag *> $null) {
+            gh release upload $tag @assets --clobber
+            gh release edit $tag --title $title --notes-file $notes --latest
+          }
+          else {
+            gh release create $tag @assets --title $title --notes-file $notes --latest --target $env:GITHUB_SHA
+          }
