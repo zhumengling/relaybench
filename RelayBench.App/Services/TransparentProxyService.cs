@@ -804,11 +804,178 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
         else
         {
-            await using var stream = await upstreamResponse.Content.ReadAsStreamAsync(cancellationToken);
-            await stream.CopyToAsync(context.Response.OutputStream, cancellationToken);
+            await CopyDirectResponseWithTokenTelemetryAsync(
+                upstreamResponse,
+                context.Response.OutputStream,
+                statusCode,
+                contentType,
+                streamRequested,
+                config,
+                cancellationToken);
         }
 
         context.Response.OutputStream.Close();
+    }
+
+    private async Task CopyDirectResponseWithTokenTelemetryAsync(
+        HttpResponseMessage upstreamResponse,
+        Stream outputStream,
+        int statusCode,
+        string contentType,
+        bool streamRequested,
+        TransparentProxyServerConfig config,
+        CancellationToken cancellationToken)
+    {
+        if (statusCode >= 200 &&
+            statusCode < 300 &&
+            IsEventStreamContentType(contentType))
+        {
+            await CopySseResponseWithTokenTelemetryAsync(
+                upstreamResponse,
+                outputStream,
+                cancellationToken);
+            return;
+        }
+
+        if (ShouldCaptureResponseBodyForTokenTelemetry(statusCode, contentType))
+        {
+            await CopyResponseBodyAndCaptureTokenTelemetryAsync(
+                upstreamResponse,
+                outputStream,
+                Math.Max(256 * 1024, config.CacheMaxBytes),
+                cancellationToken);
+            return;
+        }
+
+        if (statusCode >= 200 && statusCode < 300 && streamRequested)
+        {
+            await CopySseResponseWithTokenTelemetryAsync(
+                upstreamResponse,
+                outputStream,
+                cancellationToken);
+            return;
+        }
+
+        await using var stream = await upstreamResponse.Content.ReadAsStreamAsync(cancellationToken);
+        await stream.CopyToAsync(outputStream, cancellationToken);
+    }
+
+    private static bool IsEventStreamContentType(string contentType)
+        => contentType.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ShouldCaptureResponseBodyForTokenTelemetry(int statusCode, string contentType)
+    {
+        if (statusCode < 200 || statusCode >= 300)
+        {
+            return false;
+        }
+
+        return contentType.Contains("json", StringComparison.OrdinalIgnoreCase) ||
+               contentType.Contains("text/plain", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task CopyResponseBodyAndCaptureTokenTelemetryAsync(
+        HttpResponseMessage upstreamResponse,
+        Stream outputStream,
+        int maxTelemetryBytes,
+        CancellationToken cancellationToken)
+    {
+        await using var stream = await upstreamResponse.Content.ReadAsStreamAsync(cancellationToken);
+        using MemoryStream telemetryBody = new();
+        var canCaptureTelemetry = true;
+        var buffer = new byte[81920];
+
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+            if (read <= 0)
+            {
+                break;
+            }
+
+            await outputStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            if (!canCaptureTelemetry)
+            {
+                continue;
+            }
+
+            if (telemetryBody.Length + read > maxTelemetryBytes)
+            {
+                canCaptureTelemetry = false;
+                telemetryBody.SetLength(0);
+                continue;
+            }
+
+            telemetryBody.Write(buffer, 0, read);
+        }
+
+        if (canCaptureTelemetry && telemetryBody.Length > 0)
+        {
+            TryTrackResponseBodyTokens(telemetryBody.ToArray());
+        }
+    }
+
+    private async Task CopySseResponseWithTokenTelemetryAsync(
+        HttpResponseMessage upstreamResponse,
+        Stream outputStream,
+        CancellationToken cancellationToken)
+    {
+        await using var stream = await upstreamResponse.Content.ReadAsStreamAsync(cancellationToken);
+        var decoder = Encoding.UTF8.GetDecoder();
+        var buffer = new byte[8192];
+        var charBuffer = new char[Encoding.UTF8.GetMaxCharCount(buffer.Length)];
+        StringBuilder lineBuilder = new();
+
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
+            if (read <= 0)
+            {
+                break;
+            }
+
+            await outputStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            await outputStream.FlushAsync(cancellationToken);
+
+            var charCount = decoder.GetChars(buffer, 0, read, charBuffer, 0, flush: false);
+            TrackSseTokenTelemetry(charBuffer.AsSpan(0, charCount), lineBuilder);
+        }
+
+        var finalCharCount = decoder.GetChars(Array.Empty<byte>(), 0, 0, charBuffer, 0, flush: true);
+        TrackSseTokenTelemetry(charBuffer.AsSpan(0, finalCharCount), lineBuilder);
+        if (lineBuilder.Length > 0)
+        {
+            TrackSseTokenTelemetryLine(lineBuilder.ToString());
+        }
+    }
+
+    private void TrackSseTokenTelemetry(ReadOnlySpan<char> text, StringBuilder lineBuilder)
+    {
+        foreach (var character in text)
+        {
+            if (character == '\n')
+            {
+                TrackSseTokenTelemetryLine(lineBuilder.ToString());
+                lineBuilder.Clear();
+                continue;
+            }
+
+            if (character != '\r')
+            {
+                lineBuilder.Append(character);
+            }
+        }
+    }
+
+    private void TrackSseTokenTelemetryLine(string line)
+    {
+        if (!ChatSseParser.TryReadDataLine(line, out var data) ||
+            ChatSseParser.IsDone(data))
+        {
+            return;
+        }
+
+        TrackOutputTextTokens(ChatSseParser.TryExtractDelta(data));
     }
 
     private async Task CopyNormalizedChatJsonAsync(

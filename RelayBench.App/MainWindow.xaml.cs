@@ -68,6 +68,8 @@ public partial class MainWindow : Window
     {
         public bool WasRequested { get; set; }
 
+        public bool HasVisibilityPreference { get; set; }
+
         public double? Left { get; set; }
 
         public double? Top { get; set; }
@@ -372,13 +374,16 @@ public partial class MainWindow : Window
             _tokenMeterWindowState = new TokenMeterWindowState();
         }
 
-        _isTokenMeterRequested = _tokenMeterWindowState.WasRequested;
+        _isTokenMeterRequested =
+            !_tokenMeterWindowState.HasVisibilityPreference ||
+            _tokenMeterWindowState.WasRequested;
     }
 
     private void CaptureAndSaveTokenMeterWindowState()
     {
         var state = _tokenMeterWindowState ??= new TokenMeterWindowState();
         state.WasRequested = _isTokenMeterRequested;
+        state.HasVisibilityPreference = true;
 
         if (_floatingTokenMeterWindow is not null)
         {
