@@ -16,6 +16,48 @@
             <Setter Property="Margin" Value="0,0,5,0" />
         </Style>
 
+        <Style x:Key="SingleStationCommandIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonStyle}">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="FontSize" Value="13.2" />
+            <Setter Property="Margin" Value="0,0,5,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="SingleStationCommandPrimaryIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonPrimaryStyle}">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="FontSize" Value="13.2" />
+            <Setter Property="Margin" Value="0,0,5,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="SingleStationCommandInputTextBoxStyle"
+               TargetType="TextBox"
+               BasedOn="{StaticResource CompactInputTextBoxStyle}">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="SingleStationCommandSecretInputPasswordBoxStyle"
+               TargetType="PasswordBox"
+               BasedOn="{StaticResource CompactSecretInputPasswordBoxStyle}">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="SingleStationCommandComboBoxStyle"
+               TargetType="ComboBox"
+               BasedOn="{StaticResource CompactComboBoxStyle}">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
         <Style x:Key="SingleStationMotionInsetPanelStyle"
                TargetType="Border"
                BasedOn="{StaticResource MotionDialogPanelStyle}">
@@ -54,6 +96,10 @@
                 Padding="8,6"
                 Style="{StaticResource CommandBarBorderStyle}">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="34" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.7*" />
                     <ColumnDefinition Width="6" />
@@ -68,36 +114,45 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0">
-                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x63A5;&#x53E3;&#x5730;&#x5740;" />
-                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                             ToolTip="{Binding ProxyBaseUrl}"
-                             Text="{Binding ProxyBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
-                </StackPanel>
+                <TextBlock Grid.Row="0"
+                           Grid.Column="0"
+                           Style="{StaticResource FieldLabelTextStyle}"
+                           Text="&#x63A5;&#x53E3;&#x5730;&#x5740;" />
+                <TextBox Grid.Row="1"
+                         Grid.Column="0"
+                         Style="{StaticResource SingleStationCommandInputTextBoxStyle}"
+                         ToolTip="{Binding ProxyBaseUrl}"
+                         Text="{Binding ProxyBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
 
-                <StackPanel Grid.Column="2">
-                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="API Key" />
-                    <PasswordBox Style="{StaticResource CompactSecretInputPasswordBoxStyle}"
-                                 infra:PasswordBoxAssistant.BoundPassword="{Binding ProxyApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                </StackPanel>
+                <TextBlock Grid.Row="0"
+                           Grid.Column="2"
+                           Style="{StaticResource FieldLabelTextStyle}"
+                           Text="API Key" />
+                <PasswordBox Grid.Row="1"
+                             Grid.Column="2"
+                             Style="{StaticResource SingleStationCommandSecretInputPasswordBoxStyle}"
+                             infra:PasswordBoxAssistant.BoundPassword="{Binding ProxyApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                <StackPanel Grid.Column="4">
-                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x6A21;&#x578B;" />
-                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                             ToolTip="{Binding ProxyModel}"
-                             Text="{Binding ProxyModel, UpdateSourceTrigger=PropertyChanged}" />
-                </StackPanel>
+                <TextBlock Grid.Row="0"
+                           Grid.Column="4"
+                           Style="{StaticResource FieldLabelTextStyle}"
+                           Text="&#x6A21;&#x578B;" />
+                <TextBox Grid.Row="1"
+                         Grid.Column="4"
+                         Style="{StaticResource SingleStationCommandInputTextBoxStyle}"
+                         ToolTip="{Binding ProxyModel}"
+                         Text="{Binding ProxyModel, UpdateSourceTrigger=PropertyChanged}" />
 
-                <Button Grid.Column="6"
-                        VerticalAlignment="Bottom"
-                        Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                <Button Grid.Row="1"
+                        Grid.Column="6"
+                        Style="{StaticResource SingleStationCommandIconButtonStyle}"
                         Command="{Binding FetchProxyModelsCommand}"
                         Content="&#xE72C;"
                         ToolTip="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
 
-                <ComboBox Grid.Column="8"
-                          VerticalAlignment="Bottom"
-                          Style="{StaticResource CompactComboBoxStyle}"
+                <ComboBox Grid.Row="1"
+                          Grid.Column="8"
+                          Style="{StaticResource SingleStationCommandComboBoxStyle}"
                           ItemsSource="{Binding SingleStationModeOptions}"
                           TextSearch.TextPath="DisplayName"
                           SelectedValuePath="Key"
@@ -113,22 +168,23 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
 
-                <WrapPanel Grid.Column="10"
-                           VerticalAlignment="Bottom">
+                <WrapPanel Grid.Row="1"
+                           Grid.Column="10"
+                           VerticalAlignment="Center">
                     <Button Command="{Binding OpenProxyEndpointHistoryCommand}"
-                            Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                            Style="{StaticResource SingleStationCommandIconButtonStyle}"
                             Content="&#xE81C;"
                             ToolTip="&#x5386;&#x53F2;&#x63A5;&#x53E3;" />
                     <Button Command="{Binding RunSelectedSingleStationModeCommand}"
-                            Style="{StaticResource WorkbenchIconButtonPrimaryStyle}"
+                            Style="{StaticResource SingleStationCommandPrimaryIconButtonStyle}"
                             Content="&#xE768;"
                             ToolTip="{Binding SingleStationPrimaryButtonText}" />
                     <Button Command="{Binding OpenProxySingleChartCommand}"
-                            Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                            Style="{StaticResource SingleStationCommandIconButtonStyle}"
                             Content="&#xE9D2;"
                             ToolTip="&#x67E5;&#x770B;&#x56FE;&#x8868;" />
                     <Button Command="{Binding StopCurrentProxyTestCommand}"
-                            Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                            Style="{StaticResource SingleStationCommandIconButtonStyle}"
                             Content="&#xE71A;"
                             ToolTip="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;" />
                 </WrapPanel>

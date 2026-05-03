@@ -14,6 +14,47 @@
             <Setter Property="TextWrapping" Value="NoWrap" />
             <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
         </Style>
+
+        <Style x:Key="AdvancedLabCommandIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource AdvancedLabIconButtonStyle}">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="AdvancedLabCommandPrimaryIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WorkbenchIconButtonPrimaryStyle}">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="FontSize" Value="13.5" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="AdvancedLabCommandInputTextBoxStyle"
+               TargetType="TextBox"
+               BasedOn="{StaticResource CompactInputTextBoxStyle}">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="AdvancedLabCommandSecretInputPasswordBoxStyle"
+               TargetType="PasswordBox"
+               BasedOn="{StaticResource CompactSecretInputPasswordBoxStyle}">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="AdvancedLabCommandModelPickerBorderStyle"
+               TargetType="Border"
+               BasedOn="{StaticResource AdvancedLabModelPickerBorderStyle}">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
     </UserControl.Resources>
 
     <Grid DataContext="{Binding AdvancedTestLab}"
@@ -52,6 +93,10 @@
                       Grid.Column="0"
                       Margin="0"
                       VerticalAlignment="Center">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="34" />
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1.65*" />
                         <ColumnDefinition Width="6" />
@@ -63,109 +108,117 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                   Text="接口地址" />
-                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                 ToolTip="{Binding AdvancedBaseUrl}"
-                                 Text="{Binding AdvancedBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
-                    </StackPanel>
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="0"
+                               Style="{StaticResource FieldLabelTextStyle}"
+                               Text="接口地址" />
+                    <TextBox Grid.Row="1"
+                             Grid.Column="0"
+                             Style="{StaticResource AdvancedLabCommandInputTextBoxStyle}"
+                             ToolTip="{Binding AdvancedBaseUrl}"
+                             Text="{Binding AdvancedBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                   Text="API Key" />
-                        <PasswordBox Style="{StaticResource CompactSecretInputPasswordBoxStyle}"
-                                     infra:PasswordBoxAssistant.BoundPassword="{Binding AdvancedApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </StackPanel>
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="2"
+                               Style="{StaticResource FieldLabelTextStyle}"
+                               Text="API Key" />
+                    <PasswordBox Grid.Row="1"
+                                 Grid.Column="2"
+                                 Style="{StaticResource AdvancedLabCommandSecretInputPasswordBoxStyle}"
+                                 infra:PasswordBoxAssistant.BoundPassword="{Binding AdvancedApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <Button Grid.Column="4"
+                    <Button Grid.Row="1"
+                            Grid.Column="4"
                             Command="{Binding DataContext.OpenAdvancedTestLabProxyEndpointHistoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             Content="&#xE81C;"
-                            Style="{StaticResource AdvancedLabConfigIconButtonStyle}"
+                            Style="{StaticResource AdvancedLabCommandIconButtonStyle}"
                             ToolTip="历史接口" />
 
-                    <StackPanel Grid.Column="6">
-                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                   Text="模型" />
-                        <Grid x:Name="AdvancedModelPickerRoot">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Style="{StaticResource AdvancedLabModelPickerBorderStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="34" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0"
-                                             Style="{StaticResource AdvancedLabModelPickerTextBoxStyle}"
-                                             ToolTip="{Binding AdvancedModel}"
-                                             Text="{Binding AdvancedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <ToggleButton Grid.Column="1"
-                                                  IsChecked="{Binding IsAdvancedModelMenuOpen, Mode=TwoWay}"
-                                                  Style="{StaticResource AdvancedLabModelDropDownToggleStyle}"
-                                                  ToolTip="&#x9009;&#x62E9;&#x5DF2;&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
-                                </Grid>
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="6"
+                               Style="{StaticResource FieldLabelTextStyle}"
+                               Text="模型" />
+                    <Grid x:Name="AdvancedModelPickerRoot"
+                          Grid.Row="1"
+                          Grid.Column="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource AdvancedLabCommandModelPickerBorderStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="34" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Style="{StaticResource AdvancedLabModelPickerTextBoxStyle}"
+                                         ToolTip="{Binding AdvancedModel}"
+                                         Text="{Binding AdvancedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <ToggleButton Grid.Column="1"
+                                              IsChecked="{Binding IsAdvancedModelMenuOpen, Mode=TwoWay}"
+                                              Style="{StaticResource AdvancedLabModelDropDownToggleStyle}"
+                                              ToolTip="&#x9009;&#x62E9;&#x5DF2;&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+                            </Grid>
+                        </Border>
+                        <Popup AllowsTransparency="True"
+                               DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                               Focusable="False"
+                               IsOpen="{Binding IsAdvancedModelMenuOpen, Mode=TwoWay}"
+                               Placement="Bottom"
+                               PlacementTarget="{Binding ElementName=AdvancedModelPickerRoot}"
+                               PopupAnimation="None"
+                               StaysOpen="False">
+                            <Border MinWidth="{Binding PlacementTarget.ActualWidth, RelativeSource={RelativeSource AncestorType=Popup}}"
+                                    Margin="0,6,0,0"
+                                    Padding="5"
+                                    Background="#FFFFFF"
+                                    BorderBrush="#BFDBFE"
+                                    BorderThickness="1.5"
+                                    CornerRadius="10">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="28"
+                                                      Direction="270"
+                                                      Opacity="0.18"
+                                                      ShadowDepth="6"
+                                                      Color="#1E293B" />
+                                </Border.Effect>
+                                <ListBox ItemsSource="{Binding AdvancedModelOptions}"
+                                         SelectedItem="{Binding AdvancedModelOptionSelection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource AdvancedLabModelOptionListBoxStyle}" />
                             </Border>
-                            <Popup AllowsTransparency="True"
-                                   DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
-                                   Focusable="False"
-                                   IsOpen="{Binding IsAdvancedModelMenuOpen, Mode=TwoWay}"
-                                   Placement="Bottom"
-                                   PlacementTarget="{Binding ElementName=AdvancedModelPickerRoot}"
-                                   PopupAnimation="None"
-                                   StaysOpen="False">
-                                <Border MinWidth="{Binding PlacementTarget.ActualWidth, RelativeSource={RelativeSource AncestorType=Popup}}"
-                                        Margin="0,6,0,0"
-                                        Padding="5"
-                                        Background="#FFFFFF"
-                                        BorderBrush="#BFDBFE"
-                                        BorderThickness="1.5"
-                                        CornerRadius="10">
-                                    <Border.Effect>
-                                        <DropShadowEffect BlurRadius="28"
-                                                          Direction="270"
-                                                          Opacity="0.18"
-                                                          ShadowDepth="6"
-                                                          Color="#1E293B" />
-                                    </Border.Effect>
-                                    <ListBox ItemsSource="{Binding AdvancedModelOptions}"
-                                             SelectedItem="{Binding AdvancedModelOptionSelection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource AdvancedLabModelOptionListBoxStyle}" />
-                                </Border>
-                            </Popup>
-                        </Grid>
-                    </StackPanel>
+                        </Popup>
+                    </Grid>
 
-                    <Button Grid.Column="7"
+                    <Button Grid.Row="1"
+                            Grid.Column="7"
                             Command="{Binding FetchAdvancedModelsCommand}"
                             Content="&#xE72C;"
-                            Style="{StaticResource AdvancedLabConfigIconButtonStyle}"
+                            Style="{StaticResource AdvancedLabCommandIconButtonStyle}"
                             ToolTip="{Binding FetchAdvancedModelsButtonText}" />
                 </Grid>
 
                 <WrapPanel Grid.Column="1"
-                           HorizontalAlignment="Right"
-                           VerticalAlignment="Center">
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom">
                     <Button Command="{Binding StartCommand}"
                             Content="&#xE768;"
-                            Style="{StaticResource AdvancedLabPrimaryIconButtonStyle}"
+                            Style="{StaticResource AdvancedLabCommandPrimaryIconButtonStyle}"
                             ToolTip="{Binding StartButtonText}" />
                     <Button Command="{Binding StopCommand}"
                             Content="&#xE71A;"
-                            Style="{StaticResource AdvancedLabIconButtonStyle}"
+                            Style="{StaticResource AdvancedLabCommandIconButtonStyle}"
                             ToolTip="{Binding StopButtonText}" />
                     <Button Command="{Binding RetryFailedCommand}"
                             Content="&#xE72C;"
-                            Style="{StaticResource AdvancedLabIconButtonStyle}"
+                            Style="{StaticResource AdvancedLabCommandIconButtonStyle}"
                             ToolTip="重试失败项" />
                     <Button Command="{Binding ExportReportCommand}"
                             Content="&#xE74E;"
-                            Style="{StaticResource AdvancedLabIconButtonStyle}"
+                            Style="{StaticResource AdvancedLabCommandIconButtonStyle}"
                             ToolTip="导出报告" />
                     <Button Command="{Binding CopyDiagnosticSummaryCommand}"
                             Content="&#xE8C8;"
-                            Style="{StaticResource AdvancedLabIconButtonStyle}"
+                            Style="{StaticResource AdvancedLabCommandIconButtonStyle}"
                             ToolTip="复制诊断摘要" />
                 </WrapPanel>
             </Grid>
