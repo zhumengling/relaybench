@@ -55,9 +55,13 @@
                 Style="{StaticResource CommandBarBorderStyle}">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2.4*" />
+                    <ColumnDefinition Width="1.7*" />
                     <ColumnDefinition Width="6" />
                     <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="126" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="6" />
                     <ColumnDefinition Width="136" />
                     <ColumnDefinition Width="6" />
@@ -90,13 +94,60 @@
                         Command="{Binding FetchProxyModelsCommand}"
                         Content="&#xE72C;"
                         ToolTip="&#x62C9;&#x53D6;&#x6A21;&#x578B;" />
+
+                <ComboBox Grid.Column="8"
+                          VerticalAlignment="Bottom"
+                          Style="{StaticResource CompactComboBoxStyle}"
+                          ItemsSource="{Binding SingleStationModeOptions}"
+                          TextSearch.TextPath="DisplayName"
+                          SelectedValuePath="Key"
+                          SelectedValue="{Binding SelectedSingleStationModeKey, Mode=TwoWay}"
+                          ToolTip="{Binding SingleStationModeDescription}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Foreground="#101828"
+                                       FontSize="11.1"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding DisplayName}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <WrapPanel Grid.Column="10"
+                           VerticalAlignment="Bottom">
+                    <Button Command="{Binding OpenProxyEndpointHistoryCommand}"
+                            Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                            Content="&#xE81C;"
+                            ToolTip="&#x5386;&#x53F2;&#x63A5;&#x53E3;" />
+                    <Button Command="{Binding RunSelectedSingleStationModeCommand}"
+                            Style="{StaticResource WorkbenchIconButtonPrimaryStyle}"
+                            Content="&#xE768;"
+                            ToolTip="{Binding SingleStationPrimaryButtonText}" />
+                    <Button Command="{Binding OpenProxySingleChartCommand}"
+                            Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                            Content="&#xE9D2;"
+                            ToolTip="&#x67E5;&#x770B;&#x56FE;&#x8868;" />
+                    <Button Command="{Binding StopCurrentProxyTestCommand}"
+                            Style="{StaticResource SingleStationToolbarIconButtonStyle}"
+                            Content="&#xE71A;"
+                            ToolTip="&#x505C;&#x6B62;&#x6D4B;&#x8BD5;" />
+                </WrapPanel>
             </Grid>
         </Border>
 
         <Border Grid.Row="1"
                 Margin="0,4,0,0"
-                Padding="8,6"
-                Style="{StaticResource SectionPanelBorderStyle}">
+                Padding="8,6">
+            <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource SectionPanelBorderStyle}">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSingleStationQuickMode}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -111,7 +162,8 @@
 
                 <Grid Grid.Row="0"
                       Grid.Column="0"
-                      VerticalAlignment="Center">
+                      VerticalAlignment="Center"
+                      Visibility="Collapsed">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="6" />
@@ -149,7 +201,8 @@
 
                 <WrapPanel Grid.Row="0"
                            Grid.Column="2"
-                           VerticalAlignment="Center">
+                           VerticalAlignment="Center"
+                           Visibility="Collapsed">
                     <Button Command="{Binding OpenProxyEndpointHistoryCommand}"
                             Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                             Content="&#xE81C;"
@@ -171,7 +224,7 @@
 
                 <Grid Grid.Row="1"
                       Grid.ColumnSpan="3"
-                      Margin="0,4,0,0"
+                      Margin="0"
                       Visibility="{Binding IsSingleStationStabilityMode, Converter={StaticResource BoolToVisibilityConverter}}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -204,7 +257,7 @@
 
                 <Border Grid.Row="1"
                         Grid.ColumnSpan="3"
-                        Margin="0,6,0,0"
+                        Margin="0"
                         Style="{StaticResource InsetPanelBorderStyle}"
                         Visibility="{Binding IsSingleStationDeepMode, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel>
@@ -431,7 +484,7 @@
 
                 <Border Grid.Row="1"
                         Grid.ColumnSpan="3"
-                        Margin="0,6,0,0"
+                        Margin="0"
                         Style="{StaticResource InsetPanelBorderStyle}"
                         Visibility="{Binding IsSingleStationConcurrencyMode, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel>
@@ -610,11 +663,11 @@
                                         CornerRadius="8,8,0,0">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="2.0*" />
-                                            <ColumnDefinition Width="112" />
-                                            <ColumnDefinition Width="70" />
-                                            <ColumnDefinition Width="1.45*" />
-                                            <ColumnDefinition Width="2.35*" />
+                                            <ColumnDefinition Width="1.75*" />
+                                            <ColumnDefinition Width="96" />
+                                            <ColumnDefinition Width="58" />
+                                            <ColumnDefinition Width="1.25*" />
+                                            <ColumnDefinition Width="2.8*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
@@ -664,11 +717,11 @@
                                                     </Border.Triggers>
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="2.0*" />
-                                                            <ColumnDefinition Width="112" />
-                                                            <ColumnDefinition Width="70" />
-                                                            <ColumnDefinition Width="1.45*" />
-                                                            <ColumnDefinition Width="2.35*" />
+                                                            <ColumnDefinition Width="1.75*" />
+                                                            <ColumnDefinition Width="96" />
+                                                            <ColumnDefinition Width="58" />
+                                                            <ColumnDefinition Width="1.25*" />
+                                                            <ColumnDefinition Width="2.8*" />
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
 
