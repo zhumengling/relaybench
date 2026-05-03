@@ -9,6 +9,7 @@ release/
 
 # Local development artifacts
 .artifacts/
+.codex-screenshots/
 .codex/
 .dotnet-cli/
 .superpowers/
