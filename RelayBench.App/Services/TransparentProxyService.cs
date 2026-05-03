@@ -72,6 +72,14 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
     public bool IsRunning => _listener?.IsListening == true;
 
+    public int ClearCache()
+    {
+        var count = _cache.Count;
+        _cache.Clear();
+        PublishMetrics();
+        return count;
+    }
+
     public void UpdateRouteProtocols(IReadOnlyList<TransparentProxyRoute> routes)
     {
         if (routes.Count == 0)
@@ -345,10 +353,12 @@ public sealed class TransparentProxyService : IAsyncDisposable
         try
         {
             var requestBody = await ReadRequestBodyAsync(context.Request, serverCancellationToken);
+            var requestedModel = TryReadRequestModel(requestBody);
             var streamRequested = IsStreamingRequest(context.Request, requestBody);
             var cacheKey = config.EnableCache && !streamRequested
                 ? BuildCacheKey(method, pathAndQuery, requestBody)
                 : string.Empty;
+            PruneExpiredCacheEntries(config.CacheTtlSeconds);
 
             if (config.EnableCache &&
                 !streamRequested &&
@@ -360,7 +370,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 TryTrackResponseBodyTokens(cachedResponse.Body);
                 var elapsed = GetElapsedMilliseconds(startedAt);
                 TrackLatency(elapsed);
-                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "CACHE", method, pathAndQuery, "cache", cachedResponse.StatusCode, elapsed, "命中本地短缓存。"));
+                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "CACHE", method, pathAndQuery, "cache", cachedResponse.StatusCode, elapsed, "命中本地短缓存。", cachedResponse.ModelName));
                 PublishMetrics();
                 return;
             }
@@ -383,14 +393,13 @@ public sealed class TransparentProxyService : IAsyncDisposable
             }
 
             TransparentProxyUpstreamAttempt? lastAttempt = null;
-            var requestedModel = TryReadRequestModel(requestBody);
             var candidateRoutes = BuildCandidateRoutes(config, requestedModel);
             if (candidateRoutes.Count == 0)
             {
                 Interlocked.Increment(ref _failedRequests);
                 var elapsed = GetElapsedMilliseconds(startedAt);
                 TrackLatency(elapsed);
-                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, "-", 503, elapsed, "所有上游暂时熔断，等待半开探测窗口。"));
+                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, "-", 503, elapsed, "所有上游暂时熔断，等待半开探测窗口。", requestedModel ?? string.Empty));
                 PublishMetrics();
                 await WriteJsonErrorAsync(context, 503, "relaybench_all_routes_circuit_open", "所有上游暂时不可用，稍后会自动半开探测。", serverCancellationToken);
                 return;
@@ -456,7 +465,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 : lastAttempt?.Message ?? "所有上游路由都不可用。";
             var totalElapsed = GetElapsedMilliseconds(startedAt);
             TrackLatency(totalElapsed);
-            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "ERROR", method, pathAndQuery, lastAttempt?.RouteName ?? "-", status, totalElapsed, message));
+            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "ERROR", method, pathAndQuery, lastAttempt?.RouteName ?? "-", status, totalElapsed, message, requestedModel ?? string.Empty));
             PublishMetrics();
             await WriteJsonErrorAsync(context, status, "relaybench_upstream_unavailable", message, serverCancellationToken);
         }
@@ -483,6 +492,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
         CancellationToken serverCancellationToken)
     {
         var routeStopwatch = Stopwatch.StartNew();
+        var lastLogModel = string.Empty;
         using CancellationTokenSource attemptCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(serverCancellationToken);
         attemptCancellationSource.CancelAfter(TimeSpan.FromSeconds(Math.Max(5, config.UpstreamTimeoutSeconds)));
 
@@ -500,6 +510,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
             for (var protocolIndex = 0; protocolIndex < preparedRequests.Count; protocolIndex++)
             {
                 var prepared = preparedRequests[protocolIndex];
+                var logModel = FormatLogModel(prepared.ResponseModel, prepared.UpstreamModel);
+                lastLogModel = logModel;
                 using var upstreamRequest = CreateUpstreamRequest(
                     context.Request,
                     method,
@@ -526,7 +538,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
                         route.Name,
                         statusCode,
                         routeStopwatch.ElapsedMilliseconds,
-                        $"{DisplayWireApi(prepared.WireApi)} 返回 {statusCode}，尝试下一种协议。"));
+                        $"{DisplayWireApi(prepared.WireApi)} 返回 {statusCode}，尝试下一种协议。",
+                        logModel));
                     continue;
                 }
 
@@ -540,7 +553,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
                         ResolveRetryAfter(upstreamResponse.Headers.RetryAfter));
                     if (allowRouteFallback)
                     {
-                        EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, route.Name, statusCode, routeStopwatch.ElapsedMilliseconds, "上游返回可 fallback 状态，切换下一路。"));
+                        EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, route.Name, statusCode, routeStopwatch.ElapsedMilliseconds, "上游返回可 fallback 状态，切换下一路。", logModel));
                         return new TransparentProxyUpstreamAttempt(false, route.Name, statusCode, "上游返回可 fallback 状态。");
                     }
                 }
@@ -558,6 +571,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
                     config,
                     prepared.WireApi,
                     prepared.ResponseModel,
+                    logModel,
                     prepared.NormalizeToChatCompletions,
                     attemptCancellationSource.Token);
                 EmitLog(new TransparentProxyLogEntry(
@@ -568,7 +582,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
                     route.Name,
                     statusCode,
                     routeStopwatch.ElapsedMilliseconds,
-                    $"已路由到 {route.Name}，协议 {DisplayWireApi(prepared.WireApi)}。"));
+                    $"已路由到 {route.Name}，协议 {DisplayWireApi(prepared.WireApi)}。",
+                    logModel));
                 return new TransparentProxyUpstreamAttempt(true, route.Name, statusCode, "已转发。");
             }
 
@@ -578,14 +593,14 @@ public sealed class TransparentProxyService : IAsyncDisposable
         catch (OperationCanceledException)
         {
             MarkRouteFailure(route, 504, routeStopwatch.ElapsedMilliseconds, routePermit);
-            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, route.Name, 504, routeStopwatch.ElapsedMilliseconds, "上游超时，尝试 fallback。"));
+            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, route.Name, 504, routeStopwatch.ElapsedMilliseconds, "上游超时，尝试 fallback。", lastLogModel));
             return new TransparentProxyUpstreamAttempt(false, route.Name, 504, "上游超时。");
         }
         catch (Exception ex)
         {
             MarkRouteFailure(route, 502, routeStopwatch.ElapsedMilliseconds, routePermit);
             var safeMessage = ProbeTraceRedactor.RedactText(ex.Message);
-            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, route.Name, 502, routeStopwatch.ElapsedMilliseconds, $"上游连接失败：{safeMessage}"));
+            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, route.Name, 502, routeStopwatch.ElapsedMilliseconds, $"上游连接失败：{safeMessage}", lastLogModel));
             return new TransparentProxyUpstreamAttempt(false, route.Name, 502, $"上游连接失败：{safeMessage}");
         }
     }
@@ -599,6 +614,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
         bool streamRequested)
     {
         var directBody = ApplyRouteModelSelection(requestBody, route, out var clientModel);
+        var upstreamModel = TryReadRequestModel(directBody) ?? string.Empty;
         return
         [
             new TransparentProxyPreparedRequest(
@@ -607,7 +623,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 directBody,
                 route.Headers,
                 false,
-                string.IsNullOrWhiteSpace(clientModel) ? TryReadRequestModel(directBody) ?? string.Empty : clientModel)
+                string.IsNullOrWhiteSpace(clientModel) ? upstreamModel : clientModel,
+                upstreamModel)
         ];
     }
 
@@ -745,6 +762,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
         TransparentProxyServerConfig config,
         string wireApi,
         string responseModel,
+        string logModel,
         bool normalizeToChatCompletions,
         CancellationToken cancellationToken)
     {
@@ -777,6 +795,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 cacheKey,
                 config,
                 responseModel,
+                logModel,
                 wireApi,
                 cancellationToken);
             return;
@@ -799,7 +818,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
             TryTrackResponseBodyTokens(bytes);
             if (bytes.Length <= config.CacheMaxBytes)
             {
-                _cache[cacheKey] = new TransparentProxyCachedResponse(DateTimeOffset.UtcNow, statusCode, contentType, bytes);
+                var now = DateTimeOffset.UtcNow;
+                _cache[cacheKey] = new TransparentProxyCachedResponse(now, now, statusCode, contentType, bytes, NormalizeLogModel(logModel));
             }
         }
         else
@@ -985,6 +1005,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
         string cacheKey,
         TransparentProxyServerConfig config,
         string responseModel,
+        string logModel,
         string wireApi,
         CancellationToken cancellationToken)
     {
@@ -1016,11 +1037,14 @@ public sealed class TransparentProxyService : IAsyncDisposable
             statusCode < 300 &&
             normalizedBytes.Length <= config.CacheMaxBytes)
         {
+            var now = DateTimeOffset.UtcNow;
             _cache[cacheKey] = new TransparentProxyCachedResponse(
-                DateTimeOffset.UtcNow,
+                now,
+                now,
                 statusCode,
                 normalizedContentType,
-                normalizedBytes);
+                normalizedBytes,
+                NormalizeLogModel(logModel));
         }
 
         context.Response.OutputStream.Close();
@@ -1545,14 +1569,33 @@ public sealed class TransparentProxyService : IAsyncDisposable
             return false;
         }
 
-        if ((DateTimeOffset.UtcNow - entry.CreatedAt).TotalSeconds > Math.Max(1, ttlSeconds))
+        var now = DateTimeOffset.UtcNow;
+        if ((now - entry.LastAccessedAt).TotalSeconds > Math.Max(1, ttlSeconds))
         {
             _cache.TryRemove(cacheKey, out _);
             return false;
         }
 
-        cachedResponse = entry;
+        cachedResponse = entry with
+        {
+            LastAccessedAt = now,
+            HitCount = entry.HitCount + 1
+        };
+        _cache[cacheKey] = cachedResponse;
         return true;
+    }
+
+    private void PruneExpiredCacheEntries(int ttlSeconds)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var ttl = Math.Max(1, ttlSeconds);
+        foreach (var pair in _cache)
+        {
+            if ((now - pair.Value.LastAccessedAt).TotalSeconds > ttl)
+            {
+                _cache.TryRemove(pair.Key, out _);
+            }
+        }
     }
 
     private static async Task<byte[]> ReadRequestBodyAsync(HttpListenerRequest request, CancellationToken cancellationToken)
@@ -1664,6 +1707,23 @@ public sealed class TransparentProxyService : IAsyncDisposable
             return null;
         }
     }
+
+    private static string FormatLogModel(string? clientModel, string? upstreamModel)
+    {
+        var client = clientModel?.Trim() ?? string.Empty;
+        var upstream = upstreamModel?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(client) &&
+            !string.IsNullOrWhiteSpace(upstream) &&
+            !string.Equals(client, upstream, StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{client} -> {upstream}";
+        }
+
+        return NormalizeLogModel(!string.IsNullOrWhiteSpace(upstream) ? upstream : client);
+    }
+
+    private static string NormalizeLogModel(string? modelName)
+        => string.IsNullOrWhiteSpace(modelName) ? "-" : modelName.Trim();
 
     private static string BuildUpstreamUrl(string baseUrl, string pathAndQuery)
     {
@@ -2051,7 +2111,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
             ProbeTraceRedactor.RedactText(entry.RouteName),
             entry.StatusCode,
             entry.ElapsedMs,
-            ProbeTraceRedactor.RedactText(entry.Message));
+            ProbeTraceRedactor.RedactText(entry.Message),
+            ProbeTraceRedactor.RedactText(entry.ModelName));
         LogEmitted?.Invoke(this, safeEntry);
     }
 
@@ -2323,7 +2384,8 @@ public sealed record TransparentProxyLogEntry(
     string RouteName,
     int StatusCode,
     long ElapsedMs,
-    string Message);
+    string Message,
+    string ModelName = "-");
 
 public sealed record TransparentProxyMetricsSnapshot(
     bool IsRunning,
@@ -2362,7 +2424,14 @@ public sealed record TransparentProxyRouteMetrics(
     bool? AnthropicMessagesSupported,
     DateTimeOffset? ProtocolCheckedAt);
 
-internal sealed record TransparentProxyCachedResponse(DateTimeOffset CreatedAt, int StatusCode, string ContentType, byte[] Body);
+internal sealed record TransparentProxyCachedResponse(
+    DateTimeOffset CreatedAt,
+    DateTimeOffset LastAccessedAt,
+    int StatusCode,
+    string ContentType,
+    byte[] Body,
+    string ModelName,
+    int HitCount = 0);
 
 internal sealed record TransparentProxyTokenSample(DateTimeOffset Timestamp, int TokenCount);
 
@@ -2376,7 +2445,8 @@ internal sealed record TransparentProxyPreparedRequest(
     byte[] Body,
     IReadOnlyDictionary<string, string> ExtraHeaders,
     bool NormalizeToChatCompletions,
-    string ResponseModel);
+    string ResponseModel,
+    string UpstreamModel);
 
 internal sealed record TransparentProxyRouteModels(
     TransparentProxyRoute Route,

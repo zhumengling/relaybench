@@ -677,6 +677,15 @@ public sealed partial class MainWindowViewModel
         return Task.CompletedTask;
     }
 
+    private Task ClearTransparentProxyCacheAsync()
+    {
+        var count = _transparentProxyService.ClearCache();
+        TransparentProxyStatusSummary = count <= 0
+            ? "短缓存为空，无需清理。"
+            : $"已清空短缓存：{count} 条。";
+        return Task.CompletedTask;
+    }
+
     private Task ToggleTransparentProxyLogExpandedAsync()
     {
         IsTransparentProxyLogExpanded = !IsTransparentProxyLogExpanded;

@@ -606,6 +606,11 @@
                                         <CheckBox Margin="0,5,0,0"
                                                   Content="启用短缓存"
                                                   IsChecked="{Binding TransparentProxyEnableCache, Mode=TwoWay}" />
+                                        <Button Margin="0,6,8,0"
+                                                Command="{Binding ClearTransparentProxyCacheCommand}"
+                                                Content="清空短缓存"
+                                                MinWidth="0"
+                                                ToolTip="立即清空本地响应短缓存，后续请求重新走上游" />
                                         <CheckBox Margin="0,5,0,0"
                                                   Content="按路由模型改写请求"
                                                   IsChecked="{Binding TransparentProxyRewriteModel, Mode=TwoWay}"
@@ -1097,7 +1102,16 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Width="0.9*" MinWidth="96" Header="路由">
+                                <DataGridTemplateColumn Width="1.05*" MinWidth="120" Header="模型">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Style="{StaticResource GatewayMonoCellTextStyle}"
+                                                       ToolTip="{Binding ModelName}"
+                                                       Text="{Binding ModelName}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Width="0.8*" MinWidth="88" Header="路由">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Style="{StaticResource GatewayCellTextStyle}"

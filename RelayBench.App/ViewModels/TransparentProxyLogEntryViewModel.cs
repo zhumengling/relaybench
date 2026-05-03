@@ -10,6 +10,7 @@ public sealed class TransparentProxyLogEntryViewModel
         Level = entry.Level;
         Method = entry.Method;
         Path = entry.Path;
+        ModelName = string.IsNullOrWhiteSpace(entry.ModelName) ? "-" : entry.ModelName;
         RouteName = entry.RouteName;
         StatusCode = entry.StatusCode;
         ElapsedText = entry.ElapsedMs <= 0 ? "-" : $"{entry.ElapsedMs} ms";
@@ -23,6 +24,8 @@ public sealed class TransparentProxyLogEntryViewModel
     public string Method { get; }
 
     public string Path { get; }
+
+    public string ModelName { get; }
 
     public string RouteName { get; }
 
