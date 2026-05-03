@@ -7,8 +7,8 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
         Title="RelayBench &#x63A5;&#x53E3;&#x6D4B;&#x8BD5;&#x5DE5;&#x4F5C;&#x53F0;"
-        Width="1440"
-        Height="1032"
+        Width="1366"
+        Height="900"
         MinWidth="1120"
         MinHeight="700"
         Background="#F8FAFC"
@@ -25,7 +25,7 @@
         ResizeMode="CanResize">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="0"
-                            CornerRadius="16"
+                            CornerRadius="10"
                             GlassFrameThickness="0"
                             ResizeBorderThickness="6"
                             UseAeroCaptionButtons="False" />
@@ -36,7 +36,7 @@
                 Background="{StaticResource AppBackgroundBrush}"
                 BorderBrush="{StaticResource PanelBorderBrush}"
                 BorderThickness="0"
-                CornerRadius="16">
+                CornerRadius="10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="48" />
@@ -48,11 +48,7 @@
                         Background="{StaticResource PanelBrushStrong}"
                         BorderBrush="{StaticResource PanelBorderBrush}"
                         BorderThickness="0,0,0,1"
-                        CornerRadius="14,14,0,0">
-                    <Border.Effect>
-                        <DropShadowEffect BlurRadius="16" ShadowDepth="1" Direction="270"
-                                          Color="#0A0F1E" Opacity="0.05" />
-                    </Border.Effect>
+                        CornerRadius="10,10,0,0">
                     <Border.Resources>
                         <Style x:Key="TitleBarButtonStyle"
                                TargetType="Button"
@@ -76,28 +72,20 @@
 
                         <Grid Grid.Column="0"
                               Background="Transparent"
+                              ClipToBounds="True"
                               MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="8" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
                             <Border Width="28"
                                     Height="28"
                                     VerticalAlignment="Center"
-                                    CornerRadius="9">
-                                <Border.Background>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Color="#2563EB" Offset="0" />
-                                        <GradientStop Color="#1E40AF" Offset="1" />
-                                    </LinearGradientBrush>
-                                </Border.Background>
-                                <Border.Effect>
-                                    <DropShadowEffect BlurRadius="12" ShadowDepth="0"
-                                                      Color="#2563EB" Opacity="0.24" />
-                                </Border.Effect>
+                                    Background="{StaticResource AccentBrush}"
+                                    CornerRadius="8">
                                 <TextBlock HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                            Foreground="#FFFFFF"
@@ -112,11 +100,15 @@
                                        FontSize="14"
                                        FontWeight="SemiBold"
                                        Foreground="{StaticResource TextBrush}"
-                                       Text="RelayBench &#x63A5;&#x53E3;&#x6D4B;&#x8BD5;&#x5DE5;&#x4F5C;&#x53F0;" />
+                                       MaxWidth="220"
+                                       ClipToBounds="True"
+                                       Text="RelayBench &#x63A5;&#x53E3;&#x6D4B;&#x8BD5;&#x5DE5;&#x4F5C;&#x53F0;"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="RelayBench &#x63A5;&#x53E3;&#x6D4B;&#x8BD5;&#x5DE5;&#x4F5C;&#x53F0;" />
 
                             <Border x:Name="GlobalTaskProgressBorder"
                                     Grid.Column="3"
-                                    MinWidth="260"
+                                    MinWidth="0"
                                     MaxWidth="620"
                                     Height="28"
                                     Margin="0,0,10,0"
@@ -132,11 +124,7 @@
                                     <Style TargetType="Border">
                                         <Setter Property="Background">
                                             <Setter.Value>
-                                                <LinearGradientBrush StartPoint="0,0"
-                                                                     EndPoint="1,1">
-                                                    <GradientStop Color="#FBFDFF" Offset="0" />
-                                                    <GradientStop Color="#F3F7FF" Offset="1" />
-                                                </LinearGradientBrush>
+                                                <SolidColorBrush Color="#FBFDFF" />
                                             </Setter.Value>
                                         </Setter>
                                         <Setter Property="BorderBrush" Value="#D9E7FF" />
@@ -161,7 +149,7 @@
                                 </Border.Style>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" MinWidth="120" />
+                                        <ColumnDefinition Width="Auto" MinWidth="88" />
                                         <ColumnDefinition Width="10" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="10" />
@@ -172,6 +160,7 @@
                                                Foreground="#0F172A"
                                                FontSize="12"
                                                FontWeight="SemiBold"
+                                               MaxWidth="150"
                                                Text="{Binding GlobalTaskProgressTitle, Mode=OneWay}"
                                                TextTrimming="CharacterEllipsis" />
 
@@ -249,7 +238,8 @@
                                     </Border>
 
                                     <TextBlock Grid.Column="4"
-                                               MinWidth="116"
+                                               MinWidth="72"
+                                               MaxWidth="118"
                                                VerticalAlignment="Center"
                                                Foreground="#475467"
                                                FontSize="11.5"
@@ -300,43 +290,6 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0"
-                        Visibility="Collapsed"
-                        Margin="0,0,0,18"
-                        Padding="18"
-                        Background="{StaticResource InputBrush}"
-                        CornerRadius="12">
-                    <StackPanel>
-                        <TextBlock FontSize="24" FontWeight="Bold" Text="RelayBench &#x63A5;&#x53E3;&#x6D4B;&#x8BD5;&#x5DE5;&#x4F5C;&#x53F0;" />
-                        <TextBlock Margin="0,6,0,0"
-                                   Foreground="{StaticResource MutedBrush}"
-                                   TextWrapping="Wrap"
-                                   Text="菜单入口已并排收进左上角主区域，左侧独立栏不再显示，当前状态和实时输出集中在右侧工作区查看。" />
-                        <TextBlock Margin="0,10,0,0"
-                                   Foreground="{StaticResource AccentBrush}"
-                                   Text="{Binding LastRunAt, StringFormat=上次运行：{0}}" />
-                        <TextBox Margin="0,12,0,0"
-                                 Height="96"
-                                 IsReadOnly="True"
-                                 Text="{Binding StatusMessage, Mode=OneWay}" />
-                    </StackPanel>
-                </Border>
-
-                <Border DockPanel.Dock="Top"
-                        Visibility="Collapsed"
-                        Margin="0,0,0,18"
-                        Padding="18"
-                        Background="{StaticResource InputBrush}"
-                        CornerRadius="12">
-                    <StackPanel>
-                        <TextBlock FontSize="19" FontWeight="Bold" Text="诊断控制台" />
-                        <TextBlock Margin="0,6,0,0"
-                                   Foreground="{StaticResource MutedBrush}"
-                                   TextWrapping="Wrap"
-                                   Text="左侧现在只承担标题、菜单和状态展示；右侧继续负责实时输出与各模块详细结果。" />
-                    </StackPanel>
-                </Border>
-
                 <Border Grid.Row="1"
                         Margin="0,0,0,6"
                         Padding="10,6"
@@ -350,12 +303,14 @@
 
                         <TextBlock VerticalAlignment="Center"
                                    Foreground="{StaticResource MutedBrush}"
-                                   Text="{Binding StatusMessage, Mode=OneWay}" />
+                                   Text="{Binding StatusMessage, Mode=OneWay}"
+                                   TextTrimming="CharacterEllipsis" />
                         <TextBlock Grid.Column="1"
                                    Margin="10,0,0,0"
                                    VerticalAlignment="Center"
                                    Foreground="{StaticResource AccentBrush}"
-                                   Text="{Binding LastRunAt, StringFormat=上次运行：{0}}" />
+                                   Text="{Binding LastRunAt, StringFormat=上次运行：{0}}"
+                                   TextTrimming="CharacterEllipsis" />
                     </Grid>
                 </Border>
 
@@ -382,7 +337,7 @@
                         <TextBlock Grid.Row="1"
                                        Margin="0,3,0,0"
                                        Style="{StaticResource SectionHintTextStyle}"
-                                       Text="按任务切换页面：先做单站测试，再做高级测试、批量评测、对话实测、应用接入与网络复核。" />
+                                       Text="按任务切换页面：先做单站测试，再做数据安全、批量评测、对话实测、应用接入与网络复核。" />
 
                             <ListBox Grid.Row="2"
                                      Margin="0,8,0,0"
@@ -445,23 +400,29 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <StackPanel Grid.Column="0">
+                                <StackPanel Grid.Column="0"
+                                            Margin="0,0,12,0"
+                                            ClipToBounds="True">
                                     <TextBlock Style="{StaticResource SectionTitleTextStyle}"
-                                               Text="{Binding CurrentPageTitle}" />
+                                               Text="{Binding CurrentPageTitle}"
+                                               TextTrimming="CharacterEllipsis" />
                                     <TextBlock Margin="0,2,0,0"
                                                Style="{StaticResource SectionHintTextStyle}"
                                                Text="{Binding CurrentPageSubtitle}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1"
+                                            MaxWidth="320"
                                             HorizontalAlignment="Right">
                                     <TextBlock HorizontalAlignment="Right"
                                                Foreground="{StaticResource MutedBrush}"
-                                               Text="{Binding StatusMessage, Mode=OneWay}" />
+                                               Text="{Binding StatusMessage, Mode=OneWay}"
+                                               TextTrimming="CharacterEllipsis" />
                                     <TextBlock Margin="0,2,0,0"
                                                HorizontalAlignment="Right"
                                                Foreground="{StaticResource AccentBrush}"
-                                               Text="{Binding LastRunAt, StringFormat=上次运行：{0}}" />
+                                               Text="{Binding LastRunAt, StringFormat=上次运行：{0}}"
+                                               TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -473,6 +434,7 @@
                             <pages:ModelChatPage Visibility="{Binding IsModelChatPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <pages:AdvancedTestLabPage Visibility="{Binding IsAdvancedTestLabPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <pages:BatchComparisonPage Visibility="{Binding IsBatchEvaluationPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <pages:TransparentProxyPage Visibility="{Binding IsTransparentProxyPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <pages:ApplicationCenterPage Visibility="{Binding IsApplicationCenterPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <pages:NetworkReviewPage Visibility="{Binding IsNetworkReviewPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <pages:HistoryReportsPage Visibility="{Binding IsHistoryReportsPageActive, Converter={StaticResource BoolToVisibilityConverter}}" />
@@ -663,7 +625,7 @@
                             </TextBlock.Style>
                         </TextBlock>
                         <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
-                                      HorizontalScrollBarVisibility="Disabled"
+                                      HorizontalScrollBarVisibility="Auto"
                                       VerticalScrollBarVisibility="Auto"
                                       CanContentScroll="False"
                                       Visibility="{Binding IsNativeSingleCapabilityChartVisible, Converter={StaticResource BoolToVisibilityConverter}}">

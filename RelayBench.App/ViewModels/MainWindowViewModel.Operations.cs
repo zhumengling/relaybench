@@ -931,6 +931,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         LoadProxyBatchState(snapshot);
         LoadProxyEndpointHistoryState(snapshot);
         LoadProxyBatchRankingState(snapshot);
+        LoadTransparentProxyState(snapshot);
 
         _historyEntries.Clear();
         _historyEntries.AddRange(snapshot.HistoryEntries ?? []);
@@ -965,6 +966,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ApplyExtendedStateToSnapshot(snapshot);
         ApplySpeedStateToSnapshot(snapshot);
         ApplySplitRoutingStateToSnapshot(snapshot);
+        ApplyTransparentProxyStateToSnapshot(snapshot);
         _appStateStore.Save(snapshot);
     }
 

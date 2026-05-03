@@ -65,8 +65,8 @@
                             <EventTrigger RoutedEvent="Mouse.MouseEnter">
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1.08" Duration="0:0:0.12" />
-                                        <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1.08" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.12" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </EventTrigger>
@@ -86,16 +86,16 @@
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="0.9" Duration="0:0:0.07" />
-                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="0.9" Duration="0:0:0.07" />
+                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.07" />
+                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.07" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.EnterActions>
                                 <Trigger.ExitActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1.08" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1.08" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="ButtonScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.12" />
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.ExitActions>
@@ -292,14 +292,14 @@
                                 <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#1E40AF" />
                                 <Setter TargetName="ButtonChrome" Property="RenderTransform">
                                     <Setter.Value>
-                                        <ScaleTransform ScaleX="1.04" ScaleY="1.04" />
+                                        <ScaleTransform ScaleX="1" ScaleY="1" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="ButtonChrome" Property="RenderTransform">
                                     <Setter.Value>
-                                        <ScaleTransform ScaleX="0.96" ScaleY="0.96" />
+                                        <ScaleTransform ScaleX="1" ScaleY="1" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
@@ -385,7 +385,8 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0">
+                <StackPanel Grid.Column="0"
+                            ClipToBounds="True">
                     <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="入口组" />
                     <WrapPanel Margin="0,4,0,0">
                         <Border Margin="0,0,6,0"
@@ -545,7 +546,8 @@
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
 
-                                <Grid Margin="2,0,12,6">
+                                <Grid Margin="2,0,12,6"
+                                      MinWidth="1120">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="78" />
                                         <ColumnDefinition Width="1.55*" />
@@ -572,13 +574,13 @@
                                 <ScrollViewer Grid.Row="1"
                                               Style="{StaticResource WorkbenchScrollViewerStyle}"
                                               VerticalScrollBarVisibility="Auto"
-                                              HorizontalScrollBarVisibility="Disabled"
+                                              HorizontalScrollBarVisibility="Auto"
                                               CanContentScroll="False">
                                     <ItemsControl ItemsSource="{Binding ProxyBatchRankingRows}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Border Style="{StaticResource BatchMergedRankingRowBorderStyle}">
-                                                    <Grid>
+                                                    <Grid MinWidth="1120">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="78" />
                                                             <ColumnDefinition Width="1.55*" />
@@ -752,7 +754,7 @@
                                   Style="{StaticResource WorkbenchScrollViewerStyle}"
                                   Margin="0,6,0,0"
                                   VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled"
+                                  HorizontalScrollBarVisibility="Auto"
                                   CanContentScroll="False">
                         <ItemsControl ItemsSource="{Binding ProxyBatchRankingRows}">
                             <ItemsControl.ItemTemplate>
@@ -934,6 +936,7 @@
                             <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="深度测试" />
                             <TextBlock Margin="0,2,0,0"
                                        Style="{StaticResource SectionHintTextStyle}"
+                                       ToolTip="{Binding BatchSelectionSummary, Mode=OneWay}"
                                        Text="{Binding BatchSelectionSummary, Mode=OneWay}" />
                         </StackPanel>
 
@@ -984,7 +987,8 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
 
-                            <Grid Margin="2,0,2,8">
+                            <Grid Margin="2,0,2,8"
+                                  MinWidth="920">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
@@ -996,6 +1000,8 @@
                                                Text="候选深测结果" />
                                     <TextBlock Margin="0,2,18,0"
                                                Style="{StaticResource SectionHintTextStyle}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding BatchDeepComparisonChartStatusSummary, Mode=OneWay}"
                                                Text="{Binding BatchDeepComparisonChartStatusSummary, Mode=OneWay}" />
                                 </StackPanel>
 
@@ -1010,13 +1016,13 @@
                             <ScrollViewer Grid.Row="1"
                                           Style="{StaticResource WorkbenchScrollViewerStyle}"
                                           VerticalScrollBarVisibility="Auto"
-                                          HorizontalScrollBarVisibility="Disabled"
+                                          HorizontalScrollBarVisibility="Auto"
                                           CanContentScroll="False">
                                 <ItemsControl ItemsSource="{Binding ProxyBatchRankingRows}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Style="{StaticResource BatchDeepResultCardStyle}">
-                                                <Grid>
+                                                <Grid MinWidth="920">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="78" />
                                                         <ColumnDefinition Width="1.65*" />

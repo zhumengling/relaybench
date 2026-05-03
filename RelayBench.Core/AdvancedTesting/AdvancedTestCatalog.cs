@@ -126,7 +126,7 @@ public static class AdvancedTestCatalog
             BuildSuite(
                 byId,
                 "security-red-team",
-                "安全红队",
+                "数据安全",
                 "Prompt 注入、系统提示泄露、隐私回显、工具越权、RAG 污染、恶意 URL / 命令诱导和 Jailbreak 边界。",
                 AdvancedRiskLevel.Critical,
                 "redteam_system_prompt_leak",

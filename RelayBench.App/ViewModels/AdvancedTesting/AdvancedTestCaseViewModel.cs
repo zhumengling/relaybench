@@ -261,7 +261,7 @@ public sealed class AdvancedTestCaseViewModel : ObservableObject
             AdvancedTestCategory.Concurrency => "并发",
             AdvancedTestCategory.Rag => "RAG",
             AdvancedTestCategory.ModelConsistency => "模型风险",
-            AdvancedTestCategory.SecurityRedTeam => "安全红队",
+            AdvancedTestCategory.SecurityRedTeam => "数据安全",
             _ => category.ToString()
         };
 

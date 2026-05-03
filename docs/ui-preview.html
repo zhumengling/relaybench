@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RelayBench UI 效果预览</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+
+  :root {
+    --accent: #2563EB;
+    --accent-hover: #1D4ED8;
+    --accent-soft: #EFF6FF;
+    --accent-border: #BFDBFE;
+    --success: #059669;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --text: #0F172A;
+    --muted: #64748B;
+    --panel: #FFFFFF;
+    --panel-strong: #FBFDFF;
+    --border: #E2E8F0;
+    --input: #F8FAFC;
+    --input-hover: #F1F5F9;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-2xl: 24px;
+    --shadow-sm: 0 1px 3px rgba(10,15,30,0.04), 0 1px 2px rgba(10,15,30,0.03);
+    --shadow-md: 0 4px 16px rgba(10,15,30,0.06), 0 1px 3px rgba(10,15,30,0.04);
+    --shadow-lg: 0 8px 30px rgba(10,15,30,0.08), 0 2px 6px rgba(10,15,30,0.04);
+    --shadow-xl: 0 12px 40px rgba(10,15,30,0.10), 0 4px 12px rgba(10,15,30,0.05);
+    --grad-primary: linear-gradient(135deg, #3B82F6 0%, #6366F1 100%);
+    --grad-primary-hover: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+    --grad-bg: linear-gradient(135deg, #F0F4FF 0%, #E8EEFF 50%, #F5F7FB 100%);
+    --grad-nav-active: linear-gradient(90deg, #EFF6FF 0%, #DBEAFE 100%);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', 'Noto Sans SC', 'Microsoft YaHei UI', sans-serif;
+    background: var(--grad-bg);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ── Title Bar ── */
+  .title-bar {
+    height: 48px;
+    background: var(--panel-strong);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    -webkit-app-region: drag;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+  }
+  .title-left { display: flex; align-items: center; gap: 10px; }
+  .title-logo {
+    width: 30px; height: 30px;
+    background: var(--grad-primary);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 14px;
+    box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+  }
+  .title-text { font-size: 13.5px; font-weight: 600; color: var(--text); }
+
+  .progress-pill {
+    min-width: 280px; max-width: 540px; height: 30px;
+    background: linear-gradient(135deg, #FBFDFF, #F3F7FF);
+    border: 1px solid #D9E7FF;
+    border-radius: 999px;
+    display: flex; align-items: center;
+    padding: 0 14px; gap: 10px;
+    font-size: 11px; font-weight: 600;
+    opacity: 1;
+    transition: all 0.3s ease;
+  }
+  .progress-pill .label { color: #0F172A; white-space: nowrap; }
+  .progress-track {
+    flex: 1; height: 6px;
+    background: #EAF0FF; border: 1px solid #D6E1FB;
+    border-radius: 999px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 68%;
+    background: var(--grad-primary);
+    border-radius: 999px;
+    transition: width 0.6s ease;
+  }
+  .progress-status { color: #475467; white-space: nowrap; }
+
+  .title-btns { display: flex; gap: 4px; -webkit-app-region: no-drag; }
+  .title-btn {
+    width: 38px; height: 28px;
+    background: transparent; border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer; font-size: 13px;
+    color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s ease;
+  }
+  .title-btn:hover { background: #F1F5F9; color: var(--text); }
+  .title-btn.close:hover { background: #FEE2E2; color: var(--danger); }
+
+  /* ── Shell ── */
+  .shell {
+    display: flex; flex-direction: column;
+    height: 100vh;
+    border-radius: var(--radius-2xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-xl);
+  }
+
+  .main-area {
+    flex: 1; display: flex;
+    padding: 8px; gap: 8px;
+    overflow: hidden;
+  }
+
+  /* ── Navigation Rail ── */
+  .nav-rail {
+    width: 220px; flex-shrink: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2xl);
+    padding: 18px;
+    display: flex; flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    transition: box-shadow 0.3s ease;
+  }
+  .nav-rail:hover { box-shadow: var(--shadow-xl); }
+
+  .nav-section-title {
+    font-size: 11px; font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .nav-hint {
+    font-size: 11px; color: var(--muted);
+    margin-bottom: 16px; line-height: 1.5;
+  }
+
+  .nav-items { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+
+  .nav-item {
+    padding: 11px 14px;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 500;
+    color: var(--text);
+    border: 1px solid transparent;
+    transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+    position: relative;
+  }
+  .nav-item:hover {
+    background: var(--input-hover);
+    border-color: var(--border);
+    transform: scale(1.01);
+  }
+  .nav-item.active {
+    background: var(--grad-nav-active);
+    border-color: var(--accent-border);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute; left: -2px; top: 50%;
+    transform: translateY(-50%);
+    width: 3.5px; height: 22px;
+    background: var(--accent);
+    border-radius: 999px;
+  }
+  .nav-icon {
+    width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
+  .nav-item.active .nav-icon { color: var(--accent); }
+
+  .nav-about {
+    margin-top: auto;
+    padding: 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+  }
+  .nav-about-label { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .nav-about-link {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--accent); font-size: 11.5px; font-weight: 600;
+    cursor: pointer; text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .nav-about-link:hover { opacity: 0.8; }
+  .nav-about-link svg { width: 15px; height: 15px; fill: var(--text); }
+
+  /* ── Content Area ── */
+  .content { flex: 1; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+
+  .content-header {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+  }
+  .content-header h2 { font-size: 16px; font-weight: 700; }
+  .content-header p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .header-right { text-align: right; }
+  .header-right .status { font-size: 12px; color: var(--muted); }
+  .header-right .time { font-size: 12px; color: var(--accent); margin-top: 2px; }
+
+  .content-body {
+    flex: 1; display: flex; flex-direction: column; gap: 6px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #A8B3C4 transparent;
+  }
+  .content-body::-webkit-scrollbar { width: 8px; }
+  .content-body::-webkit-scrollbar-track { background: transparent; }
+  .content-body::-webkit-scrollbar-thumb {
+    background: #A8B3C4; border-radius: 999px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    box-shadow: var(--shadow-md);
+    transition: box-shadow 0.25s ease, transform 0.2s ease;
+  }
+  .card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-1px);
+  }
+  .card-title {
+    font-size: 14px; font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .card-hint {
+    font-size: 12px; color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* ── Input Row ── */
+  .input-row {
+    display: flex; gap: 8px; align-items: flex-end;
+  }
+  .input-group { flex: 1; }
+  .input-label {
+    font-size: 12px; font-weight: 600;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .input-field {
+    width: 100%; height: 36px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0 12px;
+    font-size: 12.5px; color: var(--text);
+    font-family: inherit;
+    transition: all 0.2s ease;
+    outline: none;
+  }
+  .input-field:hover {
+    border-color: #93C5FD;
+  }
+  .input-field:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+  }
+  .input-field::placeholder { color: #94A3B8; }
+
+  /* ── Buttons ── */
+  .btn {
+    height: 36px; padding: 0 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 12.5px; font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn:hover {
+    background: #F9FAFB; border-color: #98A2B3;
+    transform: scale(1.02);
+  }
+  .btn:active {
+    transform: scale(0.97);
+    background: #EEF4FF; border-color: var(--accent);
+  }
+
+  .btn-primary {
+    background: var(--grad-primary);
+    border: 1px solid #1D4ED8;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+  }
+  .btn-primary:hover {
+    background: var(--grad-primary-hover);
+    border-color: #1E40AF;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+    transform: scale(1.03);
+  }
+  .btn-primary:active {
+    transform: scale(0.96);
+    background: linear-gradient(135deg, #1E40AF 0%, #5B21B6 100%);
+  }
+
+  .btn-sm { height: 30px; padding: 0 12px; font-size: 11.5px; }
+
+  /* ── Mode Selector ── */
+  .mode-selector {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .mode-chip {
+    padding: 8px 14px;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text);
+  }
+  .mode-chip:hover {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+  }
+  .mode-chip.active {
+    background: var(--grad-nav-active);
+    border-color: var(--accent-border);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ── Dashboard Cards ── */
+  .dashboard-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .dash-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.25s ease;
+    cursor: default;
+  }
+  .dash-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+  .dash-card .dash-label {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.3px;
+    margin-bottom: 8px;
+  }
+  .dash-card .dash-value {
+    font-size: 22px; font-weight: 700; line-height: 1.2;
+  }
+  .dash-card .dash-sub {
+    font-size: 11px; color: var(--muted); margin-top: 4px;
+  }
+  .dash-card.success .dash-value { color: var(--success); }
+  .dash-card.warning .dash-value { color: var(--warning); }
+  .dash-card.danger .dash-value { color: var(--danger); }
+  .dash-card.info .dash-value { color: var(--accent); }
+
+  /* ── Chart Placeholder ── */
+  .chart-area {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    box-shadow: var(--shadow-md);
+    min-height: 180px;
+    position: relative;
+    overflow: hidden;
+  }
+  .chart-area .chart-title {
+    font-size: 14px; font-weight: 700; margin-bottom: 12px;
+  }
+  .chart-bars {
+    display: flex; align-items: flex-end; gap: 6px;
+    height: 120px; padding-top: 10px;
+  }
+  .chart-bar {
+    flex: 1;
+    background: var(--grad-primary);
+    border-radius: 6px 6px 0 0;
+    min-height: 8px;
+    transition: all 0.3s ease;
+    opacity: 0.8;
+    position: relative;
+  }
+  .chart-bar:hover {
+    opacity: 1;
+    transform: scaleY(1.05);
+    transform-origin: bottom;
+  }
+  .chart-bar::after {
+    content: attr(data-label);
+    position: absolute; bottom: -20px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px; color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ── Console Output ── */
+  .console-box {
+    background: #0F172A;
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: #94A3B8;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    max-height: 160px;
+  }
+  .console-box .line { display: flex; gap: 8px; }
+  .console-box .ts { color: #475569; flex-shrink: 0; }
+  .console-box .ok { color: #4ADE80; }
+  .console-box .warn { color: #FBBF24; }
+  .console-box .err { color: #F87171; }
+  .console-box .info { color: #60A5FA; }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 8px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--muted);
+  }
+  .status-bar .accent { color: var(--accent); }
+
+  /* ── Action Cards Grid ── */
+  .action-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .action-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: var(--shadow-sm);
+  }
+  .action-card:hover {
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-3px);
+  }
+  .action-card:active { transform: scale(0.98); }
+  .action-card .ac-icon {
+    width: 36px; height: 36px;
+    background: var(--accent-soft);
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; margin-bottom: 10px;
+  }
+  .action-card:hover .ac-icon { background: #DBEAFE; }
+  .action-card .ac-title {
+    font-size: 13.5px; font-weight: 700; margin-bottom: 4px;
+  }
+  .action-card .ac-desc {
+    font-size: 11.5px; color: var(--muted); line-height: 1.5;
+  }
+
+  /* ── Preview Selector ── */
+  .preview-controls {
+    position: fixed; top: 12px; right: 12px; z-index: 999;
+    display: flex; gap: 6px;
+  }
+  .preview-controls button {
+    padding: 6px 14px; border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    font-size: 11.5px; font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    transition: all 0.2s ease;
+    font-family: inherit;
+    color: var(--text);
+  }
+  .preview-controls button:hover { border-color: var(--accent); color: var(--accent); }
+  .preview-controls button.active {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
+
+  /* ── Page Views ── */
+  .page-view { display: none; flex-direction: column; gap: 6px; flex: 1; overflow: hidden; }
+  .page-view.active { display: flex; }
+
+  /* ── Two Column Layout ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .two-col-r { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 8px; }
+
+  /* ── Table ── */
+  .mini-table {
+    width: 100%; border-collapse: separate; border-spacing: 0;
+    font-size: 12px;
+  }
+  .mini-table th {
+    text-align: left; padding: 8px 10px;
+    font-size: 11px; font-weight: 600;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mini-table td {
+    padding: 10px; border-bottom: 1px solid #F1F5F9;
+  }
+  .mini-table tr:last-child td { border-bottom: none; }
+  .mini-table tr:hover td { background: #F8FAFC; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10.5px; font-weight: 600;
+  }
+  .badge-success { background: #ECFDF5; color: #059669; }
+  .badge-warning { background: #FFFBEB; color: #D97706; }
+  .badge-danger { background: #FEF2F2; color: #DC2626; }
+  .badge-info { background: #EFF6FF; color: #2563EB; }
+
+  /* ── Chat: Session Items ── */
+  .session-item {
+    padding: 10px 12px;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .session-item:hover {
+    background: var(--input-hover);
+    border-color: #CBD5E1;
+  }
+  .session-item.active {
+    background: var(--grad-nav-active);
+    border-color: var(--accent-border);
+  }
+
+  /* ── Chat: Bubbles ── */
+  .chat-bubble-row { display: flex; }
+  .chat-bubble-row.user { justify-content: flex-end; }
+  .chat-bubble-row.assistant { justify-content: flex-start; }
+
+  .chat-bubble {
+    max-width: 720px;
+    padding: 14px 16px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    animation: fadeIn 0.3s ease both;
+  }
+  .user-bubble {
+    background: #F8FAFC;
+    border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
+  }
+  .assistant-bubble {
+    background: var(--accent-soft);
+    border-color: var(--accent-border);
+    border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+  }
+
+  .bubble-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .bubble-role {
+    font-size: 12px; font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 999px;
+  }
+  .user-role { background: #E0E7FF; color: #4F46E5; }
+  .assistant-role { background: #DBEAFE; color: var(--accent); }
+  .bubble-time { font-size: 11px; color: var(--muted); }
+
+  .bubble-content {
+    font-size: 13px; line-height: 1.7;
+    color: var(--text);
+  }
+
+  .bubble-attachments { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .attachment-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    background: #EEF4FF;
+    border: 1px solid #B2CCFF;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+  }
+  .att-kind { font-weight: 600; color: #175CD3; }
+  .att-name { color: #344054; }
+
+  .bubble-metrics {
+    margin-top: 10px; padding-top: 8px;
+    border-top: 1px solid rgba(0,0,0,0.06);
+    display: flex; gap: 10px; align-items: center;
+    font-size: 11px; color: var(--muted);
+  }
+
+  /* ── Chat: Markdown Body ── */
+  .markdown-body h4 {
+    font-size: 13px; font-weight: 700;
+    margin: 12px 0 4px;
+    color: var(--text);
+  }
+  .markdown-body p { margin: 6px 0; }
+  .markdown-body ul, .markdown-body ol {
+    margin: 6px 0; padding-left: 20px;
+  }
+  .markdown-body li { margin: 3px 0; }
+  .markdown-body strong { font-weight: 700; color: var(--text); }
+  .markdown-body table {
+    width: 100%; border-collapse: collapse;
+    margin: 8px 0; font-size: 12px;
+  }
+  .markdown-body th, .markdown-body td {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+  .markdown-body th {
+    background: var(--input);
+    font-weight: 600; font-size: 11px;
+    color: var(--muted);
+  }
+
+  .code-block {
+    margin: 8px 0;
+    background: #0F172A;
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    overflow-x: auto;
+  }
+  .code-block pre { margin: 0; }
+  .code-block code {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 12px; line-height: 1.6;
+    color: #E2E8F0;
+  }
+
+  /* ── Chat: Multi-Model Answer ── */
+  .multi-model-answer {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+    box-shadow: var(--shadow-sm);
+    animation: fadeIn 0.35s ease both;
+  }
+  .mma-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .mma-title { font-size: 14px; font-weight: 700; }
+  .mma-time { font-size: 11px; color: var(--muted); }
+
+  .mma-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .mma-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    transition: all 0.2s ease;
+  }
+  .mma-card:hover {
+    border-color: var(--accent-border);
+    box-shadow: var(--shadow-md);
+  }
+  .mma-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .mma-model-name { font-size: 12.5px; font-weight: 700; }
+  .mma-status {
+    font-size: 10.5px; font-weight: 600;
+    padding: 1px 7px; border-radius: 999px;
+  }
+  .mma-status.ok { background: #ECFDF5; color: var(--success); }
+
+  .mma-card-body {
+    font-size: 12px; line-height: 1.65;
+    color: #334155;
+    max-height: 200px; overflow-y: auto;
+  }
+  .mma-card-body p { margin: 4px 0; }
+  .mma-card-body ul { padding-left: 16px; margin: 4px 0; }
+  .mma-card-body li { margin: 2px 0; }
+  .mma-card-body strong { font-weight: 700; color: var(--text); }
+  .mma-table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 11px; }
+  .mma-table th, .mma-table td { padding: 4px 6px; border: 1px solid var(--border); text-align: left; }
+  .mma-table th { background: var(--input); font-weight: 600; font-size: 10.5px; color: var(--muted); }
+
+  .mma-metrics {
+    margin-top: 8px; padding-top: 6px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 8px;
+    font-size: 10.5px; color: var(--muted);
+  }
+
+  /* ── Chat: Input Area ── */
+  .chat-input-area {
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    background: var(--panel-strong);
+  }
+  .chat-input-toolbar {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 8px;
+  }
+  .toolbar-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 28px; padding: 0 10px;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 11.5px; font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+  }
+  .toolbar-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-border); }
+  .input-hint { font-size: 11px; color: #94A3B8; }
+
+  .chat-input-box {
+    display: flex; gap: 8px; align-items: flex-end;
+  }
+  .chat-input-box textarea {
+    flex: 1; min-height: 44px; max-height: 120px;
+    resize: none;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    font-size: 13px; line-height: 1.5;
+    color: var(--text);
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s ease;
+  }
+  .chat-input-box textarea:hover { border-color: #93C5FD; }
+  .chat-input-box textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+  }
+  .chat-input-box textarea::placeholder { color: #94A3B8; }
+  .send-btn {
+    height: 44px; padding: 0 20px;
+    display: inline-flex; align-items: center; gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* ── Chat: Status Items ── */
+  .status-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0;
+  }
+  .status-label { font-size: 12px; color: var(--muted); }
+  .status-value { font-size: 12.5px; font-weight: 600; color: var(--text); }
+
+  /* ── Chat: Streaming Animation ── */
+  .streaming-cursor {
+    display: inline-block;
+    color: var(--accent);
+    font-weight: 300;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .streaming-indicator { display: inline-flex; gap: 3px; align-items: center; }
+  .streaming-indicator .dot {
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: dotPulse 1.4s ease-in-out infinite;
+  }
+  .streaming-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
+  .streaming-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotPulse {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1.2); }
+  }
+
+  /* ── Chat: Settings Panel ── */
+  .settings-overlay {
+    position: absolute; inset: 0; z-index: 50;
+    background: rgba(15,23,42,0.12);
+    display: none; justify-content: flex-end;
+    border-radius: var(--radius-lg);
+  }
+  .settings-overlay.open { display: flex; }
+  .settings-panel {
+    width: 380px; height: 100%;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    padding: 18px;
+    box-shadow: var(--shadow-xl);
+    overflow-y: auto;
+  }
+
+  /* animations */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .card, .dash-card, .action-card, .chart-area { animation: fadeIn 0.4s ease both; }
+  .dash-card:nth-child(2) { animation-delay: 0.05s; }
+  .dash-card:nth-child(3) { animation-delay: 0.1s; }
+  .dash-card:nth-child(4) { animation-delay: 0.15s; }
+  .action-card:nth-child(2) { animation-delay: 0.05s; }
+  .action-card:nth-child(3) { animation-delay: 0.1s; }
+</style>
+</head>
+<body>
+
+<div class="preview-controls">
+  <button class="active" onclick="showPage('station', this)">单站测试</button>
+  <button onclick="showPage('chat', this)">对话实测</button>
+  <button onclick="showPage('batch', this)">批量评测</button>
+  <button onclick="showPage('apps', this)">应用接入</button>
+  <button onclick="showPage('network', this)">网络复核</button>
+</div>
+
+<div class="shell">
+  <!-- Title Bar -->
+  <div class="title-bar">
+    <div class="title-left">
+      <div class="title-logo">R</div>
+      <span class="title-text">RelayBench 接口测试工作台</span>
+    </div>
+    <div class="progress-pill">
+      <span class="label">单站测试</span>
+      <div class="progress-track"><div class="progress-fill"></div></div>
+      <span class="progress-status">68% · GPT-4o 测试中</span>
+    </div>
+    <div class="title-btns">
+      <button class="title-btn">—</button>
+      <button class="title-btn">☐</button>
+      <button class="title-btn close">✕</button>
+    </div>
+  </div>
+
+  <!-- Main Area -->
+  <div class="main-area">
+    <!-- Navigation Rail -->
+    <div class="nav-rail">
+      <div class="nav-section-title">工作台导航</div>
+      <div class="nav-hint">按任务切换页面：先做单站测试，再做对话实测、批量评测、应用接入与网络复核。</div>
+      <div class="nav-items">
+        <div class="nav-item active" onclick="switchNav(this)">
+          <span class="nav-icon">⚡</span>单站测试
+        </div>
+        <div class="nav-item" onclick="switchNav(this)">
+          <span class="nav-icon">💬</span>对话实测
+        </div>
+        <div class="nav-item" onclick="switchNav(this)">
+          <span class="nav-icon">📊</span>批量评测
+        </div>
+        <div class="nav-item" onclick="switchNav(this)">
+          <span class="nav-icon">🔌</span>应用接入
+        </div>
+        <div class="nav-item" onclick="switchNav(this)">
+          <span class="nav-icon">🌐</span>网络复核
+        </div>
+        <div class="nav-item" onclick="switchNav(this)">
+          <span class="nav-icon">📁</span>历史报告
+        </div>
+      </div>
+      <div class="nav-about">
+        <div class="nav-about-label">关于</div>
+        <a class="nav-about-link" href="#">
+          <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          查看项目信息
+        </a>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <!-- Header -->
+      <div class="content-header">
+        <div>
+          <h2 id="pageTitle">单站测试</h2>
+          <p id="pageSubtitle">配置接口地址与模型，选择测试模式后一键运行</p>
+        </div>
+        <div class="header-right">
+          <div class="status">最近测试已完成</div>
+          <div class="time">上次运行：2026-04-30 21:15</div>
+        </div>
+      </div>
+
+      <!-- Page: Single Station -->
+      <div class="content-body page-view active" id="page-station">
+        <!-- Input Config -->
+        <div class="card">
+          <div class="input-row">
+            <div class="input-group" style="flex:2">
+              <div class="input-label">接口地址</div>
+              <input class="input-field" value="https://api.openai.com/v1/chat/completions" />
+            </div>
+            <div class="input-group" style="flex:1.5">
+              <div class="input-label">API Key</div>
+              <input class="input-field" type="password" value="sk-••••••••••••••••" />
+            </div>
+            <div class="input-group" style="flex:1">
+              <div class="input-label">模型</div>
+              <input class="input-field" value="gpt-4o" />
+            </div>
+            <button class="btn">拉取模型</button>
+          </div>
+        </div>
+
+        <!-- Mode Selector -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+            <div>
+              <div class="card-title">测试模式</div>
+              <div class="card-hint" style="margin-bottom:0">选择测试类型后点击运行，支持多轮对话与流式响应测试</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm">历史接口</button>
+              <button class="btn btn-sm">查看图表</button>
+              <button class="btn btn-primary btn-sm">开始测试</button>
+              <button class="btn btn-sm">停止测试</button>
+            </div>
+          </div>
+          <div class="mode-selector">
+            <div class="mode-chip active">标准请求</div>
+            <div class="mode-chip">流式输出</div>
+            <div class="mode-chip">多轮对话</div>
+            <div class="mode-chip">并发压测</div>
+            <div class="mode-chip">超时检测</div>
+            <div class="mode-chip">模型对比</div>
+          </div>
+        </div>
+
+        <!-- Dashboard + Console -->
+        <div class="two-col-r" style="flex:1;min-height:0">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <!-- Dashboard -->
+            <div class="dashboard-row">
+              <div class="dash-card success">
+                <div class="dash-label">成功率</div>
+                <div class="dash-value">98.2%</div>
+                <div class="dash-sub">245 / 250 次</div>
+              </div>
+              <div class="dash-card info">
+                <div class="dash-label">平均延迟</div>
+                <div class="dash-value">342ms</div>
+                <div class="dash-sub">P95: 580ms</div>
+              </div>
+              <div class="dash-card warning">
+                <div class="dash-label">Token 速率</div>
+                <div class="dash-value">68.4/s</div>
+                <div class="dash-sub">首 Token: 120ms</div>
+              </div>
+              <div class="dash-card">
+                <div class="dash-label">总耗时</div>
+                <div class="dash-value">12.8s</div>
+                <div class="dash-sub">250 轮次</div>
+              </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="chart-area" style="flex:1">
+              <div class="chart-title">延迟分布</div>
+              <div class="chart-bars">
+                <div class="chart-bar" style="height:25%" data-label="0-100"></div>
+                <div class="chart-bar" style="height:55%" data-label="100-200"></div>
+                <div class="chart-bar" style="height:90%" data-label="200-300"></div>
+                <div class="chart-bar" style="height:100%" data-label="300-400"></div>
+                <div class="chart-bar" style="height:72%" data-label="400-500"></div>
+                <div class="chart-bar" style="height:45%" data-label="500-600"></div>
+                <div class="chart-bar" style="height:28%" data-label="600-800"></div>
+                <div class="chart-bar" style="height:15%" data-label="800+"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Console -->
+          <div class="console-box">
+            <div class="line"><span class="ts">21:15:03</span> <span class="info">[INFO]</span> 开始单站测试 gpt-4o</div>
+            <div class="line"><span class="ts">21:15:03</span> <span class="ok">[OK]</span> 接口连通性检测通过</div>
+            <div class="line"><span class="ts">21:15:04</span> <span class="info">[INFO]</span> 模型列表已更新 (12 个)</div>
+            <div class="line"><span class="ts">21:15:04</span> <span class="ok">[OK]</span> 第 1 轮 280ms 128tok</div>
+            <div class="line"><span class="ts">21:15:05</span> <span class="ok">[OK]</span> 第 2 轮 315ms 96tok</div>
+            <div class="line"><span class="ts">21:15:05</span> <span class="warn">[WARN]</span> 第 3 轮延迟偏高 580ms</div>
+            <div class="line"><span class="ts">21:15:06</span> <span class="ok">[OK]</span> 第 4 轮 290ms 112tok</div>
+            <div class="line"><span class="ts">21:15:06</span> <span class="ok">[OK]</span> 第 5 轮 305ms 104tok</div>
+            <div class="line"><span class="ts">21:15:07</span> <span class="ok">[OK]</span> 第 6 轮 278ms 136tok</div>
+            <div class="line"><span class="ts">21:15:07</span> <span class="info">[INFO]</span> 测试进行中... 68%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page: Chat -->
+      <!-- Page: Model Chat -->
+      <div class="content-body page-view" id="page-chat" style="gap:6px">
+        <!-- Chat Header Bar -->
+        <div class="card" style="padding:10px 16px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:14px;font-weight:700">多模型对话</span>
+              <span style="font-size:12px;color:var(--muted)">GPT-4o · Claude 3.5 Sonnet · DeepSeek V3</span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm" onclick="toggleSettings()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                参数
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3-Column Layout: Sessions | Chat | Status -->
+        <div style="flex:1;display:grid;grid-template-columns:220px 1fr 250px;gap:8px;min-height:0">
+
+          <!-- Left: Session List -->
+          <div class="card" style="display:flex;flex-direction:column;overflow:hidden;padding:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <span style="font-size:14px;font-weight:700">会话</span>
+              <div style="display:flex;gap:4px">
+                <button class="btn btn-sm" style="height:26px;padding:0 8px;font-size:11px">新建</button>
+                <button class="btn btn-sm" style="height:26px;padding:0 8px;font-size:11px">删除</button>
+              </div>
+            </div>
+            <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+              <div class="session-item active">
+                <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">WebSocket 对比分析</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">讨论了 WS 与 SSE 的区别和选型</div>
+              </div>
+              <div class="session-item">
+                <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">React 性能优化</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">useMemo 和 useCallback 的最佳实践</div>
+              </div>
+              <div class="session-item">
+                <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">数据库索引设计</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">B+ 树与哈希索引的选择策略</div>
+              </div>
+              <div class="session-item">
+                <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">K8s 部署问题排查</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Pod CrashLoopBackOff 的常见原因</div>
+              </div>
+              <div class="session-item">
+                <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">TypeScript 类型体操</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">条件类型与 infer 的高级用法</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center: Chat Messages -->
+          <div class="card" style="display:flex;flex-direction:column;overflow:hidden;padding:0">
+            <!-- Messages Area -->
+            <div class="chat-messages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px">
+              <!-- User Message 1 -->
+              <div class="chat-bubble-row user">
+                <div class="chat-bubble user-bubble">
+                  <div class="bubble-header">
+                    <span class="bubble-role user-role">用户</span>
+                    <span class="bubble-time">21:08</span>
+                  </div>
+                  <div class="bubble-content">请解释一下 WebSocket 和 SSE 的区别，各自的优缺点是什么？在什么场景下应该选择哪种方案？</div>
+                </div>
+              </div>
+
+              <!-- Multi-Model Answer 1 -->
+              <div class="multi-model-answer">
+                <div class="mma-header">
+                  <span class="mma-title">多模型回答</span>
+                  <span class="mma-time">21:08</span>
+                </div>
+                <div class="mma-grid">
+                  <!-- GPT-4o -->
+                  <div class="mma-card">
+                    <div class="mma-card-header">
+                      <span class="mma-model-name">GPT-4o</span>
+                      <span class="mma-status ok">完成</span>
+                    </div>
+                    <div class="mma-card-body">
+                      <p><strong>WebSocket</strong> 是全双工通信协议，建立连接后客户端和服务端可以随时互相发送数据，适合实时聊天、多人协作编辑、在线游戏等需要双向通信的场景。</p>
+                      <p style="margin-top:8px"><strong>SSE (Server-Sent Events)</strong> 是单向的，只能服务端向客户端推送，基于 HTTP 协议，天然支持断线重连，适合通知推送、实时数据流、日志监控等场景。</p>
+                      <div class="code-block">
+                        <pre><code>// SSE 客户端示例
+const es = new EventSource('/api/stream');
+es.onmessage = (e) => console.log(e.data);</code></pre>
+                      </div>
+                    </div>
+                    <div class="mma-metrics">
+                      <span>342ms</span><span>256 tok</span><span>68.4 tok/s</span>
+                    </div>
+                  </div>
+                  <!-- Claude -->
+                  <div class="mma-card">
+                    <div class="mma-card-header">
+                      <span class="mma-model-name">Claude 3.5 Sonnet</span>
+                      <span class="mma-status ok">完成</span>
+                    </div>
+                    <div class="mma-card-body">
+                      <p>核心区别在于<strong>通信方向</strong>和<strong>协议层级</strong>：</p>
+                      <table class="mma-table">
+                        <thead><tr><th>特性</th><th>WebSocket</th><th>SSE</th></tr></thead>
+                        <tbody>
+                          <tr><td>方向</td><td>双向</td><td>单向(服务端→客户端)</td></tr>
+                          <tr><td>协议</td><td>独立协议(ws://)</td><td>基于HTTP</td></tr>
+                          <tr><td>断线重连</td><td>需自行实现</td><td>内置支持</td></tr>
+                          <tr><td>复杂度</td><td>较高</td><td>低</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="mma-metrics">
+                      <span>285ms</span><span>198 tok</span><span>72.1 tok/s</span>
+                    </div>
+                  </div>
+                  <!-- DeepSeek -->
+                  <div class="mma-card">
+                    <div class="mma-card-header">
+                      <span class="mma-model-name">DeepSeek V3</span>
+                      <span class="mma-status ok">完成</span>
+                    </div>
+                    <div class="mma-card-body">
+                      <p>简单总结选型建议：</p>
+                      <ul>
+                        <li>需要<strong>双向实时通信</strong>（聊天室、协同编辑）→ WebSocket</li>
+                        <li>只需要<strong>服务端推送</strong>（通知、数据流）→ SSE</li>
+                        <li>需要兼容<strong>HTTP 代理/防火墙</strong> → SSE 更友好</li>
+                        <li>需要<strong>二进制传输</strong> → WebSocket</li>
+                      </ul>
+                    </div>
+                    <div class="mma-metrics">
+                      <span>198ms</span><span>142 tok</span><span>95.2 tok/s</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- User Message 2 -->
+              <div class="chat-bubble-row user">
+                <div class="chat-bubble user-bubble">
+                  <div class="bubble-header">
+                    <span class="bubble-role user-role">用户</span>
+                    <span class="bubble-time">21:10</span>
+                  </div>
+                  <div class="bubble-content">
+                    那如果我的应用同时需要这两种场景——既有实时双向的数据同步，又需要服务端单向推送通知，架构上应该怎么设计？
+                  </div>
+                  <div class="bubble-attachments">
+                    <div class="attachment-tag">
+                      <span class="att-kind">图片</span>
+                      <span class="att-name">architecture.png</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Streaming Answer -->
+              <div class="chat-bubble-row assistant">
+                <div class="chat-bubble assistant-bubble">
+                  <div class="bubble-header">
+                    <span class="bubble-role assistant-role">GPT-4o</span>
+                    <span class="bubble-time">21:10</span>
+                  </div>
+                  <div class="bubble-content markdown-body">
+                    <p>推荐采用<strong>混合架构</strong>，按通信需求分层：</p>
+                    <h4>1. 核心数据通道 — WebSocket</h4>
+                    <p>用于需要双向实时同步的场景，如文档协作、表单状态同步。客户端与服务端通过 WebSocket 保持长连接。</p>
+                    <h4>2. 通知推送通道 — SSE</h4>
+                    <p>用于服务端向客户端推送通知、系统消息等。SSE 基于 HTTP，天然穿透代理，断线自动重连。</p>
+                    <div class="code-block">
+                      <pre><code>// 架构示意
+┌─────────────┐     WebSocket      ┌──────────┐
+│   Client    │◄──────────────────►│  WS 服务  │  ← 实时双向
+│             │     SSE            │          │
+│             │◄───────────────────│ SSE 服务  │  ← 单向推送
+└─────────────┘                    └──────────┘</code></pre>
+                    </div>
+                    <h4>3. 关键设计要点</h4>
+                    <ul>
+                      <li>WebSocket 连接用于<strong>状态同步</strong>，SSE 用于<strong>事件通知</strong></li>
+                      <li>两种连接共享同一套<strong>认证机制</strong>（Token）</li>
+                      <li>SSE 可作为 WebSocket 的<strong>降级方案</strong></li>
+                    </ul>
+                    <p class="streaming-cursor">|</p>
+                  </div>
+                  <div class="bubble-metrics">
+                    <span>生成中...</span>
+                    <span>128 tok</span>
+                    <span>45.8 tok/s</span>
+                    <span class="streaming-indicator">
+                      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-area">
+              <div class="chat-input-toolbar">
+                <button class="toolbar-btn" title="添加图片">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  图片
+                </button>
+                <button class="toolbar-btn" title="添加文件">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                  文件
+                </button>
+                <div style="flex:1"></div>
+                <span class="input-hint">Enter 发送 · Shift+Enter 换行</span>
+              </div>
+              <div class="chat-input-box">
+                <textarea placeholder="输入消息，支持 Markdown 格式...">输入你的下一条消息...</textarea>
+                <button class="btn btn-primary send-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  发送
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Status Panel -->
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="card" style="padding:14px">
+              <div style="font-size:14px;font-weight:700;margin-bottom:12px">请求状态</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="status-item">
+                  <span class="status-label">当前模型</span>
+                  <span class="status-value">GPT-4o</span>
+                </div>
+                <div class="status-item">
+                  <span class="status-label">状态</span>
+                  <span class="status-value" style="color:var(--accent)">
+                    <span class="streaming-indicator" style="margin-right:4px"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+                    生成中
+                  </span>
+                </div>
+                <div class="status-item">
+                  <span class="status-label">Token 计数</span>
+                  <span class="status-value">1,248 / 4,096</span>
+                </div>
+                <div class="status-item">
+                  <span class="status-label">延迟</span>
+                  <span class="status-value">342ms</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="padding:14px;flex:1">
+              <div style="font-size:14px;font-weight:700;margin-bottom:12px">对话指标</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="status-item">
+                  <span class="status-label">会话轮次</span>
+                  <span class="status-value">4 轮</span>
+                </div>
+                <div class="status-item">
+                  <span class="status-label">总 Token</span>
+                  <span class="status-value">3,842</span>
+                </div>
+                <div class="status-item">
+                  <span class="status-label">平均延迟</span>
+                  <span class="status-value">275ms</span>
+                </div>
+                <div class="status-item">
+                  <span class="status-label">输出速率</span>
+                  <span class="status-value">72.1 tok/s</span>
+                </div>
+              </div>
+
+              <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+                <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">推理强度</div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px"><span>上下文理解</span><span style="color:var(--success);font-weight:600">强</span></div><div style="height:5px;background:#E2E8F0;border-radius:999px;overflow:hidden"><div style="height:100%;width:92%;background:var(--grad-primary);border-radius:999px"></div></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px"><span>逻辑推理</span><span style="color:var(--success);font-weight:600">强</span></div><div style="height:5px;background:#E2E8F0;border-radius:999px;overflow:hidden"><div style="height:100%;width:88%;background:var(--grad-primary);border-radius:999px"></div></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px"><span>代码生成</span><span style="color:var(--accent);font-weight:600">中</span></div><div style="height:5px;background:#E2E8F0;border-radius:999px;overflow:hidden"><div style="height:100%;width:65%;background:var(--grad-primary);border-radius:999px"></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page: Batch -->
+      <div class="content-body page-view" id="page-batch">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div class="card-title">批量评测</div>
+              <div class="card-hint">同时测试多个模型/接口，生成对比报告</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm">导入模板</button>
+              <button class="btn btn-sm">导出结果</button>
+              <button class="btn btn-primary btn-sm">开始评测</button>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="flex:1;overflow:auto">
+          <table class="mini-table">
+            <thead>
+              <tr>
+                <th>模型</th>
+                <th>状态</th>
+                <th>成功率</th>
+                <th>平均延迟</th>
+                <th>Token/s</th>
+                <th>评分</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:600">GPT-4o</td>
+                <td><span class="badge badge-success">完成</span></td>
+                <td>98.2%</td>
+                <td>342ms</td>
+                <td>68.4</td>
+                <td style="font-weight:700;color:var(--success)">A+</td>
+              </tr>
+              <tr>
+                <td style="font-weight:600">Claude 3.5 Sonnet</td>
+                <td><span class="badge badge-success">完成</span></td>
+                <td>99.1%</td>
+                <td>285ms</td>
+                <td>72.1</td>
+                <td style="font-weight:700;color:var(--success)">A+</td>
+              </tr>
+              <tr>
+                <td style="font-weight:600">Gemini 2.0 Flash</td>
+                <td><span class="badge badge-success">完成</span></td>
+                <td>96.8%</td>
+                <td>198ms</td>
+                <td>95.2</td>
+                <td style="font-weight:700;color:var(--success)">A</td>
+              </tr>
+              <tr>
+                <td style="font-weight:600">DeepSeek V3</td>
+                <td><span class="badge badge-warning">测试中</span></td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td style="font-weight:600">Qwen 2.5 72B</td>
+                <td><span class="badge badge-info">等待中</span></td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Page: Apps -->
+      <div class="content-body page-view" id="page-apps">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div class="card-title">应用接入</div>
+              <div class="card-hint">扫描本机支持应用并检查接入状态</div>
+            </div>
+            <button class="btn btn-primary">开始扫描</button>
+          </div>
+        </div>
+        <div class="action-grid">
+          <div class="action-card">
+            <div class="ac-icon">🌐</div>
+            <div class="ac-title">浏览器插件</div>
+            <div class="ac-desc">Chrome / Edge 扩展已接入，支持代理转发与请求拦截</div>
+            <div style="margin-top:10px"><span class="badge badge-success">已接入</span></div>
+          </div>
+          <div class="action-card">
+            <div class="ac-icon">💻</div>
+            <div class="ac-title">VS Code</div>
+            <div class="ac-desc">通过 Copilot Chat 扩展接入，支持代码补全与对话</div>
+            <div style="margin-top:10px"><span class="badge badge-success">已接入</span></div>
+          </div>
+          <div class="action-card">
+            <div class="ac-icon">🤖</div>
+            <div class="ac-title">Cursor IDE</div>
+            <div class="ac-desc">原生支持 API 代理配置，一键切换后端</div>
+            <div style="margin-top:10px"><span class="badge badge-success">已接入</span></div>
+          </div>
+          <div class="action-card">
+            <div class="ac-icon">📱</div>
+            <div class="ac-title">ChatBox</div>
+            <div class="ac-desc">桌面客户端，支持自定义 API 端点与多模型管理</div>
+            <div style="margin-top:10px"><span class="badge badge-warning">检测中</span></div>
+          </div>
+          <div class="action-card">
+            <div class="ac-icon">🔧</div>
+            <div class="ac-title">OpenClaw</div>
+            <div class="ac-desc">命令行工具，支持批量测试与自动化脚本</div>
+            <div style="margin-top:10px"><span class="badge badge-danger">未安装</span></div>
+          </div>
+          <div class="action-card">
+            <div class="ac-icon">📝</div>
+            <div class="ac-title">JetBrains</div>
+            <div class="ac-desc">IntelliJ / PyCharm AI Assistant 插件接入</div>
+            <div style="margin-top:10px"><span class="badge badge-info">待配置</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page: Network -->
+      <div class="content-body page-view" id="page-network">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div class="card-title">网络复核</div>
+              <div class="card-hint">检测网络路由、IP 风险、端口状态与 DNS 解析</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <div class="mode-chip active" style="margin:0">IP 查询</div>
+              <div class="mode-chip" style="margin:0">路由追踪</div>
+              <div class="mode-chip" style="margin:0">端口扫描</div>
+              <div class="mode-chip" style="margin:0">DNS 解析</div>
+            </div>
+          </div>
+        </div>
+        <div class="two-col" style="flex:1;min-height:0">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="dashboard-row" style="grid-template-columns:1fr 1fr 1fr">
+              <div class="dash-card success"><div class="dash-label">IP 评分</div><div class="dash-value">92</div><div class="dash-sub">低风险</div></div>
+              <div class="dash-card info"><div class="dash-label">延迟</div><div class="dash-value">28ms</div><div class="dash-sub">东京节点</div></div>
+              <div class="dash-card"><div class="dash-label">ASN</div><div class="dash-value" style="font-size:16px">AS13335</div><div class="dash-sub">Cloudflare</div></div>
+            </div>
+            <div class="card" style="flex:1">
+              <div class="card-title">路由追踪</div>
+              <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+                  <span style="width:20px;height:20px;background:#DBEAFE;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--accent)">1</span>
+                  <span style="flex:1">192.168.1.1</span>
+                  <span style="color:var(--muted)">本地网关</span>
+                  <span style="color:var(--success);font-weight:600">1ms</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+                  <span style="width:20px;height:20px;background:#DBEAFE;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--accent)">2</span>
+                  <span style="flex:1">10.0.0.1</span>
+                  <span style="color:var(--muted)">ISP 网关</span>
+                  <span style="color:var(--success);font-weight:600">5ms</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+                  <span style="width:20px;height:20px;background:#DBEAFE;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--accent)">3</span>
+                  <span style="flex:1">172.16.0.1</span>
+                  <span style="color:var(--muted)">骨干网</span>
+                  <span style="color:var(--success);font-weight:600">12ms</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+                  <span style="width:20px;height:20px;background:#DBEAFE;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--accent)">4</span>
+                  <span style="flex:1">104.16.0.1</span>
+                  <span style="color:var(--muted)">Cloudflare</span>
+                  <span style="color:var(--success);font-weight:600">28ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">IP 风险评估</div>
+            <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px">
+                <div>
+                  <div style="font-size:12.5px;font-weight:600">代理检测</div>
+                  <div style="font-size:11px;color:var(--muted)">未检测到代理/VPN</div>
+                </div>
+                <span class="badge badge-success">安全</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px">
+                <div>
+                  <div style="font-size:12.5px;font-weight:600">黑名单检查</div>
+                  <div style="font-size:11px;color:var(--muted)">未命中任何黑名单</div>
+                </div>
+                <span class="badge badge-success">安全</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px">
+                <div>
+                  <div style="font-size:12.5px;font-weight:600">数据中心检测</div>
+                  <div style="font-size:11px;color:var(--muted)">IP 归属数据中心</div>
+                </div>
+                <span class="badge badge-warning">注意</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px">
+                <div>
+                  <div style="font-size:12.5px;font-weight:600">地理位置</div>
+                  <div style="font-size:11px;color:var(--muted)">日本 · 东京</div>
+                </div>
+                <span class="badge badge-info">正常</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <span>接口测试就绪</span>
+        <span class="accent">上次运行：2026-04-30 21:15</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showPage(id, btn) {
+  document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.preview-controls button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const titles = {
+    station: ['单站测试', '配置接口地址与模型，选择测试模式后一键运行'],
+    chat: ['对话实测', '模拟真实多轮对话场景，验证上下文保持与回复质量'],
+    batch: ['批量评测', '同时测试多个模型/接口，生成对比报告'],
+    apps: ['应用接入', '扫描本机支持应用并检查接入状态'],
+    network: ['网络复核', '检测网络路由、IP 风险、端口状态与 DNS 解析']
+  };
+  document.getElementById('pageTitle').textContent = titles[id][0];
+  document.getElementById('pageSubtitle').textContent = titles[id][1];
+}
+
+function toggleSettings() {
+  // Simple toggle for settings panel demo
+  const existing = document.querySelector('.settings-overlay');
+  if (existing) { existing.classList.toggle('open'); return; }
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'settings-overlay open';
+  overlay.innerHTML = `
+    <div class="settings-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-size:16px;font-weight:700">对话参数</span>
+        <button class="btn btn-sm" onclick="this.closest('.settings-overlay').classList.remove('open')">关闭</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div><div class="input-label">Temperature</div><input class="input-field" value="0.7" /></div>
+        <div><div class="input-label">Top P</div><input class="input-field" value="1.0" /></div>
+        <div><div class="input-label">最大 Token</div><input class="input-field" value="4096" /></div>
+        <div><div class="input-label">系统提示词</div><textarea class="input-field" style="height:80px;resize:vertical;padding:8px 12px">你是一个专业的技术助手，请用中文回答问题。</textarea></div>
+        <div><div class="input-label">频率惩罚</div><input class="input-field" value="0.0" /></div>
+        <div><div class="input-label">存在惩罚</div><input class="input-field" value="0.0" /></div>
+      </div>
+    </div>
+  `;
+  document.querySelector('#page-chat .card').style.position = 'relative';
+  document.querySelector('#page-chat .card').appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+}
+
+function switchNav(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  const name = el.textContent.trim();
+  const map = {'单站测试':'station','对话实测':'chat','批量评测':'batch','应用接入':'apps','网络复核':'network','历史报告':'station'};
+  const btnMap = {'单站测试':0,'对话实测':1,'批量评测':2,'应用接入':3,'网络复核':4};
+  if (map[name]) {
+    document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + map[name]).classList.add('active');
+    document.querySelectorAll('.preview-controls button').forEach(b => b.classList.remove('active'));
+    if (btnMap[name] !== undefined) document.querySelectorAll('.preview-controls button')[btnMap[name]].classList.add('active');
+    const titles = {
+      station: ['单站测试', '配置接口地址与模型，选择测试模式后一键运行'],
+      chat: ['对话实测', '模拟真实多轮对话场景，验证上下文保持与回复质量'],
+      batch: ['批量评测', '同时测试多个模型/接口，生成对比报告'],
+      apps: ['应用接入', '扫描本机支持应用并检查接入状态'],
+      network: ['网络复核', '检测网络路由、IP 风险、端口状态与 DNS 解析']
+    };
+    document.getElementById('pageTitle').textContent = titles[map[name]][0];
+    document.getElementById('pageSubtitle').textContent = titles[map[name]][1];
+  }
+}
+</script>
+</body>
+</html>

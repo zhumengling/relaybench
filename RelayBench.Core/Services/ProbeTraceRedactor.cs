@@ -16,6 +16,9 @@ public static class ProbeTraceRedactor
         "token",
         "access_token",
         "refresh_token",
+        "password",
+        "secret",
+        "client_secret",
         "cookie",
         "set-cookie",
         "openai_api_key",
@@ -126,6 +129,11 @@ public static class ProbeTraceRedactor
         normalized = RedactInlineAssignments(normalized, "api_key");
         normalized = RedactInlineAssignments(normalized, "apikey");
         normalized = RedactInlineAssignments(normalized, "token");
+        normalized = RedactInlineAssignments(normalized, "access_token");
+        normalized = RedactInlineAssignments(normalized, "refresh_token");
+        normalized = RedactInlineAssignments(normalized, "password");
+        normalized = RedactInlineAssignments(normalized, "secret");
+        normalized = RedactInlineAssignments(normalized, "client_secret");
         return normalized;
     }
 

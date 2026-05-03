@@ -21,6 +21,8 @@ public sealed class HistoryRunListItemViewModel
         ScopeTag = scopeTag;
         CategoryTag = categoryTag;
         TimestampText = timestampText;
+        DateText = timestamp.ToLocalTime().ToString("MM-dd");
+        TimeText = timestamp.ToLocalTime().ToString("HH:mm:ss");
         PreviewText = previewText;
         OriginalTitle = originalTitle;
         DetailText = detailText;
@@ -39,6 +41,10 @@ public sealed class HistoryRunListItemViewModel
     public string CategoryTag { get; }
 
     public string TimestampText { get; }
+
+    public string DateText { get; }
+
+    public string TimeText { get; }
 
     public string PreviewText { get; }
 

@@ -92,7 +92,7 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
 
         SelectedSuite = Suites.FirstOrDefault();
         RefreshEndpointSummary();
-        AddLog("INFO", "高级测试实验室已就绪。");
+        AddLog("INFO", "数据安全测试已就绪。");
     }
 
     public ObservableCollection<AdvancedTestSuiteViewModel> Suites { get; }
@@ -358,13 +358,13 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
             var results = GetRedTeamResultItems();
             if (results.Length == 0)
             {
-                return "红队风险未运行。";
+                return "数据安全风险未运行。";
             }
 
             var passed = results.Count(static item => item.Status == AdvancedTestStatus.Passed);
             var partial = results.Count(static item => item.Status == AdvancedTestStatus.Partial);
             var failed = results.Count(static item => item.Status == AdvancedTestStatus.Failed);
-            return $"红队风险：通过 {passed}，复核 {partial}，失败 {failed}。";
+            return $"数据安全风险：通过 {passed}，复核 {partial}，失败 {failed}。";
         }
     }
 
@@ -386,7 +386,7 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
 
     public string StopButtonText => IsStopping ? "正在停止..." : "停止测试";
 
-    public string FetchAdvancedModelsButtonText => IsFetchingModels ? "姝ｅ湪鎷夊彇..." : "鎷夊彇楂樼骇娴嬭瘯妯″瀷";
+    public string FetchAdvancedModelsButtonText => IsFetchingModels ? "正在拉取..." : "拉取数据安全模型";
 
     public int SelectedSuiteCount => Suites.Count(static item => item.IsSelected);
 
@@ -423,7 +423,7 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
         IsRunning = true;
         IsStopping = false;
         _runCancellationSource = new CancellationTokenSource();
-        AddLog("INFO", $"开始高级测试：{selectedIds.Count} 项。");
+        AddLog("INFO", $"开始数据安全测试：{selectedIds.Count} 项。");
 
         try
         {
@@ -455,13 +455,13 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
     {
         if (!CanFetchAdvancedModels)
         {
-            CurrentStatusText = "请先填写高级测试的接口地址和 API Key。";
+            CurrentStatusText = "请先填写数据安全测试的接口地址和 API Key。";
             AddLog("WARN", CurrentStatusText);
             return;
         }
 
         IsFetchingModels = true;
-        CurrentStatusText = "正在拉取高级测试的独立模型列表...";
+        CurrentStatusText = "正在拉取数据安全测试的独立模型列表...";
         AddLog("INFO", CurrentStatusText);
 
         try
@@ -488,7 +488,7 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
                     AdvancedModel = AdvancedModelOptions[0];
                 }
 
-                CurrentStatusText = $"高级测试模型拉取完成，共 {AdvancedModelOptions.Count} 个；该列表不与单站测试共用。";
+                CurrentStatusText = $"数据安全测试模型拉取完成，共 {AdvancedModelOptions.Count} 个；该列表不与单站测试共用。";
                 AddLog("INFO", CurrentStatusText);
             }
             else
@@ -569,7 +569,7 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
         var jsonPath = Path.Combine(exportDirectory, $"advanced-test-{stamp}.json");
         File.WriteAllText(markdownPath, _reportExporter.BuildMarkdown(_lastResult), Encoding.UTF8);
         File.WriteAllText(jsonPath, _reportExporter.BuildJson(_lastResult), Encoding.UTF8);
-        CurrentStatusText = $"高级测试报告已导出：{markdownPath}";
+        CurrentStatusText = $"数据安全测试报告已导出：{markdownPath}";
         AddLog("INFO", CurrentStatusText);
         return Task.CompletedTask;
     }
@@ -718,13 +718,13 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
     private string BuildDiagnosticSummary()
     {
         StringBuilder builder = new();
-        builder.AppendLine("RelayBench 高级测试诊断摘要");
+        builder.AppendLine("RelayBench 数据安全测试诊断摘要");
         builder.AppendLine(EndpointSummary);
         if (_lastResult is not null)
         {
             builder.AppendLine($"总分: {_lastResult.Scores.Overall:0.0}");
             builder.AppendLine($"Codex: {_lastResult.Scores.CodexFit:0.0}, Agent: {_lastResult.Scores.AgentFit:0.0}, RAG: {_lastResult.Scores.RagFit:0.0}, 聊天: {_lastResult.Scores.ChatExperience:0.0}");
-            builder.AppendLine($"红队风险: {RedTeamRiskText}，{RedTeamRiskDetail}");
+            builder.AppendLine($"数据安全风险: {RedTeamRiskText}，{RedTeamRiskDetail}");
         }
 
         foreach (var item in TestCases.Where(static item => item.Status is AdvancedTestStatus.Passed or AdvancedTestStatus.Partial or AdvancedTestStatus.Failed))

@@ -94,13 +94,6 @@ public sealed class ProxyEndpointModelCacheService
         ProxyEndpointProtocolProbeResult result,
         CancellationToken cancellationToken = default)
     {
-        if (!result.ChatCompletionsSupported &&
-            !result.ResponsesSupported &&
-            !result.AnthropicMessagesSupported)
-        {
-            return;
-        }
-
         var baseUrl = NormalizeEndpointKey(result.BaseUrl, settings.BaseUrl);
         var apiKeyHash = HashApiKey(settings.ApiKey);
         var model = FirstNonEmpty(result.ProbeModel, settings.Model);

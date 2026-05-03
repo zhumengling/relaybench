@@ -87,9 +87,11 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0">
+                <StackPanel Grid.Column="0"
+                            ClipToBounds="True">
                     <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="应用接入" />
                     <TextBlock Margin="0,3,0,0"
+                               TextTrimming="CharacterEllipsis"
                                Text="扫描本机支持应用并检查接入状态">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
@@ -119,9 +121,9 @@
               Margin="0,8,0,0"
               MinHeight="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.08*" />
+                <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="0.92*" />
+                <ColumnDefinition Width="380" MinWidth="340" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Style="{StaticResource SectionPanelBorderStyle}">
@@ -150,123 +152,118 @@
 
                     <Grid Grid.Row="1"
                           Margin="0,6,0,0">
-                        <ScrollViewer Style="{StaticResource WorkbenchScrollViewerStyle}"
-                                      VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding ClientApiStatusRows}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Margin="0,0,0,8"
-                                                Padding="10"
-                                                Background="#FFFFFF"
-                                                BorderBrush="{StaticResource PanelBorderBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="10">
+                        <DataGrid ItemsSource="{Binding ClientApiStatusRows}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  IsReadOnly="True"
+                                  HeadersVisibility="Column"
+                                  RowHeight="42"
+                                  MinHeight="240"
+                                  EnableRowVirtualization="True"
+                                  EnableColumnVirtualization="True"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="&#x5E94;&#x7528;" Width="190" MinWidth="160">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
                                             <Grid>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-
-                                                <StackPanel Grid.Column="0">
-                                                    <WrapPanel>
-                                                        <Border Margin="0,0,8,0"
-                                                                Padding="7,2"
-                                                                Background="#F5F7FA"
-                                                                BorderBrush="#D0D5DD"
-                                                                BorderThickness="1"
-                                                                CornerRadius="999">
-                                                            <TextBlock FontSize="10"
-                                                                       FontWeight="SemiBold"
-                                                                       Foreground="{StaticResource MutedBrush}"
-                                                                       Text="{Binding Provider}" />
-                                                        </Border>
-                                                        <TextBlock VerticalAlignment="Center"
-                                                                   FontSize="12.2"
-                                                                   FontWeight="SemiBold"
-                                                                   Foreground="{StaticResource TextBrush}"
-                                                                   Text="{Binding Name}" />
-                                                    </WrapPanel>
-                                                    <TextBlock Margin="0,4,0,0"
-                                                               TextWrapping="Wrap"
-                                                               Foreground="{StaticResource TextBrush}"
-                                                               Text="{Binding Summary}" />
-                                                    <WrapPanel Margin="0,6,0,0">
-                                                        <Border Style="{StaticResource ApplicationCenterTagBorderStyle}">
-                                                            <TextBlock Style="{StaticResource ApplicationCenterTagTextStyle}"
-                                                                       Text="&#x5F53;&#x524D;&#x5165;&#x53E3;" />
-                                                        </Border>
-                                                        <Border Style="{StaticResource ApplicationCenterValueTagBorderStyle}">
-                                                            <TextBlock Style="{StaticResource ApplicationCenterTagTextStyle}"
-                                                                       Foreground="{StaticResource TextBrush}"
-                                                                       Text="{Binding EndpointText}" />
-                                                        </Border>
-                                                    </WrapPanel>
-                                                    <Border Style="{StaticResource ApplicationCenterStateBorderStyle}"
-                                                            Background="{Binding StatusBackground}"
-                                                            BorderBrush="{Binding StatusForeground}">
-                                                        <TextBlock Style="{StaticResource ApplicationCenterTagTextStyle}"
-                                                                   Foreground="{Binding StatusForeground}"
-                                                                   Text="{Binding StateText}"
-                                                                   TextWrapping="Wrap" />
-                                                    </Border>
-                                                    <Expander Margin="0,4,0,0"
-                                                              IsExpanded="False">
-                                                        <Expander.Header>
-                                                            <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                                                                       Text="接入详情" />
-                                                        </Expander.Header>
-                                                        <StackPanel Margin="0,6,0,0">
-                                                            <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
-                                                                       Text="{Binding AccessDetailText}" />
-                                                            <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
-                                                                       Text="{Binding ConfigSourceText, StringFormat=配置来源：{0}}" />
-                                                            <TextBlock Style="{StaticResource ApplicationCenterMetaTextStyle}"
-                                                                       Text="{Binding RestoreHintText, StringFormat=还原说明：{0}}" />
-                                                            <TextBlock Margin="0,4,0,0"
-                                                                       FontFamily="Consolas"
-                                                                       FontSize="10.2"
-                                                                       Foreground="#667085"
-                                                                       Text="{Binding EndpointMetaText}" />
-                                                        </StackPanel>
-                                                    </Expander>
-                                                </StackPanel>
-
-                                                <Border Grid.Column="1"
-                                                        Margin="10,0,0,0"
-                                                        Padding="10,4"
-                                                        VerticalAlignment="Top"
-                                                        CornerRadius="10"
-                                                        Background="{Binding StatusBackground}">
-                                                    <TextBlock FontSize="10.6"
-                                                               FontWeight="SemiBold"
-                                                               Foreground="{Binding StatusForeground}"
-                                                               Text="{Binding AvailabilityText}" />
-                                                </Border>
-
-                                                <StackPanel Grid.Row="1"
-                                                            Grid.ColumnSpan="2"
-                                                            Orientation="Horizontal">
-                                                    <Button Command="{Binding OpenRawTraceCommand}"
-                                                            Style="{StaticResource ApplicationCenterActionButtonStyle}"
-                                                            Content="&#xE946;"
-                                                            ToolTip="&#x539F;&#x59CB; Trace" />
-                                                    <Button Command="{Binding RestoreDefaultConfigCommand}"
-                                                            Style="{StaticResource ApplicationCenterActionButtonStyle}"
-                                                            Visibility="{Binding HasRestoreDefaultConfigAction, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                            Content="&#xE777;"
-                                                            ToolTip="&#x8FD8;&#x539F;&#x9ED8;&#x8BA4;" />
-                                                </StackPanel>
+                                                <TextBlock FontSize="12"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding Name}"
+                                                           Text="{Binding Name}" />
+                                                <TextBlock Grid.Row="1"
+                                                           FontSize="10.2"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{StaticResource MutedBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding Provider}"
+                                                           Text="{Binding Provider}" />
                                             </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="&#x72B6;&#x6001;" Width="126" MinWidth="118">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="8,3"
+                                                    HorizontalAlignment="Left"
+                                                    Background="{Binding StatusBackground}"
+                                                    BorderBrush="{Binding StatusForeground}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="999">
+                                                <TextBlock FontSize="10.6"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{Binding StatusForeground}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding AvailabilityText}"
+                                                           Text="{Binding AvailabilityText}" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="&#x5F53;&#x524D;&#x5165;&#x53E3;" Width="260" MinWidth="220">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Style="{StaticResource ApplicationCenterTagTextStyle}"
+                                                       Foreground="{StaticResource TextBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding EndpointText}"
+                                                       Text="{Binding EndpointText}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="&#x63A5;&#x5165;&#x8DEF;&#x5F84;" Width="*" MinWidth="260">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Foreground="{StaticResource TextBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding StateText}"
+                                                           Text="{Binding StateText}" />
+                                                <TextBlock Grid.Row="1"
+                                                           Style="{StaticResource SectionHintTextStyle}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding AccessDetailText}"
+                                                           Text="{Binding AccessDetailText}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Trace" Width="96" MinWidth="88">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Command="{Binding OpenRawTraceCommand}"
+                                                        Style="{StaticResource ApplicationCenterActionButtonStyle}"
+                                                        Margin="0,0,6,0"
+                                                        Content="&#xE946;"
+                                                        ToolTip="&#x539F;&#x59CB; Trace" />
+                                                <Button Command="{Binding RestoreDefaultConfigCommand}"
+                                                        Style="{StaticResource ApplicationCenterActionButtonStyle}"
+                                                        Margin="0"
+                                                        Visibility="{Binding HasRestoreDefaultConfigAction, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                        Content="&#xE777;"
+                                                        ToolTip="&#x8FD8;&#x539F;&#x9ED8;&#x8BA4;" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
 
                         <TextBlock HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
@@ -333,6 +330,7 @@
                                 <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x5F53;&#x524D; Base URL" />
                                 <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
                                          IsReadOnly="True"
+                                         ToolTip="{Binding ApplicationCenterBaseUrl, Mode=OneWay}"
                                          Text="{Binding ApplicationCenterBaseUrl, Mode=OneWay}" />
                             </StackPanel>
 
@@ -353,6 +351,7 @@
                                          Grid.Column="0"
                                          Style="{StaticResource CompactInputTextBoxStyle}"
                                          IsReadOnly="True"
+                                         ToolTip="{Binding ApplicationCenterModel, Mode=OneWay}"
                                          Text="{Binding ApplicationCenterModel, Mode=OneWay}" />
                                 <Button Grid.Row="1"
                                         Grid.Column="2"

@@ -37,35 +37,44 @@
 
         <Border Grid.Row="0" Style="{StaticResource CommandBarBorderStyle}">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="6" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*" />
-                    <ColumnDefinition Width="6" />
-                    <ColumnDefinition Width="1.5*" />
-                    <ColumnDefinition Width="6" />
-                    <ColumnDefinition Width="1.2*" />
-                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="380" />
+                    <ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="8" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0">
+                <StackPanel Grid.Row="0"
+                            Grid.ColumnSpan="5">
                     <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x63A5;&#x53E3;&#x5730;&#x5740;" />
                     <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                             ToolTip="{Binding ProxyBaseUrl}"
                              Text="{Binding ProxyBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="2">
+                <StackPanel Grid.Row="2"
+                            Grid.Column="0">
                     <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="API Key" />
                     <PasswordBox Style="{StaticResource CompactSecretInputPasswordBoxStyle}"
                                  infra:PasswordBoxAssistant.BoundPassword="{Binding ProxyApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="4">
+                <StackPanel Grid.Row="2"
+                            Grid.Column="2">
                     <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="&#x6A21;&#x578B;" />
                     <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                             ToolTip="{Binding ProxyModel}"
                              Text="{Binding ProxyModel, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
 
-                <Button Grid.Column="6"
+                <Button Grid.Row="2"
+                        Grid.Column="4"
                         VerticalAlignment="Bottom"
                         Style="{StaticResource SingleStationToolbarIconButtonStyle}"
                         Command="{Binding FetchProxyModelsCommand}"
@@ -93,6 +102,7 @@
                     <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="测试模式" />
                     <TextBlock Margin="0,2,0,0"
                                Style="{StaticResource SectionHintTextStyle}"
+                               ToolTip="{Binding SingleStationModeDescription}"
                                Text="{Binding SingleStationModeDescription}" />
                 </StackPanel>
 
@@ -217,11 +227,15 @@
                                     ToolTip="{Binding ProxyCapabilityConfigButtonText, Mode=OneWay}" />
                             <TextBlock Margin="8,4,0,0"
                                        VerticalAlignment="Center"
+                                       MaxWidth="260"
                                        Style="{StaticResource SectionHintTextStyle}"
+                                       ToolTip="{Binding ProxyMultiModelSelectionSummary, Mode=OneWay}"
                                        Text="{Binding ProxyMultiModelSelectionSummary, Mode=OneWay}" />
                             <TextBlock Margin="8,4,0,0"
                                        VerticalAlignment="Center"
+                                       MaxWidth="260"
                                        Style="{StaticResource SectionHintTextStyle}"
+                                       ToolTip="{Binding ProxyCapabilityModelConfigSummary, Mode=OneWay}"
                                        Text="{Binding ProxyCapabilityModelConfigSummary, Mode=OneWay}" />
                         </WrapPanel>
 
@@ -233,10 +247,14 @@
                                 <Border Margin="0,4,0,0"
                                         Style="{StaticResource DialogMetaStripBorderStyle}">
                                     <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                               ToolTip="{Binding ProxyCapabilityModelConfigSummary, Mode=OneWay}"
                                                Text="{Binding ProxyCapabilityModelConfigSummary, Mode=OneWay}" />
                                 </Border>
 
-                                <Grid Margin="0,8,0,0">
+                                <ScrollViewer Margin="0,8,0,0"
+                                              HorizontalScrollBarVisibility="Auto"
+                                              VerticalScrollBarVisibility="Disabled">
+                                <Grid MinWidth="760">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
@@ -258,6 +276,7 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBox Grid.Column="0"
                                                  Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="{Binding ProxyEmbeddingsModel}"
                                                  Text="{Binding ProxyEmbeddingsModel, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="1"
                                                 Margin="6,0,0,0"
@@ -278,6 +297,7 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBox Grid.Column="0"
                                                  Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="{Binding ProxyImagesModel}"
                                                  Text="{Binding ProxyImagesModel, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="1"
                                                 Margin="6,0,0,0"
@@ -298,6 +318,7 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBox Grid.Column="0"
                                                  Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="{Binding ProxyAudioTranscriptionModel}"
                                                  Text="{Binding ProxyAudioTranscriptionModel, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="1"
                                                 Margin="6,0,0,0"
@@ -318,6 +339,7 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBox Grid.Column="0"
                                                  Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="{Binding ProxyModerationModel}"
                                                  Text="{Binding ProxyModerationModel, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="1"
                                                 Margin="6,0,0,0"
@@ -338,6 +360,7 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBox Grid.Column="0"
                                                  Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="{Binding ProxyAudioSpeechModel}"
                                                  Text="{Binding ProxyAudioSpeechModel, UpdateSourceTrigger=PropertyChanged}" />
                                         <Button Grid.Column="1"
                                                 Margin="6,0,0,0"
@@ -377,6 +400,7 @@
                                     </Border>
                                 </Expander>
                                 </Grid>
+                                </ScrollViewer>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -488,11 +512,12 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.55*" />
+                    <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="12" />
-                    <ColumnDefinition Width="1*" />
+                    <ColumnDefinition Width="320" />
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.ColumnSpan="3"
@@ -501,6 +526,7 @@
 
                 <Border Grid.Row="1"
                         Grid.Column="0"
+                        Grid.ColumnSpan="3"
                         Margin="0,6,0,0"
                         Padding="10,8"
                         Background="#F8FBFF"
@@ -741,6 +767,7 @@
                 <Border Grid.Row="2"
                         Grid.RowSpan="2"
                         Grid.Column="0"
+                        Grid.ColumnSpan="3"
                         Margin="0,4,0,0"
                         Padding="10,8"
                         Style="{StaticResource InsetPanelBorderStyle}"
@@ -923,14 +950,14 @@
                     </Grid>
                 </Border>
 
-                <TextBox Grid.Row="1"
-                         Grid.RowSpan="3"
-                         Grid.Column="2"
-                         Margin="0,6,0,0"
-                         MinHeight="320"
+                <TextBox Grid.Row="4"
+                         Grid.ColumnSpan="3"
+                         Margin="0,8,0,0"
+                         MinHeight="112"
+                         MaxHeight="150"
                          Style="{StaticResource ReadOnlyConsoleTextBoxStyle}"
                          Text="{Binding SingleStationResultSummary, Mode=OneWay}" />
-                <Border Grid.Row="4"
+                <Border Grid.Row="5"
                         Grid.ColumnSpan="3"
                         Margin="0,8,0,0">
                     <Border.Style>
@@ -972,20 +999,21 @@
                                       BorderThickness="0"
                                       Background="Transparent"
                                       HorizontalContentAlignment="Stretch"
-                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
                                       ScrollViewer.VerticalScrollBarVisibility="Disabled">
                                 <ListBox.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <UniformGrid Rows="1" />
+                                        <StackPanel Orientation="Horizontal" />
                                     </ItemsPanelTemplate>
                                 </ListBox.ItemsPanel>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Border Margin="0,0,6,6"
                                                 Padding="10,8"
+                                                Width="148"
                                                 BorderBrush="#D0D5DD"
                                                 BorderThickness="1"
-                                                CornerRadius="10"
+                                                CornerRadius="8"
                                                 Background="#FFFFFF">
                                             <StackPanel>
                                                 <TextBlock FontSize="11.2"

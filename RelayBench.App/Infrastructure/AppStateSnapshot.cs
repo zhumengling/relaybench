@@ -122,6 +122,22 @@ public sealed class AppStateSnapshot
 
     public string SplitRoutingHostsText { get; set; } = "chatgpt.com\napi.openai.com\ngithub.com\ncloudflare.com\nspeed.cloudflare.com";
 
+    public string TransparentProxyPortText { get; set; } = "17880";
+
+    public string TransparentProxyRoutesText { get; set; } = string.Empty;
+
+    public string TransparentProxyRateLimitPerMinuteText { get; set; } = "60";
+
+    public string TransparentProxyMaxConcurrencyText { get; set; } = "8";
+
+    public bool TransparentProxyEnableFallback { get; set; } = true;
+
+    public bool TransparentProxyEnableCache { get; set; } = true;
+
+    public string TransparentProxyCacheTtlSecondsText { get; set; } = "60";
+
+    public bool TransparentProxyRewriteModel { get; set; } = true;
+
     public List<RunHistoryEntry> HistoryEntries { get; set; } = [];
 
     public List<ProxyEndpointHistoryEntrySnapshot> ProxyEndpointHistoryEntries { get; set; } = [];

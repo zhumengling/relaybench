@@ -6,6 +6,15 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              Style="{StaticResource MotionPageRootStyle}"
              mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="AdvancedLabGridTextColumnElementStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
+        </Style>
+    </UserControl.Resources>
+
     <Grid DataContext="{Binding AdvancedTestLab}"
           MinHeight="0">
         <Grid.RowDefinitions>
@@ -16,28 +25,34 @@
         <Border Grid.Row="0"
                 Style="{StaticResource CommandBarBorderStyle}">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="230" />
-                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="12" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0">
+                <StackPanel Grid.Column="0"
+                            ClipToBounds="True">
                     <TextBlock Style="{StaticResource SectionTitleTextStyle}"
-                               Text="测试实验室" />
+                               Text="数据安全"
+                               TextTrimming="CharacterEllipsis" />
                     <TextBlock Margin="0,3,0,0"
                                Style="{StaticResource SectionHintTextStyle}"
+                               ToolTip="{Binding EndpointSummary}"
                                Text="{Binding EndpointSummary}" />
                 </StackPanel>
 
-                <Grid Grid.Column="2"
+                <Grid Grid.Row="1"
+                      Grid.ColumnSpan="2"
+                      Margin="0,8,0,0"
                       VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="260" />
+                        <ColumnDefinition Width="220" />
                         <ColumnDefinition Width="8" />
-                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="160" />
                         <ColumnDefinition Width="8" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="8" />
@@ -49,6 +64,7 @@
                         <TextBlock Style="{StaticResource FieldLabelTextStyle}"
                                    Text="接口地址" />
                         <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                 ToolTip="{Binding AdvancedBaseUrl}"
                                  Text="{Binding AdvancedBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
 
@@ -80,6 +96,7 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBox Grid.Column="0"
                                              Style="{StaticResource AdvancedLabModelPickerTextBoxStyle}"
+                                             ToolTip="{Binding AdvancedModel}"
                                              Text="{Binding AdvancedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     <ToggleButton Grid.Column="1"
                                                   IsChecked="{Binding IsAdvancedModelMenuOpen, Mode=TwoWay}"
@@ -124,7 +141,8 @@
                             ToolTip="{Binding FetchAdvancedModelsButtonText}" />
                 </Grid>
 
-                <WrapPanel Grid.Column="4"
+                <WrapPanel Grid.Column="1"
+                           HorizontalAlignment="Right"
                            VerticalAlignment="Center">
                     <Button Command="{Binding StartCommand}"
                             Content="&#xE768;"
@@ -261,9 +279,11 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
                             <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                       ToolTip="{Binding SelectedSuite.DisplayName, TargetNullValue=当前测试项}"
                                        Text="{Binding SelectedSuite.DisplayName, TargetNullValue=当前测试项}" />
                             <TextBlock Margin="0,3,0,0"
                                        Style="{StaticResource SectionHintTextStyle}"
+                                       ToolTip="{Binding CurrentStatusText}"
                                        Text="{Binding CurrentStatusText}" />
                         </StackPanel>
                         <StackPanel Grid.Column="1"
@@ -276,7 +296,7 @@
                                 <TextBlock FontSize="11"
                                            TextWrapping="NoWrap">
                                     <Run Foreground="{StaticResource MutedBrush}"
-                                         Text="红队风险 " />
+                                         Text="数据安全风险 " />
                                     <Run FontWeight="SemiBold"
                                          Foreground="{Binding RedTeamRiskBrush}"
                                          Text="{Binding RedTeamRiskText, Mode=OneWay}" />
@@ -317,7 +337,7 @@
                                    FontSize="12"
                                    Foreground="#9A3412"
                                    TextWrapping="Wrap"
-                                   Text="安全红队只使用合成 canary，不会执行工具、访问 URL 或运行命令。结果用于风险探测，不等同于安全审计结论。" />
+                                   Text="数据安全测试只使用合成 canary，不会执行工具、访问 URL 或运行命令。结果用于风险探测，不等同于安全审计结论。" />
                     </Grid>
                 </Border>
 
@@ -342,9 +362,11 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTextColumn Width="1.25*"
+                                                ElementStyle="{StaticResource AdvancedLabGridTextColumnElementStyle}"
                                                 Binding="{Binding DisplayName}"
                                                 Header="测试项" />
                             <DataGridTextColumn Width="84"
+                                                ElementStyle="{StaticResource AdvancedLabGridTextColumnElementStyle}"
                                                 Binding="{Binding CategoryText}"
                                                 Header="分类" />
                             <DataGridTemplateColumn Width="92"
@@ -364,9 +386,11 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTextColumn Width="64"
+                                                ElementStyle="{StaticResource AdvancedLabGridTextColumnElementStyle}"
                                                 Binding="{Binding ScoreText}"
                                                 Header="分数" />
                             <DataGridTextColumn Width="78"
+                                                ElementStyle="{StaticResource AdvancedLabGridTextColumnElementStyle}"
                                                 Binding="{Binding DurationText}"
                                                 Header="耗时" />
                             <DataGridTemplateColumn Width="116"
@@ -543,7 +567,7 @@
 
                     <StackPanel>
                         <TextBlock Style="{StaticResource DialogTitleTextStyle}"
-                                   Text="停止高级测试" />
+                                   Text="停止数据安全测试" />
                         <Border Margin="0,6,0,0"
                                 Style="{StaticResource DialogAccentTagBorderStyle}">
                             <TextBlock Style="{StaticResource DialogTagTextStyle}"
@@ -577,7 +601,7 @@
                                 <TextBlock FontSize="13"
                                            FontWeight="SemiBold"
                                            Foreground="{StaticResource TextBrush}"
-                                           Text="确定要停止当前高级测试吗？" />
+                                           Text="确定要停止当前数据安全测试吗？" />
                                 <TextBlock Margin="0,6,0,0"
                                            Style="{StaticResource SectionHintTextStyle}"
                                            TextWrapping="Wrap"

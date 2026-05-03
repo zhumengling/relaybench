@@ -36,7 +36,7 @@ public sealed partial class MainWindowViewModel
         => _proxyEndpointHistoryApplyTarget switch
         {
             ProxyEndpointHistoryApplyTarget.ApplicationCenter => "应用接入",
-            ProxyEndpointHistoryApplyTarget.AdvancedTestLab => "高级测试",
+            ProxyEndpointHistoryApplyTarget.AdvancedTestLab => "数据安全",
             _ => "单站测试"
         };
 
@@ -46,7 +46,7 @@ public sealed partial class MainWindowViewModel
             ProxyEndpointHistoryApplyTarget.ApplicationCenter =>
                 "点击“使用选中项”后，会把接口地址、API Key、模型回填到应用接入的当前接口；单站测试里的当前接口不会被改动。",
             ProxyEndpointHistoryApplyTarget.AdvancedTestLab =>
-                "点击“使用选中项”后，会把接口地址、API Key、模型回填到高级测试顶部配置；单站测试和应用接入当前接口不会被改动。",
+                "点击“使用选中项”后，会把接口地址、API Key、模型回填到数据安全顶部配置；单站测试和应用接入当前接口不会被改动。",
             _ =>
                 "点击“使用选中项”后，会把接口地址、API Key、模型回填到单站测试输入框；应用接入里的当前接口不会被改动。"
         };

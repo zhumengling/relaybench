@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace RelayBench.Core.Services;
 
-internal static class ChatSseParser
+public static class ChatSseParser
 {
     public static bool TryReadDataLine(string line, out string data)
     {

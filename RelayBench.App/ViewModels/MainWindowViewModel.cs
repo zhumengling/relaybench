@@ -21,6 +21,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly RouteDiagnosticsService _routeDiagnosticsService = new();
     private readonly PortScanDiagnosticsService _portScanDiagnosticsService = new();
     private readonly SplitRoutingDiagnosticsService _splitRoutingDiagnosticsService = new();
+    private readonly TransparentProxyService _transparentProxyService = new();
     private readonly DiagnosticReportService _diagnosticReportService = new();
     private readonly ChatConversationService _chatConversationService = new();
     private readonly ChatAttachmentImportService _chatAttachmentImportService = new();
@@ -117,6 +118,41 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _proxyStabilitySummary = "运行后显示稳定性摘要。";
     private string _proxyStabilityDetail = "暂无稳定性序列结果。";
     private string _historySummary = "暂无历史记录。";
+
+    private string _transparentProxyPortText = "17880";
+    private string _transparentProxyRoutesText = string.Empty;
+    private TransparentProxyRouteEditorItemViewModel? _selectedTransparentProxyRouteEditorItem;
+    private string _transparentProxyRateLimitPerMinuteText = "60";
+    private string _transparentProxyMaxConcurrencyText = "8";
+    private bool _transparentProxyEnableFallback = true;
+    private bool _transparentProxyEnableCache = true;
+    private string _transparentProxyCacheTtlSecondsText = "60";
+    private bool _transparentProxyRewriteModel = true;
+    private bool _isTransparentProxyRunning;
+    private string _transparentProxyStatusSummary = "本地透明代理未启动。";
+    private string _transparentProxyMetricsSummary = "等待请求进入本地入口。";
+    private string _transparentProxyRoutingSummary = "路由表为空时可从当前接口和批量候选生成。";
+    private string _transparentProxyHealthSummary = "健康检查：未监听。";
+    private string _transparentProxyProtocolSummary = "协议探测：尚未运行。";
+    private string _transparentProxyTotalRequestsText = "0";
+    private string _transparentProxySuccessRateText = "-";
+    private string _transparentProxyActiveRequestsText = "0";
+    private string _transparentProxyFallbackRequestsText = "0";
+    private string _transparentProxyCacheHitsText = "0";
+    private string _transparentProxyP95LatencyText = "-";
+    private string _transparentProxyTotalTokensText = "0 tokens";
+    private string _transparentProxyTokensPerSecondText = "0 tok/s";
+    private string _transparentProxyTokenMeterPrimaryText = "0 tokens";
+    private string _transparentProxyTokenMeterSecondaryText = "等待请求";
+    private string _transparentProxyTokenMeterAccentBrush = "#64748B";
+    private long _transparentProxyLatestTotalOutputTokens;
+    private double _transparentProxyLatestTokensPerSecond;
+    private DateTimeOffset? _transparentProxyLatestTokenActivityAt;
+    private bool _transparentProxyLatestIsRunning;
+    private CancellationTokenSource? _transparentProxyAutoDiscoveryCancellationSource;
+    private bool _isRefreshingTransparentProxyRouteEditor;
+    private bool _isUpdatingTransparentProxyRoutesTextFromEditor;
+    private readonly Dictionary<string, TransparentProxyProtocolSnapshot> _transparentProxyProtocolSnapshots = new(StringComparer.OrdinalIgnoreCase);
 
     private ProxySingleExecutionMode GetEffectiveSingleExecutionMode()
         => _currentProxySingleExecutionPlan?.Mode ?? _lastProxySingleExecutionMode;

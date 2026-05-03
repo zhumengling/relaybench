@@ -62,6 +62,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ExportPortScanCsvCommand.RaiseCanExecuteChanged();
                 ExportPortScanExcelCommand.RaiseCanExecuteChanged();
                 RunSplitRoutingCommand.RaiseCanExecuteChanged();
+                StartTransparentProxyCommand.RaiseCanExecuteChanged();
+                ProbeTransparentProxyProtocolsCommand.RaiseCanExecuteChanged();
             }
         }
     }

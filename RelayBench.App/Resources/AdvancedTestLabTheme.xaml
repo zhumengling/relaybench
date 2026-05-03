@@ -7,15 +7,15 @@
         <Setter Property="Background" Value="#FFFFFF" />
         <Setter Property="BorderBrush" Value="#E2E8F0" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="14" />
-        <Setter Property="Effect" Value="{StaticResource ShadowSm}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Effect" Value="{x:Null}" />
     </Style>
 
     <Style x:Key="AdvancedLabSoftPanelStyle"
            TargetType="Border"
            BasedOn="{StaticResource AdvancedLabPanelStyle}">
         <Setter Property="Background" Value="#F8FAFC" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Effect" Value="{x:Null}" />
     </Style>
 
@@ -23,8 +23,8 @@
            TargetType="Border"
            BasedOn="{StaticResource AdvancedLabPanelStyle}">
         <Setter Property="Padding" Value="12,10" />
-        <Setter Property="MinHeight" Value="86" />
-        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="MinHeight" Value="68" />
+        <Setter Property="CornerRadius" Value="8" />
     </Style>
 
     <Style x:Key="AdvancedLabBadgeStyle" TargetType="Border">
@@ -44,7 +44,7 @@
         <Setter Property="Background" Value="#FFF7ED" />
         <Setter Property="BorderBrush" Value="#FED7AA" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Effect" Value="{x:Null}" />
     </Style>
 
@@ -195,7 +195,7 @@
                             Background="#F8FAFC"
                             BorderBrush="#E2E8F0"
                             BorderThickness="1"
-                            CornerRadius="12"
+                            CornerRadius="8"
                             RenderTransformOrigin="0.5,0.5">
                         <Border.RenderTransform>
                             <ScaleTransform x:Name="ItemScale" ScaleX="1" ScaleY="1" />
@@ -209,8 +209,8 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="ItemScale" Storyboard.TargetProperty="ScaleX" To="1.012" Duration="0:0:0.12" />
-                                        <DoubleAnimation Storyboard.TargetName="ItemScale" Storyboard.TargetProperty="ScaleY" To="1.012" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="ItemScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.12" />
+                                        <DoubleAnimation Storyboard.TargetName="ItemScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.12" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>

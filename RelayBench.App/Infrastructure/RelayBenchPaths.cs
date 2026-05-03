@@ -24,6 +24,8 @@ public static class RelayBenchPaths
 
     public static string AppStatePath => Path.Combine(DataDirectory, "app-state.json");
 
+    public static string TokenMeterWindowStatePath => Path.Combine(ConfigDirectory, "token-meter-window.json");
+
     public static string ProxyTrendsPath => Path.Combine(DataDirectory, "proxy-trends.json");
 
     public static string ProxyRelayConfigPath => Path.Combine(ConfigDirectory, "proxy-relay.json");

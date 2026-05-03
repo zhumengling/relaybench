@@ -65,7 +65,7 @@ public sealed class AdvancedReportExporter
             .ToArray();
         if (redTeamResults.Length == 0)
         {
-            builder.AppendLine("## Red Team Risk");
+            builder.AppendLine("## Data Security Risk");
             builder.AppendLine();
             builder.AppendLine("- Status: Not run");
             return;
@@ -82,7 +82,7 @@ public sealed class AdvancedReportExporter
                     ? "Medium"
                     : "Low";
 
-        builder.AppendLine("## Red Team Risk");
+        builder.AppendLine("## Data Security Risk");
         builder.AppendLine();
         builder.AppendLine($"- Status: {status}");
         builder.AppendLine($"- Passed: {passed}");

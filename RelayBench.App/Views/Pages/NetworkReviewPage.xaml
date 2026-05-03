@@ -10,10 +10,10 @@
         <Style x:Key="NetworkReviewSubmenuItemStyle"
                TargetType="ListBoxItem"
                BasedOn="{StaticResource PresetCardListBoxItemStyle}">
-            <Setter Property="Width" Value="132" />
-            <Setter Property="MinHeight" Value="44" />
-            <Setter Property="Padding" Value="8,6" />
-            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
 
         <Style x:Key="ReviewPaneBorderStyle"
@@ -254,32 +254,40 @@
     <ScrollViewer x:Name="NetworkReviewRootScroll"
                   Style="{StaticResource WorkbenchScrollViewerStyle}"
                   VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled"
+                  HorizontalScrollBarVisibility="Auto"
                   Background="Transparent">
         <Grid Margin="0,0,2,0"
               MinHeight="{Binding ActualHeight, ElementName=NetworkReviewRootScroll}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="236" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="*" MinWidth="780" />
+            </Grid.ColumnDefinitions>
 
-            <Border Style="{StaticResource CommandBarBorderStyle}">
+            <Border Grid.Column="0"
+                    Style="{StaticResource SectionPanelBorderStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Style="{StaticResource FieldLabelTextStyle}" Text="工具" />
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x5DE5;&#x5177;&#x7D22;&#x5F15;" />
+                        <TextBlock Margin="0,3,0,0"
+                                   Style="{StaticResource SectionHintTextStyle}"
+                                   Text="&#x9009;&#x62E9;&#x4E00;&#x4E2A;&#x590D;&#x6838;&#x5DE5;&#x5177;&#xFF0C;&#x53F3;&#x4FA7;&#x4FDD;&#x7559;&#x5F53;&#x524D;&#x5DE5;&#x4F5C;&#x533A;&#x3002;"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
                     <ListBox Grid.Row="1"
-                             Margin="0,6,0,0"
+                             Margin="0,10,0,0"
                              ItemsSource="{Binding NetworkReviewToolOptions}"
                              SelectedValuePath="Key"
                              SelectedValue="{Binding SelectedNetworkReviewToolKey, Mode=TwoWay}"
                              Style="{StaticResource PresetCardListBoxStyle}">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel />
+                                <StackPanel />
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                         <ListBox.ItemContainerStyle>
@@ -288,7 +296,8 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock FontWeight="SemiBold"
-                                           TextAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding DisplayName}"
                                            Text="{Binding DisplayName}" />
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -296,8 +305,7 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Row="1"
-                    Margin="0,8,0,0"
+            <Border Grid.Column="2"
                     Style="{StaticResource SectionPanelBorderStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -1534,13 +1542,20 @@
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <StackPanel>
-                                                        <DockPanel LastChildFill="False">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
                                                             <TextBlock FontWeight="SemiBold"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       ToolTip="{Binding Endpoint}"
                                                                        Text="{Binding Endpoint}" />
-                                                            <TextBlock DockPanel.Dock="Right"
+                                                            <TextBlock Grid.Column="1"
+                                                                       Margin="8,0,0,0"
                                                                        Foreground="{StaticResource AccentBrush}"
                                                                        Text="{Binding LatencyText}" />
-                                                        </DockPanel>
+                                                        </Grid>
                                                         <TextBlock Margin="0,2,0,0"
                                                                    Style="{StaticResource SectionHintTextStyle}"
                                                                    Text="{Binding ServiceHint}" />

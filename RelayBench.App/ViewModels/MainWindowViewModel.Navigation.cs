@@ -8,6 +8,7 @@ public sealed partial class MainWindowViewModel
     private const string WorkbenchPageModelChat = "model-chat";
     private const string WorkbenchPageAdvancedTestLab = "advanced-test-lab";
     private const string WorkbenchPageBatchEvaluation = "batch-evaluation";
+    private const string WorkbenchPageTransparentProxy = "transparent-proxy";
     private const string WorkbenchPageApplicationCenter = "application-center";
     private const string WorkbenchPageNetworkReview = "network-review";
     private const string WorkbenchPageHistoryReports = "history-reports";
@@ -72,6 +73,9 @@ public sealed partial class MainWindowViewModel
     public bool IsBatchComparisonPageActive
         => IsBatchEvaluationPageActive;
 
+    public bool IsTransparentProxyPageActive
+        => string.Equals(SelectedWorkbenchPageKey, WorkbenchPageTransparentProxy, StringComparison.Ordinal);
+
     public bool IsApplicationCenterPageActive
         => string.Equals(SelectedWorkbenchPageKey, WorkbenchPageApplicationCenter, StringComparison.Ordinal);
 
@@ -85,8 +89,9 @@ public sealed partial class MainWindowViewModel
         => SelectedWorkbenchPageKey switch
         {
             WorkbenchPageModelChat => "\u5927\u6a21\u578b\u5bf9\u8bdd",
-            WorkbenchPageAdvancedTestLab => "高级测试",
+            WorkbenchPageAdvancedTestLab => "数据安全",
             WorkbenchPageBatchEvaluation => "\u6279\u91cf\u8bc4\u6d4b",
+            WorkbenchPageTransparentProxy => "透明代理",
             WorkbenchPageApplicationCenter => "\u5e94\u7528\u63a5\u5165",
             WorkbenchPageNetworkReview => "\u7f51\u7edc\u590d\u6838",
             WorkbenchPageHistoryReports => "\u5386\u53f2\u62a5\u544a",
@@ -97,8 +102,9 @@ public sealed partial class MainWindowViewModel
         => SelectedWorkbenchPageKey switch
         {
             WorkbenchPageModelChat => "\u590d\u7528\u5f53\u524d\u63a5\u53e3\u8fdb\u884c\u771f\u5b9e\u591a\u8f6e\u5bf9\u8bdd\uff0c\u89c2\u5bdf\u6d41\u5f0f\u8f93\u51fa\u3001\u4ee3\u7801\u5757\u3001\u56fe\u7247\u8f93\u5165\u3001\u6587\u672c\u9644\u4ef6\u548c reasoning \u53c2\u6570\u517c\u5bb9\u6027\u3002",
-            WorkbenchPageAdvancedTestLab => "面向 Codex、Agent、RAG 和真实聊天体验的高级协议实验室：集中检查 Tool Calling、JSON、流式、Reasoning、并发、Embeddings 与模型风险。",
+            WorkbenchPageAdvancedTestLab => "面向 Codex、Agent、RAG 和真实聊天体验的数据安全控制台：集中检查 Prompt injection、RAG 数据污染、恶意 URL / 命令诱导、Jailbreak、Tool Calling、JSON、流式与模型风险。",
             WorkbenchPageBatchEvaluation => "\u5148\u5bfc\u5165\u6216\u7ef4\u62a4\u63a5\u53e3\u7ec4\uff0c\u518d\u505a\u6279\u91cf\u5feb\u901f\u8bc4\u6d4b\uff1b\u4ece\u6392\u884c\u699c\u91cc\u624b\u52a8\u7b5b\u9009\u4e3b\u7528\u3001\u5907\u7528\u4e0e\u5019\u9009\u63a5\u53e3\u3002",
+            WorkbenchPageTransparentProxy => "本地 OpenAI 兼容入口：自动选路、fallback、脱敏日志、限速、短缓存和实时观测。",
             WorkbenchPageApplicationCenter => "\u626b\u63cf Codex / VSCode / Claude \u7b49\u672c\u673a\u5e94\u7528\u7684\u5b89\u88c5\u4e0e\u63a5\u5165\u72b6\u6001\uff0c\u5e76\u5728\u6b64\u76f4\u63a5\u5b8c\u6210 Codex \u7cfb\u5217\u7684\u63a5\u53e3\u5199\u5165\u3001\u8fd8\u539f\u4e0e Trace \u590d\u6838\u3002",
             WorkbenchPageNetworkReview => BuildNetworkReviewSubtitle(),
             WorkbenchPageHistoryReports => "\u96c6\u4e2d\u56de\u770b\u6700\u8fd1\u7684\u63a5\u53e3\u6d4b\u8bd5\u3001\u80fd\u529b\u7ed3\u679c\u4e0e\u7ed3\u6784\u5316\u62a5\u544a\u5f52\u6863\u3002",
@@ -126,6 +132,7 @@ public sealed partial class MainWindowViewModel
             WorkbenchPageModelChat => WorkbenchPageModelChat,
             WorkbenchPageAdvancedTestLab => WorkbenchPageAdvancedTestLab,
             WorkbenchPageBatchEvaluation or WorkbenchPageBatchComparisonLegacy => WorkbenchPageBatchEvaluation,
+            WorkbenchPageTransparentProxy => WorkbenchPageTransparentProxy,
             WorkbenchPageApplicationCenter => WorkbenchPageApplicationCenter,
             WorkbenchPageNetworkReview => WorkbenchPageNetworkReview,
             WorkbenchPageHistoryReports => WorkbenchPageHistoryReports,
@@ -159,6 +166,7 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(IsAdvancedTestLabPageActive));
         OnPropertyChanged(nameof(IsBatchEvaluationPageActive));
         OnPropertyChanged(nameof(IsBatchComparisonPageActive));
+        OnPropertyChanged(nameof(IsTransparentProxyPageActive));
         OnPropertyChanged(nameof(IsApplicationCenterPageActive));
         OnPropertyChanged(nameof(IsNetworkReviewPageActive));
         OnPropertyChanged(nameof(IsHistoryReportsPageActive));

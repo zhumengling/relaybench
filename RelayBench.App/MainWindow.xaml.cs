@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -8,8 +11,12 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using RelayBench.App.Infrastructure;
 using RelayBench.App.Services;
 using RelayBench.App.ViewModels;
+using RelayBench.App.Views;
+using Drawing = System.Drawing;
+using Forms = System.Windows.Forms;
 
 namespace RelayBench.App;
 
@@ -18,27 +25,27 @@ public partial class MainWindow : Window
     private const int OverlayBackdropOpenDurationMs = 180;
     private const int OverlayPanelOpenDurationMs = 260;
     private const int OverlayCloseDurationMs = 180;
-    private const double OverlayOpenInitialScale = 0.965d;
-    private const double OverlayCloseTargetScale = 0.985d;
+    private const double OverlayOpenInitialScale = 1d;
+    private const double OverlayCloseTargetScale = 1d;
     private const double OverlayOpenInitialOffsetY = 18d;
     private const double OverlayCloseTargetOffsetY = 12d;
     private const int WindowOpenDurationMs = 300;
-    private const double WindowOpenInitialScale = 0.975d;
+    private const double WindowOpenInitialScale = 1d;
     private const double WindowOpenInitialOffsetY = 18d;
     private const int WindowStateTransitionDurationMs = 280;
-    private const double WindowStateMaximizedTransitionScale = 0.982d;
-    private const double WindowStateRestoredTransitionScale = 1.018d;
+    private const double WindowStateMaximizedTransitionScale = 1d;
+    private const double WindowStateRestoredTransitionScale = 1d;
     private const int WorkbenchPageTransitionDurationMs = 220;
     private const double WorkbenchPageTransitionOffsetX = 18d;
     private const int GlobalTaskProgressOpenDurationMs = 320;
     private const int GlobalTaskProgressCloseDurationMs = 250;
     private const int GlobalTaskProgressFillDurationMs = 560;
-    private const double GlobalTaskProgressOpenInitialScale = 0.987d;
+    private const double GlobalTaskProgressOpenInitialScale = 1d;
     private const double GlobalTaskProgressOpenInitialOffsetY = -18d;
-    private const double GlobalTaskProgressCloseTargetScale = 0.994d;
+    private const double GlobalTaskProgressCloseTargetScale = 1d;
     private const double GlobalTaskProgressCloseTargetOffsetY = -14d;
     private const int WindowCloseDurationMs = 280;
-    private const double WindowCloseTargetScale = 0.958d;
+    private const double WindowCloseTargetScale = 1d;
     private const double WindowCloseTargetOffsetY = 32d;
     private const int DwmWindowCornerPreference = 33;
     private const int DwmWindowCornerPreferenceRound = 2;
@@ -57,6 +64,22 @@ public partial class MainWindow : Window
         public int Version { get; set; }
     }
 
+    private sealed class TokenMeterWindowState
+    {
+        public bool WasRequested { get; set; }
+
+        public double? Left { get; set; }
+
+        public double? Top { get; set; }
+
+        public bool IsPositionLocked { get; set; }
+    }
+
+    private static readonly JsonSerializerOptions TokenMeterWindowStateJsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     private readonly ToolTip _proxyChartHoverToolTip = new()
     {
         Placement = PlacementMode.Mouse,
@@ -68,10 +91,24 @@ public partial class MainWindow : Window
         HasDropShadow = true
     };
 
+    private readonly DispatcherTimer _tokenMeterRefreshTimer = new()
+    {
+        Interval = TimeSpan.FromSeconds(1)
+    };
     private readonly Dictionary<string, OverlayAnimationState> _overlayAnimations = [];
+    private Forms.NotifyIcon? _notifyIcon;
+    private Forms.ToolStripMenuItem? _proxyTrayMenuItem;
+    private Forms.ToolStripMenuItem? _tokenMeterTrayMenuItem;
+    private Forms.ToolStripMenuItem? _openLogDirectoryTrayMenuItem;
+    private FloatingTokenMeterWindow? _floatingTokenMeterWindow;
+    private TokenMeterWindowState? _tokenMeterWindowState;
     private ProxyChartHitRegion? _activeProxyChartHitRegion;
     private MainWindowViewModel? _viewModel;
     private bool _allowWindowClose;
+    private bool _isExitRequested;
+    private bool _hasShownTrayHint;
+    private bool _isTokenMeterVisible;
+    private bool _isTokenMeterRequested;
     private bool _isWindowCloseAnimationRunning;
     private bool _hasPlayedWindowOpenAnimation;
     private string _lastWorkbenchPageKey = string.Empty;
@@ -92,6 +129,7 @@ public partial class MainWindow : Window
         _viewModel = new MainWindowViewModel();
         DataContext = _viewModel;
         _viewModel.PropertyChanged += ViewModel_OnPropertyChanged;
+        _tokenMeterRefreshTimer.Tick += (_, _) => _viewModel?.RefreshTransparentProxyTokenMeterIdleState();
 
         InitializeOverlayAnimations();
 
@@ -107,10 +145,19 @@ public partial class MainWindow : Window
     private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
     {
         ApplyRoundedWindowCorners();
+        ClampWindowToCurrentWorkArea();
+        LoadTokenMeterWindowState();
+        InitializeTrayIcon();
+        _tokenMeterRefreshTimer.Start();
         ApplyOverlayStates(immediate: true);
         UpdateGlobalTaskProgressVisual(immediate: true);
         _lastWorkbenchPageKey = _viewModel?.SelectedWorkbenchPageKey ?? string.Empty;
         ScheduleProxyChartViewportWidthUpdate();
+        if (_isTokenMeterRequested && _viewModel?.IsTransparentProxyRunning == true)
+        {
+            ShowFloatingTokenMeter();
+        }
+
         PlayWindowOpenAnimation();
     }
 
@@ -132,6 +179,409 @@ public partial class MainWindow : Window
         }
     }
 
+    private void InitializeTrayIcon()
+    {
+        if (_notifyIcon is not null)
+        {
+            return;
+        }
+
+        _notifyIcon = new Forms.NotifyIcon
+        {
+            Text = "RelayBench",
+            Icon = CreateTrayIcon(),
+            Visible = true
+        };
+        _notifyIcon.DoubleClick += (_, _) => RestoreMainWindow(showTransparentProxy: false);
+
+        Forms.ContextMenuStrip menu = new();
+        menu.Items.Add("打开 RelayBench", null, (_, _) => RestoreMainWindow(showTransparentProxy: false));
+        _proxyTrayMenuItem = new Forms.ToolStripMenuItem();
+        _proxyTrayMenuItem.Click += (_, _) => ToggleTransparentProxyFromTray();
+        menu.Items.Add(_proxyTrayMenuItem);
+        _tokenMeterTrayMenuItem = new Forms.ToolStripMenuItem();
+        _tokenMeterTrayMenuItem.Click += (_, _) => ToggleFloatingTokenMeter();
+        menu.Items.Add(_tokenMeterTrayMenuItem);
+        menu.Items.Add(new Forms.ToolStripMenuItem("后台运行：开") { Checked = true, Enabled = false });
+        _openLogDirectoryTrayMenuItem = new Forms.ToolStripMenuItem("打开日志目录");
+        _openLogDirectoryTrayMenuItem.Click += (_, _) => OpenRelayBenchLogDirectory();
+        menu.Items.Add(_openLogDirectoryTrayMenuItem);
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        menu.Items.Add("退出 RelayBench", null, async (_, _) => await ExitFromTrayAsync());
+        menu.Opening += (_, _) => UpdateTrayMenuText();
+        _notifyIcon.ContextMenuStrip = menu;
+        UpdateTrayMenuText();
+    }
+
+    private static bool ShouldReduceMotion()
+        => !SystemParameters.ClientAreaAnimation;
+
+    private static Drawing.Icon CreateTrayIcon()
+    {
+        try
+        {
+            var processPath = Environment.ProcessPath;
+            if (!string.IsNullOrWhiteSpace(processPath) && File.Exists(processPath))
+            {
+                return Drawing.Icon.ExtractAssociatedIcon(processPath) ?? Drawing.SystemIcons.Application;
+            }
+        }
+        catch
+        {
+        }
+
+        return Drawing.SystemIcons.Application;
+    }
+
+    private static void OpenRelayBenchLogDirectory()
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(RelayBenchPaths.StartupLogPath) ?? RelayBenchPaths.RootDirectory;
+            Directory.CreateDirectory(directory);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = directory,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("MainWindow.OpenRelayBenchLogDirectory", ex);
+        }
+    }
+
+    private void UpdateTrayMenuText()
+    {
+        if (_proxyTrayMenuItem is not null)
+        {
+            _proxyTrayMenuItem.Text = _viewModel?.IsTransparentProxyRunning == true
+                ? "停止透明代理"
+                : "启动透明代理";
+        }
+
+        if (_tokenMeterTrayMenuItem is not null)
+        {
+            var isProxyRunning = _viewModel?.IsTransparentProxyRunning == true;
+            _tokenMeterTrayMenuItem.Enabled = isProxyRunning;
+            _tokenMeterTrayMenuItem.Text = !isProxyRunning
+                ? "Token 悬浮窗（启动后可用）"
+                : _isTokenMeterVisible
+                    ? "隐藏 Token 悬浮窗"
+                    : "显示 Token 悬浮窗";
+        }
+    }
+
+    private void LoadTokenMeterWindowState()
+    {
+        if (_tokenMeterWindowState is not null)
+        {
+            return;
+        }
+
+        _tokenMeterWindowState = new TokenMeterWindowState();
+        try
+        {
+            var path = RelayBenchPaths.TokenMeterWindowStatePath;
+            if (File.Exists(path))
+            {
+                var json = File.ReadAllText(path);
+                _tokenMeterWindowState =
+                    JsonSerializer.Deserialize<TokenMeterWindowState>(json, TokenMeterWindowStateJsonOptions) ??
+                    new TokenMeterWindowState();
+            }
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("MainWindow.LoadTokenMeterWindowState", ex);
+            _tokenMeterWindowState = new TokenMeterWindowState();
+        }
+
+        _isTokenMeterRequested = _tokenMeterWindowState.WasRequested;
+    }
+
+    private void CaptureAndSaveTokenMeterWindowState()
+    {
+        var state = _tokenMeterWindowState ??= new TokenMeterWindowState();
+        state.WasRequested = _isTokenMeterRequested;
+
+        if (_floatingTokenMeterWindow is not null)
+        {
+            if (double.IsFinite(_floatingTokenMeterWindow.Left) && double.IsFinite(_floatingTokenMeterWindow.Top))
+            {
+                state.Left = _floatingTokenMeterWindow.Left;
+                state.Top = _floatingTokenMeterWindow.Top;
+            }
+
+            state.IsPositionLocked = _floatingTokenMeterWindow.IsPositionLocked;
+        }
+
+        try
+        {
+            var path = RelayBenchPaths.TokenMeterWindowStatePath;
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(path, JsonSerializer.Serialize(state, TokenMeterWindowStateJsonOptions));
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("MainWindow.SaveTokenMeterWindowState", ex);
+        }
+    }
+
+    private void ApplyTokenMeterWindowState(FloatingTokenMeterWindow window)
+    {
+        var state = _tokenMeterWindowState ??= new TokenMeterWindowState();
+        if (state.Left is { } left &&
+            state.Top is { } top &&
+            double.IsFinite(left) &&
+            double.IsFinite(top))
+        {
+            window.Left = left;
+            window.Top = top;
+        }
+
+        window.SetPositionLocked(state.IsPositionLocked);
+    }
+
+    private void ToggleTransparentProxyFromTray()
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        if (_viewModel.IsTransparentProxyRunning)
+        {
+            if (_viewModel.StopTransparentProxyCommand.CanExecute(null))
+            {
+                _viewModel.StopTransparentProxyCommand.Execute(null);
+            }
+        }
+        else if (_viewModel.StartTransparentProxyCommand.CanExecute(null))
+        {
+            _viewModel.StartTransparentProxyCommand.Execute(null);
+        }
+
+        UpdateTrayMenuText();
+    }
+
+    private void ToggleFloatingTokenMeter()
+    {
+        if (_viewModel?.IsTransparentProxyRunning != true)
+        {
+            _isTokenMeterRequested = false;
+            HideFloatingTokenMeter();
+            CaptureAndSaveTokenMeterWindowState();
+            UpdateTrayMenuText();
+            return;
+        }
+
+        if (_isTokenMeterVisible)
+        {
+            _isTokenMeterRequested = false;
+            HideFloatingTokenMeter();
+        }
+        else
+        {
+            _isTokenMeterRequested = true;
+            ShowFloatingTokenMeter();
+        }
+
+        CaptureAndSaveTokenMeterWindowState();
+        UpdateTrayMenuText();
+    }
+
+    public void ToggleFloatingTokenMeterFromUi()
+        => ToggleFloatingTokenMeter();
+
+    private void ShowFloatingTokenMeter()
+    {
+        if (_viewModel is null || !_viewModel.IsTransparentProxyRunning)
+        {
+            return;
+        }
+
+        if (_floatingTokenMeterWindow is null)
+        {
+            _floatingTokenMeterWindow = new FloatingTokenMeterWindow
+            {
+                DataContext = _viewModel
+            };
+            ApplyTokenMeterWindowState(_floatingTokenMeterWindow);
+            _floatingTokenMeterWindow.OpenMainWindowRequested += (_, _) => RestoreMainWindow(showTransparentProxy: true);
+            _floatingTokenMeterWindow.ResetRequested += (_, _) => _viewModel?.ResetTransparentProxyTokenMeter();
+            _floatingTokenMeterWindow.PlacementChanged += (_, _) => CaptureAndSaveTokenMeterWindowState();
+            _floatingTokenMeterWindow.SettingsChanged += (_, _) => CaptureAndSaveTokenMeterWindowState();
+            _floatingTokenMeterWindow.HideRequested += (_, _) =>
+            {
+                _isTokenMeterRequested = false;
+                HideFloatingTokenMeter();
+                CaptureAndSaveTokenMeterWindowState();
+            };
+            _floatingTokenMeterWindow.Closed += (_, _) =>
+            {
+                CaptureAndSaveTokenMeterWindowState();
+                _floatingTokenMeterWindow = null;
+                _isTokenMeterVisible = false;
+                UpdateTrayMenuText();
+            };
+        }
+
+        if (!_floatingTokenMeterWindow.IsVisible)
+        {
+            _floatingTokenMeterWindow.Show();
+        }
+
+        _isTokenMeterVisible = true;
+        UpdateTrayMenuText();
+    }
+
+    private void HideFloatingTokenMeter()
+    {
+        _floatingTokenMeterWindow?.SetMousePassThrough(false);
+        _floatingTokenMeterWindow?.Hide();
+        _isTokenMeterVisible = false;
+        CaptureAndSaveTokenMeterWindowState();
+    }
+
+    private void RestoreMainWindow(bool showTransparentProxy)
+    {
+        if (showTransparentProxy && _viewModel is not null)
+        {
+            _viewModel.SelectedWorkbenchPageKey = "transparent-proxy";
+        }
+
+        if (!IsVisible)
+        {
+            Show();
+        }
+
+        ShowInTaskbar = true;
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        Opacity = 1d;
+        MainShellBorder.Opacity = 1d;
+        ClampWindowToCurrentWorkArea();
+        Activate();
+    }
+
+    private void ClampWindowToCurrentWorkArea()
+    {
+        if (WindowState != WindowState.Normal)
+        {
+            return;
+        }
+
+        try
+        {
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            var screen = Forms.Screen.FromHandle(helper.Handle);
+            var workingAreaPixels = screen.WorkingArea;
+            var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+            var topLeft = transform.Transform(new Point(workingAreaPixels.Left, workingAreaPixels.Top));
+            var bottomRight = transform.Transform(new Point(workingAreaPixels.Right, workingAreaPixels.Bottom));
+            Rect workingArea = new(topLeft, bottomRight);
+
+            if (workingArea.Width <= 0 || workingArea.Height <= 0)
+            {
+                workingArea = SystemParameters.WorkArea;
+            }
+
+            var windowWidth = double.IsFinite(ActualWidth) && ActualWidth > 0 ? ActualWidth : Width;
+            var windowHeight = double.IsFinite(ActualHeight) && ActualHeight > 0 ? ActualHeight : Height;
+            if (windowWidth <= 0 || windowHeight <= 0)
+            {
+                return;
+            }
+
+            if (windowWidth > workingArea.Width && workingArea.Width >= MinWidth)
+            {
+                Width = workingArea.Width;
+                windowWidth = Width;
+            }
+
+            if (windowHeight > workingArea.Height && workingArea.Height >= MinHeight)
+            {
+                Height = workingArea.Height;
+                windowHeight = Height;
+            }
+
+            var maxLeft = workingArea.Right - windowWidth;
+            var maxTop = workingArea.Bottom - windowHeight;
+            Left = ClampWithin(Left, workingArea.Left, Math.Max(workingArea.Left, maxLeft));
+            Top = ClampWithin(Top, workingArea.Top, Math.Max(workingArea.Top, maxTop));
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("MainWindow.ClampWindowToCurrentWorkArea", ex);
+        }
+    }
+
+    private static double ClampWithin(double value, double min, double max)
+        => Math.Min(Math.Max(value, min), max);
+
+    private void HideMainWindowToTray()
+    {
+        HideProxyChartHitToolTip();
+        CaptureAndSaveTokenMeterWindowState();
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.PersistState();
+        }
+
+        ShowInTaskbar = false;
+        Hide();
+        if (!_hasShownTrayHint && _notifyIcon is not null)
+        {
+            _hasShownTrayHint = true;
+            _notifyIcon.ShowBalloonTip(
+                2600,
+                "RelayBench 正在后台运行",
+                "右键托盘图标可退出，双击可恢复主窗口。",
+                Forms.ToolTipIcon.Info);
+        }
+    }
+
+    private async Task ExitFromTrayAsync()
+    {
+        _isExitRequested = true;
+        try
+        {
+            if (_viewModel is not null)
+            {
+                await _viewModel.StopTransparentProxyForExitAsync();
+            }
+        }
+        finally
+        {
+            DisposeTrayIcon();
+            CaptureAndSaveTokenMeterWindowState();
+            _floatingTokenMeterWindow?.Close();
+            _floatingTokenMeterWindow = null;
+            Close();
+        }
+    }
+
+    private void DisposeTrayIcon()
+    {
+        if (_notifyIcon is null)
+        {
+            return;
+        }
+
+        _notifyIcon.Visible = false;
+        _notifyIcon.Dispose();
+        _notifyIcon = null;
+    }
+
     private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_viewModel is null || string.IsNullOrWhiteSpace(e.PropertyName))
@@ -148,6 +598,27 @@ public partial class MainWindow : Window
         if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.IsGlobalTaskProgressVisible), StringComparison.Ordinal))
         {
             Dispatcher.BeginInvoke(() => UpdateGlobalTaskProgressVisual(immediate: false), DispatcherPriority.Loaded);
+            return;
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.IsTransparentProxyRunning), StringComparison.Ordinal))
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (_viewModel?.IsTransparentProxyRunning == true)
+                {
+                    if (_isTokenMeterRequested)
+                    {
+                        ShowFloatingTokenMeter();
+                    }
+                }
+                else
+                {
+                    HideFloatingTokenMeter();
+                }
+
+                UpdateTrayMenuText();
+            }, DispatcherPriority.Loaded);
             return;
         }
 
@@ -390,6 +861,12 @@ public partial class MainWindow : Window
         StopOverlayAnimations(item);
 
         var (scale, translate) = EnsureElementTransforms(item.Panel);
+        if (ShouldReduceMotion())
+        {
+            SetOverlayState(item, isOpen);
+            return;
+        }
+
         if (isOpen)
         {
             item.Overlay.Visibility = Visibility.Visible;
@@ -442,6 +919,16 @@ public partial class MainWindow : Window
 
         _hasPlayedWindowOpenAnimation = true;
         var (scale, translate) = EnsureElementTransforms(MainShellBorder);
+        if (ShouldReduceMotion())
+        {
+            Opacity = 1d;
+            MainShellBorder.Opacity = 1d;
+            scale.ScaleX = 1d;
+            scale.ScaleY = 1d;
+            translate.Y = 0d;
+            return;
+        }
+
         MainShellBorder.Opacity = 0d;
         scale.ScaleX = WindowOpenInitialScale;
         scale.ScaleY = WindowOpenInitialScale;
@@ -462,6 +949,17 @@ public partial class MainWindow : Window
         }
 
         var (scale, _) = EnsureElementTransforms(MainShellBorder);
+        if (ShouldReduceMotion())
+        {
+            StopAnimation(scale, ScaleTransform.ScaleXProperty);
+            StopAnimation(scale, ScaleTransform.ScaleYProperty);
+            StopAnimation(MainShellBorder, UIElement.OpacityProperty);
+            scale.ScaleX = 1d;
+            scale.ScaleY = 1d;
+            MainShellBorder.Opacity = 1d;
+            return;
+        }
+
         var fromScale = WindowState == WindowState.Maximized
             ? WindowStateMaximizedTransitionScale
             : WindowStateRestoredTransitionScale;
@@ -495,6 +993,12 @@ public partial class MainWindow : Window
         var (_, translate) = EnsureElementTransforms(WorkbenchPageHost);
         StopAnimation(WorkbenchPageHost, UIElement.OpacityProperty);
         StopAnimation(translate, TranslateTransform.XProperty);
+        if (ShouldReduceMotion())
+        {
+            WorkbenchPageHost.Opacity = 1d;
+            translate.X = 0d;
+            return;
+        }
 
         WorkbenchPageHost.Opacity = 0d;
         translate.X = WorkbenchPageTransitionOffsetX;
@@ -546,6 +1050,13 @@ public partial class MainWindow : Window
         StopAnimation(scale, ScaleTransform.ScaleXProperty);
         StopAnimation(scale, ScaleTransform.ScaleYProperty);
         StopAnimation(translate, TranslateTransform.YProperty);
+        if (ShouldReduceMotion())
+        {
+            SetGlobalTaskProgressVisualState(
+                isVisible,
+                isVisible && _viewModel is not null ? _viewModel.GlobalTaskProgressFraction : 0d);
+            return;
+        }
 
         if (isVisible)
         {
@@ -620,6 +1131,13 @@ public partial class MainWindow : Window
         var fillScale = GetGlobalTaskProgressFillScale();
         StopAnimation(fillScale, ScaleTransform.ScaleXProperty);
         var target = Math.Clamp(_viewModel.GlobalTaskProgressFraction, 0d, 1d);
+        if (ShouldReduceMotion())
+        {
+            fillScale.ScaleX = target;
+            fillScale.ScaleY = 1d;
+            return;
+        }
+
         AnimateDouble(fillScale, ScaleTransform.ScaleXProperty, fillScale.ScaleX, target, GlobalTaskProgressFillDurationMs, CreateEaseOut());
     }
 
@@ -722,6 +1240,12 @@ public partial class MainWindow : Window
         host.Children.Add(segment);
         Canvas.SetLeft(host, bounds.X);
         Canvas.SetTop(host, bounds.Y);
+        if (ShouldReduceMotion())
+        {
+            segmentTransform.X = 0d;
+            segment.Opacity = 0.46d;
+            return host;
+        }
 
         var flowAnimation = new DoubleAnimation
         {
@@ -884,6 +1408,15 @@ public partial class MainWindow : Window
 
     private void DetachViewModel()
     {
+        _tokenMeterRefreshTimer.Stop();
+        CaptureAndSaveTokenMeterWindowState();
+        DisposeTrayIcon();
+        if (_floatingTokenMeterWindow is not null)
+        {
+            _floatingTokenMeterWindow.Close();
+            _floatingTokenMeterWindow = null;
+        }
+
         if (_viewModel is null)
         {
             return;
@@ -937,20 +1470,16 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (!_allowWindowClose)
+        if (!_isExitRequested && !_allowWindowClose)
         {
             e.Cancel = true;
-            if (!_isWindowCloseAnimationRunning)
-            {
-                _isWindowCloseAnimationRunning = true;
-                BeginWindowCloseAnimation();
-            }
-
+            HideMainWindowToTray();
             return;
         }
 
         if (DataContext is MainWindowViewModel viewModel)
         {
+            CaptureAndSaveTokenMeterWindowState();
             viewModel.PersistState();
         }
 
@@ -966,6 +1495,13 @@ public partial class MainWindow : Window
         StopAnimation(scale, ScaleTransform.ScaleXProperty);
         StopAnimation(scale, ScaleTransform.ScaleYProperty);
         StopAnimation(translate, TranslateTransform.YProperty);
+        if (ShouldReduceMotion())
+        {
+            _allowWindowClose = true;
+            _isWindowCloseAnimationRunning = false;
+            Close();
+            return;
+        }
 
         var closeAnimation = CreateAnimation(MainShellBorder.Opacity, 0d, WindowCloseDurationMs, CreateEaseIn());
         closeAnimation.Completed += (_, _) =>

@@ -45,6 +45,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<ChatAttachmentViewModel> PendingChatAttachments { get; } = [];
 
+    public ObservableCollection<TransparentProxyRouteViewModel> TransparentProxyRoutes { get; } = [];
+
+    public ObservableCollection<TransparentProxyRouteEditorItemViewModel> TransparentProxyRouteEditorItems { get; } = [];
+
+    public ObservableCollection<TransparentProxyLogEntryViewModel> TransparentProxyLogs { get; } = [];
+
     public ObservableCollection<SelectionOption> ChatReasoningEffortOptions { get; } =
     [
         new("auto", "\u81ea\u52a8"),
@@ -61,8 +67,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<SelectionOption> WorkbenchPageOptions { get; } =
     [
         new("interface-diagnostics", "\u5355\u7ad9\u6d4b\u8bd5"),
-        new("advanced-test-lab", "高级测试"),
+        new("advanced-test-lab", "数据安全"),
         new("batch-evaluation", "批量评测"),
+        new("transparent-proxy", "透明代理"),
         new("model-chat", "\u5927\u6a21\u578b\u5bf9\u8bdd"),
         new("application-center", "应用接入"),
         new("network-review", "网络复核"),
@@ -243,6 +250,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand ExportPortScanExcelCommand { get; }
 
     public AsyncRelayCommand RunSplitRoutingCommand { get; }
+
+    public AsyncRelayCommand StartTransparentProxyCommand { get; }
+
+    public AsyncRelayCommand StopTransparentProxyCommand { get; }
+
+    public AsyncRelayCommand RefreshTransparentProxyRoutesCommand { get; }
+
+    public AsyncRelayCommand ProbeTransparentProxyProtocolsCommand { get; }
+
+    public AsyncRelayCommand AddTransparentProxyRouteEditorItemCommand { get; }
+
+    public AsyncRelayCommand RemoveTransparentProxyRouteEditorItemCommand { get; }
+
+    public AsyncRelayCommand MoveTransparentProxyRouteEditorItemUpCommand { get; }
+
+    public AsyncRelayCommand MoveTransparentProxyRouteEditorItemDownCommand { get; }
+
+    public AsyncRelayCommand CopyTransparentProxyEndpointCommand { get; }
+
+    public AsyncRelayCommand ClearTransparentProxyLogsCommand { get; }
 
     public AsyncRelayCommand RunIpRiskReviewCommand { get; }
 

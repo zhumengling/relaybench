@@ -36,7 +36,7 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{StaticResource PanelBorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="10">
+                                CornerRadius="8">
                             <ContentPresenter Margin="{TemplateBinding Padding}"
                                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
@@ -63,7 +63,7 @@
             <Setter Property="Background" Value="#F8FAFC" />
             <Setter Property="BorderBrush" Value="#DCE6F8" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="CornerRadius" Value="8" />
         </Style>
     </UserControl.Resources>
 
@@ -79,17 +79,19 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="历史报告" />
+                <StackPanel ClipToBounds="True">
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x5386;&#x53F2;&#x62A5;&#x544A;" />
                     <TextBlock Margin="0,2,0,0"
                                Style="{StaticResource SectionHintTextStyle}"
-                               Text="按运行时间倒序查看诊断、导出和复盘摘要" />
+                               TextTrimming="CharacterEllipsis"
+                               Text="&#x6309;&#x8FD0;&#x884C;&#x65F6;&#x95F4;&#x5012;&#x5E8F;&#x67E5;&#x770B;&#x8BCA;&#x65AD;&#x3001;&#x5BFC;&#x51FA;&#x548C;&#x590D;&#x76D8;&#x6458;&#x8981;" />
                 </StackPanel>
                 <Button Grid.Column="1"
                         VerticalAlignment="Center"
                         Command="{Binding ExportCurrentReportCommand}"
-                        Style="{StaticResource PrimaryActionButtonStyle}"
-                        Content="导出当前报告" />
+                        Style="{StaticResource WorkbenchIconButtonPrimaryStyle}"
+                        Content="&#xE8E5;"
+                        ToolTip="&#x5BFC;&#x51FA;&#x5F53;&#x524D;&#x62A5;&#x544A;" />
             </Grid>
         </Border>
 
@@ -97,9 +99,9 @@
               Margin="0,8,0,0"
               MinHeight="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.05*" />
+                <ColumnDefinition Width="324" MinWidth="300" />
                 <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="1.2*" />
+                <ColumnDefinition Width="*" MinWidth="620" />
             </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Style="{StaticResource SectionPanelBorderStyle}">
@@ -111,17 +113,17 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="报告列表" />
+                    <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x65F6;&#x95F4;&#x7EBF;" />
                     <TextBlock Margin="0,3,0,0"
                                Style="{StaticResource SectionHintTextStyle}"
-                               Text="按运行时间倒序显示" />
+                               Text="&#x6309;&#x8FD0;&#x884C;&#x65F6;&#x95F4;&#x5012;&#x5E8F;&#x663E;&#x793A;" />
                 </StackPanel>
 
                 <Border Grid.Row="1"
                         Margin="0,6,0,0"
                         Style="{StaticResource HistoryMetaStripBorderStyle}">
                     <TextBlock Style="{StaticResource SectionHintTextStyle}"
-                               Text="左侧看预览，右侧看详情。" />
+                               Text="&#x9009;&#x4E2D;&#x4E00;&#x6761;&#x540E;&#xFF0C;&#x53F3;&#x4FA7;&#x9605;&#x8BFB;&#x5B8C;&#x6574;&#x62A5;&#x544A;&#x3002;" />
                 </Border>
 
                 <Border Grid.Row="2"
@@ -136,50 +138,71 @@
                                 <DataTemplate>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="42" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
 
-                                        <Border Width="34"
-                                                Height="20"
-                                                Margin="0,0,10,0"
-                                                VerticalAlignment="Top"
-                                                Background="Transparent"
-                                                BorderBrush="{StaticResource AccentBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="10">
-                                            <TextBlock HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"
-                                                       Foreground="{StaticResource AccentBrush}"
-                                                       FontWeight="SemiBold"
-                                                       Text="{Binding Rank}" />
-                                        </Border>
+                                        <Grid>
+                                            <Rectangle Width="1"
+                                                       HorizontalAlignment="Center"
+                                                       Fill="#D0D7E2" />
+                                            <Border Width="18"
+                                                    Height="18"
+                                                    Margin="0,2,0,0"
+                                                    VerticalAlignment="Top"
+                                                    Background="#FFFFFF"
+                                                    BorderBrush="{StaticResource AccentBrush}"
+                                                    BorderThickness="2"
+                                                    CornerRadius="9">
+                                                <TextBlock HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="8.6"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{StaticResource AccentBrush}"
+                                                           Text="{Binding Rank}" />
+                                            </Border>
+                                        </Grid>
 
-                                        <StackPanel Grid.Column="1">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
+                                        <Grid Grid.Column="1">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
 
-                                                <TextBlock FontWeight="SemiBold"
-                                                           Text="{Binding DisplayTitle}"
-                                                           TextWrapping="Wrap" />
-                                                <TextBlock Grid.Column="1"
-                                                           Margin="8,0,0,0"
-                                                           VerticalAlignment="Top"
+                                            <TextBlock FontWeight="SemiBold"
+                                                       Text="{Binding DisplayTitle}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding DisplayTitle}" />
+                                            <StackPanel Grid.Column="1"
+                                                        Margin="8,0,0,0"
+                                                        HorizontalAlignment="Right">
+                                                <TextBlock Style="{StaticResource SectionHintTextStyle}"
+                                                           TextAlignment="Right"
+                                                           ToolTip="{Binding TimestampText}"
+                                                           Text="{Binding DateText}" />
+                                                <TextBlock Margin="0,1,0,0"
                                                            Style="{StaticResource SectionHintTextStyle}"
-                                                           Text="{Binding TimestampText}" />
-                                            </Grid>
+                                                           TextAlignment="Right"
+                                                           ToolTip="{Binding TimestampText}"
+                                                           Text="{Binding TimeText}" />
+                                            </StackPanel>
 
-                                            <WrapPanel Margin="0,4,0,0">
+                                            <WrapPanel Grid.Row="1"
+                                                       Grid.ColumnSpan="2"
+                                                       Margin="0,4,0,0">
                                                 <Border Margin="0,0,6,0"
                                                         Padding="6,1"
                                                         Background="#F8FAFC"
                                                         BorderBrush="{StaticResource PanelBorderBrush}"
                                                         BorderThickness="1"
                                                         CornerRadius="8">
-                                                    <TextBlock FontWeight="SemiBold"
+                                                    <TextBlock FontSize="10.4"
+                                                               FontWeight="SemiBold"
                                                                Text="{Binding ScopeTag}" />
                                                 </Border>
                                                 <Border Padding="6,1"
@@ -187,17 +210,22 @@
                                                         BorderBrush="#C7DAFF"
                                                         BorderThickness="1"
                                                         CornerRadius="8">
-                                                    <TextBlock Foreground="{StaticResource AccentBrush}"
+                                                    <TextBlock FontSize="10.4"
+                                                               Foreground="{StaticResource AccentBrush}"
                                                                FontWeight="SemiBold"
                                                                Text="{Binding CategoryTag}" />
                                                 </Border>
                                             </WrapPanel>
 
-                                            <TextBlock Margin="0,4,0,0"
+                                            <TextBlock Grid.Row="2"
+                                                       Grid.ColumnSpan="2"
+                                                       Margin="0,4,0,0"
                                                        Style="{StaticResource SectionHintTextStyle}"
                                                        Text="{Binding PreviewText}"
+                                                       MaxHeight="32"
+                                                       ToolTip="{Binding PreviewText}"
                                                        TextWrapping="Wrap" />
-                                        </StackPanel>
+                                        </Grid>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -251,10 +279,10 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="运行详情" />
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x62A5;&#x544A;&#x9605;&#x8BFB;&#x5668;" />
                         <TextBlock Margin="0,3,0,0"
                                    Style="{StaticResource SectionHintTextStyle}"
-                                   Text="默认选中最新记录" />
+                                   Text="&#x9ED8;&#x8BA4;&#x9009;&#x4E2D;&#x6700;&#x65B0;&#x8BB0;&#x5F55;" />
                     </StackPanel>
 
                     <Border Grid.Row="1"
@@ -264,6 +292,8 @@
                             <TextBlock FontSize="11.8"
                                        FontWeight="SemiBold"
                                        Text="{Binding SelectedHistoryRunTitle, Mode=OneWay}"
+                                       MaxHeight="38"
+                                       ToolTip="{Binding SelectedHistoryRunTitle, Mode=OneWay}"
                                        TextWrapping="Wrap" />
                             <TextBlock Margin="0,3,0,0"
                                        Style="{StaticResource SectionHintTextStyle}"
@@ -287,10 +317,21 @@
                         </StackPanel>
                     </Border>
 
-                    <TextBox Grid.Row="2"
-                             Margin="0,6,0,0"
-                             Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
-                             Text="{Binding SelectedHistoryRunDetailText, Mode=OneWay}" />
+                    <TabControl Grid.Row="2"
+                                Margin="0,6,0,0">
+                        <TabItem Header="&#x62A5;&#x544A;">
+                            <TextBox Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                     Text="{Binding SelectedHistoryRunDetailText, Mode=OneWay}" />
+                        </TabItem>
+                        <TabItem Header="&#x6458;&#x8981;">
+                            <TextBox Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                     Text="{Binding SelectedHistoryRunPreviewText, Mode=OneWay}" />
+                        </TabItem>
+                        <TabItem Header="&#x5143;&#x4FE1;&#x606F;">
+                            <TextBox Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
+                                     Text="{Binding SelectedHistoryRunOriginalTitle, Mode=OneWay}" />
+                        </TabItem>
+                    </TabControl>
                 </Grid>
             </Border>
 
@@ -303,17 +344,17 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="报告导出" />
+                        <TextBlock Style="{StaticResource SectionTitleTextStyle}" Text="&#x62A5;&#x544A;&#x5BFC;&#x51FA;" />
                         <TextBlock Margin="0,3,0,0"
                                    Style="{StaticResource SectionHintTextStyle}"
-                                   Text="导出当前结果并在此查看摘要" />
+                                   Text="&#x5BFC;&#x51FA;&#x5F53;&#x524D;&#x7ED3;&#x679C;&#x5E76;&#x5728;&#x6B64;&#x67E5;&#x770B;&#x5F52;&#x6863;&#x6458;&#x8981;" />
                     </StackPanel>
 
                     <Button Grid.Row="1"
                             Margin="0,6,0,0"
                             HorizontalAlignment="Left"
                             Command="{Binding ExportCurrentReportCommand}"
-                            Content="导出当前报告" />
+                            Content="&#x5BFC;&#x51FA;&#x5F53;&#x524D;&#x62A5;&#x544A;" />
                     <TextBox Grid.Row="2"
                              Margin="0,6,0,0"
                              Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
