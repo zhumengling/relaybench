@@ -98,14 +98,16 @@
                         <RowDefinition Height="34" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.65*" />
+                        <ColumnDefinition Width="244" />
                         <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="150" />
                         <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="10" />
                         <ColumnDefinition Width="158" />
+                        <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
                     <TextBlock Grid.Row="0"
@@ -190,7 +192,7 @@
                     </Grid>
 
                     <Button Grid.Row="1"
-                            Grid.Column="7"
+                            Grid.Column="8"
                             Command="{Binding FetchAdvancedModelsCommand}"
                             Content="&#xE72C;"
                             Style="{StaticResource AdvancedLabCommandIconButtonStyle}"
@@ -198,6 +200,7 @@
                 </Grid>
 
                 <WrapPanel Grid.Column="1"
+                            Margin="18,0,0,0"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Bottom">
                     <Button Command="{Binding StartCommand}"
