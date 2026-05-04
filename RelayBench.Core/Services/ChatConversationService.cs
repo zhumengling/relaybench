@@ -207,16 +207,17 @@ public sealed class ChatConversationService
         IReadOnlyList<ChatAttachment> pendingAttachments)
     {
         List<string> candidates = [];
-        AddCandidate(candidates, ProxyWireApiProbeService.NormalizeWireApi(options.PreferredWireApi));
-
-        if (ShouldUseResponsesApi(options, history, pendingAttachments))
+        var preferredWireApi = ProxyWireApiProbeService.NormalizeWireApi(options.PreferredWireApi);
+        if (!HasImageAttachments(history, pendingAttachments))
         {
             AddCandidate(candidates, ProxyWireApiProbeService.ResponsesWireApi);
             AddCandidate(candidates, ProxyWireApiProbeService.AnthropicMessagesWireApi);
+            AddCandidate(candidates, preferredWireApi);
             AddCandidate(candidates, ProxyWireApiProbeService.ChatCompletionsWireApi);
         }
         else
         {
+            AddCandidate(candidates, preferredWireApi);
             AddCandidate(candidates, ProxyWireApiProbeService.ChatCompletionsWireApi);
             AddCandidate(candidates, ProxyWireApiProbeService.AnthropicMessagesWireApi);
             AddCandidate(candidates, ProxyWireApiProbeService.ResponsesWireApi);
@@ -273,20 +274,11 @@ public sealed class ChatConversationService
         }
     }
 
-    private static bool ShouldUseResponsesApi(
-        ChatRequestOptions options,
+    private static bool HasImageAttachments(
         IReadOnlyList<ChatMessage> history,
         IReadOnlyList<ChatAttachment> pendingAttachments)
-    {
-        if (!options.PreferResponsesApi || options.ReasoningEffort is ChatReasoningEffort.Auto)
-        {
-            return false;
-        }
-
-        var hasImages = pendingAttachments.Any(static attachment => attachment.Kind == ChatAttachmentKind.Image) ||
-            history.Any(static message => message.Attachments.Any(static attachment => attachment.Kind == ChatAttachmentKind.Image));
-        return !hasImages;
-    }
+        => pendingAttachments.Any(static attachment => attachment.Kind == ChatAttachmentKind.Image) ||
+           history.Any(static message => message.Attachments.Any(static attachment => attachment.Kind == ChatAttachmentKind.Image));
 
     private static bool TryValidateOptions(
         ChatRequestOptions options,

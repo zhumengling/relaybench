@@ -51,6 +51,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<TransparentProxyLogEntryViewModel> TransparentProxyLogs { get; } = [];
 
+    public ObservableCollection<SelectionOption> TransparentProxyRouteStrategyOptions { get; } =
+    [
+        new(TransparentProxyRouteStrategies.Smart, "智能评分"),
+        new(TransparentProxyRouteStrategies.Priority, "优先级"),
+        new(TransparentProxyRouteStrategies.RoundRobin, "轮询"),
+        new(TransparentProxyRouteStrategies.LowestLatency, "最低延迟"),
+        new(TransparentProxyRouteStrategies.SessionAffinity, "会话粘滞"),
+        new(TransparentProxyRouteStrategies.FillFirst, "填满优先")
+    ];
+
     public ObservableCollection<SelectionOption> ChatReasoningEffortOptions { get; } =
     [
         new("auto", "\u81ea\u52a8"),
@@ -259,6 +269,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand ProbeTransparentProxyProtocolsCommand { get; }
 
+    public AsyncRelayCommand RunTransparentProxySelfTestCommand { get; }
+
+    public AsyncRelayCommand ApplyTransparentProxyToAppsCommand { get; }
+
     public AsyncRelayCommand AddTransparentProxyRouteEditorItemCommand { get; }
 
     public AsyncRelayCommand ToggleTransparentProxySettingsDrawerCommand { get; }
@@ -275,6 +289,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?> FetchTransparentProxyRouteEditorItemModelsCommand { get; }
 
+    public AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?> ResetTransparentProxyRouteCircuitCommand { get; }
+
     public AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?> AddTransparentProxyRouteModelMappingCommand { get; }
 
     public AsyncRelayCommand<TransparentProxyModelMappingViewModel?> RemoveTransparentProxyRouteModelMappingCommand { get; }
@@ -288,6 +304,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand CopyTransparentProxyEndpointCommand { get; }
 
     public AsyncRelayCommand ClearTransparentProxyLogsCommand { get; }
+
+    public AsyncRelayCommand ExportTransparentProxyLogsCommand { get; }
+
+    public AsyncRelayCommand CloseTransparentProxyLogDetailCommand { get; }
 
     public AsyncRelayCommand ClearTransparentProxyCacheCommand { get; }
 

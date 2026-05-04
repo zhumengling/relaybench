@@ -22,6 +22,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly PortScanDiagnosticsService _portScanDiagnosticsService = new();
     private readonly SplitRoutingDiagnosticsService _splitRoutingDiagnosticsService = new();
     private readonly TransparentProxyService _transparentProxyService = new();
+    private readonly TransparentProxySelfTestService _transparentProxySelfTestService = new();
+    private readonly TransparentProxyConfigStore _transparentProxyConfigStore = new();
+    private readonly TransparentProxyProtocolDiscoveryService _transparentProxyProtocolDiscoveryService;
+    private readonly TransparentProxyLogStore _transparentProxyLogStore =
+        new(Path.Combine(RelayBenchPaths.DataDirectory, "transparent-proxy-logs.sqlite"));
     private readonly DiagnosticReportService _diagnosticReportService = new();
     private readonly ChatConversationService _chatConversationService = new();
     private readonly ChatAttachmentImportService _chatAttachmentImportService = new();
@@ -125,15 +130,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private TransparentProxyRouteEditorItemViewModel? _selectedTransparentProxyRouteEditorItem;
     private string _transparentProxyRateLimitPerMinuteText = "60";
     private string _transparentProxyMaxConcurrencyText = "8";
+    private string _transparentProxyRouteStrategyKey = TransparentProxyRouteStrategies.Smart;
     private bool _transparentProxyEnableFallback = true;
     private bool _transparentProxyEnableCache = true;
     private string _transparentProxyCacheTtlSecondsText = "60";
+    private string _transparentProxyRequestRetryText = "1";
+    private string _transparentProxyMaxRetryIntervalSecondsText = "8";
+    private string _transparentProxySessionAffinityTtlSecondsText = "1800";
+    private string _transparentProxyModelCooldownSecondsText = "120";
     private bool _transparentProxyRewriteModel;
     private bool _isTransparentProxySettingsDrawerOpen;
     private bool _isTransparentProxyListenSettingsOpen;
     private bool _isTransparentProxyProviderSettingsOpen;
     private bool _isTransparentProxyRouteSettingsOpen;
     private bool _isTransparentProxyLogExpanded;
+    private string _transparentProxyLogFilterText = string.Empty;
+    private TransparentProxyLogEntryViewModel? _selectedTransparentProxyLog;
+    private bool _isTransparentProxyLogDetailOpen;
     private TransparentProxyRouteEditorItemViewModel? _transparentProxyRouteSettingsItem;
     private bool _isTransparentProxyRunning;
     private string _transparentProxyStatusSummary = "本地透明代理未启动。";
@@ -159,7 +172,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private CancellationTokenSource? _transparentProxyAutoDiscoveryCancellationSource;
     private bool _isRefreshingTransparentProxyRouteEditor;
     private bool _isUpdatingTransparentProxyRoutesTextFromEditor;
-    private readonly Dictionary<string, TransparentProxyProtocolSnapshot> _transparentProxyProtocolSnapshots = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<TransparentProxyLogEntryViewModel> _allTransparentProxyLogs = [];
+    private readonly Dictionary<string, TransparentProxyProtocolDiscoverySnapshot> _transparentProxyProtocolSnapshots = new(StringComparer.OrdinalIgnoreCase);
 
     private ProxySingleExecutionMode GetEffectiveSingleExecutionMode()
         => _currentProxySingleExecutionPlan?.Mode ?? _lastProxySingleExecutionMode;

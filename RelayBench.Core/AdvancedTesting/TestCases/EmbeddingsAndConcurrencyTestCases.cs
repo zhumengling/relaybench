@@ -43,6 +43,20 @@ public sealed class EmbeddingsEndpointTestCase : AdvancedTestCaseBase
                 return BuildResult(exchange, redactor, AdvancedTestStatus.Passed, 100, "POST /embeddings", $"Embeddings 可用，维度 {dimension}。", checks, suggestions: new[] { "该入口可进入 RAG 套件进一步检查相似度和长文本输入。" });
             }
 
+            if (IsEndpointUnsupported(exchange))
+            {
+                return BuildResult(
+                    exchange,
+                    redactor,
+                    AdvancedTestStatus.Skipped,
+                    0,
+                    "POST /embeddings",
+                    "当前入口未暴露 Embeddings 接口，已跳过向量能力判定。",
+                    checks,
+                    AdvancedErrorKind.None,
+                    suggestions: new[] { "如需 RAG 向量测试，请配置支持 /embeddings 的专用模型或路由。" });
+            }
+
             return BuildResult(exchange, redactor, AdvancedTestStatus.Failed, 0, "POST /embeddings", "Embeddings 不可用或返回结构异常。", checks, ClassifyExchange(exchange));
         }, (ex, duration) => BuildExceptionResult(ex, duration, redactor));
 

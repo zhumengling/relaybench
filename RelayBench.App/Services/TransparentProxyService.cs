@@ -1,5 +1,4 @@
-using System.Collections.Concurrent;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -7,21 +6,14 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using RelayBench.Core.AdvancedTesting;
+using System.Text.RegularExpressions;
 using RelayBench.Core.Services;
-using RelayBench.Core.Support;
 
 namespace RelayBench.App.Services;
 
 public sealed class TransparentProxyService : IAsyncDisposable
 {
-    private const int CircuitFailureThreshold = 4;
-    private const int CircuitSuccessThreshold = 2;
-    private const int CircuitTimeoutSeconds = 60;
-    private const int CircuitMaxCooldownSeconds = 30 * 60;
-    private const int CircuitMinRequests = 10;
-    private const double CircuitErrorRateThreshold = 0.60d;
+    private static readonly TimeSpan GracefulShutdownTimeout = TimeSpan.FromSeconds(3);
 
     private static readonly HashSet<string> HopByHopHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -43,14 +35,23 @@ public sealed class TransparentProxyService : IAsyncDisposable
     };
 
     private readonly object _syncRoot = new();
-    private readonly ConcurrentDictionary<string, TransparentProxyCachedResponse> _cache = new(StringComparer.Ordinal);
+    private readonly TransparentProxyResponseCacheService _responseCache = new();
+    private readonly TransparentProxyProtocolTranslatorService _protocolTranslator = new();
+    private readonly TransparentProxyRoutePolicyService _routePolicy = new();
+    private readonly TransparentProxyTokenTelemetryService _tokenTelemetry = new();
+    private readonly TransparentProxyModelCatalogService _modelCatalog = new();
+    private readonly TransparentProxyCircuitBreakerService _circuitBreaker = new();
+    private readonly TransparentProxyRouteHealthStore _routeHealthStore = new();
     private readonly List<long> _latencies = [];
-    private readonly Queue<TransparentProxyTokenSample> _tokenSamples = new();
     private readonly Dictionary<string, TransparentProxyRouteRuntimeState> _routeStates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, TransparentProxySessionRouteBinding> _sessionRouteBindings = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, HttpClient> _routeHttpClients = new(StringComparer.OrdinalIgnoreCase);
+    private int _roundRobinCursor;
 
     private HttpListener? _listener;
     private HttpClient? _httpClient;
     private CancellationTokenSource? _serverCancellationSource;
+    private CancellationTokenSource? _acceptCancellationSource;
     private Task? _acceptLoopTask;
     private SemaphoreSlim? _concurrencyGate;
     private TransparentProxyServerConfig? _config;
@@ -63,8 +64,6 @@ public sealed class TransparentProxyService : IAsyncDisposable
     private int _fallbackRequests;
     private int _cacheHits;
     private int _rateLimitedRequests;
-    private long _totalOutputTokens;
-    private DateTimeOffset? _lastTokenActivityAt;
 
     public event EventHandler<TransparentProxyLogEntry>? LogEmitted;
 
@@ -74,8 +73,9 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
     public int ClearCache()
     {
-        var count = _cache.Count;
-        _cache.Clear();
+        var count = _responseCache.Clear();
+        count += _protocolTranslator.PromptSessionCacheStats.Entries;
+        _protocolTranslator.ClearPromptSessionCache();
         PublishMetrics();
         return count;
     }
@@ -100,6 +100,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 .Select(route => byId.TryGetValue(route.Id, out var hydrated) ? hydrated : route)
                 .ToArray();
             _config = config with { Routes = updatedRoutes };
+            _responseCache.ClearModelsList();
             foreach (var route in updatedRoutes)
             {
                 if (_routeStates.TryGetValue(route.Id, out var state))
@@ -114,36 +115,60 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
     public void ResetTokenTelemetry()
     {
+        _tokenTelemetry.Reset();
+        PublishMetrics();
+    }
+
+    public bool ResetRouteCircuit(string routeId)
+    {
+        if (string.IsNullOrWhiteSpace(routeId))
+        {
+            return false;
+        }
+
         lock (_syncRoot)
         {
-            _totalOutputTokens = 0;
-            _lastTokenActivityAt = null;
-            _tokenSamples.Clear();
+            if (!_routeStates.TryGetValue(routeId, out var state))
+            {
+                return false;
+            }
+
+            _circuitBreaker.Reset(state);
+            _routeHealthStore.Reset(routeId);
         }
 
         PublishMetrics();
+        return true;
     }
 
     public async Task StartAsync(TransparentProxyServerConfig config)
     {
         if (config.Routes.Count == 0)
         {
-            throw new InvalidOperationException("至少需要一个上游路由。");
+            throw new InvalidOperationException("At least one upstream route is required.");
         }
 
         await StopAsync();
 
         _config = config;
-        _cache.Clear();
+        _responseCache.ClearMemory();
         _concurrencyGate = new SemaphoreSlim(Math.Max(1, config.MaxConcurrency), Math.Max(1, config.MaxConcurrency));
 
         lock (_syncRoot)
         {
             _latencies.Clear();
             _routeStates.Clear();
+            var persistedHealth = _routeHealthStore.Load(config.Routes.Select(static route => route.Id));
             foreach (var route in config.Routes)
             {
-                _routeStates[route.Id] = new TransparentProxyRouteRuntimeState(route);
+                var state = new TransparentProxyRouteRuntimeState(route);
+                if (persistedHealth.TryGetValue(route.Id, out var snapshot))
+                {
+                    state.ApplyHealthSnapshot(snapshot);
+                    route.CircuitOpenUntil = state.CircuitOpenUntil;
+                }
+
+                _routeStates[route.Id] = state;
             }
 
             _rateLimitWindowStart = DateTimeOffset.UtcNow;
@@ -155,38 +180,21 @@ public sealed class TransparentProxyService : IAsyncDisposable
             _fallbackRequests = 0;
             _cacheHits = 0;
             _rateLimitedRequests = 0;
-            _totalOutputTokens = 0;
-            _lastTokenActivityAt = null;
-            _tokenSamples.Clear();
+            _roundRobinCursor = 0;
+            _sessionRouteBindings.Clear();
         }
 
-        SocketsHttpHandler handler = new()
-        {
-            AllowAutoRedirect = false,
-            AutomaticDecompression = DecompressionMethods.All,
-            ConnectTimeout = TimeSpan.FromSeconds(Math.Min(15, Math.Max(5, config.UpstreamTimeoutSeconds))),
-            EnableMultipleHttp2Connections = true,
-            MaxConnectionsPerServer = Math.Max(16, config.MaxConcurrency * 2),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5)
-        };
+        _tokenTelemetry.Reset();
 
-        if (config.IgnoreTlsErrors)
-        {
-            handler.SslOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
-        }
-
-        _httpClient = new HttpClient(handler)
-        {
-            Timeout = Timeout.InfiniteTimeSpan
-        };
+        _httpClient = CreateHttpClient(config, outboundProxy: string.Empty);
 
         _serverCancellationSource = new CancellationTokenSource();
+        _acceptCancellationSource = new CancellationTokenSource();
         _listener = new HttpListener();
         _listener.Prefixes.Add($"http://127.0.0.1:{config.Port}/");
         _listener.Start();
 
-        _acceptLoopTask = Task.Run(() => AcceptLoopAsync(_serverCancellationSource.Token));
+        _acceptLoopTask = Task.Run(() => AcceptLoopAsync(_acceptCancellationSource.Token));
         EmitLog(new TransparentProxyLogEntry(
             DateTimeOffset.Now,
             "INFO",
@@ -195,7 +203,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
             "-",
             200,
             0,
-            $"透明代理已启动，监听 http://127.0.0.1:{config.Port}/v1"));
+            $"Transparent proxy started, listening on http://127.0.0.1:{config.Port}/v1"));
         PublishMetrics();
     }
 
@@ -203,13 +211,29 @@ public sealed class TransparentProxyService : IAsyncDisposable
     {
         var listener = _listener;
         var cancellationSource = _serverCancellationSource;
+        var acceptCancellationSource = _acceptCancellationSource;
 
+        _acceptCancellationSource = null;
         _serverCancellationSource = null;
         _listener = null;
 
         if (cancellationSource is not null)
         {
-            await cancellationSource.CancelAsync();
+            var drained = await WaitForActiveRequestsToDrainAsync(GracefulShutdownTimeout);
+            if (!drained)
+            {
+                EmitLog(new TransparentProxyLogEntry(
+                    DateTimeOffset.Now,
+                    "WARN",
+                    "-",
+                    "/",
+                    "-",
+                    499,
+                    0,
+                    $"Transparent proxy shutdown waited more than {GracefulShutdownTimeout.TotalSeconds:0.#} seconds; cancelling remaining requests."));
+                await cancellationSource.CancelAsync();
+                await WaitForActiveRequestsToDrainAsync(TimeSpan.FromMilliseconds(300));
+            }
         }
 
         if (listener is not null)
@@ -225,6 +249,11 @@ public sealed class TransparentProxyService : IAsyncDisposable
             }
         }
 
+        if (acceptCancellationSource is not null)
+        {
+            await acceptCancellationSource.CancelAsync();
+        }
+
         if (_acceptLoopTask is not null)
         {
             try
@@ -238,17 +267,141 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
 
         _acceptLoopTask = null;
+
+        if (listener is not null)
+        {
+            try
+            {
+                listener.Close();
+            }
+            catch
+            {
+                // Listener shutdown races with GetContextAsync during normal stop.
+            }
+        }
+
         _httpClient?.Dispose();
         _httpClient = null;
+        lock (_syncRoot)
+        {
+            foreach (var routeClient in _routeHttpClients.Values)
+            {
+                routeClient.Dispose();
+            }
+
+            _routeHttpClients.Clear();
+        }
+
         _concurrencyGate?.Dispose();
         _concurrencyGate = null;
+        PersistRouteHealthSnapshot();
 
         if (cancellationSource is not null)
         {
             cancellationSource.Dispose();
-            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "INFO", "-", "/", "-", 200, 0, "透明代理已停止。"));
+            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "INFO", "-", "/", "-", 200, 0, "Transparent proxy stopped."));
             PublishMetrics();
         }
+
+        acceptCancellationSource?.Dispose();
+    }
+
+    private async Task<bool> WaitForActiveRequestsToDrainAsync(TimeSpan timeout)
+    {
+        var deadline = Stopwatch.GetTimestamp() + (long)(timeout.TotalSeconds * Stopwatch.Frequency);
+        while (Interlocked.CompareExchange(ref _activeRequests, 0, 0) > 0)
+        {
+            if (Stopwatch.GetTimestamp() >= deadline)
+            {
+                return false;
+            }
+
+            await Task.Delay(50);
+        }
+
+        return true;
+    }
+
+    private HttpClient ResolveHttpClientForRoute(TransparentProxyRoute route, TransparentProxyServerConfig config)
+    {
+        var outboundProxy = route.OutboundProxy.Trim();
+        if (string.IsNullOrWhiteSpace(outboundProxy))
+        {
+            return _httpClient ?? throw new InvalidOperationException("Transparent proxy HTTP client is not ready.");
+        }
+
+        var key = $"{outboundProxy}|tls:{config.IgnoreTlsErrors}|timeout:{config.UpstreamTimeoutSeconds}|concurrency:{config.MaxConcurrency}";
+        lock (_syncRoot)
+        {
+            if (_routeHttpClients.TryGetValue(key, out var client))
+            {
+                return client;
+            }
+
+            client = CreateHttpClient(config, outboundProxy);
+            _routeHttpClients[key] = client;
+            return client;
+        }
+    }
+
+    private static HttpClient CreateHttpClient(TransparentProxyServerConfig config, string outboundProxy)
+    {
+        SocketsHttpHandler handler = new()
+        {
+            AllowAutoRedirect = false,
+            AutomaticDecompression = DecompressionMethods.All,
+            ConnectTimeout = TimeSpan.FromSeconds(Math.Min(15, Math.Max(5, config.UpstreamTimeoutSeconds))),
+            EnableMultipleHttp2Connections = true,
+            MaxConnectionsPerServer = Math.Max(16, config.MaxConcurrency * 2),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+        };
+
+        ConfigureOutboundProxy(handler, outboundProxy);
+
+        if (config.IgnoreTlsErrors)
+        {
+            handler.SslOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+        }
+
+        return new HttpClient(handler)
+        {
+            Timeout = Timeout.InfiniteTimeSpan
+        };
+    }
+
+    private static void ConfigureOutboundProxy(SocketsHttpHandler handler, string outboundProxy)
+    {
+        var value = outboundProxy.Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        if (string.Equals(value, "direct", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "none", StringComparison.OrdinalIgnoreCase))
+        {
+            handler.UseProxy = false;
+            handler.Proxy = null;
+            return;
+        }
+
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var proxyUri) ||
+            string.IsNullOrWhiteSpace(proxyUri.Host))
+        {
+            return;
+        }
+
+        if (!string.Equals(proxyUri.Scheme, "http", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(proxyUri.Scheme, "https", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(proxyUri.Scheme, "socks5", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(proxyUri.Scheme, "socks5h", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        handler.UseProxy = true;
+        handler.Proxy = new WebProxy(proxyUri);
     }
 
     public async ValueTask DisposeAsync()
@@ -267,7 +420,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
                     return;
                 }
 
-                context = await listener.GetContextAsync().WaitAsync(cancellationToken);
+                context = await listener.GetContextAsync();
             }
             catch (OperationCanceledException)
             {
@@ -283,7 +436,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
             }
             catch (Exception ex)
             {
-                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "ERROR", "-", "/", "-", 500, 0, $"监听失败：{ex.Message}"));
+                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "ERROR", "-", "/", "-", 500, 0, $"Listener failed: {ex.Message}"));
                 continue;
             }
 
@@ -296,6 +449,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
         var startedAt = Stopwatch.GetTimestamp();
         var method = context.Request.HttpMethod;
         var pathAndQuery = context.Request.RawUrl ?? "/";
+        var requestId = $"rb-{Guid.NewGuid():N}";
 
         AddCorsHeaders(context.Response);
 
@@ -321,7 +475,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
         var client = _httpClient;
         if (config is null || client is null || config.Routes.Count == 0)
         {
-            await WriteJsonErrorAsync(context, 503, "transparent_proxy_not_ready", "透明代理尚未配置上游路由。", serverCancellationToken);
+            await WriteJsonErrorAsync(context, 503, "transparent_proxy_not_ready", "Transparent proxy has no configured upstream routes.", serverCancellationToken);
             return;
         }
 
@@ -329,9 +483,9 @@ public sealed class TransparentProxyService : IAsyncDisposable
         {
             Interlocked.Increment(ref _rateLimitedRequests);
             Interlocked.Increment(ref _totalRequests);
-            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, "-", 429, 0, "已触发本地限速。"));
+            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, "-", 429, 0, "Local rate limit exceeded."));
             PublishMetrics();
-            await WriteJsonErrorAsync(context, 429, "relaybench_rate_limited", "RelayBench 本地透明代理限速中。", serverCancellationToken);
+            await WriteJsonErrorAsync(context, 429, "relaybench_rate_limited", "RelayBench transparent proxy local rate limit exceeded.", serverCancellationToken);
             return;
         }
 
@@ -340,9 +494,9 @@ public sealed class TransparentProxyService : IAsyncDisposable
         {
             Interlocked.Increment(ref _rateLimitedRequests);
             Interlocked.Increment(ref _totalRequests);
-            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, "-", 429, 0, "并发保护已拒绝请求。"));
+            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, "-", 429, 0, "Concurrency guard rejected the request."));
             PublishMetrics();
-            await WriteJsonErrorAsync(context, 429, "relaybench_concurrency_limited", "RelayBench 本地透明代理并发已满。", serverCancellationToken);
+            await WriteJsonErrorAsync(context, 429, "relaybench_concurrency_limited", "RelayBench transparent proxy concurrency limit reached.", serverCancellationToken);
             return;
         }
 
@@ -355,14 +509,83 @@ public sealed class TransparentProxyService : IAsyncDisposable
             var requestBody = await ReadRequestBodyAsync(context.Request, serverCancellationToken);
             var requestedModel = TryReadRequestModel(requestBody);
             var streamRequested = IsStreamingRequest(context.Request, requestBody);
-            var cacheKey = config.EnableCache && !streamRequested
-                ? BuildCacheKey(method, pathAndQuery, requestBody)
-                : string.Empty;
-            PruneExpiredCacheEntries(config.CacheTtlSeconds);
+            _responseCache.PruneExpiredResponses(config.CacheTtlSeconds);
+            var cacheKey = string.Empty;
 
-            if (config.EnableCache &&
-                !streamRequested &&
-                TryGetCachedResponse(cacheKey, config.CacheTtlSeconds, out var cachedResponse))
+            if (IsModelsListRequest(method, pathAndQuery))
+            {
+                if (TryGetCachedModelsList(pathAndQuery, config, out var cachedModelsPayload))
+                {
+                    Interlocked.Increment(ref _cacheHits);
+                    Interlocked.Increment(ref _successRequests);
+                    await WriteJsonBytesResponseAsync(context, 200, cachedModelsPayload, serverCancellationToken);
+                    var cacheElapsed = GetElapsedMilliseconds(startedAt);
+                    TrackLatency(cacheElapsed);
+                    EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "CACHE", method, pathAndQuery, "models", 200, cacheElapsed, "Aggregated models list cache hit."));
+                    PublishMetrics();
+                    return;
+                }
+
+                Interlocked.Increment(ref _successRequests);
+                var modelCatalog = await _modelCatalog.BuildModelsListPayloadAsync(
+                    context.Request,
+                    client,
+                    route => ResolveHttpClientForRoute(route, config),
+                    config,
+                    pathAndQuery,
+                    serverCancellationToken);
+                UpdateRoutesFromModelsList(config, modelCatalog.UpdatedRoutes);
+                CacheModelsListPayload(pathAndQuery, config, modelCatalog.Payload);
+                await WriteJsonResponseAsync(context, 200, modelCatalog.Payload, serverCancellationToken);
+                var elapsed = GetElapsedMilliseconds(startedAt);
+                TrackLatency(elapsed);
+                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "INFO", method, pathAndQuery, "models", 200, elapsed, "Returned transparent proxy aggregated models list."));
+                PublishMetrics();
+                return;
+            }
+
+            TransparentProxyUpstreamAttempt? lastAttempt = null;
+            List<string> requestAttemptSummaries = [];
+            var sessionKey = BuildSessionAffinityKey(context.Request, requestBody);
+            var candidateRoutes = BuildCandidateRoutes(config, requestedModel, sessionKey);
+            if (candidateRoutes.Count == 0)
+            {
+                Interlocked.Increment(ref _failedRequests);
+                var elapsed = GetElapsedMilliseconds(startedAt);
+                TrackLatency(elapsed);
+                if (!string.IsNullOrWhiteSpace(requestedModel) &&
+                    config.Routes.All(route => !CanRouteServeModel(route, requestedModel)))
+                {
+                    EmitLog(new TransparentProxyLogEntry(
+                        DateTimeOffset.Now,
+                        "WARN",
+                        method,
+                        pathAndQuery,
+                        "-",
+                        404,
+                        elapsed,
+                        $"Requested model is not available on any route: {ProbeTraceRedactor.RedactText(requestedModel)}",
+                        requestedModel));
+                    PublishMetrics();
+                    await WriteJsonErrorAsync(
+                        context,
+                        404,
+                        "model_not_found",
+                        $"Model '{ProbeTraceRedactor.RedactText(requestedModel)}' is not available in the current RelayBench route set.",
+                        serverCancellationToken);
+                    return;
+                }
+
+                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, "-", 503, elapsed, "All upstream routes are temporarily open-circuit; waiting for half-open probe window.", requestedModel ?? string.Empty));
+                PublishMetrics();
+                await WriteJsonErrorAsync(context, 503, "relaybench_all_routes_circuit_open", "All upstream routes are temporarily unavailable; RelayBench will probe again automatically.", serverCancellationToken);
+                return;
+            }
+
+            var attempts = config.EnableFallback ? candidateRoutes.Count : Math.Min(1, candidateRoutes.Count);
+            var bypassCircuitBreaker = !config.EnableFallback || config.Routes.Count <= 1;
+            var attemptedRoutes = 0;
+            async Task WriteCacheHitAsync(TransparentProxyRoute route, TransparentProxyCachedResponse cachedResponse)
             {
                 Interlocked.Increment(ref _cacheHits);
                 Interlocked.Increment(ref _successRequests);
@@ -370,44 +593,23 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 TryTrackResponseBodyTokens(cachedResponse.Body);
                 var elapsed = GetElapsedMilliseconds(startedAt);
                 TrackLatency(elapsed);
-                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "CACHE", method, pathAndQuery, "cache", cachedResponse.StatusCode, elapsed, "命中本地短缓存。", cachedResponse.ModelName));
-                PublishMetrics();
-                return;
-            }
-
-            if (IsModelsListRequest(method, pathAndQuery))
-            {
-                Interlocked.Increment(ref _successRequests);
-                var modelsPayload = await BuildModelsListPayloadAsync(
-                    context.Request,
-                    client,
-                    config,
+                BindSessionRoute(config, sessionKey, route.Id);
+                EmitLog(new TransparentProxyLogEntry(
+                    DateTimeOffset.Now,
+                    "CACHE",
+                    method,
                     pathAndQuery,
-                    serverCancellationToken);
-                await WriteJsonResponseAsync(context, 200, modelsPayload, serverCancellationToken);
-                var elapsed = GetElapsedMilliseconds(startedAt);
-                TrackLatency(elapsed);
-                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "INFO", method, pathAndQuery, "models", 200, elapsed, "已返回透明代理聚合模型列表。"));
+                    route.Name,
+                    cachedResponse.StatusCode,
+                    elapsed,
+                    "Hit local response cache.",
+                    cachedResponse.ModelName,
+                    requestId,
+                    "cache",
+                    "local response cache"));
                 PublishMetrics();
-                return;
             }
 
-            TransparentProxyUpstreamAttempt? lastAttempt = null;
-            var candidateRoutes = BuildCandidateRoutes(config, requestedModel);
-            if (candidateRoutes.Count == 0)
-            {
-                Interlocked.Increment(ref _failedRequests);
-                var elapsed = GetElapsedMilliseconds(startedAt);
-                TrackLatency(elapsed);
-                EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, "-", 503, elapsed, "所有上游暂时熔断，等待半开探测窗口。", requestedModel ?? string.Empty));
-                PublishMetrics();
-                await WriteJsonErrorAsync(context, 503, "relaybench_all_routes_circuit_open", "所有上游暂时不可用，稍后会自动半开探测。", serverCancellationToken);
-                return;
-            }
-
-            var attempts = config.EnableFallback ? candidateRoutes.Count : Math.Min(1, candidateRoutes.Count);
-            var bypassCircuitBreaker = !config.EnableFallback || config.Routes.Count <= 1;
-            var attemptedRoutes = 0;
             for (var index = 0; index < attempts; index++)
             {
                 var route = candidateRoutes[index];
@@ -417,24 +619,60 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 }
 
                 attemptedRoutes++;
+                TransparentProxyCacheLease cacheLease = default;
+                if (config.EnableCache &&
+                    !streamRequested &&
+                    TransparentProxyResponseCacheService.TryBuildResponseCacheKey(
+                        method,
+                        pathAndQuery,
+                        requestBody,
+                        route.CacheScopeId,
+                        requestedModel,
+                        out cacheKey,
+                        out _))
+                {
+                    if (_responseCache.TryGetResponse(cacheKey, config.CacheTtlSeconds, out var cachedRouteResponse))
+                    {
+                        await WriteCacheHitAsync(route, cachedRouteResponse);
+                        return;
+                    }
 
-                var attempt = await TryProxyToRouteAsync(
-                    context,
-                    client,
-                    config,
-                    route,
-                    routePermit,
-                    method,
-                    pathAndQuery,
-                    requestBody,
-                    cacheKey,
-                    streamRequested,
-                    config.EnableFallback && index < attempts - 1,
-                    serverCancellationToken);
+                    cacheLease = await _responseCache.AcquireResponseLeaseAsync(cacheKey, serverCancellationToken);
+                    if (_responseCache.TryGetResponse(cacheKey, config.CacheTtlSeconds, out cachedRouteResponse))
+                    {
+                        cacheLease.Dispose();
+                        await WriteCacheHitAsync(route, cachedRouteResponse);
+                        return;
+                    }
+                }
+
+                TransparentProxyUpstreamAttempt attempt;
+                try
+                {
+                    attempt = await TryProxyToRouteAsync(
+                        context,
+                        config,
+                        route,
+                        routePermit,
+                        method,
+                        pathAndQuery,
+                        requestBody,
+                        cacheKey,
+                        streamRequested,
+                        config.EnableFallback && index < attempts - 1,
+                        requestId,
+                        requestAttemptSummaries,
+                        serverCancellationToken);
+                }
+                finally
+                {
+                    cacheLease.Dispose();
+                }
 
                 lastAttempt = attempt;
                 if (attempt.DeliveredToClient)
                 {
+                    BindSessionRoute(config, sessionKey, route.Id);
                     var elapsed = GetElapsedMilliseconds(startedAt);
                     TrackLatency(elapsed);
                     if (attempt.StatusCode >= 200 && attempt.StatusCode < 500)
@@ -461,11 +699,11 @@ public sealed class TransparentProxyService : IAsyncDisposable
             Interlocked.Increment(ref _failedRequests);
             var status = lastAttempt?.StatusCode ?? 502;
             var message = attemptedRoutes == 0
-                ? "所有上游暂时处于半开探测限流中。"
-                : lastAttempt?.Message ?? "所有上游路由都不可用。";
+                ? "All upstream routes are currently limited by half-open probes."
+                : lastAttempt?.Message ?? "All upstream routes are unavailable.";
             var totalElapsed = GetElapsedMilliseconds(startedAt);
             TrackLatency(totalElapsed);
-            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "ERROR", method, pathAndQuery, lastAttempt?.RouteName ?? "-", status, totalElapsed, message, requestedModel ?? string.Empty));
+            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "ERROR", method, pathAndQuery, lastAttempt?.RouteName ?? "-", status, totalElapsed, message, requestedModel ?? string.Empty, requestId, string.Empty, string.Join(" > ", requestAttemptSummaries)));
             PublishMetrics();
             await WriteJsonErrorAsync(context, status, "relaybench_upstream_unavailable", message, serverCancellationToken);
         }
@@ -479,7 +717,6 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
     private async Task<TransparentProxyUpstreamAttempt> TryProxyToRouteAsync(
         HttpListenerContext context,
-        HttpClient client,
         TransparentProxyServerConfig config,
         TransparentProxyRoute route,
         TransparentProxyRoutePermit routePermit,
@@ -489,30 +726,86 @@ public sealed class TransparentProxyService : IAsyncDisposable
         string cacheKey,
         bool streamRequested,
         bool allowRouteFallback,
+        string requestId,
+        List<string> requestAttemptSummaries,
         CancellationToken serverCancellationToken)
     {
         var routeStopwatch = Stopwatch.StartNew();
-        var lastLogModel = string.Empty;
         using CancellationTokenSource attemptCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(serverCancellationToken);
         attemptCancellationSource.CancelAfter(TimeSpan.FromSeconds(Math.Max(5, config.UpstreamTimeoutSeconds)));
 
-        try
-        {
-            var preparedRequests = BuildPreparedUpstreamRequests(
-                method,
-                pathAndQuery,
-                requestBody,
-                route,
-                config,
-                streamRequested);
-            TransparentProxyUpstreamAttempt? lastProtocolAttempt = null;
+        return await TryProxyToRouteWithRetryAsync(
+            context,
+            config,
+            route,
+            routePermit,
+            method,
+            pathAndQuery,
+            requestBody,
+            cacheKey,
+            streamRequested,
+            allowRouteFallback,
+            requestId,
+            requestAttemptSummaries,
+            routeStopwatch,
+            attemptCancellationSource);
+    }
 
-            for (var protocolIndex = 0; protocolIndex < preparedRequests.Count; protocolIndex++)
+    private async Task<TransparentProxyUpstreamAttempt> TryProxyToRouteWithRetryAsync(
+        HttpListenerContext context,
+        TransparentProxyServerConfig config,
+        TransparentProxyRoute route,
+        TransparentProxyRoutePermit routePermit,
+        string method,
+        string pathAndQuery,
+        byte[] requestBody,
+        string cacheKey,
+        bool streamRequested,
+        bool allowRouteFallback,
+        string requestId,
+        List<string> requestAttemptSummaries,
+        Stopwatch routeStopwatch,
+        CancellationTokenSource attemptCancellationSource)
+    {
+        var routeClient = ResolveHttpClientForRoute(route, config);
+        var maxRequestRetries = ResolveRouteRequestRetry(route, config);
+        var lastLogModel = string.Empty;
+        TransparentProxyUpstreamAttempt? lastProtocolAttempt = null;
+        var preparedRequests = _protocolTranslator.BuildPreparedUpstreamRequests(
+            method,
+            pathAndQuery,
+            requestBody,
+            route,
+            streamRequested);
+
+        for (var protocolIndex = 0; protocolIndex < preparedRequests.Count; protocolIndex++)
+        {
+            var prepared = preparedRequests[protocolIndex];
+            var logModel = FormatLogModel(prepared.ResponseModel, prepared.UpstreamModel);
+            lastLogModel = logModel;
+
+            if (IsRouteModelCooling(route.Id, prepared.UpstreamModel, out var modelCoolingUntil))
             {
-                var prepared = preparedRequests[protocolIndex];
-                var logModel = FormatLogModel(prepared.ResponseModel, prepared.UpstreamModel);
-                lastLogModel = logModel;
-                using var upstreamRequest = CreateUpstreamRequest(
+                lastProtocolAttempt = new TransparentProxyUpstreamAttempt(false, route.Name, 429, "Model is cooling down.");
+                EmitLog(new TransparentProxyLogEntry(
+                    DateTimeOffset.Now,
+                    "WARN",
+                    method,
+                    pathAndQuery,
+                    route.Name,
+                    429,
+                    routeStopwatch.ElapsedMilliseconds,
+                    $"Model cooldown until {modelCoolingUntil.ToLocalTime():HH:mm:ss}, trying next candidate.",
+                    logModel,
+                    requestId,
+                    prepared.WireApi,
+                    string.Join(" > ", requestAttemptSummaries)));
+                continue;
+            }
+
+            for (var sendAttempt = 0; ; sendAttempt++)
+            {
+                using var upstreamRequest = TransparentProxyUpstreamRequestFactory.Create(
                     context.Request,
                     method,
                     prepared.UpstreamUrl,
@@ -520,237 +813,210 @@ public sealed class TransparentProxyService : IAsyncDisposable
                     prepared.Body,
                     prepared.WireApi,
                     prepared.ExtraHeaders);
-                using var upstreamResponse = await client.SendAsync(
-                    upstreamRequest,
-                    HttpCompletionOption.ResponseHeadersRead,
-                    attemptCancellationSource.Token);
 
-                var statusCode = (int)upstreamResponse.StatusCode;
-                var hasNextProtocol = protocolIndex < preparedRequests.Count - 1;
-                if (ShouldTryNextWireApi(statusCode, prepared.WireApi, hasNextProtocol))
+                HttpResponseMessage upstreamResponse;
+                try
                 {
-                    lastProtocolAttempt = new TransparentProxyUpstreamAttempt(false, route.Name, statusCode, $"上游 {DisplayWireApi(prepared.WireApi)} 不可用。");
+                    upstreamResponse = await routeClient.SendAsync(
+                        upstreamRequest,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        attemptCancellationSource.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    MarkRouteFailure(route, 504, routeStopwatch.ElapsedMilliseconds, routePermit, modelName: lastLogModel, config: config);
                     EmitLog(new TransparentProxyLogEntry(
                         DateTimeOffset.Now,
                         "WARN",
                         method,
                         pathAndQuery,
                         route.Name,
-                        statusCode,
+                        504,
                         routeStopwatch.ElapsedMilliseconds,
-                        $"{DisplayWireApi(prepared.WireApi)} 返回 {statusCode}，尝试下一种协议。",
-                        logModel));
+                        "Upstream timed out, trying fallback.",
+                        lastLogModel,
+                        requestId,
+                        prepared.WireApi,
+                        string.Join(" > ", requestAttemptSummaries)));
+                    return new TransparentProxyUpstreamAttempt(false, route.Name, 504, "Upstream timed out.");
+                }
+                catch (Exception ex) when (sendAttempt < maxRequestRetries)
+                {
+                    var wait = ResolveRetryDelay(null, sendAttempt, config, route);
+                    requestAttemptSummaries.Add($"{route.Name}/{DisplayWireApi(prepared.WireApi)}:connect-retry");
+                    EmitLog(new TransparentProxyLogEntry(
+                        DateTimeOffset.Now,
+                        "WARN",
+                        method,
+                        pathAndQuery,
+                        route.Name,
+                        502,
+                        routeStopwatch.ElapsedMilliseconds,
+                        $"Connection failed: {ProbeTraceRedactor.RedactText(ex.Message)}. Retrying in {wait.TotalMilliseconds:0} ms.",
+                        logModel,
+                        requestId,
+                        prepared.WireApi,
+                        string.Join(" > ", requestAttemptSummaries)));
+                    await Task.Delay(wait, attemptCancellationSource.Token);
                     continue;
                 }
-
-                if (ShouldFallback(statusCode))
+                catch (Exception ex)
                 {
-                    MarkRouteFailure(
-                        route,
+                    MarkRouteFailure(route, 502, routeStopwatch.ElapsedMilliseconds, routePermit, modelName: lastLogModel, config: config);
+                    var safeMessage = ProbeTraceRedactor.RedactText(ex.Message);
+                    EmitLog(new TransparentProxyLogEntry(
+                        DateTimeOffset.Now,
+                        "WARN",
+                        method,
+                        pathAndQuery,
+                        route.Name,
+                        502,
+                        routeStopwatch.ElapsedMilliseconds,
+                        $"Connection failed: {safeMessage}",
+                        lastLogModel,
+                        requestId,
+                        prepared.WireApi,
+                        string.Join(" > ", requestAttemptSummaries)));
+                    return new TransparentProxyUpstreamAttempt(false, route.Name, 502, $"Connection failed: {safeMessage}");
+                }
+
+                using (upstreamResponse)
+                {
+                    var statusCode = (int)upstreamResponse.StatusCode;
+                    requestAttemptSummaries.Add($"{route.Name}/{DisplayWireApi(prepared.WireApi)}:{statusCode}");
+                    var hasNextProtocol = protocolIndex < preparedRequests.Count - 1;
+                    if (ShouldTryNextWireApi(statusCode, prepared.WireApi, hasNextProtocol))
+                    {
+                        lastProtocolAttempt = new TransparentProxyUpstreamAttempt(false, route.Name, statusCode, $"Upstream {DisplayWireApi(prepared.WireApi)} is unavailable.");
+                        EmitLog(new TransparentProxyLogEntry(
+                            DateTimeOffset.Now,
+                            "WARN",
+                            method,
+                            pathAndQuery,
+                            route.Name,
+                            statusCode,
+                            routeStopwatch.ElapsedMilliseconds,
+                            $"{DisplayWireApi(prepared.WireApi)} returned {statusCode}, trying next protocol.",
+                            logModel,
+                            requestId,
+                            prepared.WireApi,
+                            string.Join(" > ", requestAttemptSummaries)));
+                        break;
+                    }
+
+                    if (ShouldFallback(statusCode))
+                    {
+                        var retryAfter = ResolveRetryAfter(upstreamResponse.Headers.RetryAfter);
+                        if (ShouldTryNextModelCandidate(statusCode) &&
+                            HasLaterPreparedModelCandidate(preparedRequests, protocolIndex, prepared.UpstreamModel))
+                        {
+                            MarkRouteModelFailureOnly(
+                                route,
+                                statusCode,
+                                retryAfter,
+                                prepared.UpstreamModel,
+                                config);
+                            EmitLog(new TransparentProxyLogEntry(
+                                DateTimeOffset.Now,
+                                "WARN",
+                                method,
+                                pathAndQuery,
+                                route.Name,
+                                statusCode,
+                                routeStopwatch.ElapsedMilliseconds,
+                                "Upstream model is cooling, trying next alias-pool candidate.",
+                                logModel,
+                                requestId,
+                                prepared.WireApi,
+                                string.Join(" > ", requestAttemptSummaries)));
+                            break;
+                        }
+
+                        if (sendAttempt < maxRequestRetries && ShouldRetryStatus(statusCode))
+                        {
+                            var wait = ResolveRetryDelay(retryAfter, sendAttempt, config, route);
+                            EmitLog(new TransparentProxyLogEntry(
+                                DateTimeOffset.Now,
+                                "WARN",
+                                method,
+                                pathAndQuery,
+                                route.Name,
+                                statusCode,
+                                routeStopwatch.ElapsedMilliseconds,
+                                $"Upstream returned {statusCode}, retrying in {wait.TotalMilliseconds:0} ms.",
+                                logModel,
+                                requestId,
+                                prepared.WireApi,
+                                string.Join(" > ", requestAttemptSummaries)));
+                            await Task.Delay(wait, attemptCancellationSource.Token);
+                            continue;
+                        }
+
+                        MarkRouteFailure(
+                            route,
+                            statusCode,
+                            routeStopwatch.ElapsedMilliseconds,
+                            routePermit,
+                            retryAfter,
+                            prepared.UpstreamModel,
+                            config);
+                        if (allowRouteFallback)
+                        {
+                            EmitLog(new TransparentProxyLogEntry(
+                                DateTimeOffset.Now,
+                                "WARN",
+                                method,
+                                pathAndQuery,
+                                route.Name,
+                                statusCode,
+                                routeStopwatch.ElapsedMilliseconds,
+                                "Upstream returned fallback status, switching route.",
+                                logModel,
+                                requestId,
+                                prepared.WireApi,
+                                string.Join(" > ", requestAttemptSummaries)));
+                            return new TransparentProxyUpstreamAttempt(false, route.Name, statusCode, "Upstream returned fallback status.");
+                        }
+                    }
+                    else
+                    {
+                        MarkRouteSuccess(route, statusCode, routeStopwatch.ElapsedMilliseconds, routePermit, prepared.UpstreamModel);
+                    }
+
+                    await CopyResponseToClientAsync(
+                        context,
+                        upstreamResponse,
+                        statusCode,
+                        cacheKey,
+                        streamRequested,
+                        config,
+                        prepared.WireApi,
+                        prepared.ResponseModel,
+                        logModel,
+                        prepared.NormalizeToChatCompletions,
+                        prepared.IsToolExchange,
+                        prepared.PreferJsonStreamExtraction,
+                        attemptCancellationSource.Token);
+                    EmitLog(new TransparentProxyLogEntry(
+                        DateTimeOffset.Now,
+                        "INFO",
+                        method,
+                        pathAndQuery,
+                        route.Name,
                         statusCode,
                         routeStopwatch.ElapsedMilliseconds,
-                        routePermit,
-                        ResolveRetryAfter(upstreamResponse.Headers.RetryAfter));
-                    if (allowRouteFallback)
-                    {
-                        EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, route.Name, statusCode, routeStopwatch.ElapsedMilliseconds, "上游返回可 fallback 状态，切换下一路。", logModel));
-                        return new TransparentProxyUpstreamAttempt(false, route.Name, statusCode, "上游返回可 fallback 状态。");
-                    }
+                        $"Routed to {route.Name} using {DisplayWireApi(prepared.WireApi)}.",
+                        logModel,
+                        requestId,
+                        prepared.WireApi,
+                        string.Join(" > ", requestAttemptSummaries)));
+                    return new TransparentProxyUpstreamAttempt(true, route.Name, statusCode, "Forwarded.");
                 }
-                else
-                {
-                    MarkRouteSuccess(route, statusCode, routeStopwatch.ElapsedMilliseconds, routePermit);
-                }
-
-                await CopyResponseToClientAsync(
-                    context,
-                    upstreamResponse,
-                    statusCode,
-                    cacheKey,
-                    streamRequested,
-                    config,
-                    prepared.WireApi,
-                    prepared.ResponseModel,
-                    logModel,
-                    prepared.NormalizeToChatCompletions,
-                    attemptCancellationSource.Token);
-                EmitLog(new TransparentProxyLogEntry(
-                    DateTimeOffset.Now,
-                    "INFO",
-                    method,
-                    pathAndQuery,
-                    route.Name,
-                    statusCode,
-                    routeStopwatch.ElapsedMilliseconds,
-                    $"已路由到 {route.Name}，协议 {DisplayWireApi(prepared.WireApi)}。",
-                    logModel));
-                return new TransparentProxyUpstreamAttempt(true, route.Name, statusCode, "已转发。");
-            }
-
-            MarkRouteFailure(route, lastProtocolAttempt?.StatusCode ?? 502, routeStopwatch.ElapsedMilliseconds, routePermit);
-            return lastProtocolAttempt ?? new TransparentProxyUpstreamAttempt(false, route.Name, 502, "没有可用协议。");
-        }
-        catch (OperationCanceledException)
-        {
-            MarkRouteFailure(route, 504, routeStopwatch.ElapsedMilliseconds, routePermit);
-            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, route.Name, 504, routeStopwatch.ElapsedMilliseconds, "上游超时，尝试 fallback。", lastLogModel));
-            return new TransparentProxyUpstreamAttempt(false, route.Name, 504, "上游超时。");
-        }
-        catch (Exception ex)
-        {
-            MarkRouteFailure(route, 502, routeStopwatch.ElapsedMilliseconds, routePermit);
-            var safeMessage = ProbeTraceRedactor.RedactText(ex.Message);
-            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", method, pathAndQuery, route.Name, 502, routeStopwatch.ElapsedMilliseconds, $"上游连接失败：{safeMessage}", lastLogModel));
-            return new TransparentProxyUpstreamAttempt(false, route.Name, 502, $"上游连接失败：{safeMessage}");
-        }
-    }
-
-    private static IReadOnlyList<TransparentProxyPreparedRequest> BuildPreparedUpstreamRequests(
-        string method,
-        string pathAndQuery,
-        byte[] requestBody,
-        TransparentProxyRoute route,
-        TransparentProxyServerConfig config,
-        bool streamRequested)
-    {
-        var directBody = ApplyRouteModelSelection(requestBody, route, out var clientModel);
-        var upstreamModel = TryReadRequestModel(directBody) ?? string.Empty;
-        return
-        [
-            new TransparentProxyPreparedRequest(
-                InferWireApiFromPath(pathAndQuery),
-                BuildUpstreamUrl(route.BaseUrl, pathAndQuery),
-                directBody,
-                route.Headers,
-                false,
-                string.IsNullOrWhiteSpace(clientModel) ? upstreamModel : clientModel,
-                upstreamModel)
-        ];
-    }
-
-    private static IReadOnlyList<string> BuildWireApiAttempts(TransparentProxyRoute route)
-    {
-        List<string> candidates = [];
-        var hasProtocolProbe =
-            route.ResponsesSupported.HasValue ||
-            route.AnthropicMessagesSupported.HasValue ||
-            route.ChatCompletionsSupported.HasValue;
-
-        if (!hasProtocolProbe || route.ResponsesSupported == true)
-        {
-            AddWireApiCandidate(candidates, ProxyWireApiProbeService.ResponsesWireApi);
-        }
-
-        if (!hasProtocolProbe || route.AnthropicMessagesSupported == true)
-        {
-            AddWireApiCandidate(candidates, ProxyWireApiProbeService.AnthropicMessagesWireApi);
-        }
-
-        if (!hasProtocolProbe ||
-            route.ChatCompletionsSupported != false ||
-            candidates.Count == 0)
-        {
-            AddWireApiCandidate(candidates, ProxyWireApiProbeService.ChatCompletionsWireApi);
-        }
-
-        return candidates;
-    }
-
-    private static void AddWireApiCandidate(List<string> candidates, string? wireApi)
-    {
-        var normalized = ProxyWireApiProbeService.NormalizeWireApi(wireApi);
-        if (string.IsNullOrWhiteSpace(normalized) ||
-            candidates.Contains(normalized, StringComparer.Ordinal))
-        {
-            return;
-        }
-
-        candidates.Add(normalized);
-    }
-
-    private static HttpRequestMessage CreateUpstreamRequest(
-        HttpListenerRequest source,
-        string method,
-        string upstreamUrl,
-        TransparentProxyRoute route,
-        byte[] body,
-        string wireApi,
-        IReadOnlyDictionary<string, string> extraHeaders)
-    {
-        HttpRequestMessage request = new(new HttpMethod(method), upstreamUrl);
-        foreach (var headerName in source.Headers.AllKeys)
-        {
-            if (string.IsNullOrWhiteSpace(headerName) || HopByHopHeaders.Contains(headerName))
-            {
-                continue;
-            }
-
-            var values = source.Headers.GetValues(headerName);
-            if (values is null)
-            {
-                continue;
-            }
-
-            if (!request.Headers.TryAddWithoutValidation(headerName, values))
-            {
-                request.Content ??= new ByteArrayContent(Array.Empty<byte>());
-                request.Content.Headers.TryAddWithoutValidation(headerName, values);
             }
         }
 
-        var effectiveApiKey = !string.IsNullOrWhiteSpace(route.ApiKey)
-            ? route.ApiKey.Trim()
-            : ExtractBearerToken(source.Headers["Authorization"]);
-
-        if (!string.IsNullOrWhiteSpace(route.ApiKey))
-        {
-            request.Headers.Remove("Authorization");
-            request.Headers.Remove("x-api-key");
-            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {effectiveApiKey}");
-        }
-
-        foreach (var header in extraHeaders)
-        {
-            request.Headers.Remove(header.Key);
-            request.Headers.TryAddWithoutValidation(header.Key, header.Value);
-        }
-
-        if (string.Equals(wireApi, ProxyWireApiProbeService.AnthropicMessagesWireApi, StringComparison.Ordinal))
-        {
-            request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
-            if (!string.IsNullOrWhiteSpace(effectiveApiKey))
-            {
-                request.Headers.Remove("x-api-key");
-                request.Headers.TryAddWithoutValidation("x-api-key", effectiveApiKey);
-            }
-        }
-
-        if (body.Length > 0)
-        {
-            request.Content = new ByteArrayContent(body);
-            if (!string.IsNullOrWhiteSpace(source.ContentType))
-            {
-                request.Content.Headers.TryAddWithoutValidation("Content-Type", source.ContentType);
-            }
-            else
-            {
-                request.Content.Headers.TryAddWithoutValidation("Content-Type", "application/json");
-            }
-        }
-
-        return request;
-    }
-
-    private static string ExtractBearerToken(string? authorizationHeader)
-    {
-        const string bearerPrefix = "Bearer ";
-        if (string.IsNullOrWhiteSpace(authorizationHeader) ||
-            !authorizationHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            return string.Empty;
-        }
-
-        return authorizationHeader[bearerPrefix.Length..].Trim();
+        MarkRouteFailure(route, lastProtocolAttempt?.StatusCode ?? 502, routeStopwatch.ElapsedMilliseconds, routePermit, modelName: lastLogModel, config: config);
+        return lastProtocolAttempt ?? new TransparentProxyUpstreamAttempt(false, route.Name, 502, "No available upstream protocol.");
     }
 
     private async Task CopyResponseToClientAsync(
@@ -764,6 +1030,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
         string responseModel,
         string logModel,
         bool normalizeToChatCompletions,
+        bool preserveToolStreamEvents,
+        bool preferJsonStreamExtraction,
         CancellationToken cancellationToken)
     {
         context.Response.StatusCode = statusCode;
@@ -778,11 +1046,27 @@ public sealed class TransparentProxyService : IAsyncDisposable
             if (contentType.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase))
             {
                 ClearTransformedResponseHeaders(context.Response);
+                if (preserveToolStreamEvents)
+                {
+                    context.Response.ContentType = contentType;
+                    await CopyDirectResponseWithTokenTelemetryAsync(
+                        upstreamResponse,
+                        context.Response.OutputStream,
+                        statusCode,
+                        contentType,
+                        streamRequested: true,
+                        config,
+                        cancellationToken);
+                    context.Response.OutputStream.Close();
+                    return;
+                }
+
                 await CopyNormalizedChatStreamAsync(
                     context,
                     upstreamResponse,
                     responseModel,
                     wireApi,
+                    preferJsonStreamExtraction,
                     cancellationToken);
                 return;
             }
@@ -818,8 +1102,13 @@ public sealed class TransparentProxyService : IAsyncDisposable
             TryTrackResponseBodyTokens(bytes);
             if (bytes.Length <= config.CacheMaxBytes)
             {
-                var now = DateTimeOffset.UtcNow;
-                _cache[cacheKey] = new TransparentProxyCachedResponse(now, now, statusCode, contentType, bytes, NormalizeLogModel(logModel));
+                _responseCache.StoreResponse(
+                    cacheKey,
+                    statusCode,
+                    contentType,
+                    bytes,
+                    NormalizeLogModel(logModel),
+                    config.CacheMaxBytes);
             }
         }
         else
@@ -996,6 +1285,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
 
         TrackOutputTextTokens(ChatSseParser.TryExtractDelta(data));
+        TrackPromptCacheTokens(data);
     }
 
     private async Task CopyNormalizedChatJsonAsync(
@@ -1011,8 +1301,12 @@ public sealed class TransparentProxyService : IAsyncDisposable
     {
         var upstreamBytes = await upstreamResponse.Content.ReadAsByteArrayAsync(cancellationToken);
         var upstreamText = Encoding.UTF8.GetString(upstreamBytes);
-        var assistantText = ModelResponseTextExtractor.TryExtractAssistantText(upstreamText);
-        if (assistantText is null)
+        TrackPromptCacheTokens(upstreamText);
+        var normalized = _protocolTranslator.TryBuildNormalizedChatJson(
+            upstreamBytes,
+            responseModel,
+            wireApi);
+        if (normalized is null)
         {
             context.Response.ContentType = upstreamResponse.Content.Headers.ContentType?.ToString() ?? "application/json";
             context.Response.ContentLength64 = upstreamBytes.LongLength;
@@ -1022,29 +1316,25 @@ public sealed class TransparentProxyService : IAsyncDisposable
             return;
         }
 
-        var normalizedBytes = BuildOpenAiChatCompletionBytes(
-            assistantText,
-            ResolveResponseModel(upstreamText, responseModel),
-            wireApi);
+        var normalizedBytes = normalized.Body;
         const string normalizedContentType = "application/json; charset=utf-8";
         context.Response.ContentType = normalizedContentType;
         context.Response.ContentLength64 = normalizedBytes.LongLength;
         await context.Response.OutputStream.WriteAsync(normalizedBytes, cancellationToken);
-        TrackOutputTextTokens(assistantText);
+        TrackOutputTextTokens(normalized.AssistantText);
         if (config.EnableCache &&
             !string.IsNullOrWhiteSpace(cacheKey) &&
             statusCode >= 200 &&
             statusCode < 300 &&
             normalizedBytes.Length <= config.CacheMaxBytes)
         {
-            var now = DateTimeOffset.UtcNow;
-            _cache[cacheKey] = new TransparentProxyCachedResponse(
-                now,
-                now,
+            _responseCache.StoreResponse(
+                cacheKey,
                 statusCode,
                 normalizedContentType,
                 normalizedBytes,
-                NormalizeLogModel(logModel));
+                NormalizeLogModel(logModel),
+                config.CacheMaxBytes);
         }
 
         context.Response.OutputStream.Close();
@@ -1055,6 +1345,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
         HttpResponseMessage upstreamResponse,
         string responseModel,
         string wireApi,
+        bool preferJsonStreamExtraction,
         CancellationToken cancellationToken)
     {
         context.Response.ContentType = "text/event-stream; charset=utf-8";
@@ -1062,6 +1353,45 @@ public sealed class TransparentProxyService : IAsyncDisposable
         var model = string.IsNullOrWhiteSpace(responseModel) ? "relaybench-proxy" : responseModel.Trim();
         var streamId = $"chatcmpl-relaybench-{Guid.NewGuid():N}";
         var wroteDone = false;
+        var wroteTerminalChunk = false;
+        StringBuilder assistantText = new();
+
+        async Task WriteBufferedJsonChunkIfNeededAsync()
+        {
+            if (!preferJsonStreamExtraction || assistantText.Length == 0)
+            {
+                return;
+            }
+
+            var original = assistantText.ToString();
+            var extracted = TryExtractFirstJsonObject(original);
+            if (string.IsNullOrWhiteSpace(extracted))
+            {
+                return;
+            }
+
+            assistantText.Clear();
+            assistantText.Append(extracted);
+            var chunk = _protocolTranslator.BuildOpenAiChatCompletionChunk(extracted, model, wireApi, streamId);
+            await WriteSseDataAsync(context.Response.OutputStream, chunk, cancellationToken);
+        }
+
+        async Task WriteTerminalChunkAsync()
+        {
+            if (wroteTerminalChunk)
+            {
+                return;
+            }
+
+            await WriteBufferedJsonChunkIfNeededAsync();
+            var terminalChunk = _protocolTranslator.BuildOpenAiChatCompletionTerminalChunk(
+                model,
+                wireApi,
+                streamId,
+                assistantText.ToString());
+            await WriteSseDataAsync(context.Response.OutputStream, terminalChunk, cancellationToken);
+            wroteTerminalChunk = true;
+        }
 
         await using var stream = await upstreamResponse.Content.ReadAsStreamAsync(cancellationToken);
         using StreamReader reader = new(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: false);
@@ -1080,6 +1410,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
             if (ChatSseParser.IsDone(data))
             {
+                await WriteTerminalChunkAsync();
                 await WriteSseDataAsync(context.Response.OutputStream, "[DONE]", cancellationToken);
                 wroteDone = true;
                 break;
@@ -1088,14 +1419,22 @@ public sealed class TransparentProxyService : IAsyncDisposable
             var delta = ChatSseParser.TryExtractDelta(data);
             if (string.IsNullOrEmpty(delta))
             {
+                TrackPromptCacheTokens(data);
                 continue;
             }
 
-            var chunk = BuildOpenAiChatCompletionChunk(delta, model, wireApi, streamId);
-            await WriteSseDataAsync(context.Response.OutputStream, chunk, cancellationToken);
+            var chunk = _protocolTranslator.BuildOpenAiChatCompletionChunk(delta, model, wireApi, streamId);
+            assistantText.Append(delta);
+            if (!preferJsonStreamExtraction)
+            {
+                await WriteSseDataAsync(context.Response.OutputStream, chunk, cancellationToken);
+            }
+
             TrackOutputTextTokens(delta);
+            TrackPromptCacheTokens(data);
         }
 
+        await WriteTerminalChunkAsync();
         if (!wroteDone)
         {
             await WriteSseDataAsync(context.Response.OutputStream, "[DONE]", cancellationToken);
@@ -1104,63 +1443,84 @@ public sealed class TransparentProxyService : IAsyncDisposable
         context.Response.OutputStream.Close();
     }
 
-    private static byte[] BuildOpenAiChatCompletionBytes(
-        string content,
-        string model,
-        string wireApi)
-        => JsonSerializer.SerializeToUtf8Bytes(new
+    private static string? TryExtractFirstJsonObject(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
         {
-            id = $"chatcmpl-relaybench-{Guid.NewGuid():N}",
-            @object = "chat.completion",
-            created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            model = string.IsNullOrWhiteSpace(model) ? "relaybench-proxy" : model.Trim(),
-            choices = new[]
-            {
-                new
-                {
-                    index = 0,
-                    message = new
-                    {
-                        role = "assistant",
-                        content
-                    },
-                    finish_reason = "stop"
-                }
-            },
-            relaybench = new
-            {
-                upstream_wire_api = wireApi
-            }
-        }, CompactJsonOptions);
+            return null;
+        }
 
-    private static string BuildOpenAiChatCompletionChunk(
-        string delta,
-        string model,
-        string wireApi,
-        string streamId)
-        => JsonSerializer.Serialize(new
+        var start = text.IndexOf('{');
+        if (start < 0)
         {
-            id = streamId,
-            @object = "chat.completion.chunk",
-            created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            model,
-            choices = new[]
+            return null;
+        }
+
+        var depth = 0;
+        var inString = false;
+        var escaped = false;
+        for (var index = start; index < text.Length; index++)
+        {
+            var character = text[index];
+            if (inString)
             {
-                new
+                if (escaped)
                 {
-                    index = 0,
-                    delta = new
-                    {
-                        content = delta
-                    },
-                    finish_reason = (string?)null
+                    escaped = false;
+                    continue;
                 }
-            },
-            relaybench = new
-            {
-                upstream_wire_api = wireApi
+
+                if (character == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+
+                if (character == '"')
+                {
+                    inString = false;
+                }
+
+                continue;
             }
-        }, CompactJsonOptions);
+
+            if (character == '"')
+            {
+                inString = true;
+                continue;
+            }
+
+            if (character == '{')
+            {
+                depth++;
+                continue;
+            }
+
+            if (character != '}')
+            {
+                continue;
+            }
+
+            depth--;
+            if (depth != 0)
+            {
+                continue;
+            }
+
+            var candidate = text[start..(index + 1)].Trim();
+            try
+            {
+                using var _ = JsonDocument.Parse(candidate);
+                return candidate;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        return null;
+    }
 
     private static async Task WriteSseDataAsync(Stream outputStream, string data, CancellationToken cancellationToken)
     {
@@ -1171,54 +1531,25 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
     private void TryTrackResponseBodyTokens(byte[] body)
     {
-        if (body.Length == 0)
+        if (_tokenTelemetry.TrackResponseBody(body))
         {
-            return;
-        }
-
-        try
-        {
-            var text = Encoding.UTF8.GetString(body);
-            var assistantText = ModelResponseTextExtractor.TryExtractAssistantText(text);
-            TrackOutputTextTokens(assistantText);
-        }
-        catch
-        {
-            // Token telemetry is observability only; proxying should never fail because estimation failed.
+            PublishMetrics();
         }
     }
 
     private void TrackOutputTextTokens(string? text)
     {
-        var tokenCount = TokenCountEstimator.EstimateOutputTokens(text);
-        if (tokenCount <= 0)
+        if (_tokenTelemetry.TrackOutputText(text))
         {
-            return;
+            PublishMetrics();
         }
-
-        TrackOutputTokens(tokenCount);
     }
 
-    private void TrackOutputTokens(int tokenCount)
+    private void TrackPromptCacheTokens(string? json)
     {
-        var now = DateTimeOffset.UtcNow;
-        lock (_syncRoot)
+        if (_tokenTelemetry.TrackPromptCache(json))
         {
-            _totalOutputTokens += tokenCount;
-            _lastTokenActivityAt = now;
-            _tokenSamples.Enqueue(new TransparentProxyTokenSample(now, tokenCount));
-            PruneTokenSamples(now);
-        }
-
-        PublishMetrics();
-    }
-
-    private void PruneTokenSamples(DateTimeOffset now)
-    {
-        while (_tokenSamples.Count > 0 &&
-               (now - _tokenSamples.Peek().Timestamp).TotalMilliseconds > 1250)
-        {
-            _tokenSamples.Dequeue();
+            PublishMetrics();
         }
     }
 
@@ -1277,10 +1608,31 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
 
         model = StripRoutePrefix(model, route);
+        if (route.ExcludedModelPatterns.Any(pattern => WildcardMatch(model, pattern)))
+        {
+            return false;
+        }
+
         return route.Models.Count == 0 ||
                route.ModelMappings.Any(mapping =>
                    string.Equals(mapping.Name, model, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(mapping.EffectiveAlias, model, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool WildcardMatch(string value, string pattern)
+    {
+        if (string.IsNullOrWhiteSpace(pattern))
+        {
+            return false;
+        }
+
+        var regex = "^" + string.Concat(pattern.Trim().Select(static character => character switch
+        {
+            '*' => ".*",
+            '?' => ".",
+            _ => Regex.Escape(character.ToString())
+        })) + "$";
+        return Regex.IsMatch(value, regex, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     }
 
     private static string StripRoutePrefix(string model, TransparentProxyRoute route)
@@ -1292,9 +1644,142 @@ public sealed class TransparentProxyService : IAsyncDisposable
             : model;
     }
 
+    private static string? BuildSessionAffinityKey(HttpListenerRequest request, byte[] requestBody)
+    {
+        var explicitSession =
+            request.Headers["X-Session-ID"] ??
+            request.Headers["X-Conversation-ID"] ??
+            request.Headers["OpenAI-Conversation-ID"] ??
+            TryReadStringProperty(requestBody, "conversation_id") ??
+            TryReadStringProperty(requestBody, "thread_id") ??
+            TryReadStringProperty(requestBody, "session_id");
+        if (!string.IsNullOrWhiteSpace(explicitSession))
+        {
+            return explicitSession.Trim();
+        }
+
+        var model = TryReadRequestModel(requestBody);
+        if (TryBuildConversationFingerprint(requestBody, out var conversationFingerprint))
+        {
+            return string.IsNullOrWhiteSpace(model)
+                ? conversationFingerprint
+                : $"{model.Trim()}:{conversationFingerprint}";
+        }
+
+        var bodyHash = SHA256.HashData(requestBody);
+        return string.IsNullOrWhiteSpace(model)
+            ? Convert.ToHexString(bodyHash[..8])
+            : $"{model.Trim()}:{Convert.ToHexString(bodyHash[..6])}";
+    }
+
+    private static bool TryBuildConversationFingerprint(byte[] requestBody, out string fingerprint)
+    {
+        fingerprint = string.Empty;
+        if (requestBody.Length == 0 || requestBody.Length > 512 * 1024)
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(requestBody);
+            List<string> parts = [];
+            if (document.RootElement.TryGetProperty("messages", out var messages) &&
+                messages.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var message in messages.EnumerateArray().Take(4))
+                {
+                    var role = TryReadStringProperty(message, "role") ?? "-";
+                    var content = ReadConversationContentPreview(message, "content");
+                    if (!string.IsNullOrWhiteSpace(content))
+                    {
+                        parts.Add($"{role}:{content}");
+                    }
+                }
+            }
+            else if (document.RootElement.TryGetProperty("input", out var input))
+            {
+                if (input.ValueKind == JsonValueKind.String)
+                {
+                    parts.Add("input:" + TruncateFingerprintPart(input.GetString()));
+                }
+                else if (input.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in input.EnumerateArray().Take(4))
+                    {
+                        var role = TryReadStringProperty(item, "role") ?? "-";
+                        var content = ReadConversationContentPreview(item, "content");
+                        if (!string.IsNullOrWhiteSpace(content))
+                        {
+                            parts.Add($"{role}:{content}");
+                        }
+                    }
+                }
+            }
+
+            if (parts.Count == 0)
+            {
+                return false;
+            }
+
+            var source = string.Join("\u001F", parts);
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(source));
+            fingerprint = Convert.ToHexString(hash[..10]);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string ReadConversationContentPreview(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var content))
+        {
+            return string.Empty;
+        }
+
+        if (content.ValueKind == JsonValueKind.String)
+        {
+            return TruncateFingerprintPart(content.GetString());
+        }
+
+        if (content.ValueKind != JsonValueKind.Array)
+        {
+            return string.Empty;
+        }
+
+        List<string> parts = [];
+        foreach (var item in content.EnumerateArray().Take(4))
+        {
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                parts.Add(TruncateFingerprintPart(item.GetString()));
+                continue;
+            }
+
+            if (item.ValueKind == JsonValueKind.Object &&
+                item.TryGetProperty("text", out var text) &&
+                text.ValueKind == JsonValueKind.String)
+            {
+                parts.Add(TruncateFingerprintPart(text.GetString()));
+            }
+        }
+
+        return string.Join(" ", parts.Where(static item => !string.IsNullOrWhiteSpace(item)));
+    }
+
+    private static string TruncateFingerprintPart(string? value)
+    {
+        var normalized = (value ?? string.Empty).Trim();
+        return normalized.Length <= 240 ? normalized : normalized[..240];
+    }
+
     private IReadOnlyList<TransparentProxyRoute> BuildCandidateRoutes(
         TransparentProxyServerConfig config,
-        string? requestedModel)
+        string? requestedModel,
+        string? sessionKey)
     {
         if (!config.EnableFallback || config.Routes.Count <= 1)
         {
@@ -1307,7 +1792,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
         var now = DateTimeOffset.UtcNow;
         lock (_syncRoot)
         {
-            List<(TransparentProxyRoute Route, int Priority, double Score)> available = [];
+            PruneSessionRouteBindings(now);
+            List<TransparentProxyRoutePolicyCandidate> available = [];
             for (var index = 0; index < config.Routes.Count; index++)
             {
                 var route = config.Routes[index];
@@ -1317,48 +1803,84 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 }
 
                 if (!_routeStates.TryGetValue(route.Id, out var state) ||
-                    state.IsCircuitAvailable(now, CircuitTimeoutSeconds))
+                    _circuitBreaker.IsRouteAvailable(state, now))
                 {
-                    available.Add((route, index, CalculateRouteScheduleScore(state, index, route.Priority)));
+                    available.Add(new TransparentProxyRoutePolicyCandidate(route, index, state));
                 }
             }
 
-            return available
-                .OrderBy(static item => item.Score)
-                .ThenBy(static item => item.Priority)
-                .Select(static item => item.Route)
-                .ToArray();
+            var boundRouteId = string.Equals(TransparentProxyRouteStrategies.Normalize(config.RouteStrategy), TransparentProxyRouteStrategies.SessionAffinity, StringComparison.Ordinal) &&
+                               !string.IsNullOrWhiteSpace(sessionKey) &&
+                               TryGetSessionRouteBinding(config, sessionKey, now, out var sessionRouteId)
+                ? sessionRouteId
+                : null;
+            return _routePolicy.OrderCandidateRoutes(config, available, boundRouteId, ref _roundRobinCursor);
         }
     }
 
-    private static double CalculateRouteScheduleScore(
-        TransparentProxyRouteRuntimeState? state,
-        int routeIndex,
-        int configuredPriority)
+    private void BindSessionRoute(TransparentProxyServerConfig config, string? sessionKey, string routeId)
     {
-        var score = routeIndex * 8d - Math.Max(0, configuredPriority) * 32d;
-        if (state is null || state.Sent <= 0)
+        if (!string.Equals(TransparentProxyRouteStrategies.Normalize(config.RouteStrategy), TransparentProxyRouteStrategies.SessionAffinity, StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(sessionKey))
         {
-            return score;
+            return;
         }
 
-        if (state.CircuitState == TransparentProxyCircuitState.HalfOpen)
+        lock (_syncRoot)
         {
-            score += 1_000d;
+            var now = DateTimeOffset.UtcNow;
+            PruneSessionRouteBindings(now);
+            if (_sessionRouteBindings.Count > 2048)
+            {
+                _sessionRouteBindings.Clear();
+            }
+
+            _sessionRouteBindings[sessionKey] = new TransparentProxySessionRouteBinding(
+                routeId,
+                now.AddSeconds(Math.Max(30, config.SessionAffinityTtlSeconds)));
+        }
+    }
+
+    private bool TryGetSessionRouteBinding(
+        TransparentProxyServerConfig config,
+        string sessionKey,
+        DateTimeOffset now,
+        out string routeId)
+    {
+        routeId = string.Empty;
+        if (!_sessionRouteBindings.TryGetValue(sessionKey, out var binding))
+        {
+            return false;
         }
 
-        var windowRequests = state.CircuitWindowRequests > 0 ? state.CircuitWindowRequests : state.Sent;
-        var windowFailures = state.CircuitWindowRequests > 0 ? state.CircuitWindowFailures : state.Failed;
-        var failureRate = windowFailures / (double)Math.Max(1, windowRequests);
-        score += Math.Clamp(failureRate, 0d, 1d) * 120d;
-        score += Math.Min(6, state.ConsecutiveFailures) * 80d;
-
-        if (state.LastLatencyMs > 0)
+        if (binding.ExpiresAt <= now)
         {
-            score += Math.Clamp(state.LastLatencyMs / 35d, 0d, 80d);
+            _sessionRouteBindings.Remove(sessionKey);
+            return false;
         }
 
-        return score;
+        routeId = binding.RouteId;
+        _sessionRouteBindings[sessionKey] = binding with
+        {
+            ExpiresAt = now.AddSeconds(Math.Max(30, config.SessionAffinityTtlSeconds))
+        };
+        return true;
+    }
+
+    private void PruneSessionRouteBindings(DateTimeOffset now)
+    {
+        if (_sessionRouteBindings.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var key in _sessionRouteBindings
+                     .Where(pair => pair.Value.ExpiresAt <= now)
+                     .Select(static pair => pair.Key)
+                     .ToArray())
+        {
+            _sessionRouteBindings.Remove(key);
+        }
     }
 
     private bool TryAcquireRoutePermit(
@@ -1374,14 +1896,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
         lock (_syncRoot)
         {
-            if (!_routeStates.TryGetValue(route.Id, out var state))
-            {
-                return true;
-            }
-
-            var allowed = state.TryAcquirePermit(DateTimeOffset.UtcNow, CircuitTimeoutSeconds, out var usedHalfOpenPermit);
-            routePermit = new TransparentProxyRoutePermit(route.Id, usedHalfOpenPermit);
-            return allowed;
+            _routeStates.TryGetValue(route.Id, out var state);
+            return _circuitBreaker.TryAcquirePermit(state, route.Id, bypassCircuitBreaker, out routePermit);
         }
     }
 
@@ -1390,9 +1906,10 @@ public sealed class TransparentProxyService : IAsyncDisposable
         int statusCode,
         long latencyMs,
         TransparentProxyRoutePermit routePermit,
-        TimeSpan? retryAfter = null)
+        string? modelName = null)
     {
         var recovered = false;
+        TransparentProxyRouteRuntimeState? snapshot = null;
         lock (_syncRoot)
         {
             if (!_routeStates.TryGetValue(route.Id, out var state))
@@ -1400,34 +1917,24 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 return;
             }
 
-            state.Sent++;
-            state.Success++;
-            state.LastStatusCode = statusCode;
-            state.LastLatencyMs = latencyMs;
-            state.LastSeenAt = DateTimeOffset.Now;
-            state.ConsecutiveFailures = 0;
-            state.CircuitWindowRequests++;
-            state.ReleasePermit(routePermit.UsedHalfOpenPermit);
-            if (state.CircuitState == TransparentProxyCircuitState.HalfOpen)
-            {
-                state.ConsecutiveSuccesses++;
-                if (state.ConsecutiveSuccesses >= CircuitSuccessThreshold)
-                {
-                    state.TransitionToClosed();
-                    recovered = true;
-                }
-            }
-            else if (state.CircuitState == TransparentProxyCircuitState.Closed)
-            {
-                state.ConsecutiveSuccesses = 0;
-            }
-
+            recovered = _circuitBreaker.RecordSuccess(
+                state,
+                statusCode,
+                latencyMs,
+                routePermit) == TransparentProxyCircuitEvent.Recovered;
+            state.RecordModelSuccess(modelName);
             route.CircuitOpenUntil = DateTimeOffset.MinValue;
+            snapshot = state;
+        }
+
+        if (snapshot is not null)
+        {
+            _routeHealthStore.Save(snapshot);
         }
 
         if (recovered)
         {
-            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "INFO", "-", "/", route.Name, statusCode, latencyMs, "半开探测成功，路由已恢复。"));
+            EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "INFO", "-", "/", route.Name, statusCode, latencyMs, "Half-open probe succeeded; route recovered."));
         }
     }
 
@@ -1436,11 +1943,12 @@ public sealed class TransparentProxyService : IAsyncDisposable
         int statusCode,
         long latencyMs,
         TransparentProxyRoutePermit routePermit,
-        TimeSpan? retryAfter = null)
+        TimeSpan? retryAfter = null,
+        string? modelName = null,
+        TransparentProxyServerConfig? config = null)
     {
-        var opened = false;
-        var halfOpenFailed = false;
-        DateTimeOffset retryAt = DateTimeOffset.MinValue;
+        TransparentProxyCircuitEvent circuitEvent = TransparentProxyCircuitEvent.None;
+        TransparentProxyRouteRuntimeState? snapshot = null;
         lock (_syncRoot)
         {
             if (!_routeStates.TryGetValue(route.Id, out var state))
@@ -1448,70 +1956,55 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 return;
             }
 
-            state.Sent++;
-            state.Failed++;
-            state.LastStatusCode = statusCode;
-            state.LastLatencyMs = latencyMs;
-            state.LastSeenAt = DateTimeOffset.Now;
-            state.ConsecutiveFailures++;
-            state.ConsecutiveSuccesses = 0;
-            state.CircuitWindowRequests++;
-            state.CircuitWindowFailures++;
-            state.ReleasePermit(routePermit.UsedHalfOpenPermit);
-
-            var now = DateTimeOffset.UtcNow;
-            var cooldownSeconds = ResolveCircuitCooldownSeconds(retryAfter);
-            var explicitCooldown = retryAfter is not null && statusCode is 429 or 503;
-            if (state.CircuitState == TransparentProxyCircuitState.HalfOpen)
-            {
-                halfOpenFailed = true;
-                retryAt = state.TransitionToOpen(now, cooldownSeconds);
-                opened = true;
-            }
-            else if (explicitCooldown)
-            {
-                retryAt = state.TransitionToOpen(now, cooldownSeconds);
-                opened = true;
-            }
-            else if (state.CircuitState == TransparentProxyCircuitState.Closed &&
-                     ShouldOpenCircuit(state))
-            {
-                retryAt = state.TransitionToOpen(now, cooldownSeconds);
-                opened = true;
-            }
-
+            circuitEvent = _circuitBreaker.RecordFailure(
+                state,
+                statusCode,
+                latencyMs,
+                routePermit,
+                retryAfter);
+            state.RecordModelFailure(
+                modelName,
+                statusCode,
+                retryAfter,
+                Math.Max(15, route.ModelCooldownSeconds ?? config?.ModelCooldownSeconds ?? 120));
             route.CircuitOpenUntil = state.CircuitOpenUntil;
+            snapshot = state;
         }
 
-        if (opened)
+        if (snapshot is not null)
         {
+            _routeHealthStore.Save(snapshot);
+        }
+
+        if (circuitEvent.Opened)
+        {
+            var halfOpenFailed = circuitEvent.HalfOpenFailed;
+            var retryAt = circuitEvent.RetryAt;
             var message = halfOpenFailed
-                ? $"半开探测失败，路由熔断至 {retryAt.ToLocalTime():HH:mm:ss}。"
-                : $"连续失败或错误率过高，路由熔断至 {retryAt.ToLocalTime():HH:mm:ss}。";
+                ? $"Half-open probe failed; route is open until {retryAt.ToLocalTime():HH:mm:ss}."
+                : $"Consecutive failures or high error rate; route is open until {retryAt.ToLocalTime():HH:mm:ss}.";
             EmitLog(new TransparentProxyLogEntry(DateTimeOffset.Now, "WARN", "-", "/", route.Name, statusCode, latencyMs, message));
         }
     }
 
-    private static bool ShouldOpenCircuit(TransparentProxyRouteRuntimeState state)
+    private void MarkRouteModelFailureOnly(
+        TransparentProxyRoute route,
+        int statusCode,
+        TimeSpan? retryAfter,
+        string? modelName,
+        TransparentProxyServerConfig config)
     {
-        if (state.ConsecutiveFailures >= CircuitFailureThreshold)
+        lock (_syncRoot)
         {
-            return true;
+            if (_routeStates.TryGetValue(route.Id, out var state))
+            {
+                state.RecordModelFailure(
+                    modelName,
+                    statusCode,
+                    retryAfter,
+                    Math.Max(15, route.ModelCooldownSeconds ?? config.ModelCooldownSeconds));
+            }
         }
-
-        return state.CircuitWindowRequests >= CircuitMinRequests &&
-               state.CircuitWindowFailures / (double)Math.Max(1, state.CircuitWindowRequests) >= CircuitErrorRateThreshold;
-    }
-
-    private static int ResolveCircuitCooldownSeconds(TimeSpan? retryAfter)
-    {
-        if (retryAfter is null)
-        {
-            return CircuitTimeoutSeconds;
-        }
-
-        var seconds = (int)Math.Ceiling(retryAfter.Value.TotalSeconds);
-        return Math.Clamp(seconds, 1, CircuitMaxCooldownSeconds);
     }
 
     private static TimeSpan? ResolveRetryAfter(RetryConditionHeaderValue? retryAfter)
@@ -1533,6 +2026,67 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
 
         return null;
+    }
+
+    private bool IsRouteModelCooling(string routeId, string? modelName, out DateTimeOffset cooldownUntil)
+    {
+        cooldownUntil = DateTimeOffset.MinValue;
+        if (string.IsNullOrWhiteSpace(routeId) || string.IsNullOrWhiteSpace(modelName))
+        {
+            return false;
+        }
+
+        lock (_syncRoot)
+        {
+            if (!_routeStates.TryGetValue(routeId, out var state))
+            {
+                return false;
+            }
+
+            return state.IsModelCooling(modelName, DateTimeOffset.UtcNow, out cooldownUntil);
+        }
+    }
+
+    private static int ResolveRouteRequestRetry(TransparentProxyRoute route, TransparentProxyServerConfig config)
+        => route.RequestRetry is >= 0
+            ? Math.Clamp(route.RequestRetry.Value, 0, 5)
+            : Math.Clamp(config.RequestRetry, 0, 5);
+
+    private static bool ShouldRetryStatus(int statusCode)
+        => statusCode is 408 or 425 or 429 or 500 or 502 or 503 or 504;
+
+    private static bool ShouldTryNextModelCandidate(int statusCode)
+        => statusCode is 429 or 503 || statusCode >= 500;
+
+    private static bool HasLaterPreparedModelCandidate(
+        IReadOnlyList<TransparentProxyPreparedRequest> preparedRequests,
+        int currentIndex,
+        string currentModel)
+        => preparedRequests
+            .Skip(currentIndex + 1)
+            .Any(item => !string.Equals(
+                item.UpstreamModel?.Trim(),
+                currentModel?.Trim(),
+                StringComparison.OrdinalIgnoreCase));
+
+    private static TimeSpan ResolveRetryDelay(
+        TimeSpan? retryAfter,
+        int sendAttempt,
+        TransparentProxyServerConfig config,
+        TransparentProxyRoute route)
+    {
+        var maxIntervalSeconds = route.MaxRetryIntervalSeconds is > 0
+            ? route.MaxRetryIntervalSeconds.Value
+            : config.MaxRetryIntervalSeconds;
+        var maxInterval = TimeSpan.FromSeconds(Math.Clamp(maxIntervalSeconds, 1, 60));
+        if (retryAfter is { } explicitDelay && explicitDelay > TimeSpan.Zero)
+        {
+            return explicitDelay <= maxInterval ? explicitDelay : maxInterval;
+        }
+
+        var backoffMs = Math.Min(maxInterval.TotalMilliseconds, 220d * Math.Pow(2d, Math.Clamp(sendAttempt, 0, 5)));
+        var jitterMs = Random.Shared.Next(20, 120);
+        return TimeSpan.FromMilliseconds(Math.Min(maxInterval.TotalMilliseconds, backoffMs + jitterMs));
     }
 
     private bool TryAcquireRateSlot(TransparentProxyServerConfig config)
@@ -1558,43 +2112,6 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
             _rateLimitWindowCount++;
             return true;
-        }
-    }
-
-    private bool TryGetCachedResponse(string cacheKey, int ttlSeconds, out TransparentProxyCachedResponse cachedResponse)
-    {
-        cachedResponse = default!;
-        if (string.IsNullOrWhiteSpace(cacheKey) || !_cache.TryGetValue(cacheKey, out var entry))
-        {
-            return false;
-        }
-
-        var now = DateTimeOffset.UtcNow;
-        if ((now - entry.LastAccessedAt).TotalSeconds > Math.Max(1, ttlSeconds))
-        {
-            _cache.TryRemove(cacheKey, out _);
-            return false;
-        }
-
-        cachedResponse = entry with
-        {
-            LastAccessedAt = now,
-            HitCount = entry.HitCount + 1
-        };
-        _cache[cacheKey] = cachedResponse;
-        return true;
-    }
-
-    private void PruneExpiredCacheEntries(int ttlSeconds)
-    {
-        var now = DateTimeOffset.UtcNow;
-        var ttl = Math.Max(1, ttlSeconds);
-        foreach (var pair in _cache)
-        {
-            if ((now - pair.Value.LastAccessedAt).TotalSeconds > ttl)
-            {
-                _cache.TryRemove(pair.Key, out _);
-            }
         }
     }
 
@@ -1635,61 +2152,6 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
     }
 
-    private static byte[] ApplyRouteModelSelection(byte[] requestBody, TransparentProxyRoute route, out string clientModel)
-    {
-        clientModel = string.Empty;
-        if (requestBody.Length == 0)
-        {
-            return requestBody;
-        }
-
-        try
-        {
-            var node = JsonNode.Parse(requestBody);
-            if (node is not JsonObject obj)
-            {
-                return requestBody;
-            }
-
-            var model = obj.TryGetPropertyValue("model", out var modelNode)
-                ? modelNode?.GetValue<string>()
-                : null;
-            if (string.IsNullOrWhiteSpace(model))
-            {
-                return requestBody;
-            }
-
-            clientModel = model.Trim();
-            var upstreamModel = ResolveUpstreamModel(clientModel, route);
-            if (string.Equals(upstreamModel, clientModel, StringComparison.Ordinal))
-            {
-                return requestBody;
-            }
-
-            obj["model"] = upstreamModel;
-            return JsonSerializer.SerializeToUtf8Bytes(obj);
-        }
-        catch
-        {
-            return requestBody;
-        }
-    }
-
-    private static string ResolveUpstreamModel(string clientModel, TransparentProxyRoute route)
-    {
-        var model = StripRoutePrefix(clientModel.Trim(), route);
-        foreach (var mapping in route.ModelMappings)
-        {
-            if (string.Equals(mapping.Name, model, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(mapping.EffectiveAlias, model, StringComparison.OrdinalIgnoreCase))
-            {
-                return mapping.Name;
-            }
-        }
-
-        return model;
-    }
-
     private static string? TryReadRequestModel(byte[] requestBody)
     {
         if (requestBody.Length == 0)
@@ -1725,48 +2187,11 @@ public sealed class TransparentProxyService : IAsyncDisposable
     private static string NormalizeLogModel(string? modelName)
         => string.IsNullOrWhiteSpace(modelName) ? "-" : modelName.Trim();
 
-    private static string BuildUpstreamUrl(string baseUrl, string pathAndQuery)
-    {
-        var baseUri = new Uri(baseUrl.Trim().TrimEnd('/') + "/", UriKind.Absolute);
-        var path = pathAndQuery;
-        var queryIndex = path.IndexOf('?');
-        var query = queryIndex >= 0 ? path[queryIndex..] : string.Empty;
-        var pathOnly = queryIndex >= 0 ? path[..queryIndex] : path;
-
-        var normalizedBasePath = baseUri.AbsolutePath.TrimEnd('/');
-        var normalizedPath = pathOnly.TrimStart('/');
-        if (normalizedBasePath.EndsWith("/v1", StringComparison.OrdinalIgnoreCase) &&
-            normalizedPath.StartsWith("v1/", StringComparison.OrdinalIgnoreCase))
-        {
-            normalizedPath = normalizedPath[3..];
-        }
-
-        return new Uri(baseUri, normalizedPath).ToString().TrimEnd('/') + query;
-    }
-
-    private static bool IsOpenAiChatCompletionsRequest(string method, string pathAndQuery)
-    {
-        if (!string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var relativePath = ExtractRelativePath(pathAndQuery);
-        return relativePath.Equals("chat/completions", StringComparison.OrdinalIgnoreCase) ||
-               relativePath.Equals("v1/chat/completions", StringComparison.OrdinalIgnoreCase);
-    }
-
     private static string ExtractRelativePath(string pathAndQuery)
     {
         var queryIndex = pathAndQuery.IndexOf('?');
         var pathOnly = queryIndex >= 0 ? pathAndQuery[..queryIndex] : pathAndQuery;
         return pathOnly.Trim().TrimStart('/');
-    }
-
-    private static string ExtractQuery(string pathAndQuery)
-    {
-        var queryIndex = pathAndQuery.IndexOf('?');
-        return queryIndex >= 0 ? pathAndQuery[queryIndex..] : string.Empty;
     }
 
     private static bool IsModelsListRequest(string method, string pathAndQuery)
@@ -1779,37 +2204,6 @@ public sealed class TransparentProxyService : IAsyncDisposable
         var relativePath = ExtractRelativePath(pathAndQuery);
         return relativePath.Equals("models", StringComparison.OrdinalIgnoreCase) ||
                relativePath.Equals("v1/models", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private async Task<object> BuildModelsListPayloadAsync(
-        HttpListenerRequest source,
-        HttpClient client,
-        TransparentProxyServerConfig config,
-        string pathAndQuery,
-        CancellationToken cancellationToken)
-    {
-        List<TransparentProxyRouteModels> routeModels = [];
-        List<TransparentProxyRoute> updatedRoutes = [];
-        foreach (var route in config.Routes)
-        {
-            var models = await FetchRouteModelIdsForListAsync(
-                source,
-                client,
-                config,
-                route,
-                pathAndQuery,
-                cancellationToken);
-            var hydratedRoute = models.Count > 0
-                ? route.WithModels(models)
-                : route;
-            updatedRoutes.Add(hydratedRoute);
-            routeModels.Add(new TransparentProxyRouteModels(
-                hydratedRoute,
-                hydratedRoute.Models));
-        }
-
-        UpdateRoutesFromModelsList(config, updatedRoutes);
-        return BuildModelsListPayload(routeModels);
     }
 
     private void UpdateRoutesFromModelsList(
@@ -1827,182 +2221,6 @@ public sealed class TransparentProxyService : IAsyncDisposable
         }
     }
 
-    private static async Task<IReadOnlyList<string>> FetchRouteModelIdsForListAsync(
-        HttpListenerRequest source,
-        HttpClient client,
-        TransparentProxyServerConfig config,
-        TransparentProxyRoute route,
-        string pathAndQuery,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            using CancellationTokenSource requestCancellationSource =
-                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            requestCancellationSource.CancelAfter(
-                TimeSpan.FromSeconds(Math.Clamp(config.UpstreamTimeoutSeconds, 5, 30)));
-
-            using var request = CreateUpstreamRequest(
-                source,
-                "GET",
-                BuildUpstreamUrl(route.BaseUrl, pathAndQuery),
-                route,
-                Array.Empty<byte>(),
-                ProxyWireApiProbeService.ChatCompletionsWireApi,
-                route.Headers);
-            using var response = await client.SendAsync(
-                request,
-                HttpCompletionOption.ResponseHeadersRead,
-                requestCancellationSource.Token);
-            if (!response.IsSuccessStatusCode)
-            {
-                return Array.Empty<string>();
-            }
-
-            var bytes = await response.Content.ReadAsByteArrayAsync(requestCancellationSource.Token);
-            return ParseModelIds(bytes);
-        }
-        catch
-        {
-            return Array.Empty<string>();
-        }
-    }
-
-    private static IReadOnlyList<string> ParseModelIds(byte[] bytes)
-    {
-        if (bytes.Length == 0)
-        {
-            return Array.Empty<string>();
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(bytes);
-            if (document.RootElement.ValueKind == JsonValueKind.Object &&
-                document.RootElement.TryGetProperty("data", out var data) &&
-                data.ValueKind == JsonValueKind.Array)
-            {
-                return data.EnumerateArray()
-                    .Select(static item => TryReadStringProperty(item, "id"))
-                    .Where(static id => !string.IsNullOrWhiteSpace(id))
-                    .Select(static id => id!.Trim())
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
-            }
-
-            if (document.RootElement.ValueKind == JsonValueKind.Array)
-            {
-                return document.RootElement.EnumerateArray()
-                    .Select(static item =>
-                        item.ValueKind == JsonValueKind.String
-                            ? item.GetString()
-                            : TryReadStringProperty(item, "id"))
-                    .Where(static id => !string.IsNullOrWhiteSpace(id))
-                    .Select(static id => id!.Trim())
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
-            }
-        }
-        catch
-        {
-        }
-
-        return Array.Empty<string>();
-    }
-
-    private static object BuildModelsListPayload(IReadOnlyList<TransparentProxyRouteModels> routeModels)
-    {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var models = routeModels
-            .SelectMany(routeModel => BuildRouteVisibleModels(routeModel.Route, routeModel.Models)
-                .Select(model => new
-                {
-                    id = model,
-                    @object = "model",
-                    created = now,
-                    owned_by = string.IsNullOrWhiteSpace(routeModel.Route.Name) ? "relaybench" : routeModel.Route.Name
-                }))
-            .GroupBy(static item => item.id, StringComparer.OrdinalIgnoreCase)
-            .Select(static group => group.First())
-            .OrderBy(static item => item.id, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        return new
-        {
-            @object = "list",
-            data = models
-        };
-    }
-
-    private static IEnumerable<string> BuildRouteVisibleModels(TransparentProxyRoute route, IReadOnlyList<string> models)
-    {
-        var mappings = route.ModelMappings.Count > 0
-            ? route.ModelMappings
-            : models.Select(static model => new TransparentProxyModelMapping(model, string.Empty)).ToArray();
-        foreach (var mapping in mappings)
-        {
-            var model = mapping.EffectiveAlias;
-            if (string.IsNullOrWhiteSpace(model))
-            {
-                continue;
-            }
-
-            yield return model.Trim();
-            var prefix = route.Prefix.Trim().Trim('/');
-            if (!string.IsNullOrWhiteSpace(prefix))
-            {
-                yield return $"{prefix}/{model.Trim()}";
-            }
-        }
-    }
-
-    private static string InferWireApiFromPath(string pathAndQuery)
-    {
-        var relativePath = ExtractRelativePath(pathAndQuery);
-        if (relativePath.EndsWith("responses", StringComparison.OrdinalIgnoreCase))
-        {
-            return ProxyWireApiProbeService.ResponsesWireApi;
-        }
-
-        if (relativePath.EndsWith("messages", StringComparison.OrdinalIgnoreCase))
-        {
-            return ProxyWireApiProbeService.AnthropicMessagesWireApi;
-        }
-
-        return ProxyWireApiProbeService.ChatCompletionsWireApi;
-    }
-
-    private static string ResolveRequestModel(byte[] requestBody, TransparentProxyRoute route)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(requestBody);
-            return TryReadStringProperty(document.RootElement, "model") ?? string.Empty;
-        }
-        catch
-        {
-            return string.Empty;
-        }
-    }
-
-    private static string ResolveResponseModel(string upstreamText, string fallbackModel)
-    {
-        if (!string.IsNullOrWhiteSpace(fallbackModel))
-        {
-            return fallbackModel.Trim();
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(upstreamText);
-            return TryReadStringProperty(document.RootElement, "model") ?? "relaybench-proxy";
-        }
-        catch
-        {
-            return "relaybench-proxy";
-        }
-    }
-
     private static string? TryReadStringProperty(JsonElement element, string propertyName)
         => element.ValueKind == JsonValueKind.Object &&
            element.TryGetProperty(propertyName, out var property) &&
@@ -2010,12 +2228,32 @@ public sealed class TransparentProxyService : IAsyncDisposable
             ? property.GetString()
             : null;
 
-    private static string BuildCacheKey(string method, string pathAndQuery, byte[] requestBody)
+    private static string? TryReadStringProperty(byte[] requestBody, string propertyName)
     {
-        using var sha = SHA256.Create();
-        var hash = sha.ComputeHash(requestBody);
-        return $"{method.ToUpperInvariant()}|{pathAndQuery}|{Convert.ToHexString(hash)}";
+        if (requestBody.Length == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(requestBody);
+            return TryReadStringProperty(document.RootElement, propertyName);
+        }
+        catch
+        {
+            return null;
+        }
     }
+
+    private bool TryGetCachedModelsList(
+        string pathAndQuery,
+        TransparentProxyServerConfig config,
+        out byte[] payload)
+        => _responseCache.TryGetModelsList(pathAndQuery, config, out payload);
+
+    private void CacheModelsListPayload(string pathAndQuery, TransparentProxyServerConfig config, object payload)
+        => _responseCache.StoreModelsList(pathAndQuery, config, payload);
 
     private static bool ShouldFallback(int statusCode)
         => statusCode is 408 or 409 or 425 or 429 || statusCode >= 500;
@@ -2029,7 +2267,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
             return false;
         }
 
-        return statusCode >= 400;
+        return statusCode is 400 or 404 or 405 or 415;
     }
 
     private static string DisplayWireApi(string wireApi)
@@ -2059,12 +2297,12 @@ public sealed class TransparentProxyService : IAsyncDisposable
     {
         lock (_syncRoot)
         {
-            var now = DateTimeOffset.UtcNow;
-            PruneTokenSamples(now);
             var orderedLatencies = _latencies.OrderBy(static item => item).ToArray();
             var p50 = Percentile(orderedLatencies, 0.50);
             var p95 = Percentile(orderedLatencies, 0.95);
-            var tokensPerSecond = _tokenSamples.Sum(static item => item.TokenCount) / 1.25d;
+            var tokenSnapshot = _tokenTelemetry.CreateSnapshot();
+            var cacheStats = _responseCache.Stats;
+            var promptSessionStats = _protocolTranslator.PromptSessionCacheStats;
             var routes = _routeStates.Values
                 .Select(static state => state.ToSnapshot())
                 .ToArray();
@@ -2081,11 +2319,21 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 _rateLimitedRequests,
                 p50,
                 p95,
-                _cache.Count,
+                cacheStats.ResponseEntries + cacheStats.ModelListEntries + promptSessionStats.Entries,
                 routes,
-                _totalOutputTokens,
-                tokensPerSecond,
-                _lastTokenActivityAt);
+                tokenSnapshot.TotalOutputTokens,
+                tokenSnapshot.TokensPerSecond,
+                tokenSnapshot.LastTokenActivityAt,
+                tokenSnapshot.PromptCacheTokens,
+                cacheStats.ResponseEntries,
+                cacheStats.ModelListEntries,
+                cacheStats.Hits,
+                cacheStats.Misses,
+                cacheStats.Stores,
+                cacheStats.Evictions,
+                promptSessionStats.Entries,
+                promptSessionStats.Hits,
+                promptSessionStats.Misses);
         }
     }
 
@@ -2097,6 +2345,20 @@ public sealed class TransparentProxyService : IAsyncDisposable
             routes = _config?.Routes.Count ?? 0,
             metrics = CreateMetricsSnapshot()
         };
+
+    private void PersistRouteHealthSnapshot()
+    {
+        TransparentProxyRouteRuntimeState[] states;
+        lock (_syncRoot)
+        {
+            states = _routeStates.Values.ToArray();
+        }
+
+        if (states.Length > 0)
+        {
+            _routeHealthStore.SaveAll(states);
+        }
+    }
 
     private void PublishMetrics()
         => MetricsChanged?.Invoke(this, CreateMetricsSnapshot());
@@ -2112,7 +2374,10 @@ public sealed class TransparentProxyService : IAsyncDisposable
             entry.StatusCode,
             entry.ElapsedMs,
             ProbeTraceRedactor.RedactText(entry.Message),
-            ProbeTraceRedactor.RedactText(entry.ModelName));
+            ProbeTraceRedactor.RedactText(entry.ModelName),
+            ProbeTraceRedactor.RedactText(entry.RequestId),
+            ProbeTraceRedactor.RedactText(entry.WireApi),
+            ProbeTraceRedactor.RedactText(entry.AttemptSummary));
         LogEmitted?.Invoke(this, safeEntry);
     }
 
@@ -2130,7 +2395,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
     private static void AddCorsHeaders(HttpListenerResponse response)
     {
         response.Headers["Access-Control-Allow-Origin"] = "*";
-        response.Headers["Access-Control-Allow-Headers"] = "authorization, content-type, x-api-key, anthropic-version";
+        response.Headers["Access-Control-Allow-Headers"] = "authorization, content-type, x-api-key, anthropic-version, anthropic-beta, openai-beta, idempotency-key, session_id";
         response.Headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
         response.Headers["X-RelayBench-Proxy"] = "transparent";
     }
@@ -2160,6 +2425,20 @@ public sealed class TransparentProxyService : IAsyncDisposable
     {
         var json = JsonSerializer.Serialize(payload, CompactJsonOptions);
         await WriteTextResponseAsync(context, statusCode, json, "application/json; charset=utf-8", cancellationToken);
+    }
+
+    private static async Task WriteJsonBytesResponseAsync(HttpListenerContext context, int statusCode, byte[] payload, CancellationToken cancellationToken)
+    {
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        context.Response.Headers["X-RelayBench-Cache"] = "HIT";
+        context.Response.ContentLength64 = payload.LongLength;
+        if (payload.Length > 0)
+        {
+            await context.Response.OutputStream.WriteAsync(payload, cancellationToken);
+        }
+
+        context.Response.OutputStream.Close();
     }
 
     private static async Task WriteTextResponseAsync(HttpListenerContext context, int statusCode, string text, string contentType, CancellationToken cancellationToken)
@@ -2194,7 +2473,13 @@ public sealed class TransparentProxyRoute
         int priority = 0,
         string? prefix = null,
         IReadOnlyDictionary<string, string>? headers = null,
-        IReadOnlyList<TransparentProxyModelMapping>? modelMappings = null)
+        IReadOnlyList<TransparentProxyModelMapping>? modelMappings = null,
+        IReadOnlyList<string>? excludedModelPatterns = null,
+        string? outboundProxy = null,
+        int? requestRetry = null,
+        int? maxRetryIntervalSeconds = null,
+        int? modelCooldownSeconds = null,
+        string? payloadRulesText = null)
     {
         Id = id;
         Name = name;
@@ -2212,6 +2497,17 @@ public sealed class TransparentProxyRoute
         Headers = new Dictionary<string, string>(
             headers ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             StringComparer.OrdinalIgnoreCase);
+        ExcludedModelPatterns = (excludedModelPatterns ?? Array.Empty<string>())
+            .Select(static item => item?.Trim() ?? string.Empty)
+            .Where(static item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        OutboundProxy = outboundProxy?.Trim() ?? string.Empty;
+        RequestRetry = requestRetry;
+        MaxRetryIntervalSeconds = maxRetryIntervalSeconds;
+        ModelCooldownSeconds = modelCooldownSeconds;
+        PayloadRulesText = payloadRulesText?.Trim() ?? string.Empty;
+        CacheScopeId = BuildCacheScopeId(Id, BaseUrl, Prefix, ModelMappings, PayloadRulesText);
         PreferredWireApi = ProxyWireApiProbeService.NormalizeWireApi(preferredWireApi);
         ChatCompletionsSupported = chatCompletionsSupported;
         ResponsesSupported = responsesSupported;
@@ -2238,6 +2534,20 @@ public sealed class TransparentProxyRoute
     public string Prefix { get; }
 
     public IReadOnlyDictionary<string, string> Headers { get; }
+
+    public IReadOnlyList<string> ExcludedModelPatterns { get; }
+
+    public string OutboundProxy { get; }
+
+    public int? RequestRetry { get; }
+
+    public int? MaxRetryIntervalSeconds { get; }
+
+    public int? ModelCooldownSeconds { get; }
+
+    public string PayloadRulesText { get; }
+
+    public string CacheScopeId { get; }
 
     public string? PreferredWireApi { get; }
 
@@ -2270,7 +2580,13 @@ public sealed class TransparentProxyRoute
             Priority,
             Prefix,
             Headers,
-            ModelMappings)
+            ModelMappings,
+            ExcludedModelPatterns,
+            OutboundProxy,
+            RequestRetry,
+            MaxRetryIntervalSeconds,
+            ModelCooldownSeconds,
+            PayloadRulesText)
         {
             CircuitOpenUntil = CircuitOpenUntil
         };
@@ -2291,7 +2607,13 @@ public sealed class TransparentProxyRoute
             Priority,
             Prefix,
             Headers,
-            MergeModelMappings(models, ModelMappings))
+            MergeModelMappings(models, ModelMappings),
+            ExcludedModelPatterns,
+            OutboundProxy,
+            RequestRetry,
+            MaxRetryIntervalSeconds,
+            ModelCooldownSeconds,
+            PayloadRulesText)
         {
             CircuitOpenUntil = CircuitOpenUntil
         };
@@ -2353,12 +2675,59 @@ public sealed class TransparentProxyRoute
         var normalizedAlias = alias?.Trim() ?? string.Empty;
         mappings.Add(new TransparentProxyModelMapping(normalizedName, normalizedAlias));
     }
+
+    private static string BuildCacheScopeId(
+        string id,
+        string baseUrl,
+        string prefix,
+        IReadOnlyList<TransparentProxyModelMapping> mappings,
+        string payloadRulesText)
+    {
+        StringBuilder builder = new();
+        builder.Append(id).Append('\u001F')
+            .Append(baseUrl.Trim()).Append('\u001F')
+            .Append(prefix.Trim()).Append('\u001F')
+            .Append(payloadRulesText.Trim()).Append('\u001F');
+        foreach (var mapping in mappings.OrderBy(static item => item.Name, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(static item => item.Alias, StringComparer.OrdinalIgnoreCase))
+        {
+            builder.Append(mapping.Name.Trim()).Append("=>").Append(mapping.Alias.Trim()).Append('\u001F');
+        }
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString()));
+        return $"{id}:{Convert.ToHexString(hash[..6])}";
+    }
 }
 
 public sealed record TransparentProxyModelMapping(string Name, string Alias)
 {
     public string EffectiveAlias
         => string.IsNullOrWhiteSpace(Alias) ? Name.Trim() : Alias.Trim();
+}
+
+public static class TransparentProxyRouteStrategies
+{
+    public const string Smart = "smart";
+    public const string Priority = "priority";
+    public const string RoundRobin = "round-robin";
+    public const string FillFirst = "fill-first";
+    public const string LowestLatency = "lowest-latency";
+    public const string SessionAffinity = "session-affinity";
+
+    public static string Normalize(string? value)
+        => (value ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            Priority => Priority,
+            RoundRobin => RoundRobin,
+            "roundrobin" => RoundRobin,
+            FillFirst => FillFirst,
+            "fillfirst" => FillFirst,
+            LowestLatency => LowestLatency,
+            "lowestlatency" => LowestLatency,
+            SessionAffinity => SessionAffinity,
+            "sessionaffinity" => SessionAffinity,
+            _ => Smart
+        };
 }
 
 public sealed record TransparentProxyServerConfig(
@@ -2374,6 +2743,16 @@ public sealed record TransparentProxyServerConfig(
     int UpstreamTimeoutSeconds)
 {
     public int CacheMaxBytes { get; init; } = 2 * 1024 * 1024;
+
+    public string RouteStrategy { get; init; } = TransparentProxyRouteStrategies.Smart;
+
+    public int RequestRetry { get; init; } = 1;
+
+    public int MaxRetryIntervalSeconds { get; init; } = 8;
+
+    public int SessionAffinityTtlSeconds { get; init; } = 30 * 60;
+
+    public int ModelCooldownSeconds { get; init; } = 120;
 }
 
 public sealed record TransparentProxyLogEntry(
@@ -2385,7 +2764,10 @@ public sealed record TransparentProxyLogEntry(
     int StatusCode,
     long ElapsedMs,
     string Message,
-    string ModelName = "-");
+    string ModelName = "-",
+    string RequestId = "",
+    string WireApi = "",
+    string AttemptSummary = "");
 
 public sealed record TransparentProxyMetricsSnapshot(
     bool IsRunning,
@@ -2403,7 +2785,17 @@ public sealed record TransparentProxyMetricsSnapshot(
     IReadOnlyList<TransparentProxyRouteMetrics> Routes,
     long TotalOutputTokens,
     double TokensPerSecond,
-    DateTimeOffset? LastTokenActivityAt);
+    DateTimeOffset? LastTokenActivityAt,
+    long PromptCacheTokens = 0,
+    int ResponseCacheEntryCount = 0,
+    int ModelListCacheEntryCount = 0,
+    long ResponseCacheHits = 0,
+    long ResponseCacheMisses = 0,
+    long ResponseCacheStores = 0,
+    long ResponseCacheEvictions = 0,
+    int PromptSessionCacheEntryCount = 0,
+    long PromptSessionCacheHits = 0,
+    long PromptSessionCacheMisses = 0);
 
 public sealed record TransparentProxyRouteMetrics(
     string Id,
@@ -2433,11 +2825,16 @@ internal sealed record TransparentProxyCachedResponse(
     string ModelName,
     int HitCount = 0);
 
-internal sealed record TransparentProxyTokenSample(DateTimeOffset Timestamp, int TokenCount);
+internal sealed record TransparentProxyCachedModelsList(
+    string Key,
+    byte[] Payload,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset LastAccessedAt,
+    DateTimeOffset ExpiresAt);
 
 internal sealed record TransparentProxyUpstreamAttempt(bool DeliveredToClient, string RouteName, int StatusCode, string Message);
 
-internal sealed record TransparentProxyRoutePermit(string RouteId, bool UsedHalfOpenPermit);
+internal sealed record TransparentProxySessionRouteBinding(string RouteId, DateTimeOffset ExpiresAt);
 
 internal sealed record TransparentProxyPreparedRequest(
     string WireApi,
@@ -2446,176 +2843,6 @@ internal sealed record TransparentProxyPreparedRequest(
     IReadOnlyDictionary<string, string> ExtraHeaders,
     bool NormalizeToChatCompletions,
     string ResponseModel,
-    string UpstreamModel);
-
-internal sealed record TransparentProxyRouteModels(
-    TransparentProxyRoute Route,
-    IReadOnlyList<string> Models);
-
-internal enum TransparentProxyCircuitState
-{
-    Closed,
-    Open,
-    HalfOpen
-}
-
-internal sealed class TransparentProxyRouteRuntimeState
-{
-    public TransparentProxyRouteRuntimeState(TransparentProxyRoute route)
-    {
-        Id = route.Id;
-        Name = route.Name;
-        PreferredWireApi = route.PreferredWireApi;
-        ChatCompletionsSupported = route.ChatCompletionsSupported;
-        ResponsesSupported = route.ResponsesSupported;
-        AnthropicMessagesSupported = route.AnthropicMessagesSupported;
-        ProtocolCheckedAt = route.ProtocolCheckedAt;
-    }
-
-    public string Id { get; }
-
-    public string Name { get; }
-
-    public int Sent { get; set; }
-
-    public int Success { get; set; }
-
-    public int Failed { get; set; }
-
-    public int LastStatusCode { get; set; }
-
-    public long LastLatencyMs { get; set; }
-
-    public int ConsecutiveFailures { get; set; }
-
-    public int ConsecutiveSuccesses { get; set; }
-
-    public int CircuitWindowRequests { get; set; }
-
-    public int CircuitWindowFailures { get; set; }
-
-    public TransparentProxyCircuitState CircuitState { get; set; } = TransparentProxyCircuitState.Closed;
-
-    public DateTimeOffset CircuitOpenUntil { get; set; } = DateTimeOffset.MinValue;
-
-    public bool HalfOpenInFlight { get; set; }
-
-    public DateTimeOffset LastSeenAt { get; set; } = DateTimeOffset.MinValue;
-
-    public string? PreferredWireApi { get; private set; }
-
-    public bool? ChatCompletionsSupported { get; private set; }
-
-    public bool? ResponsesSupported { get; private set; }
-
-    public bool? AnthropicMessagesSupported { get; private set; }
-
-    public DateTimeOffset? ProtocolCheckedAt { get; private set; }
-
-    public void ApplyProtocol(TransparentProxyRoute route)
-    {
-        PreferredWireApi = route.PreferredWireApi;
-        ChatCompletionsSupported = route.ChatCompletionsSupported;
-        ResponsesSupported = route.ResponsesSupported;
-        AnthropicMessagesSupported = route.AnthropicMessagesSupported;
-        ProtocolCheckedAt = route.ProtocolCheckedAt;
-    }
-
-    public bool IsCircuitAvailable(DateTimeOffset now, int timeoutSeconds)
-    {
-        if (CircuitState == TransparentProxyCircuitState.Open && CircuitOpenUntil <= now)
-        {
-            TransitionToHalfOpen();
-        }
-
-        return CircuitState != TransparentProxyCircuitState.Open;
-    }
-
-    public bool TryAcquirePermit(DateTimeOffset now, int timeoutSeconds, out bool usedHalfOpenPermit)
-    {
-        usedHalfOpenPermit = false;
-        if (CircuitState == TransparentProxyCircuitState.Open)
-        {
-            if (CircuitOpenUntil > now)
-            {
-                return false;
-            }
-
-            TransitionToHalfOpen();
-        }
-
-        if (CircuitState != TransparentProxyCircuitState.HalfOpen)
-        {
-            return true;
-        }
-
-        if (HalfOpenInFlight)
-        {
-            return false;
-        }
-
-        HalfOpenInFlight = true;
-        usedHalfOpenPermit = true;
-        return true;
-    }
-
-    public void ReleasePermit(bool usedHalfOpenPermit)
-    {
-        if (usedHalfOpenPermit)
-        {
-            HalfOpenInFlight = false;
-        }
-    }
-
-    public DateTimeOffset TransitionToOpen(DateTimeOffset now, int timeoutSeconds)
-    {
-        CircuitState = TransparentProxyCircuitState.Open;
-        CircuitOpenUntil = now.AddSeconds(Math.Max(1, timeoutSeconds));
-        ConsecutiveSuccesses = 0;
-        HalfOpenInFlight = false;
-        return CircuitOpenUntil;
-    }
-
-    public void TransitionToHalfOpen()
-    {
-        if (CircuitState != TransparentProxyCircuitState.Open)
-        {
-            return;
-        }
-
-        CircuitState = TransparentProxyCircuitState.HalfOpen;
-        ConsecutiveSuccesses = 0;
-        HalfOpenInFlight = false;
-    }
-
-    public void TransitionToClosed()
-    {
-        CircuitState = TransparentProxyCircuitState.Closed;
-        CircuitOpenUntil = DateTimeOffset.MinValue;
-        ConsecutiveFailures = 0;
-        ConsecutiveSuccesses = 0;
-        CircuitWindowRequests = 0;
-        CircuitWindowFailures = 0;
-        HalfOpenInFlight = false;
-    }
-
-    public TransparentProxyRouteMetrics ToSnapshot()
-        => new(
-            Id,
-            Name,
-            Sent,
-            Success,
-            Failed,
-            LastStatusCode,
-            LastLatencyMs,
-            ConsecutiveFailures,
-            ConsecutiveSuccesses,
-            CircuitState.ToString(),
-            CircuitOpenUntil,
-            LastSeenAt,
-            PreferredWireApi,
-            ChatCompletionsSupported,
-            ResponsesSupported,
-            AnthropicMessagesSupported,
-            ProtocolCheckedAt);
-}
+    string UpstreamModel,
+    bool IsToolExchange,
+    bool PreferJsonStreamExtraction);

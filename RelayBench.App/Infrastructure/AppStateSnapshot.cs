@@ -130,11 +130,21 @@ public sealed class AppStateSnapshot
 
     public string TransparentProxyMaxConcurrencyText { get; set; } = "8";
 
+    public string TransparentProxyRouteStrategyKey { get; set; } = "smart";
+
     public bool TransparentProxyEnableFallback { get; set; } = true;
 
     public bool TransparentProxyEnableCache { get; set; } = true;
 
     public string TransparentProxyCacheTtlSecondsText { get; set; } = "60";
+
+    public string TransparentProxyRequestRetryText { get; set; } = "1";
+
+    public string TransparentProxyMaxRetryIntervalSecondsText { get; set; } = "8";
+
+    public string TransparentProxySessionAffinityTtlSecondsText { get; set; } = "1800";
+
+    public string TransparentProxyModelCooldownSecondsText { get; set; } = "120";
 
     public bool TransparentProxyRewriteModel { get; set; }
 

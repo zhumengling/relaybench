@@ -100,15 +100,6 @@ public sealed partial class ProxyDiagnosticsService
             return null;
         }
 
-        var anthropicPath = BuildApiPath(baseUri, "messages");
-        var anthropicProbe = await ProbeAnthropicMessagesScenarioAsync(
-            client,
-            anthropicPath,
-            BuildAnthropicMessagesPayload(probeModel),
-            cancellationToken);
-        var anthropicSupported = anthropicProbe.ScenarioResult.Success;
-        List<ProxyProbeScenarioResult> scenarioResults = [anthropicProbe.ScenarioResult];
-
         var responsesPath = BuildApiPath(baseUri, "responses");
         var responsesProbe = await ProbeJsonScenarioAsync(
             client,
@@ -119,7 +110,16 @@ public sealed partial class ProxyDiagnosticsService
             ParseResponsesPreview,
             cancellationToken);
         var responsesSupported = responsesProbe.ScenarioResult.Success;
-        scenarioResults.Add(responsesProbe.ScenarioResult);
+        List<ProxyProbeScenarioResult> scenarioResults = [responsesProbe.ScenarioResult];
+
+        var anthropicPath = BuildApiPath(baseUri, "messages");
+        var anthropicProbe = await ProbeAnthropicMessagesScenarioAsync(
+            client,
+            anthropicPath,
+            BuildAnthropicMessagesPayload(probeModel),
+            cancellationToken);
+        var anthropicSupported = anthropicProbe.ScenarioResult.Success;
+        scenarioResults.Add(anthropicProbe.ScenarioResult);
 
         var chatSupported = false;
         if (ShouldProbeChatCompletionsForProtocolProbe(anthropicSupported, responsesSupported))

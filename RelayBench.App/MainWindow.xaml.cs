@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -15,7 +14,6 @@ using RelayBench.App.Infrastructure;
 using RelayBench.App.Services;
 using RelayBench.App.ViewModels;
 using RelayBench.App.Views;
-using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 
 namespace RelayBench.App;
@@ -98,15 +96,13 @@ public partial class MainWindow : Window
         Interval = TimeSpan.FromSeconds(1)
     };
     private readonly Dictionary<string, OverlayAnimationState> _overlayAnimations = [];
-    private Forms.NotifyIcon? _notifyIcon;
-    private TrayMenuWindow? _trayMenuWindow;
+    private TrayLifecycleService? _trayLifecycleService;
     private FloatingTokenMeterWindow? _floatingTokenMeterWindow;
     private TokenMeterWindowState? _tokenMeterWindowState;
     private ProxyChartHitRegion? _activeProxyChartHitRegion;
     private MainWindowViewModel? _viewModel;
     private bool _allowWindowClose;
     private bool _isExitRequested;
-    private bool _hasShownTrayHint;
     private bool _isTokenMeterVisible;
     private bool _isTokenMeterRequested;
     private bool _isWindowCloseAnimationRunning;
@@ -147,7 +143,7 @@ public partial class MainWindow : Window
         ApplyRoundedWindowCorners();
         ClampWindowToCurrentWorkArea();
         LoadTokenMeterWindowState();
-        InitializeTrayIcon();
+        InitializeTrayLifecycle();
         _tokenMeterRefreshTimer.Start();
         ApplyOverlayStates(immediate: true);
         UpdateGlobalTaskProgressVisual(immediate: true);
@@ -179,175 +175,27 @@ public partial class MainWindow : Window
         }
     }
 
-    private void InitializeTrayIcon()
+    private void InitializeTrayLifecycle()
     {
-        if (_notifyIcon is not null)
-        {
-            return;
-        }
-
-        _notifyIcon = new Forms.NotifyIcon
-        {
-            Text = "RelayBench",
-            Icon = CreateTrayIcon(),
-            Visible = true
-        };
-        _notifyIcon.MouseDoubleClick += NotifyIcon_OnMouseDoubleClick;
-        _notifyIcon.MouseUp += NotifyIcon_OnMouseUp;
-
-        _notifyIcon.ContextMenuStrip = null;
-        UpdateTrayMenuText();
+        _trayLifecycleService ??= new TrayLifecycleService(
+            this,
+            () => _viewModel?.IsTransparentProxyRunning == true,
+            () => _isTokenMeterVisible,
+            RestoreMainWindow,
+            ToggleTransparentProxyFromTray,
+            ToggleFloatingTokenMeter,
+            ExitFromTrayAsync);
+        _trayLifecycleService.Initialize();
     }
-
-    private void NotifyIcon_OnMouseDoubleClick(object? sender, Forms.MouseEventArgs e)
-    {
-        if (e.Button != Forms.MouseButtons.Left)
-        {
-            return;
-        }
-
-        CloseTrayMenu();
-        RestoreMainWindow(showTransparentProxy: false);
-    }
-
-    private void NotifyIcon_OnMouseUp(object? sender, Forms.MouseEventArgs e)
-    {
-        if (e.Button != Forms.MouseButtons.Right)
-        {
-            return;
-        }
-
-        ShowTrayMenu();
-    }
-
-    private void ShowTrayMenu()
-    {
-        if (!Dispatcher.CheckAccess())
-        {
-            Dispatcher.Invoke(ShowTrayMenu);
-            return;
-        }
-
-        var cursorPositionPixels = Forms.Cursor.Position;
-        var transform = GetDeviceToDipTransform();
-        var cursorPosition = transform.Transform(new Point(cursorPositionPixels.X, cursorPositionPixels.Y));
-        var workArea = GetWorkAreaInDip(cursorPositionPixels, transform);
-
-        if (_trayMenuWindow is { IsVisible: true } visibleMenu)
-        {
-            ApplyTrayMenuState(visibleMenu);
-            visibleMenu.PreparePlacement(cursorPosition, workArea);
-            visibleMenu.Activate();
-            return;
-        }
-
-        TrayMenuWindow menu = new();
-        _trayMenuWindow = menu;
-        menu.OpenMainWindowRequested += (_, _) => RestoreMainWindow(showTransparentProxy: false);
-        menu.ToggleTransparentProxyRequested += (_, _) => ToggleTransparentProxyFromTray();
-        menu.ToggleTokenMeterRequested += (_, _) => ToggleFloatingTokenMeter();
-        menu.OpenLogDirectoryRequested += (_, _) => OpenRelayBenchLogDirectory();
-        menu.ExitRequested += async (_, _) => await ExitFromTrayAsync();
-        menu.Closed += (_, _) =>
-        {
-            if (ReferenceEquals(_trayMenuWindow, menu))
-            {
-                _trayMenuWindow = null;
-            }
-        };
-
-        ApplyTrayMenuState(menu);
-        menu.PreparePlacement(cursorPosition, workArea);
-        menu.Show();
-        menu.Activate();
-    }
-
-    private Matrix GetDeviceToDipTransform()
-    {
-        try
-        {
-            var source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget is not null)
-            {
-                return source.CompositionTarget.TransformFromDevice;
-            }
-        }
-        catch
-        {
-        }
-
-        return Matrix.Identity;
-    }
-
-    private static Rect GetWorkAreaInDip(Drawing.Point cursorPositionPixels, Matrix transformFromDevice)
-    {
-        var workingArea = Forms.Screen.FromPoint(cursorPositionPixels).WorkingArea;
-        var topLeft = transformFromDevice.Transform(new Point(workingArea.Left, workingArea.Top));
-        var bottomRight = transformFromDevice.Transform(new Point(workingArea.Right, workingArea.Bottom));
-        return new Rect(topLeft, bottomRight);
-    }
-
-    private void ApplyTrayMenuState(TrayMenuWindow menu)
-        => menu.ApplyState(
-            _viewModel?.IsTransparentProxyRunning == true,
-            _isTokenMeterVisible);
 
     private void CloseTrayMenu()
-        => _trayMenuWindow?.RequestClose();
+        => _trayLifecycleService?.CloseMenu();
 
     private static bool ShouldReduceMotion()
         => !SystemParameters.ClientAreaAnimation;
 
-    private static Drawing.Icon CreateTrayIcon()
-    {
-        try
-        {
-            var processPath = Environment.ProcessPath;
-            if (!string.IsNullOrWhiteSpace(processPath) && File.Exists(processPath))
-            {
-                return Drawing.Icon.ExtractAssociatedIcon(processPath) ?? Drawing.SystemIcons.Application;
-            }
-        }
-        catch
-        {
-        }
-
-        return Drawing.SystemIcons.Application;
-    }
-
-    private static void OpenRelayBenchLogDirectory()
-    {
-        try
-        {
-            var directory = Path.GetDirectoryName(RelayBenchPaths.StartupLogPath) ?? RelayBenchPaths.RootDirectory;
-            Directory.CreateDirectory(directory);
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = directory,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            AppDiagnosticLog.Write("MainWindow.OpenRelayBenchLogDirectory", ex);
-        }
-    }
-
     private void UpdateTrayMenuText()
-    {
-        var isProxyRunning = _viewModel?.IsTransparentProxyRunning == true;
-        if (_notifyIcon is not null)
-        {
-            _notifyIcon.Text = isProxyRunning
-                ? "RelayBench - 透明代理运行中"
-                : "RelayBench";
-        }
-
-        if (_trayMenuWindow is { IsVisible: true } trayMenuWindow)
-        {
-            ApplyTrayMenuState(trayMenuWindow);
-        }
-    }
+        => _trayLifecycleService?.UpdateState();
 
     private void LoadTokenMeterWindowState()
     {
@@ -634,15 +482,7 @@ public partial class MainWindow : Window
 
         ShowInTaskbar = false;
         Hide();
-        if (!_hasShownTrayHint && _notifyIcon is not null)
-        {
-            _hasShownTrayHint = true;
-            _notifyIcon.ShowBalloonTip(
-                2600,
-                "RelayBench 正在后台运行",
-                "右键托盘图标可退出，双击可恢复主窗口。",
-                Forms.ToolTipIcon.Info);
-        }
+        _trayLifecycleService?.ShowBackgroundHint();
     }
 
     private async Task ExitFromTrayAsync()
@@ -667,20 +507,8 @@ public partial class MainWindow : Window
 
     private void DisposeTrayIcon()
     {
-        if (_trayMenuWindow is not null)
-        {
-            _trayMenuWindow.Close();
-            _trayMenuWindow = null;
-        }
-
-        if (_notifyIcon is null)
-        {
-            return;
-        }
-
-        _notifyIcon.Visible = false;
-        _notifyIcon.Dispose();
-        _notifyIcon = null;
+        _trayLifecycleService?.Dispose();
+        _trayLifecycleService = null;
     }
 
     private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)

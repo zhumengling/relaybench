@@ -1,7 +1,5 @@
 using System.Globalization;
 using System.ComponentModel;
-using System.Security.Cryptography;
-using System.Text;
 using System.Windows;
 using RelayBench.App.Infrastructure;
 using RelayBench.App.Services;
@@ -67,6 +65,19 @@ public sealed partial class MainWindowViewModel
         set => SetProperty(ref _transparentProxyMaxConcurrencyText, value);
     }
 
+    public string TransparentProxyRouteStrategyKey
+    {
+        get => _transparentProxyRouteStrategyKey;
+        set
+        {
+            var normalized = TransparentProxyRouteStrategies.Normalize(value);
+            if (SetProperty(ref _transparentProxyRouteStrategyKey, normalized))
+            {
+                RefreshTransparentProxyRoutePreview();
+            }
+        }
+    }
+
     public bool TransparentProxyEnableFallback
     {
         get => _transparentProxyEnableFallback;
@@ -83,6 +94,30 @@ public sealed partial class MainWindowViewModel
     {
         get => _transparentProxyCacheTtlSecondsText;
         set => SetProperty(ref _transparentProxyCacheTtlSecondsText, value);
+    }
+
+    public string TransparentProxyRequestRetryText
+    {
+        get => _transparentProxyRequestRetryText;
+        set => SetProperty(ref _transparentProxyRequestRetryText, value);
+    }
+
+    public string TransparentProxyMaxRetryIntervalSecondsText
+    {
+        get => _transparentProxyMaxRetryIntervalSecondsText;
+        set => SetProperty(ref _transparentProxyMaxRetryIntervalSecondsText, value);
+    }
+
+    public string TransparentProxySessionAffinityTtlSecondsText
+    {
+        get => _transparentProxySessionAffinityTtlSecondsText;
+        set => SetProperty(ref _transparentProxySessionAffinityTtlSecondsText, value);
+    }
+
+    public string TransparentProxyModelCooldownSecondsText
+    {
+        get => _transparentProxyModelCooldownSecondsText;
+        set => SetProperty(ref _transparentProxyModelCooldownSecondsText, value);
     }
 
     public bool TransparentProxyRewriteModel
@@ -134,6 +169,36 @@ public sealed partial class MainWindowViewModel
     public string TransparentProxyLogExpandToolTip
         => IsTransparentProxyLogExpanded ? "收起日志" : "展开日志";
 
+    public string TransparentProxyLogFilterText
+    {
+        get => _transparentProxyLogFilterText;
+        set
+        {
+            if (SetProperty(ref _transparentProxyLogFilterText, value ?? string.Empty))
+            {
+                RefreshTransparentProxyLogView();
+            }
+        }
+    }
+
+    public TransparentProxyLogEntryViewModel? SelectedTransparentProxyLog
+    {
+        get => _selectedTransparentProxyLog;
+        set
+        {
+            if (SetProperty(ref _selectedTransparentProxyLog, value))
+            {
+                IsTransparentProxyLogDetailOpen = value is not null;
+            }
+        }
+    }
+
+    public bool IsTransparentProxyLogDetailOpen
+    {
+        get => _isTransparentProxyLogDetailOpen;
+        private set => SetProperty(ref _isTransparentProxyLogDetailOpen, value);
+    }
+
     public TransparentProxyRouteEditorItemViewModel? TransparentProxyRouteSettingsItem
     {
         get => _transparentProxyRouteSettingsItem;
@@ -149,6 +214,7 @@ public sealed partial class MainWindowViewModel
             {
                 StartTransparentProxyCommand.RaiseCanExecuteChanged();
                 StopTransparentProxyCommand.RaiseCanExecuteChanged();
+                ApplyTransparentProxyToAppsCommand.RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(TransparentProxyRunStateText));
                 OnPropertyChanged(nameof(TransparentProxyRunStateBrush));
                 NotifyTransparentProxyEndpointChanged();
@@ -269,11 +335,11 @@ public sealed partial class MainWindowViewModel
 
     private async Task StartTransparentProxyAsync()
     {
-        var routes = ParseTransparentProxyRoutes(TransparentProxyRoutesText);
+        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
         if (routes.Count == 0)
         {
             TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromWorkspace();
-            routes = ParseTransparentProxyRoutes(TransparentProxyRoutesText);
+            routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
         }
 
         if (routes.Count == 0)
@@ -297,7 +363,14 @@ public sealed partial class MainWindowViewModel
             ParseBoundedInt(TransparentProxyCacheTtlSecondsText, fallback: 60, min: 1, max: 3600),
             false,
             ProxyIgnoreTlsErrors,
-            ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300));
+            ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300))
+        {
+            RouteStrategy = TransparentProxyRouteStrategyKey,
+            RequestRetry = ParseBoundedInt(TransparentProxyRequestRetryText, fallback: 1, min: 0, max: 5),
+            MaxRetryIntervalSeconds = ParseBoundedInt(TransparentProxyMaxRetryIntervalSecondsText, fallback: 8, min: 1, max: 60),
+            SessionAffinityTtlSeconds = ParseBoundedInt(TransparentProxySessionAffinityTtlSecondsText, fallback: 1800, min: 30, max: 86400),
+            ModelCooldownSeconds = ParseBoundedInt(TransparentProxyModelCooldownSecondsText, fallback: 120, min: 15, max: 1800)
+        };
 
         await _transparentProxyService.StartAsync(config);
         IsTransparentProxyRunning = true;
@@ -325,6 +398,81 @@ public sealed partial class MainWindowViewModel
         }
 
         await StopTransparentProxyAsync();
+    }
+
+    private bool CanApplyTransparentProxyToApps()
+        => !IsBusy;
+
+    private async Task ApplyTransparentProxyToAppsAsync()
+    {
+        if (!IsTransparentProxyRunning)
+        {
+            await StartTransparentProxyAsync();
+        }
+
+        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+        if (routes.Count == 0)
+        {
+            StatusMessage = "透明代理还没有可用路由，暂时不能应用到软件。";
+            return;
+        }
+
+        var model = ResolveTransparentProxyClientDefaultModel(routes);
+        var apiKey = ResolveTransparentProxyClientApiKey(routes);
+        var settings = BuildProxySettings(TransparentProxyLocalEndpoint, apiKey, model);
+        var protocolProbeResult = BuildTransparentProxyClientApplyProbeResult(routes, settings);
+        var selectedTargets = await ChooseClientApplyTargetsAsync(
+            "应用本地透明代理到软件",
+            settings,
+            protocolProbeResult);
+        if (selectedTargets.Count == 0)
+        {
+            StatusMessage = "已取消本地透明代理应用。";
+            return;
+        }
+
+        await ExecuteBusyActionAsync(
+            "正在应用本地透明代理到软件...",
+            async () =>
+            {
+                var endpoint = new ClientApplyEndpoint(
+                    settings.BaseUrl,
+                    settings.ApiKey,
+                    settings.Model,
+                    "RelayBench Transparent Proxy",
+                    null,
+                    protocolProbeResult.PreferredWireApi);
+                var result = await _clientAppConfigApplyService.ApplyAsync(endpoint, selectedTargets);
+
+                CodexChatMergeResult? mergeResult = null;
+                if (ShouldAskCodexChatMerge(selectedTargets, result))
+                {
+                    var shouldMergeChats = await ConfirmCodexChatMergeAsync(
+                        CodexChatMergeTarget.ThirdPartyCustom,
+                        "切到 RelayBench 本地透明代理");
+                    mergeResult = await MergeCodexChatsIfRequestedAsync(
+                        shouldMergeChats,
+                        CodexChatMergeTarget.ThirdPartyCustom);
+                }
+
+                AppendModuleOutput(
+                    "本地透明代理应用到软件",
+                    BuildClientApplyResultSummary(result, mergeResult),
+                    BuildClientApplyResultDetail(
+                        "本地透明代理",
+                        settings.BaseUrl,
+                        settings.ApiKey,
+                        settings.Model,
+                        result,
+                        mergeResult));
+
+                StatusMessage = BuildClientApplyStatusMessage(result, mergeResult);
+                if (HasSucceededTarget(result))
+                {
+                    SaveState();
+                    await RunClientApiDiagnosticsCoreAsync();
+                }
+            });
     }
 
     private Task RefreshTransparentProxyRoutesFromWorkspaceAsync()
@@ -410,7 +558,7 @@ public sealed partial class MainWindowViewModel
         }
 
         var item = TransparentProxyRouteEditorItems.FirstOrDefault(editor =>
-            string.Equals(BuildTransparentProxyRouteId(editor.Name, editor.BaseUrl, editor.Prefix), route.Id, StringComparison.OrdinalIgnoreCase));
+            string.Equals(TransparentProxyRouteTextCodec.BuildRouteId(editor.Name, editor.BaseUrl, editor.Prefix), route.Id, StringComparison.OrdinalIgnoreCase));
         if (item is not null)
         {
             return OpenTransparentProxyRouteSettingsAsync(item);
@@ -484,6 +632,21 @@ public sealed partial class MainWindowViewModel
 
         item.AddModelMapping();
         UpdateTransparentProxyRoutesTextFromEditor();
+        return Task.CompletedTask;
+    }
+
+    private Task ResetTransparentProxyRouteCircuitAsync(TransparentProxyRouteEditorItemViewModel? item)
+    {
+        item ??= TransparentProxyRouteSettingsItem ?? SelectedTransparentProxyRouteEditorItem;
+        if (item is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        var routeId = TransparentProxyRouteTextCodec.BuildRouteId(item.Name, item.BaseUrl, item.Prefix);
+        TransparentProxyStatusSummary = _transparentProxyService.ResetRouteCircuit(routeId)
+            ? $"Route circuit reset: {item.Name}"
+            : $"Route circuit is not active yet: {item.Name}";
         return Task.CompletedTask;
     }
 
@@ -561,11 +724,11 @@ public sealed partial class MainWindowViewModel
             "正在拉取透明代理上游模型并探测协议...",
             async () =>
             {
-                var routes = ParseTransparentProxyRoutes(TransparentProxyRoutesText);
+                var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
                 if (routes.Count == 0)
                 {
                     TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromWorkspace();
-                    routes = ParseTransparentProxyRoutes(TransparentProxyRoutesText);
+                    routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
                 }
 
                 if (routes.Count == 0)
@@ -592,6 +755,43 @@ public sealed partial class MainWindowViewModel
             "透明代理协议探测",
             "探测中",
             6d);
+
+    private Task RunTransparentProxySelfTestAsync()
+        => ExecuteBusyActionAsync(
+            "正在运行透明代理本地自检...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("启动本地 fake upstream", 12d);
+                var result = await _transparentProxySelfTestService.RunAsync(CancellationToken.None);
+                UpdateGlobalTaskProgress("校验协议和缓存", 86d);
+                TransparentProxyProtocolSummary = result.Summary;
+                TransparentProxyStatusSummary = result.Summary;
+                StatusMessage = result.Summary;
+                var createdAt = DateTimeOffset.Now;
+                foreach (var check in result.Checks)
+                {
+                    _allTransparentProxyLogs.Insert(0, new TransparentProxyLogEntryViewModel(new TransparentProxyLogEntry(
+                        createdAt,
+                        check.Passed ? "INFO" : "ERROR",
+                        "SELFTEST",
+                        "/relaybench/self-test",
+                        "local",
+                        check.Passed ? 200 : 500,
+                        0,
+                        check.DisplayText,
+                        "self-test",
+                        $"selftest-{createdAt.ToUnixTimeMilliseconds()}")));
+                }
+
+                RefreshTransparentProxyLogView();
+                if (!result.Success)
+                {
+                    throw new InvalidOperationException(result.Summary);
+                }
+            },
+            "透明代理自检",
+            "本地自检",
+            8d);
 
     private void BeginTransparentProxyProtocolAutoDiscovery(IReadOnlyList<TransparentProxyRoute> routes)
     {
@@ -673,7 +873,24 @@ public sealed partial class MainWindowViewModel
 
     private Task ClearTransparentProxyLogsAsync()
     {
+        _ = _transparentProxyLogStore.ClearAsync();
+        _allTransparentProxyLogs.Clear();
         TransparentProxyLogs.Clear();
+        SelectedTransparentProxyLog = null;
+        IsTransparentProxyLogDetailOpen = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task ExportTransparentProxyLogsAsync()
+    {
+        var exportPath = await _transparentProxyLogStore.ExportCsvAsync(RelayBenchPaths.ExportsDirectory);
+        TransparentProxyStatusSummary = $"Transparent proxy logs exported: {exportPath}";
+    }
+
+    private Task CloseTransparentProxyLogDetailAsync()
+    {
+        SelectedTransparentProxyLog = null;
+        IsTransparentProxyLogDetailOpen = false;
         return Task.CompletedTask;
     }
 
@@ -694,14 +911,20 @@ public sealed partial class MainWindowViewModel
 
     private void LoadTransparentProxyState(AppStateSnapshot snapshot)
     {
-        TransparentProxyPortText = string.IsNullOrWhiteSpace(snapshot.TransparentProxyPortText) ? "17880" : snapshot.TransparentProxyPortText;
-        TransparentProxyRoutesText = snapshot.TransparentProxyRoutesText ?? string.Empty;
-        TransparentProxyRateLimitPerMinuteText = string.IsNullOrWhiteSpace(snapshot.TransparentProxyRateLimitPerMinuteText) ? "60" : snapshot.TransparentProxyRateLimitPerMinuteText;
-        TransparentProxyMaxConcurrencyText = string.IsNullOrWhiteSpace(snapshot.TransparentProxyMaxConcurrencyText) ? "8" : snapshot.TransparentProxyMaxConcurrencyText;
-        TransparentProxyEnableFallback = snapshot.TransparentProxyEnableFallback;
-        TransparentProxyEnableCache = snapshot.TransparentProxyEnableCache;
-        TransparentProxyCacheTtlSecondsText = string.IsNullOrWhiteSpace(snapshot.TransparentProxyCacheTtlSecondsText) ? "60" : snapshot.TransparentProxyCacheTtlSecondsText;
-        TransparentProxyRewriteModel = snapshot.TransparentProxyRewriteModel;
+        var config = _transparentProxyConfigStore.Load(snapshot);
+        TransparentProxyPortText = config.PortText;
+        TransparentProxyRoutesText = config.RoutesText;
+        TransparentProxyRateLimitPerMinuteText = config.RateLimitPerMinuteText;
+        TransparentProxyMaxConcurrencyText = config.MaxConcurrencyText;
+        TransparentProxyRouteStrategyKey = config.RouteStrategyKey;
+        TransparentProxyEnableFallback = config.EnableFallback;
+        TransparentProxyEnableCache = config.EnableCache;
+        TransparentProxyCacheTtlSecondsText = config.CacheTtlSecondsText;
+        TransparentProxyRequestRetryText = config.RequestRetryText;
+        TransparentProxyMaxRetryIntervalSecondsText = config.MaxRetryIntervalSecondsText;
+        TransparentProxySessionAffinityTtlSecondsText = config.SessionAffinityTtlSecondsText;
+        TransparentProxyModelCooldownSecondsText = config.ModelCooldownSecondsText;
+        TransparentProxyRewriteModel = config.RewriteModel;
 
         if (string.IsNullOrWhiteSpace(TransparentProxyRoutesText))
         {
@@ -714,15 +937,28 @@ public sealed partial class MainWindowViewModel
 
     private void ApplyTransparentProxyStateToSnapshot(AppStateSnapshot snapshot)
     {
-        snapshot.TransparentProxyPortText = TransparentProxyPortText;
-        snapshot.TransparentProxyRoutesText = TransparentProxyRoutesText;
-        snapshot.TransparentProxyRateLimitPerMinuteText = TransparentProxyRateLimitPerMinuteText;
-        snapshot.TransparentProxyMaxConcurrencyText = TransparentProxyMaxConcurrencyText;
-        snapshot.TransparentProxyEnableFallback = TransparentProxyEnableFallback;
-        snapshot.TransparentProxyEnableCache = TransparentProxyEnableCache;
-        snapshot.TransparentProxyCacheTtlSecondsText = TransparentProxyCacheTtlSecondsText;
-        snapshot.TransparentProxyRewriteModel = TransparentProxyRewriteModel;
+        var config = CreateTransparentProxyConfigSnapshot();
+        TransparentProxyConfigStore.ApplyToAppState(config, snapshot);
+        _transparentProxyConfigStore.Save(config);
     }
+
+    private TransparentProxyConfigSnapshot CreateTransparentProxyConfigSnapshot()
+        => new()
+        {
+            PortText = TransparentProxyPortText,
+            RoutesText = TransparentProxyRoutesText,
+            RateLimitPerMinuteText = TransparentProxyRateLimitPerMinuteText,
+            MaxConcurrencyText = TransparentProxyMaxConcurrencyText,
+            RouteStrategyKey = TransparentProxyRouteStrategyKey,
+            EnableFallback = TransparentProxyEnableFallback,
+            EnableCache = TransparentProxyEnableCache,
+            CacheTtlSecondsText = TransparentProxyCacheTtlSecondsText,
+            RequestRetryText = TransparentProxyRequestRetryText,
+            MaxRetryIntervalSecondsText = TransparentProxyMaxRetryIntervalSecondsText,
+            SessionAffinityTtlSecondsText = TransparentProxySessionAffinityTtlSecondsText,
+            ModelCooldownSecondsText = TransparentProxyModelCooldownSecondsText,
+            RewriteModel = TransparentProxyRewriteModel
+        };
 
     private async Task<IReadOnlyList<TransparentProxyRoute>> ResolveTransparentProxyRouteProtocolsAsync(
         IReadOnlyList<TransparentProxyRoute> routes,
@@ -736,177 +972,54 @@ public sealed partial class MainWindowViewModel
             return routes;
         }
 
-        List<TransparentProxyRoute> hydratedRoutes = new(routes.Count);
-        var routeIndex = 0;
-        var probedModels = 0;
-        var cachedModels = 0;
-        var skippedRoutes = 0;
-        foreach (var route in routes)
+        var options = new TransparentProxyProtocolDiscoveryOptions(
+            forceProbe,
+            fetchCatalogModels,
+            ProxyIgnoreTlsErrors,
+            ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300),
+            ProxyModel);
+        var progress = new Progress<TransparentProxyProtocolDiscoveryProgress>(item =>
         {
-            routeIndex++;
             if (IsGlobalTaskProgressVisible)
             {
                 UpdateGlobalTaskProgress(
-                    routeIndex,
-                    routes.Count,
-                    fetchCatalogModels ? $"探测 {route.Name}" : "读取协议缓存");
+                    item.CurrentRoute,
+                    item.TotalRoutes,
+                    fetchCatalogModels && !string.IsNullOrWhiteSpace(item.RouteName)
+                        ? $"探测 {item.RouteName}"
+                        : "读取协议缓存");
             }
+        });
+        var result = await _transparentProxyProtocolDiscoveryService.DiscoverAsync(
+            routes,
+            options,
+            progress,
+            cancellationToken);
 
-            var modelNames = fetchCatalogModels
-                ? await FetchTransparentProxyRouteModelsAsync(route, cancellationToken)
-                : BuildTransparentProxyRouteProbeModels(route);
-            var hydratedRoute = route.WithModels(modelNames);
-
-            TransparentProxyProtocolSnapshot? routeSnapshot = null;
-            foreach (var model in modelNames)
-            {
-                var snapshot = await ResolveTransparentProxyModelProtocolAsync(
-                    hydratedRoute,
-                    model,
-                    forceProbe,
-                    cancellationToken);
-                if (snapshot is null)
-                {
-                    continue;
-                }
-
-                if (snapshot.WasProbed)
-                {
-                    probedModels++;
-                }
-                else
-                {
-                    cachedModels++;
-                }
-
-                if (routeSnapshot is null)
-                {
-                    routeSnapshot = snapshot;
-                }
-            }
-
-            if (routeSnapshot is null)
-            {
-                skippedRoutes++;
-                hydratedRoutes.Add(hydratedRoute);
-                continue;
-            }
-
-            _transparentProxyProtocolSnapshots[hydratedRoute.Id] = routeSnapshot;
-            hydratedRoutes.Add(hydratedRoute.WithProtocol(
-                routeSnapshot.PreferredWireApi,
-                routeSnapshot.ChatCompletionsSupported,
-                routeSnapshot.ResponsesSupported,
-                routeSnapshot.AnthropicMessagesSupported,
-                routeSnapshot.CheckedAt));
+        foreach (var snapshot in result.Snapshots)
+        {
+            _transparentProxyProtocolSnapshots[snapshot.Key] = snapshot.Value;
         }
 
         TransparentProxyProtocolSummary =
-            $"协议探测：写入/刷新 {probedModels} 个模型，命中缓存 {cachedModels} 个，跳过 {skippedRoutes} 条路由。优先级 Responses → Anthropic → OpenAI Chat。";
-        return hydratedRoutes;
+            $"协议探测：写入/刷新 {result.ProbedModels} 个模型，命中缓存 {result.CachedModels} 个，跳过 {result.SkippedRoutes} 条路由。优先级 Responses → Anthropic → OpenAI Chat。";
+        return result.HydratedRoutes;
     }
-
-    private async Task<IReadOnlyList<string>> FetchTransparentProxyRouteModelsAsync(
-        TransparentProxyRoute route,
-        CancellationToken cancellationToken)
-    {
-        var fallbackModels = BuildTransparentProxyRouteProbeModels(route);
-        if (string.IsNullOrWhiteSpace(route.ApiKey))
-        {
-            return fallbackModels;
-        }
-
-        var settings = BuildTransparentProxyEndpointSettings(route, route.Models.FirstOrDefault() ?? ProxyModel);
-        var catalog = await _proxyDiagnosticsService.FetchModelsAsync(settings, cancellationToken);
-        await CacheProxyModelCatalogResultAsync(settings, catalog, cancellationToken);
-        if (!catalog.Success)
-        {
-            return fallbackModels;
-        }
-
-        var models = catalog.ModelItems is { Count: > 0 }
-            ? catalog.ModelItems.Select(static item => item.Id)
-            : catalog.Models;
-        return models
-            .Concat(route.Models)
-            .Where(static model => !string.IsNullOrWhiteSpace(model))
-            .Select(static model => model.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-    }
-
-    private static IReadOnlyList<string> BuildTransparentProxyRouteProbeModels(TransparentProxyRoute route)
-        => route.Models.Count == 0
-            ? Array.Empty<string>()
-            : route.Models;
-
-    private async Task<TransparentProxyProtocolSnapshot?> ResolveTransparentProxyModelProtocolAsync(
-        TransparentProxyRoute route,
-        string model,
-        bool forceProbe,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(route.ApiKey) || string.IsNullOrWhiteSpace(model))
-        {
-            return null;
-        }
-
-        if (!forceProbe)
-        {
-            var cached = await _proxyEndpointModelCacheService.TryResolveAsync(
-                route.BaseUrl,
-                route.ApiKey,
-                model,
-                cancellationToken);
-            if (cached is not null &&
-                (cached.ChatCompletionsSupported.HasValue ||
-                 cached.ResponsesSupported.HasValue ||
-                 cached.AnthropicMessagesSupported.HasValue))
-            {
-                return new TransparentProxyProtocolSnapshot(
-                    cached.PreferredWireApi,
-                    cached.ChatCompletionsSupported,
-                    cached.ResponsesSupported,
-                    cached.AnthropicMessagesSupported,
-                    cached.CheckedAt,
-                    WasProbed: false);
-            }
-        }
-
-        var settings = BuildTransparentProxyEndpointSettings(route, model);
-        var result = await _proxyDiagnosticsService.ProbeProtocolAsync(settings, cancellationToken);
-        await _proxyEndpointModelCacheService.SaveProtocolProbeAsync(settings, result, cancellationToken);
-        return new TransparentProxyProtocolSnapshot(
-            result.PreferredWireApi,
-            result.ChatCompletionsSupported,
-            result.ResponsesSupported,
-            result.AnthropicMessagesSupported,
-            result.CheckedAt,
-            WasProbed: true);
-    }
-
-    private ProxyEndpointSettings BuildTransparentProxyEndpointSettings(TransparentProxyRoute route, string model)
-        => new(
-            route.BaseUrl,
-            route.ApiKey,
-            string.IsNullOrWhiteSpace(model) ? "relaybench-proxy" : model,
-            ProxyIgnoreTlsErrors,
-            ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300));
 
     private string BuildTransparentProxyRoutesTextFromWorkspace()
     {
-        List<TransparentProxyRouteSeed> seeds = [];
+        List<TransparentProxyRouteTextSeed> seeds = [];
 
         if (!string.IsNullOrWhiteSpace(ProxyBaseUrl))
         {
-            seeds.Add(new TransparentProxyRouteSeed("当前接口", ProxyBaseUrl, ProxyModel, ProxyApiKey));
+            seeds.Add(new TransparentProxyRouteTextSeed("当前接口", ProxyBaseUrl, ProxyModel, ProxyApiKey));
         }
 
         foreach (var row in ProxyBatchRankingRows
                      .Where(static item => item.IsSelected || item.Rank is > 0 and <= 3)
                      .OrderBy(static item => item.Rank <= 0 ? int.MaxValue : item.Rank))
         {
-            seeds.Add(new TransparentProxyRouteSeed(
+            seeds.Add(new TransparentProxyRouteTextSeed(
                 string.IsNullOrWhiteSpace(row.EntryName) ? $"候选 #{row.Rank}" : row.EntryName,
                 row.BaseUrl,
                 row.Model,
@@ -917,7 +1030,7 @@ public sealed partial class MainWindowViewModel
         {
             var apiKey = string.IsNullOrWhiteSpace(item.EntryApiKey) ? item.SiteGroupApiKey : item.EntryApiKey;
             var model = string.IsNullOrWhiteSpace(item.EntryModel) ? item.SiteGroupModel : item.EntryModel;
-            seeds.Add(new TransparentProxyRouteSeed(
+            seeds.Add(new TransparentProxyRouteTextSeed(
                 string.IsNullOrWhiteSpace(item.EntryName) ? item.DisplayTitle : item.EntryName,
                 item.BaseUrl,
                 model ?? string.Empty,
@@ -931,9 +1044,7 @@ public sealed partial class MainWindowViewModel
             .Take(12)
             .ToArray();
 
-        return string.Join(
-            Environment.NewLine,
-            distinct.Select(static item => $"{EscapeRouteField(item.Name)} | {EscapeRouteField(item.BaseUrl)} | {EscapeRouteField(item.Model)} | {EscapeRouteField(item.ApiKey)}"));
+        return TransparentProxyRouteTextCodec.BuildRoutesTextFromSeeds(distinct);
     }
 
     private void RefreshTransparentProxyRouteEditorItemsFromText()
@@ -952,7 +1063,7 @@ public sealed partial class MainWindowViewModel
             }
 
             TransparentProxyRouteEditorItems.Clear();
-            foreach (var item in ParseTransparentProxyRouteEditorItems(TransparentProxyRoutesText))
+            foreach (var item in TransparentProxyRouteTextCodec.ParseEditorItems(TransparentProxyRoutesText))
             {
                 AttachTransparentProxyRouteEditorItem(item);
                 TransparentProxyRouteEditorItems.Add(item);
@@ -992,7 +1103,7 @@ public sealed partial class MainWindowViewModel
         _isUpdatingTransparentProxyRoutesTextFromEditor = true;
         try
         {
-            TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromEditor();
+            TransparentProxyRoutesText = TransparentProxyRouteTextCodec.BuildRoutesTextFromEditor(TransparentProxyRouteEditorItems);
         }
         finally
         {
@@ -1018,7 +1129,7 @@ public sealed partial class MainWindowViewModel
         {
             foreach (var item in TransparentProxyRouteEditorItems)
             {
-                var id = BuildTransparentProxyRouteId(item.Name, item.BaseUrl, item.Prefix);
+                var id = TransparentProxyRouteTextCodec.BuildRouteId(item.Name, item.BaseUrl, item.Prefix);
                 if (!byId.TryGetValue(id, out var route) || route.Models.Count == 0)
                 {
                     continue;
@@ -1043,99 +1154,9 @@ public sealed partial class MainWindowViewModel
         }
     }
 
-    private string BuildTransparentProxyRoutesTextFromEditor()
-        => string.Join(
-            Environment.NewLine,
-            TransparentProxyRouteEditorItems.Select(static item =>
-            {
-                var prefix = item.IsEnabled ? string.Empty : "# ";
-                return $"{prefix}v2 | {EscapeRouteField(item.Name)} | {EscapeRouteField(item.BaseUrl)} | {EscapeRouteField(item.ApiKey)} | {EscapeRouteField(JoinRouteModels(item.ModelMappings))} | {EscapeRouteField(item.PriorityText)} | {EscapeRouteField(item.Prefix)} | {EscapeRouteField(SerializeHeaders(item.Headers))}";
-            }));
-
-    private static IReadOnlyList<TransparentProxyRouteEditorItemViewModel> ParseTransparentProxyRouteEditorItems(string text)
-    {
-        List<TransparentProxyRouteEditorItemViewModel> items = [];
-        var lines = (text ?? string.Empty)
-            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        foreach (var rawLine in lines)
-        {
-            var line = rawLine.Trim();
-            var isEnabled = true;
-            if (line.StartsWith('#'))
-            {
-                isEnabled = false;
-                line = line[1..].Trim();
-            }
-
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                continue;
-            }
-
-            var parts = line.Split('|').Select(static item => item.Trim()).ToArray();
-            string name;
-            string baseUrl;
-            string model;
-            string apiKey;
-            string priorityText = string.Empty;
-            string routePrefix = string.Empty;
-            string headersText = string.Empty;
-            if (parts.Length >= 8 && string.Equals(parts[0], "v2", StringComparison.OrdinalIgnoreCase))
-            {
-                name = parts[1];
-                baseUrl = parts[2];
-                apiKey = parts[3];
-                model = parts[4];
-                priorityText = parts[5];
-                routePrefix = parts[6];
-                headersText = parts[7].Replace(";", Environment.NewLine, StringComparison.Ordinal);
-            }
-            else if (parts.Length >= 4)
-            {
-                name = parts[0];
-                baseUrl = parts[1];
-                model = parts[2];
-                apiKey = parts[3];
-            }
-            else if (parts.Length == 3)
-            {
-                name = parts[0];
-                baseUrl = parts[1];
-                model = parts[2];
-                apiKey = string.Empty;
-            }
-            else if (parts.Length == 2)
-            {
-                name = $"路由 {items.Count + 1}";
-                baseUrl = parts[0];
-                model = parts[1];
-                apiKey = string.Empty;
-            }
-            else
-            {
-                continue;
-            }
-
-            items.Add(new TransparentProxyRouteEditorItemViewModel
-            {
-                IsEnabled = isEnabled,
-                Name = string.IsNullOrWhiteSpace(name) ? $"路由 {items.Count + 1}" : name,
-                BaseUrl = baseUrl,
-                ModelsText = model.Replace(",", Environment.NewLine, StringComparison.Ordinal),
-                PriorityText = priorityText,
-                Prefix = routePrefix,
-                HeadersText = headersText,
-                ApiKey = apiKey
-            });
-        }
-
-        return items;
-    }
-
     private void RefreshTransparentProxyRoutePreview()
     {
-        var routes = ParseTransparentProxyRoutes(TransparentProxyRoutesText);
+        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
         var metrics = _transparentProxyService.IsRunning
             ? null
             : new TransparentProxyMetricsSnapshot(false, ParseTransparentProxyPort(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [], 0, 0d, null);
@@ -1165,101 +1186,83 @@ public sealed partial class MainWindowViewModel
             : $"已配置 {routes.Count} 路上游，自动选路会综合配置顺序、熔断、错误率和延迟。";
     }
 
-    private IReadOnlyList<TransparentProxyRoute> ParseTransparentProxyRoutes(string text)
-    {
-        List<TransparentProxyRoute> routes = [];
-        var lines = (text ?? string.Empty)
-            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        foreach (var line in lines)
-        {
-            if (line.StartsWith('#'))
-            {
-                continue;
-            }
-
-            var parts = line.Split('|').Select(static item => item.Trim()).ToArray();
-            string name;
-            string baseUrl;
-            string model;
-            string apiKey;
-            string priorityText = string.Empty;
-            string routePrefix = string.Empty;
-            string headersText = string.Empty;
-            if (parts.Length >= 8 && string.Equals(parts[0], "v2", StringComparison.OrdinalIgnoreCase))
-            {
-                name = parts[1];
-                baseUrl = parts[2];
-                apiKey = parts[3];
-                model = parts[4];
-                priorityText = parts[5];
-                routePrefix = parts[6];
-                headersText = parts[7].Replace(";", Environment.NewLine, StringComparison.Ordinal);
-            }
-            else if (parts.Length >= 4)
-            {
-                name = parts[0];
-                baseUrl = parts[1];
-                model = parts[2];
-                apiKey = parts[3];
-            }
-            else if (parts.Length == 3)
-            {
-                name = parts[0];
-                baseUrl = parts[1];
-                model = parts[2];
-                apiKey = string.Empty;
-            }
-            else if (parts.Length == 2)
-            {
-                name = $"路由 {routes.Count + 1}";
-                baseUrl = parts[0];
-                model = parts[1];
-                apiKey = string.Empty;
-            }
-            else
-            {
-                continue;
-            }
-
-            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out _))
-            {
-                continue;
-            }
-
-            name = string.IsNullOrWhiteSpace(name) ? $"路由 {routes.Count + 1}" : name;
-            var modelMappings = SplitRouteModelMappings(model);
-            var models = modelMappings
-                .Select(static mapping => mapping.Name)
-                .Where(static item => !string.IsNullOrWhiteSpace(item))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-            routes.Add(new TransparentProxyRoute(
-                BuildTransparentProxyRouteId(name, baseUrl, routePrefix),
-                name,
-                baseUrl.Trim(),
-                apiKey.Trim(),
-                models.FirstOrDefault() ?? string.Empty,
-                models: models,
-                priority: ParseTransparentProxyPriority(priorityText),
-                prefix: routePrefix,
-                headers: ParseRouteHeaders(headersText),
-                modelMappings: modelMappings));
-        }
-
-        return routes;
-    }
-
     private void OnTransparentProxyLogEmitted(object? sender, TransparentProxyLogEntry entry)
     {
+        _ = _transparentProxyLogStore.AppendAsync(entry);
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
-            TransparentProxyLogs.Insert(0, new TransparentProxyLogEntryViewModel(entry));
-            while (TransparentProxyLogs.Count > 200)
+            _allTransparentProxyLogs.Insert(0, new TransparentProxyLogEntryViewModel(entry));
+            while (_allTransparentProxyLogs.Count > 500)
             {
-                TransparentProxyLogs.RemoveAt(TransparentProxyLogs.Count - 1);
+                _allTransparentProxyLogs.RemoveAt(_allTransparentProxyLogs.Count - 1);
             }
+
+            RefreshTransparentProxyLogView();
         });
+    }
+
+    private async Task LoadTransparentProxyLogsAsync()
+    {
+        try
+        {
+            var entries = await _transparentProxyLogStore.LoadRecentAsync(500);
+            _ = Application.Current.Dispatcher.BeginInvoke(() =>
+            {
+                _allTransparentProxyLogs.Clear();
+                foreach (var entry in entries)
+                {
+                    _allTransparentProxyLogs.Add(new TransparentProxyLogEntryViewModel(entry));
+                }
+
+                RefreshTransparentProxyLogView();
+            });
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("TransparentProxy.LoadLogs", ex);
+        }
+    }
+
+    private void RefreshTransparentProxyLogView()
+    {
+        var filter = TransparentProxyLogFilterText.Trim();
+        var selectedRequestId = SelectedTransparentProxyLog?.RequestId;
+        var rows = _allTransparentProxyLogs
+            .Where(row => MatchesTransparentProxyLogFilter(row, filter))
+            .Take(300)
+            .ToArray();
+
+        TransparentProxyLogs.Clear();
+        foreach (var row in rows)
+        {
+            TransparentProxyLogs.Add(row);
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedRequestId))
+        {
+            SelectedTransparentProxyLog = TransparentProxyLogs.FirstOrDefault(row => string.Equals(row.RequestId, selectedRequestId, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    private static bool MatchesTransparentProxyLogFilter(TransparentProxyLogEntryViewModel row, string filter)
+    {
+        if (string.IsNullOrWhiteSpace(filter))
+        {
+            return true;
+        }
+
+        return Contains(row.Level, filter) ||
+               Contains(row.Method, filter) ||
+               Contains(row.Path, filter) ||
+               Contains(row.ModelName, filter) ||
+               Contains(row.RouteName, filter) ||
+               Contains(row.Message, filter) ||
+               Contains(row.RequestId, filter) ||
+               Contains(row.WireApi, filter) ||
+               Contains(row.AttemptSummary, filter);
+
+        static bool Contains(string value, string keyword)
+            => value?.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
     private void OnTransparentProxyMetricsChanged(object? sender, TransparentProxyMetricsSnapshot snapshot)
@@ -1290,6 +1293,7 @@ public sealed partial class MainWindowViewModel
                 snapshot.LastTokenActivityAt);
             TransparentProxyMetricsSummary =
                 $"请求 {snapshot.TotalRequests}，成功 {snapshot.SuccessRequests}，失败 {snapshot.FailedRequests}，fallback {snapshot.FallbackRequests}，缓存 {snapshot.CacheHits}，限速 {snapshot.RateLimitedRequests}，P50 {snapshot.P50LatencyMs} ms，P95 {snapshot.P95LatencyMs} ms，输出 {FormatCompactTokenCount(snapshot.TotalOutputTokens)} tokens。";
+            TransparentProxyMetricsSummary = $"Requests {snapshot.TotalRequests}, success {snapshot.SuccessRequests}, failed {snapshot.FailedRequests}, fallback {snapshot.FallbackRequests}, local cache {snapshot.CacheHits}, cache entries {snapshot.ResponseCacheEntryCount}/{snapshot.ModelListCacheEntryCount}, prompt sessions {snapshot.PromptSessionCacheEntryCount}, evicted {snapshot.ResponseCacheEvictions}, upstream prompt cache {FormatCompactTokenCount(snapshot.PromptCacheTokens)}, rate limited {snapshot.RateLimitedRequests}, P50 {snapshot.P50LatencyMs} ms, P95 {snapshot.P95LatencyMs} ms, output {FormatCompactTokenCount(snapshot.TotalOutputTokens)} tokens.";
             TransparentProxyStatusSummary = snapshot.IsRunning
                 ? $"运行中：{TransparentProxyLocalEndpoint}，活跃 {snapshot.ActiveRequests}，缓存条目 {snapshot.CacheEntryCount}。"
                 : "本地透明代理未启动。";
@@ -1411,6 +1415,85 @@ public sealed partial class MainWindowViewModel
         return value.ToString(CultureInfo.InvariantCulture);
     }
 
+    private static ProxyEndpointProtocolProbeResult BuildTransparentProxyClientApplyProbeResult(
+        IReadOnlyList<TransparentProxyRoute> routes,
+        ProxyEndpointSettings settings)
+    {
+        var responsesSupported = routes.Any(static route => route.ResponsesSupported != false);
+        var anthropicSupported = routes.Any(static route => route.AnthropicMessagesSupported != false);
+        var chatSupported = routes.Any(static route => route.ChatCompletionsSupported != false);
+        var preferred = responsesSupported
+            ? ProxyWireApiProbeService.ResponsesWireApi
+            : anthropicSupported
+                ? ProxyWireApiProbeService.AnthropicMessagesWireApi
+                : ProxyWireApiProbeService.ChatCompletionsWireApi;
+
+        return new ProxyEndpointProtocolProbeResult(
+            DateTimeOffset.Now,
+            settings.BaseUrl,
+            settings.Model,
+            chatSupported,
+            responsesSupported,
+            anthropicSupported,
+            preferred,
+            "RelayBench 本地透明代理会在本机接管请求，并继续由路由队列负责自动选路、fallback、缓存、限速和脱敏日志。",
+            null);
+    }
+
+    private static string ResolveTransparentProxyClientDefaultModel(IReadOnlyList<TransparentProxyRoute> routes)
+    {
+        foreach (var route in routes
+                     .OrderBy(static item => item.Priority > 0 ? item.Priority : int.MaxValue)
+                     .ThenBy(static item => item.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            foreach (var mapping in route.ModelMappings)
+            {
+                var model = mapping.EffectiveAlias;
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    continue;
+                }
+
+                var prefix = route.Prefix.Trim().Trim('/');
+                return string.IsNullOrWhiteSpace(prefix)
+                    ? model.Trim()
+                    : $"{prefix}/{model.Trim()}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(route.Model))
+            {
+                return route.Model.Trim();
+            }
+        }
+
+        return "relaybench-auto";
+    }
+
+    private string ResolveTransparentProxyClientApiKey(IReadOnlyList<TransparentProxyRoute> routes)
+    {
+        var routeKeys = routes
+            .Select(static route => route.ApiKey?.Trim() ?? string.Empty)
+            .Where(static key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (routeKeys.Length > 0)
+        {
+            return "relaybench-local-proxy";
+        }
+
+        if (!string.IsNullOrWhiteSpace(ProxyApiKey))
+        {
+            return ProxyApiKey.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(ApplicationCenterApiKey))
+        {
+            return ApplicationCenterApiKey.Trim();
+        }
+
+        return "relaybench-local-proxy";
+    }
+
     private int ParseTransparentProxyPort()
         => ParseBoundedInt(TransparentProxyPortText, fallback: 17880, min: 1024, max: 65535);
 
@@ -1420,125 +1503,4 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(TransparentProxyHealthEndpoint));
         OnPropertyChanged(nameof(TransparentProxyStatusSummary));
     }
-
-    private static string EscapeRouteField(string value)
-        => (value ?? string.Empty)
-            .Replace("|", " ", StringComparison.Ordinal)
-            .Replace("\r", " ", StringComparison.Ordinal)
-            .Replace("\n", " ", StringComparison.Ordinal)
-            .Trim();
-
-    private static string JoinRouteModels(IEnumerable<string> models)
-        => string.Join(",", models
-            .Where(static model => !string.IsNullOrWhiteSpace(model))
-            .Select(static model => model.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase));
-
-    private static string JoinRouteModels(IEnumerable<TransparentProxyModelMappingViewModel> models)
-        => string.Join(",", models
-            .Where(static model => !string.IsNullOrWhiteSpace(model.Name))
-            .Select(static model =>
-            {
-                var name = EscapeModelMappingToken(model.Name);
-                var alias = EscapeModelMappingToken(model.Alias);
-                return string.IsNullOrWhiteSpace(alias)
-                    ? name
-                    : $"{name}=>{alias}";
-            })
-            .Where(static model => !string.IsNullOrWhiteSpace(model))
-            .Distinct(StringComparer.OrdinalIgnoreCase));
-
-    private static IReadOnlyList<string> SplitRouteModels(string value)
-        => (value ?? string.Empty)
-            .Split([',', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(static model => !string.IsNullOrWhiteSpace(model))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-    private static IReadOnlyList<TransparentProxyModelMapping> SplitRouteModelMappings(string value)
-    {
-        List<TransparentProxyModelMapping> mappings = [];
-        foreach (var token in (value ?? string.Empty).Split([',', '\r', '\n', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            var name = token;
-            var alias = string.Empty;
-            var separator = token.IndexOf("=>", StringComparison.Ordinal);
-            if (separator < 0)
-            {
-                separator = token.IndexOf("->", StringComparison.Ordinal);
-            }
-
-            if (separator >= 0)
-            {
-                name = token[..separator];
-                alias = token[(separator + 2)..];
-            }
-
-            name = EscapeModelMappingToken(name);
-            alias = EscapeModelMappingToken(alias);
-            if (!string.IsNullOrWhiteSpace(name) &&
-                mappings.All(item => !string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase)))
-            {
-                mappings.Add(new TransparentProxyModelMapping(name, alias));
-            }
-        }
-
-        return mappings;
-    }
-
-    private static string EscapeModelMappingToken(string value)
-        => (value ?? string.Empty)
-            .Replace("|", " ", StringComparison.Ordinal)
-            .Replace(",", " ", StringComparison.Ordinal)
-            .Replace(";", " ", StringComparison.Ordinal)
-            .Replace("\r", " ", StringComparison.Ordinal)
-            .Replace("\n", " ", StringComparison.Ordinal)
-            .Trim();
-
-    private static int ParseTransparentProxyPriority(string value)
-        => int.TryParse((value ?? string.Empty).Trim(), out var priority) ? Math.Max(0, priority) : 0;
-
-    private static string SerializeHeaders(IReadOnlyDictionary<string, string> headers)
-        => string.Join(";", headers
-            .Where(static pair => !string.IsNullOrWhiteSpace(pair.Key))
-            .Select(static pair => $"{pair.Key.Trim()}: {pair.Value?.Trim()}"));
-
-    private static IReadOnlyDictionary<string, string> ParseRouteHeaders(string value)
-    {
-        Dictionary<string, string> headers = new(StringComparer.OrdinalIgnoreCase);
-        foreach (var line in (value ?? string.Empty).Split([';', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            var separator = line.IndexOf(':');
-            if (separator <= 0)
-            {
-                continue;
-            }
-
-            var name = line[..separator].Trim();
-            var headerValue = line[(separator + 1)..].Trim();
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                headers[name] = headerValue;
-            }
-        }
-
-        return headers;
-    }
-
-    private static string BuildTransparentProxyRouteId(string name, string baseUrl, string routeKey)
-    {
-        var input = $"{name}|{baseUrl}|{routeKey}";
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
-        return Convert.ToHexString(hash[..8]);
-    }
-
-    private sealed record TransparentProxyRouteSeed(string Name, string BaseUrl, string Model, string ApiKey);
-
-    private sealed record TransparentProxyProtocolSnapshot(
-        string? PreferredWireApi,
-        bool? ChatCompletionsSupported,
-        bool? ResponsesSupported,
-        bool? AnthropicMessagesSupported,
-        DateTimeOffset CheckedAt,
-        bool WasProbed);
 }

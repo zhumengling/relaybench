@@ -73,6 +73,6 @@ public static class ProxyWireApiProbeService
         var preferredText = string.IsNullOrWhiteSpace(preferredWireApi)
             ? "no preferred wire_api"
             : $"preferred wire_api={preferredWireApi}";
-        return $"Protocol probe model: {model}; {anthropicText}; {responsesText}; {chatText}; {preferredText}.";
+        return $"Protocol probe model: {model}; {responsesText}; {anthropicText}; {chatText}; {preferredText}.";
     }
 }

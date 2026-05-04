@@ -15,6 +15,21 @@ public sealed class TransparentProxyLogEntryViewModel
         StatusCode = entry.StatusCode;
         ElapsedText = entry.ElapsedMs <= 0 ? "-" : $"{entry.ElapsedMs} ms";
         Message = entry.Message;
+        RequestId = string.IsNullOrWhiteSpace(entry.RequestId) ? "-" : entry.RequestId;
+        WireApi = string.IsNullOrWhiteSpace(entry.WireApi) ? "-" : entry.WireApi;
+        AttemptSummary = string.IsNullOrWhiteSpace(entry.AttemptSummary) ? "-" : entry.AttemptSummary;
+        DetailText =
+            $"Time: {entry.Timestamp:yyyy-MM-dd HH:mm:ss zzz}\n" +
+            $"Request ID: {RequestId}\n" +
+            $"Method: {Method}\n" +
+            $"Path: {Path}\n" +
+            $"Model: {ModelName}\n" +
+            $"Route: {RouteName}\n" +
+            $"Wire API: {WireApi}\n" +
+            $"Status: {StatusCode}\n" +
+            $"Elapsed: {ElapsedText}\n" +
+            $"Attempts: {AttemptSummary}\n" +
+            $"Message: {Message}";
     }
 
     public string TimeText { get; }
@@ -34,6 +49,14 @@ public sealed class TransparentProxyLogEntryViewModel
     public string ElapsedText { get; }
 
     public string Message { get; }
+
+    public string RequestId { get; }
+
+    public string WireApi { get; }
+
+    public string AttemptSummary { get; }
+
+    public string DetailText { get; }
 
     public string LevelBrush
         => Level switch

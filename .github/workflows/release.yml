@@ -61,7 +61,7 @@ jobs:
 
           更新内容：
           - 发布 Windows x64 framework-dependent 与 self-contained 安装包。
-          - 保持源码仓库只包含源码、文档和发布自动化配置。
+          - 源码仓库只保留源码、文档和发布自动化配置。
           "@
           }
 

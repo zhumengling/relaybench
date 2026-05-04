@@ -131,6 +131,9 @@ public abstract class AdvancedTestCaseBase : IAdvancedTestCase
         };
     }
 
+    protected static bool IsEndpointUnsupported(AdvancedModelExchange exchange)
+        => exchange.StatusCode is 404 or 405 or 501;
+
     protected static AdvancedErrorKind ClassifyException(Exception exception)
         => exception switch
         {

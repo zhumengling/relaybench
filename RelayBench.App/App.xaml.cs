@@ -13,6 +13,7 @@ public partial class App : Application
     private Mutex? _singleInstanceMutex;
     private SingleInstanceActivationService? _singleInstanceActivationService;
     private bool _ownsSingleInstanceMutex;
+    private bool _startupLogActive;
 
     public App()
     {
@@ -33,6 +34,7 @@ public partial class App : Application
         }
 
         ResetStartupLog();
+        _startupLogActive = true;
         WriteStartupLog("应用启动开始。");
         WriteStartupLog($"应用目录：{AppContext.BaseDirectory}");
         WriteStartupLog($"工作目录：{RelayBenchPaths.RootDirectory}");
@@ -63,7 +65,11 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        WriteStartupLog($"应用退出。Code={e.ApplicationExitCode}");
+        if (_startupLogActive)
+        {
+            WriteStartupLog($"应用退出。Code={e.ApplicationExitCode}");
+        }
+
         DisposeSingleInstanceResources();
         base.OnExit(e);
     }
@@ -172,7 +178,7 @@ public partial class App : Application
 
     private static void ResetStartupLog()
     {
-        TryWriteStartupLog(path => File.WriteAllText(path, string.Empty, new UTF8Encoding(false)));
+        TryWriteStartupLog(path => File.WriteAllText(path, string.Empty, new UTF8Encoding(true)));
     }
 
     private static void WriteStartupLog(string message)

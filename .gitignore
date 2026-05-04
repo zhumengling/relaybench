@@ -19,6 +19,7 @@ docs/superpowers/
 .tmp_stunprobe/
 *.nettest-backup-*
 docs/prototypes/*.png
+_reference/
 
 # IDE / OS
 .vs/

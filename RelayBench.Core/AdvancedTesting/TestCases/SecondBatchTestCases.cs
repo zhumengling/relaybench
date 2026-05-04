@@ -739,6 +739,20 @@ public sealed class EmbeddingsSimilarityTestCase : AdvancedTestCaseBase
                 return BuildResult(exchange, redactor, AdvancedTestStatus.Passed, 100, "POST /embeddings similarity", "Embeddings 相似度排序通过。", checks);
             }
 
+            if (IsEndpointUnsupported(exchange))
+            {
+                return BuildResult(
+                    exchange,
+                    redactor,
+                    AdvancedTestStatus.Skipped,
+                    0,
+                    "POST /embeddings similarity",
+                    "当前入口未暴露 Embeddings 接口，已跳过相似度判定。",
+                    checks,
+                    AdvancedErrorKind.None,
+                    suggestions: new[] { "如需 RAG 相似度测试，请配置支持 /embeddings 的专用模型或路由。" });
+            }
+
             var partial = exchange.IsSuccessStatusCode && shapeOk && dimensionsOk;
             return BuildResult(exchange, redactor, partial ? AdvancedTestStatus.Partial : AdvancedTestStatus.Failed, partial ? 62 : 0, "POST /embeddings similarity", partial ? "Embeddings 返回结构正常，但相似度排序需复核。" : "Embeddings 相似度测试失败。", checks, partial ? AdvancedErrorKind.UsageSuspicious : ClassifyExchange(exchange));
         }, (ex, duration) => BuildExceptionResult(ex, duration, redactor));

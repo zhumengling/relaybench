@@ -30,6 +30,12 @@ public static class RelayBenchPaths
 
     public static string ProxyRelayConfigPath => Path.Combine(ConfigDirectory, "proxy-relay.json");
 
+    public static string TransparentProxyConfigPath => Path.Combine(ConfigDirectory, "transparent-proxy.json");
+
+    public static string TransparentProxyCachePath => Path.Combine(DataDirectory, "transparent-proxy-cache.sqlite");
+
+    public static string TransparentProxyRouteHealthPath => Path.Combine(DataDirectory, "transparent-proxy-route-health.sqlite");
+
     public static string GeoIpCachePath => Path.Combine(DataDirectory, "geoip-cache.json");
 
     public static string ChatSessionsPath => Path.Combine(DataDirectory, "chat-sessions.json");

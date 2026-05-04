@@ -14,6 +14,12 @@ public sealed class TransparentProxyRouteEditorItemViewModel : ObservableObject
     private string _baseUrl = string.Empty;
     private string _modelsText = string.Empty;
     private string _headersText = string.Empty;
+    private string _excludedModelsText = string.Empty;
+    private string _outboundProxy = string.Empty;
+    private string _requestRetryText = string.Empty;
+    private string _maxRetryIntervalSecondsText = string.Empty;
+    private string _modelCooldownSecondsText = string.Empty;
+    private string _payloadRulesText = string.Empty;
     private string _apiKey = string.Empty;
     private bool _isSyncingModelMappings;
 
@@ -85,6 +91,42 @@ public sealed class TransparentProxyRouteEditorItemViewModel : ObservableObject
                 OnPropertyChanged(nameof(Headers));
             }
         }
+    }
+
+    public string ExcludedModelsText
+    {
+        get => _excludedModelsText;
+        set => SetProperty(ref _excludedModelsText, value ?? string.Empty);
+    }
+
+    public string OutboundProxy
+    {
+        get => _outboundProxy;
+        set => SetProperty(ref _outboundProxy, value ?? string.Empty);
+    }
+
+    public string RequestRetryText
+    {
+        get => _requestRetryText;
+        set => SetProperty(ref _requestRetryText, value ?? string.Empty);
+    }
+
+    public string MaxRetryIntervalSecondsText
+    {
+        get => _maxRetryIntervalSecondsText;
+        set => SetProperty(ref _maxRetryIntervalSecondsText, value ?? string.Empty);
+    }
+
+    public string ModelCooldownSecondsText
+    {
+        get => _modelCooldownSecondsText;
+        set => SetProperty(ref _modelCooldownSecondsText, value ?? string.Empty);
+    }
+
+    public string PayloadRulesText
+    {
+        get => _payloadRulesText;
+        set => SetProperty(ref _payloadRulesText, value ?? string.Empty);
     }
 
     public string ApiKey

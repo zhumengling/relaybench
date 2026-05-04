@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Markdig" Version="0.38.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

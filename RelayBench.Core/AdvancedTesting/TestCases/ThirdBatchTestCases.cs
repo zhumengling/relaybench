@@ -592,6 +592,20 @@ public sealed class EmbeddingsEmptyInputTestCase : AdvancedTestCaseBase
                 return BuildResult(exchange, redactor, AdvancedTestStatus.Partial, 74, "POST /embeddings empty input", "Embeddings 空输入被清晰拒绝。", checks, AdvancedErrorKind.InvalidRequest);
             }
 
+            if (IsEndpointUnsupported(exchange))
+            {
+                return BuildResult(
+                    exchange,
+                    redactor,
+                    AdvancedTestStatus.Skipped,
+                    0,
+                    "POST /embeddings empty input",
+                    "当前入口未暴露 Embeddings 接口，已跳过空输入判定。",
+                    checks,
+                    AdvancedErrorKind.None,
+                    suggestions: new[] { "如需 RAG 向量测试，请配置支持 /embeddings 的专用模型或路由。" });
+            }
+
             return BuildResult(exchange, redactor, AdvancedTestStatus.Failed, 0, "POST /embeddings empty input", "Embeddings 空输入处理异常。", checks, ClassifyExchange(exchange));
         }, (ex, duration) => BuildExceptionResult(ex, duration, redactor));
 }
@@ -644,6 +658,20 @@ public sealed class EmbeddingsLongTextTestCase : AdvancedTestCaseBase
             if (clearOverflow)
             {
                 return BuildResult(exchange, redactor, AdvancedTestStatus.Partial, 66, "POST /embeddings long text", "Embeddings 长文本触发清晰长度限制。", checks, AdvancedErrorKind.ContextOverflow);
+            }
+
+            if (IsEndpointUnsupported(exchange))
+            {
+                return BuildResult(
+                    exchange,
+                    redactor,
+                    AdvancedTestStatus.Skipped,
+                    0,
+                    "POST /embeddings long text",
+                    "当前入口未暴露 Embeddings 接口，已跳过长文本向量判定。",
+                    checks,
+                    AdvancedErrorKind.None,
+                    suggestions: new[] { "如需 RAG 长文本向量测试，请配置支持 /embeddings 的专用模型或路由。" });
             }
 
             return BuildResult(exchange, redactor, AdvancedTestStatus.Failed, 0, "POST /embeddings long text", "Embeddings 长文本失败。", checks, ClassifyExchange(exchange));

@@ -9,6 +9,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 {
     public MainWindowViewModel()
     {
+        _transparentProxyProtocolDiscoveryService = new(
+            _proxyDiagnosticsService,
+            _proxyEndpointModelCacheService);
         _transparentProxyService.LogEmitted += OnTransparentProxyLogEmitted;
         _transparentProxyService.MetricsChanged += OnTransparentProxyMetricsChanged;
 
@@ -151,6 +154,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         StopTransparentProxyCommand = new AsyncRelayCommand(StopTransparentProxyAsync, () => IsTransparentProxyRunning, onError: HandleNonFatalCommandException);
         RefreshTransparentProxyRoutesCommand = new AsyncRelayCommand(RefreshTransparentProxyRoutesFromWorkspaceAsync, onError: HandleNonFatalCommandException);
         ProbeTransparentProxyProtocolsCommand = new AsyncRelayCommand(ProbeTransparentProxyProtocolsAsync, CanRun, onError: HandleNonFatalCommandException);
+        RunTransparentProxySelfTestCommand = new AsyncRelayCommand(RunTransparentProxySelfTestAsync, CanRun, onError: HandleNonFatalCommandException);
+        ApplyTransparentProxyToAppsCommand = new AsyncRelayCommand(ApplyTransparentProxyToAppsAsync, CanApplyTransparentProxyToApps, onError: HandleNonFatalCommandException);
         AddTransparentProxyRouteEditorItemCommand = new AsyncRelayCommand(AddTransparentProxyRouteEditorItemAsync, onError: HandleNonFatalCommandException);
         ToggleTransparentProxySettingsDrawerCommand = new AsyncRelayCommand(ToggleTransparentProxySettingsDrawerAsync, onError: HandleNonFatalCommandException);
         ToggleTransparentProxyListenSettingsCommand = new AsyncRelayCommand(ToggleTransparentProxyListenSettingsAsync, onError: HandleNonFatalCommandException);
@@ -159,6 +164,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OpenTransparentProxyRuntimeRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteViewModel?>(OpenTransparentProxyRuntimeRouteSettingsAsync, route => route is not null, onError: HandleNonFatalCommandException);
         CloseTransparentProxyRouteSettingsCommand = new AsyncRelayCommand(CloseTransparentProxyRouteSettingsAsync, onError: HandleNonFatalCommandException);
         FetchTransparentProxyRouteEditorItemModelsCommand = new AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?>(FetchTransparentProxyRouteEditorItemModelsAsync, item => item is not null, onError: HandleNonFatalCommandException);
+        ResetTransparentProxyRouteCircuitCommand = new AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?>(ResetTransparentProxyRouteCircuitAsync, item => item is not null, onError: HandleNonFatalCommandException);
         AddTransparentProxyRouteModelMappingCommand = new AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?>(AddTransparentProxyRouteModelMappingAsync, item => item is not null, onError: HandleNonFatalCommandException);
         RemoveTransparentProxyRouteModelMappingCommand = new AsyncRelayCommand<TransparentProxyModelMappingViewModel?>(RemoveTransparentProxyRouteModelMappingAsync, item => item is not null, onError: HandleNonFatalCommandException);
         RemoveTransparentProxyRouteEditorItemCommand = new AsyncRelayCommand(RemoveTransparentProxyRouteEditorItemAsync, () => SelectedTransparentProxyRouteEditorItem is not null, onError: HandleNonFatalCommandException);
@@ -166,6 +172,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         MoveTransparentProxyRouteEditorItemDownCommand = new AsyncRelayCommand(MoveTransparentProxyRouteEditorItemDownAsync, () => SelectedTransparentProxyRouteEditorItem is not null, onError: HandleNonFatalCommandException);
         CopyTransparentProxyEndpointCommand = new AsyncRelayCommand(CopyTransparentProxyEndpointAsync, onError: HandleNonFatalCommandException);
         ClearTransparentProxyLogsCommand = new AsyncRelayCommand(ClearTransparentProxyLogsAsync);
+        ExportTransparentProxyLogsCommand = new AsyncRelayCommand(ExportTransparentProxyLogsAsync, onError: HandleNonFatalCommandException);
+        CloseTransparentProxyLogDetailCommand = new AsyncRelayCommand(CloseTransparentProxyLogDetailAsync);
         ClearTransparentProxyCacheCommand = new AsyncRelayCommand(ClearTransparentProxyCacheAsync);
         ToggleTransparentProxyLogExpandedCommand = new AsyncRelayCommand(ToggleTransparentProxyLogExpandedAsync);
         RunIpRiskReviewCommand = new AsyncRelayCommand(RunIpRiskReviewWithGlobalProgressAsync, CanRun);
@@ -211,6 +219,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         ResetIpRiskPresentation();
         LoadState();
+        _ = LoadTransparentProxyLogsAsync();
         LoadChatSession();
         RefreshSingleStationInlineChartPlaceholder();
         RefreshFilteredPortScanFindings();

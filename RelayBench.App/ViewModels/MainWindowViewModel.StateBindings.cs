@@ -64,6 +64,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 RunSplitRoutingCommand.RaiseCanExecuteChanged();
                 StartTransparentProxyCommand.RaiseCanExecuteChanged();
                 ProbeTransparentProxyProtocolsCommand.RaiseCanExecuteChanged();
+                RunTransparentProxySelfTestCommand.RaiseCanExecuteChanged();
+                ApplyTransparentProxyToAppsCommand.RaiseCanExecuteChanged();
             }
         }
     }
