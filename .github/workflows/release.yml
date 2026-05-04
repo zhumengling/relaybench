@@ -2,8 +2,6 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -11,10 +9,16 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     name: Build and publish release
     runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
@@ -60,8 +64,16 @@ jobs:
           RelayBench $tag
 
           更新内容：
-          - 发布 Windows x64 framework-dependent 与 self-contained 安装包。
-          - 源码仓库只保留源码、文档和发布自动化配置。
+          - 本地透明代理升级为入口调度器，支持自动选路、fallback、限速、脱敏日志、缓存和实时观测。
+          - 增强 Responses、Anthropic Messages 与 OpenAI Chat Completions 的协议探测和回退顺序。
+          - 引入 CPA 风格的本地短缓存、模型列表缓存、并发请求合并和路由健康持久化。
+          - 数据安全测试套件补齐 Prompt Injection、RAG 数据污染、恶意 URL / 命令诱导与 Jailbreak 等场景。
+          - 优化托盘、悬浮 token 窗、透明代理页面、日志展开、单实例唤醒和启动日志中文编码。
+          - 清理测试工程和临时编译产物，源码仓库只保留项目源码、必要文档和发布配置。
+
+          发布包：
+          - relaybench-$tag-win-x64-framework-dependent.zip
+          - relaybench-$tag-win-x64-self-contained.zip
           "@
           }
 
@@ -85,7 +97,12 @@ jobs:
           )
 
           if (gh release view $tag *> $null) {
-            gh release upload $tag @assets --clobber
+            foreach ($asset in $assets) {
+              $assetName = Split-Path -Leaf $asset
+              gh release delete-asset $tag $assetName --yes *> $null
+            }
+
+            gh release upload $tag @assets
             gh release edit $tag --title $title --notes-file $notes --latest
           }
           else {
