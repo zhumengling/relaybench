@@ -21,8 +21,8 @@ public sealed class ProxyConcurrencyChartRowViewModel
         P95TtftText = IsPending ? "--" : FormatMilliseconds(item.P95TtftMs);
         TokensPerSecondText = IsPending ? "--" : FormatTokensPerSecond(item.AverageTokensPerSecond);
         FailureText = IsPending ? "等待执行" : $"429 {item.RateLimitedCount} 路 5xx {item.ServerErrorCount} 路 TO {item.TimeoutCount}";
-        Verdict = string.IsNullOrWhiteSpace(item.Verdict) ? (IsPending ? "等待中" : "瑙傚療") : item.Verdict;
-        Summary = string.IsNullOrWhiteSpace(item.Summary) ? (IsPending ? "等待该并发档位执行。" : "鏆傛棤鎽樿") : item.Summary;
+        Verdict = string.IsNullOrWhiteSpace(item.Verdict) ? (IsPending ? "等待中" : "观察") : item.Verdict;
+        Summary = string.IsNullOrWhiteSpace(item.Summary) ? (IsPending ? "等待该并发档位执行。" : "暂无摘要") : item.Summary;
         IsStableLimit = item.IsStableLimit;
         IsRateLimitStart = item.IsRateLimitStart;
         IsHighRisk = item.IsHighRisk;

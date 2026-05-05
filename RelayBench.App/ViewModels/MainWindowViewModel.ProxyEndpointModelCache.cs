@@ -1,5 +1,6 @@
 using RelayBench.App.Infrastructure;
 using RelayBench.Core.Models;
+using RelayBench.Core.Services;
 
 namespace RelayBench.App.ViewModels;
 
@@ -50,32 +51,15 @@ public sealed partial class MainWindowViewModel
     {
         try
         {
-            if (!forceProbe)
-            {
-                var cached = await _proxyEndpointModelCacheService.TryResolveAsync(
-                    settings.BaseUrl,
-                    settings.ApiKey,
-                    settings.Model,
-                    cancellationToken);
-                if (cached is not null)
-                {
-                    RememberCodexWireApiCompatibility(
-                        settings.BaseUrl,
-                        settings.ApiKey,
-                        settings.Model,
-                        cached.ResponsesSupported == true || cached.ChatCompletionsSupported == true);
-                }
-
-                if (!string.IsNullOrWhiteSpace(cached?.PreferredWireApi))
-                {
-                    StatusMessage = $"已使用缓存的 Codex 接口链接方式：{cached.PreferredWireApi}。";
-                    return null;
-                }
-            }
-
             StatusMessage = "正在检测接口链接方式（chat / responses / Anthropic messages）...";
-            var result = await _proxyDiagnosticsService.ProbeProtocolAsync(settings, cancellationToken);
-            await _proxyEndpointModelCacheService.SaveProtocolProbeAsync(settings, result, cancellationToken);
+            var resolution = await _proxyEndpointProtocolProbeService.ResolveAsync(
+                settings,
+                new ProxyEndpointProtocolProbeOptions(
+                    ForceProbe: forceProbe,
+                    UseCache: true,
+                    SaveResult: true),
+                cancellationToken);
+            var result = resolution.Result;
             RememberCodexWireApiCompatibility(
                 settings.BaseUrl,
                 settings.ApiKey,
@@ -118,9 +102,12 @@ public sealed partial class MainWindowViewModel
             AppDiagnosticLog.Write("ProxyEndpointModelCache.Resolve", ex);
         }
 
+        var hasCurrentProtocolProbe =
+            (cached?.ProtocolProbeVersion ?? 0) >= ProxyWireApiProbeService.CurrentProtocolProbeVersion;
         return new CodexApplyCachedModelInfo(
             cached?.ContextWindow ?? ResolveProxyModelContextWindow(model),
-            cached is { ResponsesSupported: true } or { ChatCompletionsSupported: true }
+            hasCurrentProtocolProbe &&
+            (cached is { ResponsesSupported: true } or { ChatCompletionsSupported: true })
                 ? cached.PreferredWireApi
                 : null);
     }
@@ -128,4 +115,5 @@ public sealed partial class MainWindowViewModel
     private sealed record CodexApplyCachedModelInfo(
         int? ContextWindow,
         string? PreferredWireApi);
+
 }

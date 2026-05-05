@@ -4,15 +4,23 @@ namespace RelayBench.Core.Services;
 
 public sealed partial class ProxyDiagnosticsService
 {
+    private const int ThroughputBenchmarkTargetOutputTokens = 900;
+    private const int ThroughputBenchmarkMinimumOutputTokens = 512;
+    private const int ThroughputBenchmarkMaximumOutputTokens = 1400;
+    private const int ThroughputBenchmarkShortTargetMinimumTokens = 96;
+    private const int ThroughputBenchmarkShortTargetMaximumTokens = 256;
+
     public async Task<ProxyThroughputBenchmarkResult> RunThroughputBenchmarkAsync(
         ProxyEndpointSettings settings,
         int requestedSampleCount = 3,
-        int requestedSegmentCount = 40,
+        int requestedSegmentCount = 0,
+        ProxyDiagnosticsResult? baselineResult = null,
         IProgress<ProxyThroughputBenchmarkLiveProgress>? liveProgress = null,
         CancellationToken cancellationToken = default)
     {
         var sampleCount = Math.Clamp(requestedSampleCount, 1, 3);
-        var segmentCount = Math.Clamp(requestedSegmentCount, 24, 120);
+        var targetOutputTokens = ResolveThroughputBenchmarkTargetOutputTokens(requestedSegmentCount);
+        var sampleTimeout = ResolveThroughputBenchmarkSampleTimeout(settings.TimeoutSeconds, targetOutputTokens);
 
         if (!TryValidateSettings(settings, out var normalizedSettings, out var baseUri, out var error))
         {
@@ -23,7 +31,7 @@ public sealed partial class ProxyDiagnosticsService
                 sampleCount,
                 0,
                 0,
-                segmentCount,
+                targetOutputTokens,
                 null,
                 null,
                 null,
@@ -36,41 +44,101 @@ public sealed partial class ProxyDiagnosticsService
                 Array.Empty<ProxyStreamingStabilityResult>());
         }
 
+        var throughputSettings = normalizedSettings with
+        {
+            TimeoutSeconds = Math.Max(
+                normalizedSettings.TimeoutSeconds,
+                (int)Math.Ceiling(sampleTimeout.TotalSeconds))
+        };
         List<ProxyStreamingStabilityResult> samples = [];
+        using var client = CreateClient(baseUri, throughputSettings);
+        var transport = await ResolveConversationProbeTransportAsync(
+            client,
+            baseUri,
+            throughputSettings.Model,
+            baselineResult,
+            cancellationToken);
+        client.Timeout = Timeout.InfiniteTimeSpan;
         for (var index = 0; index < sampleCount; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var currentSampleIndex = index + 1;
-            var sample = await RunLongStreamingTestCoreAsync(
-                normalizedSettings,
-                segmentCount,
-                liveSnapshot =>
-                {
-                    liveProgress?.Report(BuildThroughputBenchmarkLiveProgress(
-                        baseUri.ToString(),
-                        normalizedSettings.Model,
-                        sampleCount,
-                        segmentCount,
-                        samples,
-                        currentSampleIndex,
-                        liveSnapshot));
-                },
-                cancellationToken);
+            liveProgress?.Report(BuildThroughputBenchmarkLiveProgress(
+                baseUri.ToString(),
+                throughputSettings.Model,
+                sampleCount,
+                targetOutputTokens,
+                samples,
+                currentSampleIndex,
+                new StreamingReadLiveProgress(
+                    TimeSpan.Zero,
+                    null,
+                    string.Empty,
+                    string.Empty,
+                    0,
+                    false,
+                    null,
+                    false,
+                    0,
+                    null,
+                    null)));
+            cancellationToken.ThrowIfCancellationRequested();
+            ProxyStreamingStabilityResult sample;
+            var sampleStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            using var firstTokenTimeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            firstTokenTimeoutSource.CancelAfter(sampleTimeout);
+            try
+            {
+                sample = await RunThroughputBenchmarkSampleAsync(
+                    client,
+                    baseUri,
+                    throughputSettings,
+                    transport,
+                    targetOutputTokens,
+                    liveSnapshot =>
+                    {
+                        if (liveSnapshot.FirstTokenLatency.HasValue &&
+                            !firstTokenTimeoutSource.IsCancellationRequested)
+                        {
+                            firstTokenTimeoutSource.CancelAfter(Timeout.InfiniteTimeSpan);
+                        }
+
+                        liveProgress?.Report(BuildThroughputBenchmarkLiveProgress(
+                            baseUri.ToString(),
+                            throughputSettings.Model,
+                            sampleCount,
+                            targetOutputTokens,
+                            samples,
+                            currentSampleIndex,
+                            liveSnapshot));
+                    },
+                    firstTokenTimeoutSource.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                sampleStopwatch.Stop();
+                sample = BuildThroughputBenchmarkTimeoutSample(
+                    baseUri.ToString(),
+                    throughputSettings.Model,
+                    targetOutputTokens,
+                    sampleStopwatch.Elapsed);
+            }
+
             samples.Add(sample);
             liveProgress?.Report(BuildCompletedThroughputBenchmarkLiveProgress(
                 baseUri.ToString(),
-                normalizedSettings.Model,
+                throughputSettings.Model,
                 sampleCount,
-                segmentCount,
+                targetOutputTokens,
                 samples,
                 currentSampleIndex));
         }
 
         var successfulSamples = samples
-            .Where(static sample => sample.Success && sample.OutputTokensPerSecond.HasValue)
+            .Where(static sample => sample.Success && ResolveStableThroughput(sample).HasValue)
             .ToArray();
         var outputSamples = successfulSamples
-            .Select(static sample => sample.OutputTokensPerSecond)
+            .Select(static sample => ResolveStableThroughput(sample))
             .Where(static sample => sample.HasValue)
             .Select(static sample => sample!.Value)
             .ToArray();
@@ -102,8 +170,8 @@ public sealed partial class ProxyDiagnosticsService
             .FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value));
 
         var summary = successfulSamples.Length == 0
-            ? $"独立吞吐测试未通过：0/{sampleCount} 轮成功。"
-            : $"独立吞吐测试：{successfulSamples.Length}/{sampleCount} 轮成功，中位数 {FormatThroughput(medianOutput)}，区间 {FormatRange(minimumOutput, maximumOutput)}。";
+            ? $"独立吞吐测试未通过：0/{sampleCount} 轮拿到可用样本。"
+            : $"独立吞吐测试：{successfulSamples.Length}/{sampleCount} 轮可用，首 token 后结果 {FormatThroughput(medianOutput)}，区间 {FormatRange(minimumOutput, maximumOutput)}。";
 
         var errorMessage = successfulSamples.Length == 0
             ? samples.Select(static sample => sample.Error).FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value)) ??
@@ -113,11 +181,11 @@ public sealed partial class ProxyDiagnosticsService
         return new ProxyThroughputBenchmarkResult(
             DateTimeOffset.Now,
             baseUri.ToString(),
-            normalizedSettings.Model,
+            throughputSettings.Model,
             sampleCount,
             samples.Count,
             successfulSamples.Length,
-            segmentCount,
+            targetOutputTokens,
             medianOutput,
             averageOutput,
             minimumOutput,
@@ -132,6 +200,165 @@ public sealed partial class ProxyDiagnosticsService
             traceId);
     }
 
+    private async Task<ProxyStreamingStabilityResult> RunThroughputBenchmarkSampleAsync(
+        HttpClient client,
+        Uri baseUri,
+        ProxyEndpointSettings settings,
+        ConversationProbeTransport transport,
+        int targetOutputTokens,
+        Action<StreamingReadLiveProgress>? liveReporter,
+        CancellationToken cancellationToken)
+    {
+        var path = transport.Path;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, path)
+            {
+                Content = new StringContent(
+                    BuildConversationWirePayload(
+                        transport.WireApi,
+                        BuildThroughputStreamingPayload(settings.Model, targetOutputTokens)),
+                    System.Text.Encoding.UTF8,
+                    "application/json")
+            };
+            transport.RequestConfigurer?.Invoke(request);
+
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            var headers = ExtractInterestingHeaders(response);
+            var requestId = ExtractRequestId(headers);
+            var traceId = ExtractTraceId(headers);
+            if (!response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var bodySample = ExtractBodySample(content);
+                stopwatch.Stop();
+                return new ProxyStreamingStabilityResult(
+                    DateTimeOffset.Now,
+                    baseUri.ToString(),
+                    settings.Model,
+                    false,
+                    false,
+                    targetOutputTokens,
+                    0,
+                    false,
+                    0,
+                    null,
+                    stopwatch.Elapsed,
+                    null,
+                    null,
+                    null,
+                    false,
+                    null,
+                    null,
+                    null,
+                    $"独立吞吐样本失败，状态码 {(int)response.StatusCode}。",
+                    $"POST {path} 返回 {(int)response.StatusCode} {response.ReasonPhrase}。{bodySample}",
+                    bodySample,
+                    requestId,
+                    traceId);
+            }
+
+            var streamingOutcome = await ReadStreamingResponseAsync(
+                response,
+                stopwatch,
+                transport.StreamContentParser,
+                liveReporter,
+                cancellationToken,
+                transport.StreamDoneDetector);
+            var observedOutputTokens = streamingOutcome.OutputTokenCount ?? 0;
+            var stableThroughput = ResolveThroughputBenchmarkSpeed(streamingOutcome);
+            var outputIsReliable = IsReliableThroughputOutput(
+                observedOutputTokens,
+                streamingOutcome.OutputCharacterCount,
+                targetOutputTokens);
+            var success = streamingOutcome.FirstTokenLatency.HasValue &&
+                          stableThroughput.HasValue &&
+                          outputIsReliable &&
+                          (observedOutputTokens > 0 || streamingOutcome.OutputCharacterCount > 0);
+            return new ProxyStreamingStabilityResult(
+                DateTimeOffset.Now,
+                baseUri.ToString(),
+                settings.Model,
+                success,
+                streamingOutcome.ReceivedDone,
+                targetOutputTokens,
+                observedOutputTokens,
+                success,
+                streamingOutcome.ChunkCount,
+                streamingOutcome.FirstTokenLatency,
+                streamingOutcome.Duration,
+                stableThroughput,
+                streamingOutcome.EndToEndTokensPerSecond,
+                streamingOutcome.OutputTokenCount,
+                streamingOutcome.OutputTokenCountEstimated,
+                streamingOutcome.OutputCharacterCount,
+                streamingOutcome.MaxChunkGapMilliseconds,
+                streamingOutcome.AverageChunkGapMilliseconds,
+                success
+                    ? $"独立吞吐样本完成：输出 {observedOutputTokens} token，首 token 后速度 {FormatThroughput(stableThroughput)}。"
+                    : BuildThroughputSampleFailureSummary(observedOutputTokens, targetOutputTokens, stableThroughput),
+                success ? null : BuildThroughputSampleFailureError(observedOutputTokens, targetOutputTokens, stableThroughput),
+                streamingOutcome.Preview,
+                requestId,
+                traceId);
+        }
+        catch (Exception ex) when (!IsCancellationRequestedException(ex, cancellationToken))
+        {
+            stopwatch.Stop();
+            return new ProxyStreamingStabilityResult(
+                DateTimeOffset.Now,
+                baseUri.ToString(),
+                settings.Model,
+                false,
+                false,
+                targetOutputTokens,
+                0,
+                false,
+                0,
+                null,
+                stopwatch.Elapsed,
+                null,
+                null,
+                null,
+                false,
+                null,
+                null,
+                null,
+                "独立吞吐样本执行失败。",
+                ex.Message,
+                null);
+        }
+    }
+
+    private static ProxyStreamingStabilityResult BuildThroughputBenchmarkTimeoutSample(
+        string baseUrl,
+        string model,
+        int targetOutputTokens,
+        TimeSpan elapsed)
+        => new(
+            DateTimeOffset.Now,
+            baseUrl,
+            model,
+            false,
+            false,
+            targetOutputTokens,
+            0,
+            false,
+            0,
+            null,
+            elapsed,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            null,
+            "独立吞吐样本超时。",
+            $"等待首 token 超过 {elapsed.TotalSeconds:F1}s，已跳过本轮。",
+            null);
+
     private static ProxyThroughputBenchmarkLiveProgress BuildThroughputBenchmarkLiveProgress(
         string baseUrl,
         string model,
@@ -142,14 +369,15 @@ public sealed partial class ProxyDiagnosticsService
         StreamingReadLiveProgress liveSnapshot)
     {
         var completedSuccessfulSamples = completedSamples
-            .Where(static sample => sample.Success && sample.OutputTokensPerSecond.HasValue)
+            .Where(static sample => sample.Success && ResolveStableThroughput(sample).HasValue)
             .ToArray();
         var liveOutputSamples = completedSuccessfulSamples
-            .Select(static sample => sample.OutputTokensPerSecond!.Value)
+            .Select(static sample => ResolveStableThroughput(sample)!.Value)
             .ToList();
-        if (liveSnapshot.OutputTokensPerSecond.HasValue)
+        var liveThroughput = ResolveThroughputBenchmarkSpeed(liveSnapshot);
+        if (liveThroughput.HasValue)
         {
-            liveOutputSamples.Add(liveSnapshot.OutputTokensPerSecond.Value);
+            liveOutputSamples.Add(liveThroughput.Value);
         }
 
         var liveMedian = Median(liveOutputSamples);
@@ -157,9 +385,16 @@ public sealed partial class ProxyDiagnosticsService
         var liveMinimum = liveOutputSamples.Count == 0 ? (double?)null : liveOutputSamples.Min();
         var liveMaximum = liveOutputSamples.Count == 0 ? (double?)null : liveOutputSamples.Max();
         var currentTokenText = liveSnapshot.OutputTokenCount?.ToString() ?? "--";
-        var currentSpeedText = FormatThroughput(liveSnapshot.OutputTokensPerSecond);
+        var currentSpeedText = FormatThroughput(liveThroughput);
+        var samplingElapsed = ResolveThroughputSamplingElapsed(liveSnapshot);
+        var phaseText = IsReliableThroughputOutput(
+            liveSnapshot.OutputTokenCount ?? 0,
+            liveSnapshot.OutputCharacterCount,
+            segmentCount)
+            ? "\u91C7\u6837\u4E2D"
+            : "\u9884\u70ED\u4E2D";
         var summary = liveSnapshot.OutputTokensPerSecond.HasValue || liveSnapshot.OutputTokenCount.HasValue
-            ? $"\u72EC\u7ACB\u541E\u5410\u8FDB\u884C\u4E2D\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\uFF0C\u5F53\u524D {currentSpeedText}\uFF0C\u5DF2\u8F93\u51FA {currentTokenText} token\uFF0C\u7528\u65F6 {liveSnapshot.Elapsed.TotalSeconds:F1}s\u3002"
+            ? $"\u72EC\u7ACB\u541E\u5410{phaseText}\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\uFF0C\u751F\u6210\u901F\u7387 {currentSpeedText}\uFF0C\u5DF2\u8F93\u51FA {currentTokenText}/{segmentCount} token\uFF0C\u751F\u6210\u7528\u65F6 {samplingElapsed.TotalSeconds:F1}s\u3002"
             : $"\u72EC\u7ACB\u541E\u5410\u8FDB\u884C\u4E2D\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\u5DF2\u53D1\u9001\u8BF7\u6C42\uFF0C\u7B49\u5F85\u9996 token...";
 
         return new ProxyThroughputBenchmarkLiveProgress(
@@ -171,10 +406,10 @@ public sealed partial class ProxyDiagnosticsService
             completedSuccessfulSamples.Length,
             currentSampleIndex,
             segmentCount,
-            liveSnapshot.Elapsed,
+            samplingElapsed,
             liveSnapshot.OutputTokenCount,
             liveSnapshot.OutputTokenCountEstimated,
-            liveSnapshot.OutputTokensPerSecond,
+            liveThroughput,
             liveSnapshot.EndToEndTokensPerSecond,
             liveMedian,
             liveAverage,
@@ -193,17 +428,19 @@ public sealed partial class ProxyDiagnosticsService
         int currentSampleIndex)
     {
         var completedSuccessfulSamples = completedSamples
-            .Where(static sample => sample.Success && sample.OutputTokensPerSecond.HasValue)
+            .Where(static sample => sample.Success && ResolveStableThroughput(sample).HasValue)
             .ToArray();
         var outputSamples = completedSuccessfulSamples
-            .Select(static sample => sample.OutputTokensPerSecond!.Value)
+            .Select(static sample => ResolveStableThroughput(sample)!.Value)
             .ToArray();
         var currentSample = completedSamples[^1];
+        var currentThroughput = ResolveStableThroughput(currentSample);
+        var currentSampleElapsed = ResolveThroughputSamplingElapsed(currentSample);
         var currentTokenText = currentSample.OutputTokenCount?.ToString() ?? "--";
-        var currentSpeedText = FormatThroughput(currentSample.OutputTokensPerSecond);
+        var currentSpeedText = FormatThroughput(currentThroughput);
         var summary = currentSample.Success
-            ? $"\u72EC\u7ACB\u541E\u5410\u8FDB\u884C\u4E2D\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\u5B8C\u6210\uFF0C\u672C\u8F6E {currentSpeedText}\uFF0C\u8F93\u51FA {currentTokenText} token\u3002"
-            : $"\u72EC\u7ACB\u541E\u5410\u8FDB\u884C\u4E2D\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\u5B8C\u6210\uFF0C\u672C\u8F6E\u5F02\u5E38\u3002";
+            ? $"\u72EC\u7ACB\u541E\u5410\u8FDB\u884C\u4E2D\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\u5B8C\u6210\uFF0C\u672C\u8F6E\u751F\u6210\u901F\u7387 {currentSpeedText}\uFF0C\u8F93\u51FA {currentTokenText} token\u3002"
+            : $"\u72EC\u7ACB\u541E\u5410\u8FDB\u884C\u4E2D\uFF1A\u7B2C {currentSampleIndex}/{requestedSampleCount} \u8F6E\u5B8C\u6210\uFF0C\u672C\u8F6E\u6837\u672C\u504F\u77ED\u6216\u5F02\u5E38\u3002";
 
         return new ProxyThroughputBenchmarkLiveProgress(
             DateTimeOffset.Now,
@@ -214,10 +451,10 @@ public sealed partial class ProxyDiagnosticsService
             completedSuccessfulSamples.Length,
             currentSampleIndex,
             segmentCount,
-            currentSample.TotalDuration ?? TimeSpan.Zero,
+            currentSampleElapsed,
             currentSample.OutputTokenCount,
             currentSample.OutputTokenCountEstimated,
-            currentSample.OutputTokensPerSecond,
+            currentThroughput,
             currentSample.EndToEndTokensPerSecond,
             Median(outputSamples),
             outputSamples.Length == 0 ? (double?)null : outputSamples.Average(),
@@ -225,6 +462,126 @@ public sealed partial class ProxyDiagnosticsService
             outputSamples.Length == 0 ? (double?)null : outputSamples.Max(),
             summary,
             currentSample.Preview);
+    }
+
+    private static int ResolveThroughputBenchmarkTargetOutputTokens(int requestedSegmentCount)
+    {
+        if (requestedSegmentCount <= 0)
+        {
+            return ThroughputBenchmarkTargetOutputTokens;
+        }
+
+        if (requestedSegmentCount < ThroughputBenchmarkMinimumOutputTokens)
+        {
+            return Math.Clamp(
+                requestedSegmentCount * 4,
+                ThroughputBenchmarkShortTargetMinimumTokens,
+                ThroughputBenchmarkShortTargetMaximumTokens);
+        }
+
+        return Math.Clamp(
+            requestedSegmentCount,
+            ThroughputBenchmarkMinimumOutputTokens,
+            ThroughputBenchmarkMaximumOutputTokens);
+    }
+
+    private static TimeSpan ResolveThroughputBenchmarkSampleTimeout(
+        int requestedTimeoutSeconds,
+        int targetOutputTokens)
+    {
+        var requested = Math.Max(requestedTimeoutSeconds, 1);
+        if (targetOutputTokens < ThroughputBenchmarkMinimumOutputTokens)
+        {
+            return TimeSpan.FromSeconds(Math.Clamp(requested, 5, 12));
+        }
+
+        var generationBudget = (int)Math.Ceiling(targetOutputTokens / 10d) + 30;
+        return TimeSpan.FromSeconds(Math.Clamp(Math.Max(requested, generationBudget), 60, 180));
+    }
+
+    private static bool IsReliableThroughputOutput(
+        int outputTokenCount,
+        int outputCharacterCount,
+        int targetOutputTokens)
+        => outputTokenCount > 0 || outputCharacterCount > 0;
+
+    private static double? ResolveStableThroughput(ProxyStreamingStabilityResult sample)
+        => ResolveStableThroughput(sample.OutputTokensPerSecond, sample.EndToEndTokensPerSecond);
+
+    private static double? ResolveStableThroughput(double? outputTokensPerSecond, double? endToEndTokensPerSecond)
+        => outputTokensPerSecond ?? endToEndTokensPerSecond;
+
+    private static double? ResolveThroughputBenchmarkSpeed(StreamingProbeOutcome streamingOutcome)
+    {
+        if (streamingOutcome.OutputTokenCount is > 0 &&
+            streamingOutcome.GenerationDuration is { } generationDuration &&
+            generationDuration > TimeSpan.Zero)
+        {
+            return streamingOutcome.OutputTokenCount.Value / generationDuration.TotalSeconds;
+        }
+
+        return null;
+    }
+
+    private static double? ResolveThroughputBenchmarkSpeed(StreamingReadLiveProgress liveSnapshot)
+    {
+        var samplingElapsed = ResolveThroughputSamplingElapsed(liveSnapshot);
+        if (liveSnapshot.OutputTokenCount is > 0 && samplingElapsed > TimeSpan.Zero)
+        {
+            return liveSnapshot.OutputTokenCount.Value / samplingElapsed.TotalSeconds;
+        }
+
+        return null;
+    }
+
+    private static TimeSpan ResolveThroughputSamplingElapsed(StreamingReadLiveProgress liveSnapshot)
+    {
+        if (!liveSnapshot.FirstTokenLatency.HasValue)
+        {
+            return TimeSpan.Zero;
+        }
+
+        return liveSnapshot.Elapsed > liveSnapshot.FirstTokenLatency.Value
+            ? liveSnapshot.Elapsed - liveSnapshot.FirstTokenLatency.Value
+            : TimeSpan.Zero;
+    }
+
+    private static TimeSpan ResolveThroughputSamplingElapsed(ProxyStreamingStabilityResult sample)
+    {
+        if (!sample.FirstTokenLatency.HasValue || !sample.TotalDuration.HasValue)
+        {
+            return sample.TotalDuration ?? TimeSpan.Zero;
+        }
+
+        return sample.TotalDuration.Value > sample.FirstTokenLatency.Value
+            ? sample.TotalDuration.Value - sample.FirstTokenLatency.Value
+            : TimeSpan.Zero;
+    }
+
+    private static string BuildThroughputSampleFailureSummary(
+        int observedOutputTokens,
+        int targetOutputTokens,
+        double? stableThroughput)
+    {
+        if (stableThroughput is null)
+        {
+            return "独立吞吐样本未拿到可用流式输出。";
+        }
+
+        return $"独立吞吐样本未纳入结果：输出 {observedOutputTokens}/{targetOutputTokens} token，速度样本不可用。";
+    }
+
+    private static string BuildThroughputSampleFailureError(
+        int observedOutputTokens,
+        int targetOutputTokens,
+        double? stableThroughput)
+    {
+        if (stableThroughput is null)
+        {
+            return "未观察到首 token 或可用输出速度。";
+        }
+
+        return $"输出样本速度不可用：{observedOutputTokens}/{targetOutputTokens} token。";
     }
 
     private static double? Median(IReadOnlyList<double> values)

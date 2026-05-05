@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using RelayBench.Core.Services;
 
 namespace RelayBench.App.Services;
@@ -93,28 +92,14 @@ internal sealed class TransparentProxyModelCatalogService
         {
             using var document = JsonDocument.Parse(bytes);
             if (document.RootElement.ValueKind == JsonValueKind.Object &&
-                document.RootElement.TryGetProperty("data", out var data) &&
-                data.ValueKind == JsonValueKind.Array)
+                TryGetModelArray(document.RootElement, out var data))
             {
-                return data.EnumerateArray()
-                    .Select(static item => TryReadStringProperty(item, "id"))
-                    .Where(static id => !string.IsNullOrWhiteSpace(id))
-                    .Select(static id => id!.Trim())
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
+                return ParseModelArray(data);
             }
 
             if (document.RootElement.ValueKind == JsonValueKind.Array)
             {
-                return document.RootElement.EnumerateArray()
-                    .Select(static item =>
-                        item.ValueKind == JsonValueKind.String
-                            ? item.GetString()
-                            : TryReadStringProperty(item, "id"))
-                    .Where(static id => !string.IsNullOrWhiteSpace(id))
-                    .Select(static id => id!.Trim())
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
+                return ParseModelArray(document.RootElement);
             }
         }
         catch
@@ -124,20 +109,53 @@ internal sealed class TransparentProxyModelCatalogService
         return Array.Empty<string>();
     }
 
+    private static bool TryGetModelArray(JsonElement root, out JsonElement array)
+    {
+        foreach (var propertyName in new[] { "data", "models", "items", "result" })
+        {
+            if (root.TryGetProperty(propertyName, out var candidate) &&
+                candidate.ValueKind == JsonValueKind.Array)
+            {
+                array = candidate;
+                return true;
+            }
+        }
+
+        array = default;
+        return false;
+    }
+
+    private static IReadOnlyList<string> ParseModelArray(JsonElement array)
+        => array.EnumerateArray()
+            .Select(static item =>
+                item.ValueKind == JsonValueKind.String
+                    ? item.GetString()
+                    : TryReadStringProperty(item, "id") ??
+                      TryReadStringProperty(item, "name") ??
+                      TryReadStringProperty(item, "model"))
+            .Where(static id => !string.IsNullOrWhiteSpace(id))
+            .Select(static id => id!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
     private static object BuildModelsListPayload(IReadOnlyList<TransparentProxyRouteModels> routeModels)
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var models = routeModels
-            .SelectMany(routeModel => BuildRouteVisibleModels(routeModel.Route, routeModel.Models)
-                .Select(model => new
-                {
-                    id = model,
-                    @object = "model",
-                    created = now,
-                    owned_by = string.IsNullOrWhiteSpace(routeModel.Route.Name) ? "relaybench" : routeModel.Route.Name
-                }))
-            .GroupBy(static item => item.id, StringComparer.OrdinalIgnoreCase)
-            .Select(static group => group.First())
+        var registry = new TransparentProxyModelRegistryService().BuildSnapshot(
+            routeModels.Select(static routeModel => routeModel.Route).ToArray());
+        var models = registry.Pools
+            .Where(static pool => !pool.IsPassThrough)
+            .Select(pool => new
+            {
+                id = pool.ModelName,
+                @object = "model",
+                created = now,
+                owned_by = pool.RouteCount > 1
+                    ? $"relaybench-pool-{pool.RouteCount}"
+                    : string.IsNullOrWhiteSpace(pool.Members.FirstOrDefault()?.RouteName)
+                        ? "relaybench"
+                        : pool.Members.First().RouteName
+            })
             .OrderBy(static item => item.id, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -148,36 +166,6 @@ internal sealed class TransparentProxyModelCatalogService
         };
     }
 
-    private static IEnumerable<string> BuildRouteVisibleModels(TransparentProxyRoute route, IReadOnlyList<string> models)
-    {
-        var mappings = route.ModelMappings.Count > 0
-            ? route.ModelMappings
-            : models.Select(static model => new TransparentProxyModelMapping(model, string.Empty)).ToArray();
-        foreach (var mapping in mappings)
-        {
-            var upstreamModel = mapping.Name.Trim();
-            var model = mapping.EffectiveAlias;
-            if (string.IsNullOrWhiteSpace(model))
-            {
-                continue;
-            }
-
-            if (route.ExcludedModelPatterns.Any(pattern =>
-                    WildcardMatch(upstreamModel, pattern) ||
-                    WildcardMatch(model, pattern)))
-            {
-                continue;
-            }
-
-            yield return model.Trim();
-            var prefix = route.Prefix.Trim().Trim('/');
-            if (!string.IsNullOrWhiteSpace(prefix))
-            {
-                yield return $"{prefix}/{model.Trim()}";
-            }
-        }
-    }
-
     private static string? TryReadStringProperty(JsonElement element, string propertyName)
         => element.ValueKind == JsonValueKind.Object &&
            element.TryGetProperty(propertyName, out var property) &&
@@ -185,21 +173,6 @@ internal sealed class TransparentProxyModelCatalogService
             ? property.GetString()
             : null;
 
-    private static bool WildcardMatch(string value, string pattern)
-    {
-        if (string.IsNullOrWhiteSpace(pattern))
-        {
-            return false;
-        }
-
-        var regex = "^" + string.Concat(pattern.Trim().Select(static character => character switch
-        {
-            '*' => ".*",
-            '?' => ".",
-            _ => Regex.Escape(character.ToString())
-        })) + "$";
-        return Regex.IsMatch(value, regex, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    }
 }
 
 internal sealed record TransparentProxyModelCatalogResult(

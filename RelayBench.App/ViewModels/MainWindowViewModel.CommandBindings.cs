@@ -47,9 +47,28 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<TransparentProxyRouteViewModel> TransparentProxyRoutes { get; } = [];
 
+    public ObservableCollection<TransparentProxyModelPoolViewModel> TransparentProxyModelPools { get; } = [];
+
     public ObservableCollection<TransparentProxyRouteEditorItemViewModel> TransparentProxyRouteEditorItems { get; } = [];
 
     public ObservableCollection<TransparentProxyLogEntryViewModel> TransparentProxyLogs { get; } = [];
+
+    public ObservableCollection<SelectionOption> TransparentProxyLogSourceFilterOptions { get; } =
+    [
+        new("all", "全部入口"),
+        new("unified", "统一出口"),
+        new("codex", "Codex"),
+        new("claude", "Claude"),
+        new("vscode", "VS Code"),
+        new("tunnel", "TUN")
+    ];
+
+    public ObservableCollection<SelectionOption> TransparentProxyVsCodeSettingsScopeOptions { get; } =
+    [
+        new(TransparentProxyVsCodeSettingsScopes.UserKey, "用户级"),
+        new(TransparentProxyVsCodeSettingsScopes.WorkspaceKey, "工作区"),
+        new(TransparentProxyVsCodeSettingsScopes.UserAndWorkspaceKey, "双写")
+    ];
 
     public ObservableCollection<SelectionOption> TransparentProxyRouteStrategyOptions { get; } =
     [
@@ -267,17 +286,71 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand RefreshTransparentProxyRoutesCommand { get; }
 
+    public AsyncRelayCommand GenerateTransparentProxyCandidateRoutesCommand { get; }
+
     public AsyncRelayCommand ProbeTransparentProxyProtocolsCommand { get; }
 
     public AsyncRelayCommand RunTransparentProxySelfTestCommand { get; }
 
     public AsyncRelayCommand ApplyTransparentProxyToAppsCommand { get; }
 
+    public AsyncRelayCommand ApplyTransparentProxyToAdvancedLabCommand { get; }
+
+    public AsyncRelayCommand ImportProxyBatchToTransparentProxyCommand { get; }
+
+    public AsyncRelayCommand ExportTransparentProxyRoutesToBatchCommand { get; }
+
     public AsyncRelayCommand AddTransparentProxyRouteEditorItemCommand { get; }
 
     public AsyncRelayCommand ToggleTransparentProxySettingsDrawerCommand { get; }
 
     public AsyncRelayCommand ToggleTransparentProxyListenSettingsCommand { get; }
+
+    public AsyncRelayCommand ToggleTransparentProxyAppCaptureSettingsCommand { get; }
+
+    public AsyncRelayCommand RefreshTransparentProxyCaptureTargetsCommand { get; }
+
+    public AsyncRelayCommand RefreshTransparentProxyCaptureDiagnosticsCommand { get; }
+
+    public AsyncRelayCommand ToggleTransparentProxyAdvancedNetworkSettingsCommand { get; }
+
+    public AsyncRelayCommand CopyTransparentProxyPowerShellEnvCommand { get; }
+
+    public AsyncRelayCommand CopyTransparentProxyCmdEnvCommand { get; }
+
+    public AsyncRelayCommand PreviewTransparentProxyTunCommand { get; }
+
+    public AsyncRelayCommand StartTransparentProxyTunCommand { get; }
+
+    public AsyncRelayCommand StopTransparentProxyTunCommand { get; }
+
+    public AsyncRelayCommand RestoreTransparentProxyNetworkCommand { get; }
+
+    public AsyncRelayCommand PreviewTransparentProxyCodexCaptureCommand { get; }
+
+    public AsyncRelayCommand ApplyTransparentProxyCodexCaptureCommand { get; }
+
+    public AsyncRelayCommand RestoreTransparentProxyCodexCaptureCommand { get; }
+
+    public AsyncRelayCommand PreviewTransparentProxyCodexLauncherCommand { get; }
+
+    public AsyncRelayCommand WriteTransparentProxyCodexLauncherCommand { get; }
+
+    public AsyncRelayCommand PreviewTransparentProxyClaudeCaptureCommand { get; }
+
+    public AsyncRelayCommand ApplyTransparentProxyClaudeCaptureCommand { get; }
+
+    public AsyncRelayCommand RestoreTransparentProxyClaudeCaptureCommand { get; }
+
+    public AsyncRelayCommand PreviewTransparentProxyClaudeLauncherCommand { get; }
+
+    public AsyncRelayCommand WriteTransparentProxyClaudeLauncherCommand { get; }
+
+    public AsyncRelayCommand PreviewTransparentProxyVsCodeCaptureCommand { get; }
+
+    public AsyncRelayCommand ApplyTransparentProxyVsCodeCaptureCommand { get; }
+
+    public AsyncRelayCommand RestoreTransparentProxyVsCodeCaptureCommand { get; }
 
     public AsyncRelayCommand ToggleTransparentProxyProviderSettingsCommand { get; }
 
@@ -302,6 +375,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand MoveTransparentProxyRouteEditorItemDownCommand { get; }
 
     public AsyncRelayCommand CopyTransparentProxyEndpointCommand { get; }
+
+    public AsyncRelayCommand TestTransparentProxyHealthCommand { get; }
 
     public AsyncRelayCommand ClearTransparentProxyLogsCommand { get; }
 

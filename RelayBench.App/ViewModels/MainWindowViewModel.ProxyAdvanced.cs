@@ -742,10 +742,9 @@ private string _proxyOverviewThroughput = "独立吞吐 --";
             return "--";
         }
 
-        var suffix = sampleCount > 1
-            ? $"（{sampleCount}次均值）"
-            : string.Empty;
-        return $"{value.Value:F1} tok/s{suffix}";
+        _ = estimated;
+        _ = sampleCount;
+        return $"{value.Value:F1} tok/s";
     }
 
     private static string BuildThroughputBenchmarkDigest(ProxyThroughputBenchmarkResult? result)

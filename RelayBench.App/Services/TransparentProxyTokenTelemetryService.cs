@@ -8,10 +8,43 @@ namespace RelayBench.App.Services;
 internal sealed class TransparentProxyTokenTelemetryService
 {
     private readonly object _syncRoot = new();
+    private readonly TransparentProxyUsageEventQueue _usageEvents;
+    private readonly AsyncLocal<TransparentProxyUsageContext?> _usageContext = new();
     private readonly Queue<TransparentProxyTokenSample> _samples = new();
     private long _promptCacheTokens;
     private long _totalOutputTokens;
     private DateTimeOffset? _lastTokenActivityAt;
+
+    public TransparentProxyTokenTelemetryService(TransparentProxyUsageEventQueue? usageEvents = null)
+    {
+        _usageEvents = usageEvents ?? new TransparentProxyUsageEventQueue();
+    }
+
+    public TransparentProxyUsageEventQueue UsageEvents => _usageEvents;
+
+    internal void RestoreUsageContext(TransparentProxyUsageContext? previous)
+        => _usageContext.Value = previous;
+
+    public IDisposable PushUsageContext(
+        string modelName,
+        string routeName,
+        string wireApi,
+        string cacheState,
+        string ingressKind,
+        string sourceApplication,
+        string captureMode)
+    {
+        var previous = _usageContext.Value;
+        _usageContext.Value = new TransparentProxyUsageContext(
+            modelName,
+            routeName,
+            wireApi,
+            cacheState,
+            ingressKind,
+            sourceApplication,
+            captureMode);
+        return new TransparentProxyUsageContextScope(this, previous);
+    }
 
     public void Reset()
     {
@@ -22,6 +55,13 @@ internal sealed class TransparentProxyTokenTelemetryService
             _lastTokenActivityAt = null;
             _samples.Clear();
         }
+
+        _usageEvents.Clear();
+        _usageEvents.Publish(
+            TransparentProxyUsageEventKind.Reset,
+            outputTokenDelta: 0,
+            totalOutputTokens: 0,
+            tokensPerSecond: 0);
     }
 
     public TransparentProxyTokenTelemetrySnapshot CreateSnapshot()
@@ -37,7 +77,10 @@ internal sealed class TransparentProxyTokenTelemetryService
         }
     }
 
-    public bool TrackResponseBody(byte[] body)
+    public TransparentProxyTokenStreamTracker CreateStreamTracker()
+        => new(this);
+
+    public bool TrackResponseBody(byte[] body, bool includePromptCache = true)
     {
         if (body.Length == 0)
         {
@@ -47,7 +90,13 @@ internal sealed class TransparentProxyTokenTelemetryService
         try
         {
             var text = Encoding.UTF8.GetString(body);
-            var changed = TrackPromptCache(text);
+            var changed = includePromptCache && TrackPromptCache(text);
+            if (ChatSseParser.TryExtractOutputTokenCount(text, out var outputTokens))
+            {
+                TrackOutputTokens(outputTokens, estimated: false);
+                return true;
+            }
+
             var assistantText = ModelResponseTextExtractor.TryExtractAssistantText(text);
             return TrackOutputText(assistantText) || changed;
         }
@@ -59,13 +108,12 @@ internal sealed class TransparentProxyTokenTelemetryService
 
     public bool TrackSseData(string data)
     {
-        if (string.IsNullOrWhiteSpace(data) || ChatSseParser.IsDone(data))
+        if (string.IsNullOrWhiteSpace(data))
         {
             return false;
         }
 
-        var changed = TrackOutputText(ChatSseParser.TryExtractDelta(data));
-        return TrackPromptCache(data) || changed;
+        return CreateStreamTracker().TrackSseData(data);
     }
 
     public bool TrackOutputText(string? text)
@@ -76,7 +124,7 @@ internal sealed class TransparentProxyTokenTelemetryService
             return false;
         }
 
-        TrackOutputTokens(tokenCount);
+        TrackOutputTokens(tokenCount, estimated: true);
         return true;
     }
 
@@ -88,20 +136,82 @@ internal sealed class TransparentProxyTokenTelemetryService
             return false;
         }
 
-        Interlocked.Add(ref _promptCacheTokens, Math.Min(cachedTokens, 1_000_000));
+        var promptCacheDelta = Math.Min(cachedTokens, 1_000_000);
+        var totalPromptCacheTokens = Interlocked.Add(ref _promptCacheTokens, promptCacheDelta);
+        var snapshot = CreateSnapshot();
+        _usageEvents.Publish(
+            TransparentProxyUsageEventKind.PromptCache,
+            outputTokenDelta: 0,
+            totalOutputTokens: snapshot.TotalOutputTokens,
+            tokensPerSecond: snapshot.TokensPerSecond,
+            promptCacheTokenDelta: promptCacheDelta,
+            totalPromptCacheTokens: totalPromptCacheTokens,
+            estimated: false,
+            modelName: _usageContext.Value?.ModelName ?? string.Empty,
+            routeName: _usageContext.Value?.RouteName ?? string.Empty,
+            wireApi: _usageContext.Value?.WireApi ?? string.Empty,
+            cacheState: _usageContext.Value?.CacheState ?? string.Empty,
+            ingressKind: _usageContext.Value?.IngressKind ?? string.Empty,
+            sourceApplication: _usageContext.Value?.SourceApplication ?? string.Empty,
+            captureMode: _usageContext.Value?.CaptureMode ?? string.Empty);
         return true;
     }
 
-    private void TrackOutputTokens(int tokenCount)
+    internal void TrackOutputTokens(int tokenCount)
+        => TrackOutputTokens(tokenCount, estimated: false);
+
+    internal void TrackOutputTokens(int tokenCount, bool estimated)
+        => AdjustOutputTokens(
+            tokenCount,
+            estimated,
+            estimated
+                ? TransparentProxyUsageEventKind.OutputDelta
+                : TransparentProxyUsageEventKind.OutputReconciled);
+
+    internal void AdjustOutputTokens(int tokenDelta)
+        => AdjustOutputTokens(tokenDelta, estimated: false, TransparentProxyUsageEventKind.OutputReconciled);
+
+    internal void AdjustOutputTokens(
+        int tokenDelta,
+        bool estimated,
+        TransparentProxyUsageEventKind kind)
     {
+        if (tokenDelta == 0)
+        {
+            return;
+        }
+
         var now = DateTimeOffset.UtcNow;
+        long totalOutputTokens;
+        double tokensPerSecond;
         lock (_syncRoot)
         {
-            _totalOutputTokens += tokenCount;
-            _lastTokenActivityAt = now;
-            _samples.Enqueue(new TransparentProxyTokenSample(now, tokenCount));
+            _totalOutputTokens = Math.Max(0, _totalOutputTokens + tokenDelta);
+            if (tokenDelta > 0)
+            {
+                _lastTokenActivityAt = now;
+                _samples.Enqueue(new TransparentProxyTokenSample(now, tokenDelta));
+            }
+
             PruneSamples(now);
+            totalOutputTokens = _totalOutputTokens;
+            tokensPerSecond = _samples.Sum(static item => item.TokenCount) / 1.25d;
         }
+
+        _usageEvents.Publish(
+            kind,
+            tokenDelta,
+            totalOutputTokens,
+            tokensPerSecond,
+            totalPromptCacheTokens: Interlocked.Read(ref _promptCacheTokens),
+            estimated: estimated,
+            modelName: _usageContext.Value?.ModelName ?? string.Empty,
+            routeName: _usageContext.Value?.RouteName ?? string.Empty,
+            wireApi: _usageContext.Value?.WireApi ?? string.Empty,
+            cacheState: _usageContext.Value?.CacheState ?? string.Empty,
+            ingressKind: _usageContext.Value?.IngressKind ?? string.Empty,
+            sourceApplication: _usageContext.Value?.SourceApplication ?? string.Empty,
+            captureMode: _usageContext.Value?.CaptureMode ?? string.Empty);
     }
 
     private void PruneSamples(DateTimeOffset now)
@@ -133,13 +243,37 @@ internal sealed class TransparentProxyTokenTelemetryService
                         TryReadIntPath(root, "usage", "prompt_tokens_details", "cached_tokens"),
                         TryReadIntPath(root, "response", "usage", "prompt_tokens_details", "cached_tokens")),
                     Math.Max(
-                        TryReadIntPath(root, "usage", "cache_read_input_tokens"),
-                        TryReadIntPath(root, "message", "usage", "cache_read_input_tokens"))));
+                        Math.Max(
+                            TryReadCacheTokenPair(root, "usage"),
+                            TryReadCacheTokenPair(root, "response", "usage")),
+                        Math.Max(
+                            Math.Max(
+                                TryReadCacheTokenPair(root, "message", "usage"),
+                                TryReadIntPath(root, "usageMetadata", "cachedContentTokenCount")),
+                            TryReadIntPath(root, "response", "usageMetadata", "cachedContentTokenCount")))));
         }
         catch
         {
             return 0;
         }
+    }
+
+    private static int TryReadCacheTokenPair(JsonElement root, params string[] path)
+    {
+        var current = root;
+        foreach (var segment in path)
+        {
+            if (current.ValueKind != JsonValueKind.Object ||
+                !current.TryGetProperty(segment, out current))
+            {
+                return 0;
+            }
+        }
+
+        return Math.Min(
+            1_000_000,
+            TryReadIntPath(current, "cache_read_input_tokens") +
+            TryReadIntPath(current, "cache_creation_input_tokens"));
     }
 
     private static int TryReadIntPath(JsonElement root, params string[] path)
@@ -163,6 +297,41 @@ internal sealed class TransparentProxyTokenTelemetryService
     }
 }
 
+internal sealed record TransparentProxyUsageContext(
+    string ModelName,
+    string RouteName,
+    string WireApi,
+    string CacheState,
+    string IngressKind,
+    string SourceApplication,
+    string CaptureMode);
+
+internal sealed class TransparentProxyUsageContextScope : IDisposable
+{
+    private readonly TransparentProxyTokenTelemetryService _owner;
+    private readonly TransparentProxyUsageContext? _previous;
+    private bool _disposed;
+
+    public TransparentProxyUsageContextScope(
+        TransparentProxyTokenTelemetryService owner,
+        TransparentProxyUsageContext? previous)
+    {
+        _owner = owner;
+        _previous = previous;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _owner.RestoreUsageContext(_previous);
+        _disposed = true;
+    }
+}
+
 internal sealed record TransparentProxyTokenTelemetrySnapshot(
     long TotalOutputTokens,
     double TokensPerSecond,
@@ -170,3 +339,48 @@ internal sealed record TransparentProxyTokenTelemetrySnapshot(
     long PromptCacheTokens);
 
 internal sealed record TransparentProxyTokenSample(DateTimeOffset Timestamp, int TokenCount);
+
+internal sealed class TransparentProxyTokenStreamTracker
+{
+    private readonly TransparentProxyTokenTelemetryService _owner;
+    private int _accountedOutputTokens;
+
+    public TransparentProxyTokenStreamTracker(TransparentProxyTokenTelemetryService owner)
+    {
+        _owner = owner;
+    }
+
+    public bool TrackSseData(string data)
+    {
+        if (string.IsNullOrWhiteSpace(data) ||
+            string.Equals(data.Trim(), "[DONE]", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var changed = false;
+        var estimatedDeltaTokens = TokenCountEstimator.EstimateOutputTokens(ChatSseParser.TryExtractDelta(data));
+        if (estimatedDeltaTokens > 0)
+        {
+            _accountedOutputTokens += estimatedDeltaTokens;
+            _owner.TrackOutputTokens(estimatedDeltaTokens, estimated: true);
+            changed = true;
+        }
+
+        if (ChatSseParser.TryExtractOutputTokenCount(data, out var actualOutputTokens))
+        {
+            var reconciliationDelta = actualOutputTokens - _accountedOutputTokens;
+            if (reconciliationDelta != 0)
+            {
+                _owner.AdjustOutputTokens(
+                    reconciliationDelta,
+                    estimated: false,
+                    TransparentProxyUsageEventKind.OutputReconciled);
+                _accountedOutputTokens = actualOutputTokens;
+                changed = true;
+            }
+        }
+
+        return _owner.TrackPromptCache(data) || changed;
+    }
+}

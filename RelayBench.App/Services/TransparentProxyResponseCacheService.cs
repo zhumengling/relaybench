@@ -28,6 +28,9 @@ internal sealed class TransparentProxyResponseCacheService
     private long _misses;
     private long _stores;
     private long _evictions;
+    private long _modelListHits;
+    private long _modelListMisses;
+    private long _leaseWaits;
 
     public TransparentProxyResponseCacheService(string? databasePath = null)
     {
@@ -44,7 +47,11 @@ internal sealed class TransparentProxyResponseCacheService
         Interlocked.Read(ref _hits),
         Interlocked.Read(ref _misses),
         Interlocked.Read(ref _stores),
-        Interlocked.Read(ref _evictions));
+        Interlocked.Read(ref _evictions),
+        Interlocked.Read(ref _modelListHits),
+        Interlocked.Read(ref _modelListMisses),
+        _inFlight.Count,
+        Interlocked.Read(ref _leaseWaits));
 
     public int Clear()
     {
@@ -64,6 +71,9 @@ internal sealed class TransparentProxyResponseCacheService
         Interlocked.Exchange(ref _misses, 0);
         Interlocked.Exchange(ref _stores, 0);
         Interlocked.Exchange(ref _evictions, 0);
+        Interlocked.Exchange(ref _modelListHits, 0);
+        Interlocked.Exchange(ref _modelListMisses, 0);
+        Interlocked.Exchange(ref _leaseWaits, 0);
     }
 
     public void ClearModelsList()
@@ -175,6 +185,11 @@ internal sealed class TransparentProxyResponseCacheService
         }
 
         var gate = _inFlight.GetOrAdd(cacheKey, static _ => new SemaphoreSlim(1, 1));
+        if (gate.CurrentCount == 0)
+        {
+            Interlocked.Increment(ref _leaseWaits);
+        }
+
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         return new TransparentProxyCacheLease(cacheKey, gate, _inFlight);
     }
@@ -190,23 +205,27 @@ internal sealed class TransparentProxyResponseCacheService
         {
             if (!TryGetPersistentModelsList(key, out cache))
             {
+                Interlocked.Increment(ref _modelListMisses);
                 return false;
             }
 
             _modelLists[key] = cache;
             EnforceModelListCapacity(ModelListCacheMaxEntries);
+            Interlocked.Increment(ref _modelListHits);
         }
 
         var now = DateTimeOffset.UtcNow;
         if (now >= cache.ExpiresAt)
         {
             RemoveModelList(key);
+            Interlocked.Increment(ref _modelListMisses);
             return false;
         }
 
         _modelLists[key] = cache with { LastAccessedAt = now };
         UpdatePersistentModelListHit(key, now);
         payload = cache.Payload;
+        Interlocked.Increment(ref _modelListHits);
         return true;
     }
 
@@ -1278,4 +1297,8 @@ internal sealed record TransparentProxyCacheStats(
     long Hits,
     long Misses,
     long Stores,
-    long Evictions);
+    long Evictions,
+    long ModelListHits,
+    long ModelListMisses,
+    int InFlightKeys,
+    long LeaseWaits);

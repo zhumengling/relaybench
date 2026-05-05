@@ -33,6 +33,7 @@ public sealed class ChatConversationService
             var stopwatch = Stopwatch.StartNew();
             TimeSpan? firstTokenLatency = null;
             StringBuilder outputBuilder = new();
+            int? actualOutputTokenCount = null;
 
             using var client = CreateClient(baseUri, normalizedOptions);
             var path = BuildApiPath(baseUri, ToEndpointName(wireApi));
@@ -108,7 +109,7 @@ public sealed class ChatConversationService
                         failureUpdate = new ChatStreamUpdate(
                             ChatStreamUpdateKind.Failed,
                             null,
-                            BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi),
+                            BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi, actualOutputTokenCount),
                             BuildExceptionFailureMessage(ex));
                         break;
                     }
@@ -126,6 +127,11 @@ public sealed class ChatConversationService
                     if (!ChatSseParser.TryReadDataLine(line, out var data))
                     {
                         continue;
+                    }
+
+                    if (ChatSseParser.TryExtractOutputTokenCount(data, out var usageOutputTokens))
+                    {
+                        actualOutputTokenCount = usageOutputTokens;
                     }
 
                     if (ChatSseParser.IsDone(data))
@@ -173,7 +179,7 @@ public sealed class ChatConversationService
                 failureUpdate = new ChatStreamUpdate(
                     ChatStreamUpdateKind.Failed,
                     null,
-                    BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi),
+                    BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi, actualOutputTokenCount),
                     "stream ended before a terminal event.");
 
                 if (outputBuilder.Length > 0)
@@ -190,7 +196,7 @@ public sealed class ChatConversationService
             yield return new ChatStreamUpdate(
                 ChatStreamUpdateKind.Completed,
                 null,
-                BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi),
+                BuildMetrics(stopwatch.Elapsed, firstTokenLatency, outputBuilder.ToString(), wireApi, actualOutputTokenCount),
                 null);
             yield break;
         }
@@ -359,13 +365,18 @@ public sealed class ChatConversationService
         TimeSpan elapsed,
         TimeSpan? firstTokenLatency,
         string outputText,
-        string wireApi)
+        string wireApi,
+        int? actualOutputTokenCount = null)
     {
         var outputCharacters = outputText.Length;
         double? charactersPerSecond = elapsed.TotalSeconds > 0
             ? outputCharacters / elapsed.TotalSeconds
             : null;
-        var outputTokenCount = TokenCountEstimator.EstimateOutputTokens(outputText);
+        var estimatedOutputTokenCount = TokenCountEstimator.EstimateOutputTokens(outputText);
+        var hasActualOutputTokens = actualOutputTokenCount is > 0;
+        var outputTokenCount = hasActualOutputTokens
+            ? actualOutputTokenCount!.Value
+            : estimatedOutputTokenCount;
         var generationDuration = firstTokenLatency is { } ttft && elapsed > ttft
             ? elapsed - ttft
             : elapsed;
@@ -377,7 +388,7 @@ public sealed class ChatConversationService
         return new ChatMessageMetrics(elapsed, firstTokenLatency, outputCharacters, charactersPerSecond, wireApi)
         {
             OutputTokenCount = outputTokenCount,
-            OutputTokenCountEstimated = outputTokenCount > 0,
+            OutputTokenCountEstimated = outputTokenCount > 0 && !hasActualOutputTokens,
             TokenThroughputWindow = throughputWindow > TimeSpan.Zero ? throughputWindow : null,
             TokensPerSecond = tokensPerSecond
         };

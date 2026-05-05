@@ -126,6 +126,7 @@ public sealed partial class ProxyDiagnosticsService
                 {
                     lock (syncRoot)
                     {
+                        outputTokenCount ??= TryExtractOutputTokenCount(payload);
                         receivedDone = true;
                     }
                     break;
@@ -133,6 +134,7 @@ public sealed partial class ProxyDiagnosticsService
 
                 var currentElapsed = stopwatch.Elapsed;
                 string? deltaContent = null;
+                var shouldReportFirstToken = false;
                 try
                 {
                     deltaContent = streamContentParser(payload);
@@ -158,6 +160,7 @@ public sealed partial class ProxyDiagnosticsService
                         if (firstTokenLatency is null)
                         {
                             firstTokenLatency = currentElapsed;
+                            shouldReportFirstToken = true;
                         }
 
                         if (previewBuilder.Length < 240)
@@ -178,6 +181,11 @@ public sealed partial class ProxyDiagnosticsService
                             }
                         }
                     }
+                }
+
+                if (shouldReportFirstToken)
+                {
+                    ReportLiveSnapshot();
                 }
             }
         }

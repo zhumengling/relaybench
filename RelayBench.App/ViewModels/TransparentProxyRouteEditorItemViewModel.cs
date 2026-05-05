@@ -1,4 +1,5 @@
 using RelayBench.App.Infrastructure;
+using RelayBench.App.Services;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -126,8 +127,25 @@ public sealed class TransparentProxyRouteEditorItemViewModel : ObservableObject
     public string PayloadRulesText
     {
         get => _payloadRulesText;
-        set => SetProperty(ref _payloadRulesText, value ?? string.Empty);
+        set
+        {
+            if (SetProperty(ref _payloadRulesText, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(PayloadRulePreview));
+                OnPropertyChanged(nameof(PayloadRuleSummary));
+                OnPropertyChanged(nameof(PayloadRuleStateBrush));
+            }
+        }
     }
+
+    public TransparentProxyPayloadRuleViewModel PayloadRulePreview
+        => TransparentProxyPayloadRuleViewModel.FromText(PayloadRulesText);
+
+    public string PayloadRuleSummary
+        => PayloadRulePreview.Summary;
+
+    public string PayloadRuleStateBrush
+        => PayloadRulePreview.StateBrush;
 
     public string ApiKey
     {
@@ -239,6 +257,41 @@ public sealed class TransparentProxyRouteEditorItemViewModel : ObservableObject
 
             ModelMappings.Clear();
             foreach (var mapping in mappings)
+            {
+                ModelMappings.Add(mapping);
+            }
+        }
+        finally
+        {
+            _isSyncingModelMappings = false;
+        }
+
+        SyncModelsTextFromMappings();
+    }
+
+    public void ReplaceModelMappings(IEnumerable<TransparentProxyModelMapping> mappings)
+    {
+        var normalized = mappings
+            .Where(static mapping => !string.IsNullOrWhiteSpace(mapping.Name))
+            .GroupBy(static mapping => mapping.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(static group => group.First())
+            .Select(static mapping => new TransparentProxyModelMappingViewModel
+            {
+                Name = mapping.Name.Trim(),
+                Alias = mapping.Alias.Trim()
+            })
+            .ToArray();
+
+        _isSyncingModelMappings = true;
+        try
+        {
+            foreach (var existing in ModelMappings)
+            {
+                existing.PropertyChanged -= ModelMapping_OnPropertyChanged;
+            }
+
+            ModelMappings.Clear();
+            foreach (var mapping in normalized)
             {
                 ModelMappings.Add(mapping);
             }

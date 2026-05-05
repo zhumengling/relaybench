@@ -12,20 +12,28 @@ public sealed class AdvancedTestRunner : IAdvancedTestRunner
     private readonly IReadOnlyList<IAdvancedTestCase> _cases;
     private readonly IScoreCalculator _scoreCalculator;
     private readonly ISensitiveDataRedactor _redactor;
+    private readonly ProxyEndpointProtocolProbeService _protocolProbeService;
 
     public AdvancedTestRunner()
-        : this(AdvancedTestCatalog.CreateDefaultCases(), new AdvancedScoreCalculator(), new SensitiveDataRedactor())
+        : this(AdvancedTestCatalog.CreateDefaultCases(), new AdvancedScoreCalculator(), new SensitiveDataRedactor(), new ProxyEndpointProtocolProbeService())
+    {
+    }
+
+    public AdvancedTestRunner(ProxyEndpointProtocolProbeService protocolProbeService)
+        : this(AdvancedTestCatalog.CreateDefaultCases(), new AdvancedScoreCalculator(), new SensitiveDataRedactor(), protocolProbeService)
     {
     }
 
     public AdvancedTestRunner(
         IReadOnlyList<IAdvancedTestCase> cases,
         IScoreCalculator scoreCalculator,
-        ISensitiveDataRedactor redactor)
+        ISensitiveDataRedactor redactor,
+        ProxyEndpointProtocolProbeService? protocolProbeService = null)
     {
         _cases = cases;
         _scoreCalculator = scoreCalculator;
         _redactor = redactor;
+        _protocolProbeService = protocolProbeService ?? new ProxyEndpointProtocolProbeService();
         Suites = AdvancedTestCatalog.CreateDefaultSuites(_cases);
     }
 
@@ -114,7 +122,7 @@ public sealed class AdvancedTestRunner : IAdvancedTestRunner
             _scoreCalculator.Calculate(results));
     }
 
-    private static async Task<AdvancedEndpoint> ResolveEndpointWireApiAsync(
+    private async Task<AdvancedEndpoint> ResolveEndpointWireApiAsync(
         AdvancedEndpoint endpoint,
         IProgress<AdvancedTestProgress>? progress,
         CancellationToken cancellationToken)
@@ -143,16 +151,25 @@ public sealed class AdvancedTestRunner : IAdvancedTestRunner
                 endpoint.Model,
                 endpoint.IgnoreTlsErrors,
                 endpoint.TimeoutSeconds);
-            var probe = await new ProxyDiagnosticsService()
-                .ProbeProtocolAsync(settings, cancellationToken)
+            var resolution = await _protocolProbeService
+                .ResolveAsync(
+                    settings,
+                    new ProxyEndpointProtocolProbeOptions(
+                        ForceProbe: false,
+                        UseCache: true,
+                        SaveResult: true),
+                    cancellationToken)
                 .ConfigureAwait(false);
+            var probe = resolution.Result;
 
             var preferredWireApi = ProxyWireApiProbeService.NormalizeWireApi(probe.PreferredWireApi) ??
                                    ProxyWireApiProbeService.ChatCompletionsWireApi;
             return endpoint with
             {
                 PreferredWireApi = preferredWireApi,
-                ProtocolHint = probe.Summary
+                ProtocolHint = string.IsNullOrWhiteSpace(endpoint.ProtocolHint)
+                    ? probe.Summary
+                    : $"{endpoint.ProtocolHint} | 探测：{probe.Summary}"
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

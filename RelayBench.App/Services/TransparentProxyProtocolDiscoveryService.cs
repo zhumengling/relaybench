@@ -6,39 +6,124 @@ namespace RelayBench.App.Services;
 
 internal sealed class TransparentProxyProtocolDiscoveryService(
     ProxyDiagnosticsService proxyDiagnosticsService,
-    ProxyEndpointModelCacheService modelCacheService)
+    ProxyEndpointModelCacheService modelCacheService,
+    ProxyEndpointProtocolProbeService protocolProbeService)
 {
+    private static readonly TimeSpan MinimumDiscoveryOperationTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan MaximumDiscoveryOperationTimeout = TimeSpan.FromSeconds(20);
+    private const int MaxProtocolProbeModelsPerRoute = 3;
+    private const int MaxConcurrentRouteDiscoveries = 4;
+
     public async Task<TransparentProxyProtocolDiscoveryResult> DiscoverAsync(
         IReadOnlyList<TransparentProxyRoute> routes,
         TransparentProxyProtocolDiscoveryOptions options,
         IProgress<TransparentProxyProtocolDiscoveryProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        var outcomes = new TransparentProxyRouteDiscoveryOutcome?[routes.Count];
+        var completedRoutes = 0;
+        using SemaphoreSlim routeGate = new(ResolveRouteDiscoveryConcurrency(routes.Count));
+
+        var tasks = routes
+            .Select((route, index) => DiscoverRouteWithGateAsync(
+                route,
+                index,
+                routes.Count,
+                options,
+                progress,
+                outcomes,
+                routeGate,
+                () => Interlocked.Increment(ref completedRoutes),
+                cancellationToken))
+            .ToArray();
+        await Task.WhenAll(tasks);
+
         List<TransparentProxyRoute> hydratedRoutes = new(routes.Count);
         Dictionary<string, TransparentProxyProtocolDiscoverySnapshot> snapshots = new(StringComparer.OrdinalIgnoreCase);
-        var routeIndex = 0;
         var probedModels = 0;
         var cachedModels = 0;
         var skippedRoutes = 0;
 
-        foreach (var route in routes)
+        foreach (var outcome in outcomes)
+        {
+            if (outcome is null)
+            {
+                continue;
+            }
+
+            hydratedRoutes.Add(outcome.HydratedRoute);
+            probedModels += outcome.ProbedModels;
+            cachedModels += outcome.CachedModels;
+            if (outcome.Skipped)
+            {
+                skippedRoutes++;
+                continue;
+            }
+
+            if (outcome.Snapshot is not null)
+            {
+                snapshots[outcome.HydratedRoute.Id] = outcome.Snapshot;
+            }
+        }
+
+        return new TransparentProxyProtocolDiscoveryResult(
+            hydratedRoutes,
+            snapshots,
+            probedModels,
+            cachedModels,
+            skippedRoutes);
+    }
+
+    private async Task DiscoverRouteWithGateAsync(
+        TransparentProxyRoute route,
+        int routeIndex,
+        int totalRoutes,
+        TransparentProxyProtocolDiscoveryOptions options,
+        IProgress<TransparentProxyProtocolDiscoveryProgress>? progress,
+        TransparentProxyRouteDiscoveryOutcome?[] outcomes,
+        SemaphoreSlim routeGate,
+        Func<int> markCompleted,
+        CancellationToken cancellationToken)
+    {
+        await routeGate.WaitAsync(cancellationToken);
+        try
+        {
+            outcomes[routeIndex] = await DiscoverRouteAsync(route, routeIndex, options, cancellationToken);
+        }
+        finally
+        {
+            routeGate.Release();
+            var completed = markCompleted();
+            progress?.Report(new TransparentProxyProtocolDiscoveryProgress(
+                completed,
+                totalRoutes,
+                options.FetchCatalogModels ? route.Name : string.Empty));
+        }
+    }
+
+    private async Task<TransparentProxyRouteDiscoveryOutcome> DiscoverRouteAsync(
+        TransparentProxyRoute route,
+        int routeIndex,
+        TransparentProxyProtocolDiscoveryOptions options,
+        CancellationToken cancellationToken)
+    {
+        try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            routeIndex++;
-            progress?.Report(new TransparentProxyProtocolDiscoveryProgress(
-                routeIndex,
-                routes.Count,
-                options.FetchCatalogModels ? route.Name : string.Empty));
-
             var modelNames = options.FetchCatalogModels
-                ? await FetchRouteModelsAsync(route, options, cancellationToken)
+                ? await FetchRouteModelsSafelyAsync(route, options, cancellationToken)
                 : BuildRouteProbeModels(route);
-            var hydratedRoute = route.WithModels(modelNames);
+            var hydratedRoute = modelNames.Count > 0
+                ? route.WithModels(modelNames)
+                : route;
+            var probeModels = BuildProtocolProbeModels(modelNames, route, options);
 
             List<TransparentProxyProtocolDiscoverySnapshot> modelSnapshots = [];
-            foreach (var model in modelNames)
+            var probedModels = 0;
+            var cachedModels = 0;
+            foreach (var model in probeModels)
             {
-                var snapshot = await ResolveModelProtocolAsync(
+                var snapshot = await ResolveModelProtocolSafelyAsync(
                     hydratedRoute,
                     model,
                     options,
@@ -63,26 +148,66 @@ internal sealed class TransparentProxyProtocolDiscoveryService(
             var routeSnapshot = BuildRouteProtocolSnapshot(modelSnapshots);
             if (routeSnapshot is null)
             {
-                skippedRoutes++;
-                hydratedRoutes.Add(hydratedRoute);
-                continue;
+                return new TransparentProxyRouteDiscoveryOutcome(
+                    routeIndex,
+                    hydratedRoute,
+                    null,
+                    probedModels,
+                    cachedModels,
+                    Skipped: true);
             }
 
-            snapshots[hydratedRoute.Id] = routeSnapshot;
-            hydratedRoutes.Add(hydratedRoute.WithProtocol(
-                routeSnapshot.PreferredWireApi,
-                routeSnapshot.ChatCompletionsSupported,
-                routeSnapshot.ResponsesSupported,
-                routeSnapshot.AnthropicMessagesSupported,
-                routeSnapshot.CheckedAt));
+            return new TransparentProxyRouteDiscoveryOutcome(
+                routeIndex,
+                hydratedRoute.WithProtocol(
+                    routeSnapshot.PreferredWireApi,
+                    routeSnapshot.ChatCompletionsSupported,
+                    routeSnapshot.ResponsesSupported,
+                    routeSnapshot.AnthropicMessagesSupported,
+                    routeSnapshot.CheckedAt),
+                routeSnapshot,
+                probedModels,
+                cachedModels,
+                Skipped: false);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("TransparentProxyProtocolDiscovery.DiscoverRoute", ex);
+            return new TransparentProxyRouteDiscoveryOutcome(
+                routeIndex,
+                route,
+                null,
+                ProbedModels: 0,
+                CachedModels: 0,
+                Skipped: true);
+        }
+    }
 
-        return new TransparentProxyProtocolDiscoveryResult(
-            hydratedRoutes,
-            snapshots,
-            probedModels,
-            cachedModels,
-            skippedRoutes);
+    private async Task<IReadOnlyList<string>> FetchRouteModelsSafelyAsync(
+        TransparentProxyRoute route,
+        TransparentProxyProtocolDiscoveryOptions options,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutSource.CancelAfter(ResolveDiscoveryOperationTimeout(options));
+            return await FetchRouteModelsAsync(route, options, timeoutSource.Token);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            AppDiagnosticLog.Write("TransparentProxyProtocolDiscovery.FetchRouteModelsTimeout", ex);
+            return BuildRouteProbeModels(route);
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("TransparentProxyProtocolDiscovery.FetchRouteModels", ex);
+            return BuildRouteProbeModels(route);
+        }
     }
 
     private async Task<IReadOnlyList<string>> FetchRouteModelsAsync(
@@ -120,6 +245,50 @@ internal sealed class TransparentProxyProtocolDiscoveryService(
             ? Array.Empty<string>()
             : route.Models;
 
+    private static IReadOnlyList<string> BuildProtocolProbeModels(
+        IReadOnlyList<string> fetchedModels,
+        TransparentProxyRoute route,
+        TransparentProxyProtocolDiscoveryOptions options)
+    {
+        IReadOnlyList<string> primaryModels = route.Models.Count > 0
+                ? route.Models
+                : string.IsNullOrWhiteSpace(options.FallbackModel)
+                    ? Array.Empty<string>()
+                    : new[] { options.FallbackModel };
+
+        return primaryModels
+            .Concat(fetchedModels)
+            .Where(static model => !string.IsNullOrWhiteSpace(model))
+            .Select(static model => model.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(MaxProtocolProbeModelsPerRoute)
+            .ToArray();
+    }
+
+    private async Task<TransparentProxyProtocolDiscoverySnapshot?> ResolveModelProtocolSafelyAsync(
+        TransparentProxyRoute route,
+        string model,
+        TransparentProxyProtocolDiscoveryOptions options,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutSource.CancelAfter(ResolveDiscoveryOperationTimeout(options));
+            return await ResolveModelProtocolAsync(route, model, options, timeoutSource.Token);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            AppDiagnosticLog.Write("TransparentProxyProtocolDiscovery.ResolveModelProtocolTimeout", ex);
+            return BuildFailedProtocolSnapshot();
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("TransparentProxyProtocolDiscovery.ResolveModelProtocol", ex);
+            return BuildFailedProtocolSnapshot();
+        }
+    }
+
     private async Task<TransparentProxyProtocolDiscoverySnapshot?> ResolveModelProtocolAsync(
         TransparentProxyRoute route,
         string model,
@@ -131,39 +300,48 @@ internal sealed class TransparentProxyProtocolDiscoveryService(
             return null;
         }
 
-        if (!options.ForceProbe)
-        {
-            var cached = await modelCacheService.TryResolveAsync(
-                route.BaseUrl,
-                route.ApiKey,
-                model,
-                cancellationToken);
-            if (cached is not null &&
-                (cached.ChatCompletionsSupported.HasValue ||
-                 cached.ResponsesSupported.HasValue ||
-                 cached.AnthropicMessagesSupported.HasValue))
-            {
-                return new TransparentProxyProtocolDiscoverySnapshot(
-                    cached.PreferredWireApi,
-                    cached.ChatCompletionsSupported,
-                    cached.ResponsesSupported,
-                    cached.AnthropicMessagesSupported,
-                    cached.CheckedAt,
-                    WasProbed: false);
-            }
-        }
-
         var settings = BuildEndpointSettings(route, model, options);
-        var result = await proxyDiagnosticsService.ProbeProtocolAsync(settings, cancellationToken);
-        await SaveProtocolProbeAsync(settings, result, cancellationToken);
+        var resolution = await protocolProbeService.ResolveAsync(
+            settings,
+            new ProxyEndpointProtocolProbeOptions(
+                ForceProbe: options.ForceProbe,
+                UseCache: !options.ForceProbe,
+                SaveResult: true),
+            cancellationToken);
+        var result = resolution.Result;
         return new TransparentProxyProtocolDiscoverySnapshot(
             result.PreferredWireApi,
             result.ChatCompletionsSupported,
             result.ResponsesSupported,
             result.AnthropicMessagesSupported,
             result.CheckedAt,
-            WasProbed: true);
+            WasProbed: !resolution.FromCache);
     }
+
+    private static TransparentProxyProtocolDiscoverySnapshot BuildFailedProtocolSnapshot()
+        => new(
+            PreferredWireApi: null,
+            ChatCompletionsSupported: false,
+            ResponsesSupported: false,
+            AnthropicMessagesSupported: false,
+            CheckedAt: DateTimeOffset.Now,
+            WasProbed: true);
+
+    private static TimeSpan ResolveDiscoveryOperationTimeout(TransparentProxyProtocolDiscoveryOptions options)
+    {
+        var requestedTimeout = TimeSpan.FromSeconds(Math.Max(1, options.UpstreamTimeoutSeconds));
+        if (requestedTimeout < MinimumDiscoveryOperationTimeout)
+        {
+            return MinimumDiscoveryOperationTimeout;
+        }
+
+        return requestedTimeout > MaximumDiscoveryOperationTimeout
+            ? MaximumDiscoveryOperationTimeout
+            : requestedTimeout;
+    }
+
+    private static int ResolveRouteDiscoveryConcurrency(int routeCount)
+        => Math.Clamp(routeCount, 1, MaxConcurrentRouteDiscoveries);
 
     private static ProxyEndpointSettings BuildEndpointSettings(
         TransparentProxyRoute route,
@@ -236,20 +414,6 @@ internal sealed class TransparentProxyProtocolDiscoveryService(
         }
     }
 
-    private async Task SaveProtocolProbeAsync(
-        ProxyEndpointSettings settings,
-        ProxyEndpointProtocolProbeResult result,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await modelCacheService.SaveProtocolProbeAsync(settings, result, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            AppDiagnosticLog.Write("TransparentProxyProtocolDiscovery.SaveProtocolProbe", ex);
-        }
-    }
 }
 
 internal sealed record TransparentProxyProtocolDiscoveryOptions(
@@ -270,6 +434,14 @@ internal sealed record TransparentProxyProtocolDiscoveryResult(
     int ProbedModels,
     int CachedModels,
     int SkippedRoutes);
+
+internal sealed record TransparentProxyRouteDiscoveryOutcome(
+    int RouteIndex,
+    TransparentProxyRoute HydratedRoute,
+    TransparentProxyProtocolDiscoverySnapshot? Snapshot,
+    int ProbedModels,
+    int CachedModels,
+    bool Skipped);
 
 internal sealed record TransparentProxyProtocolDiscoverySnapshot(
     string? PreferredWireApi,

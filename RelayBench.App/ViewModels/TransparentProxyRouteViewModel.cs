@@ -116,9 +116,9 @@ public sealed class TransparentProxyRouteViewModel : ObservableObject
 
     public string EndpointText => ProbeTraceRedactor.RedactUrl(BaseUrl);
 
-    public string ModelPoolText => Models.Count == 0 ? "pass-through" : $"{Models.Count} models";
+    public string ModelPoolText => Models.Count == 0 ? "透传" : $"{Models.Count} 个";
 
-    public string ModelPoolToolTip => Models.Count == 0 ? "Pass through request model." : string.Join("\n", Models.Take(24));
+    public string ModelPoolToolTip => Models.Count == 0 ? "按客户端请求里的 model 透传。" : string.Join("\n", Models.Take(24));
 
     public string PrefixText => string.IsNullOrWhiteSpace(Prefix) ? "-" : $"{Prefix}/";
 

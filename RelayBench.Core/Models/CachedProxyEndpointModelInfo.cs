@@ -8,4 +8,5 @@ public sealed record CachedProxyEndpointModelInfo(
     bool? ChatCompletionsSupported,
     bool? ResponsesSupported,
     bool? AnthropicMessagesSupported,
-    DateTimeOffset CheckedAt);
+    DateTimeOffset CheckedAt,
+    int? ProtocolProbeVersion = null);

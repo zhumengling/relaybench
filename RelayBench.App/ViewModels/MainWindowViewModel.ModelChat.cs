@@ -5,6 +5,7 @@ using Microsoft.Win32;
 using RelayBench.App.Infrastructure;
 using RelayBench.App.Services;
 using RelayBench.Core.Models;
+using RelayBench.Core.Services;
 
 namespace RelayBench.App.ViewModels;
 
@@ -902,11 +903,19 @@ public sealed partial class MainWindowViewModel
         var options = BuildChatRequestOptions(modelName);
         try
         {
-            var preferredWireApi = await _proxyEndpointModelCacheService.TryResolvePreferredWireApiAsync(
-                options.BaseUrl,
-                options.ApiKey,
-                options.Model,
+            var resolution = await _proxyEndpointProtocolProbeService.ResolveAsync(
+                new ProxyEndpointSettings(
+                    options.BaseUrl,
+                    options.ApiKey,
+                    options.Model,
+                    options.IgnoreTlsErrors,
+                    options.TimeoutSeconds),
+                new ProxyEndpointProtocolProbeOptions(
+                    ForceProbe: false,
+                    UseCache: true,
+                    SaveResult: true),
                 cancellationToken);
+            var preferredWireApi = resolution.Result.PreferredWireApi;
             return string.IsNullOrWhiteSpace(preferredWireApi)
                 ? options
                 : options with { PreferredWireApi = preferredWireApi };

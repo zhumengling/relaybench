@@ -55,6 +55,7 @@ public sealed class ProxyEndpointModelCacheService
                 null,
                 null,
                 result.CheckedAt,
+                null,
                 cancellationToken);
 
             var modelItems = result.ModelItems is { Count: > 0 }
@@ -80,6 +81,7 @@ public sealed class ProxyEndpointModelCacheService
                     null,
                     null,
                     result.CheckedAt,
+                    null,
                     cancellationToken);
             }
         }
@@ -130,6 +132,7 @@ public sealed class ProxyEndpointModelCacheService
                 result.ResponsesSupported,
                 result.AnthropicMessagesSupported,
                 result.CheckedAt,
+                ProxyWireApiProbeService.CurrentProtocolProbeVersion,
                 cancellationToken);
             await UpsertAsync(
                 connection,
@@ -142,6 +145,7 @@ public sealed class ProxyEndpointModelCacheService
                 result.ResponsesSupported,
                 result.AnthropicMessagesSupported,
                 result.CheckedAt,
+                ProxyWireApiProbeService.CurrentProtocolProbeVersion,
                 cancellationToken);
         }
         finally
@@ -155,13 +159,10 @@ public sealed class ProxyEndpointModelCacheService
         ProxyDiagnosticsResult result,
         CancellationToken cancellationToken = default)
     {
-        var anthropicSupported = FindScenario(result.ScenarioResults, ProxyProbeScenarioKind.AnthropicMessages)?.Success == true;
-        var responsesSupported = FindScenario(result.ScenarioResults, ProxyProbeScenarioKind.Responses)?.Success == true;
-        var chatSupported = IsOpenAiChatCompletionsSupported(result);
         if (!result.ModelsRequestSucceeded &&
-            !chatSupported &&
-            !responsesSupported &&
-            !anthropicSupported)
+            string.IsNullOrWhiteSpace(result.EffectiveModel) &&
+            string.IsNullOrWhiteSpace(result.RequestedModel) &&
+            string.IsNullOrWhiteSpace(settings.Model))
         {
             return;
         }
@@ -174,10 +175,6 @@ public sealed class ProxyEndpointModelCacheService
         }
 
         var effectiveModel = FirstNonEmpty(result.EffectiveModel, result.RequestedModel, settings.Model);
-        var preferredWireApi = ResolvePreferredWireApi(
-            chatSupported,
-            responsesSupported,
-            anthropicSupported);
 
         await _writeLock.WaitAsync(cancellationToken);
         try
@@ -190,11 +187,12 @@ public sealed class ProxyEndpointModelCacheService
                 apiKeyHash,
                 EndpointModelSentinel,
                 null,
-                preferredWireApi,
-                chatSupported,
-                responsesSupported,
-                anthropicSupported,
+                null,
+                null,
+                null,
+                null,
                 result.CheckedAt,
+                null,
                 cancellationToken);
 
             var models = result.SampleModels
@@ -210,11 +208,12 @@ public sealed class ProxyEndpointModelCacheService
                     apiKeyHash,
                     model,
                     ModelContextWindowCatalog.ResolveContextWindow(model),
-                    preferredWireApi,
-                    chatSupported,
-                    responsesSupported,
-                    anthropicSupported,
+                    null,
+                    null,
+                    null,
+                    null,
                     result.CheckedAt,
+                    null,
                     cancellationToken);
             }
         }
@@ -285,6 +284,11 @@ public sealed class ProxyEndpointModelCacheService
         CancellationToken cancellationToken = default)
     {
         var cached = await TryResolveAsync(baseUrl, apiKey, model, cancellationToken);
+        if ((cached?.ProtocolProbeVersion ?? 0) < ProxyWireApiProbeService.CurrentProtocolProbeVersion)
+        {
+            return null;
+        }
+
         return NormalizeWireApi(
             cached?.PreferredWireApi,
             cached?.ChatCompletionsSupported == true,
@@ -327,6 +331,7 @@ public sealed class ProxyEndpointModelCacheService
                 chat_supported INTEGER NULL,
                 responses_supported INTEGER NULL,
                 anthropic_supported INTEGER NULL,
+                protocol_probe_version INTEGER NULL,
                 checked_at_utc TEXT NOT NULL,
                 PRIMARY KEY (base_url, api_key_hash, model)
             );
@@ -334,6 +339,16 @@ public sealed class ProxyEndpointModelCacheService
         await command.ExecuteNonQueryAsync(cancellationToken);
 
         command.CommandText = "ALTER TABLE proxy_endpoint_model_cache ADD COLUMN anthropic_supported INTEGER NULL;";
+        try
+        {
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 1 &&
+                                        ex.Message.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase))
+        {
+        }
+
+        command.CommandText = "ALTER TABLE proxy_endpoint_model_cache ADD COLUMN protocol_probe_version INTEGER NULL;";
         try
         {
             await command.ExecuteNonQueryAsync(cancellationToken);
@@ -355,6 +370,7 @@ public sealed class ProxyEndpointModelCacheService
         bool? responsesSupported,
         bool? anthropicSupported,
         DateTimeOffset checkedAt,
+        int? protocolProbeVersion,
         CancellationToken cancellationToken)
     {
         await using var command = connection.CreateCommand();
@@ -368,6 +384,7 @@ public sealed class ProxyEndpointModelCacheService
                 chat_supported,
                 responses_supported,
                 anthropic_supported,
+                protocol_probe_version,
                 checked_at_utc
             )
             VALUES (
@@ -379,6 +396,7 @@ public sealed class ProxyEndpointModelCacheService
                 $chat_supported,
                 $responses_supported,
                 $anthropic_supported,
+                $protocol_probe_version,
                 $checked_at_utc
             )
             ON CONFLICT(base_url, api_key_hash, model) DO UPDATE SET
@@ -387,6 +405,7 @@ public sealed class ProxyEndpointModelCacheService
                 chat_supported = COALESCE(excluded.chat_supported, proxy_endpoint_model_cache.chat_supported),
                 responses_supported = COALESCE(excluded.responses_supported, proxy_endpoint_model_cache.responses_supported),
                 anthropic_supported = COALESCE(excluded.anthropic_supported, proxy_endpoint_model_cache.anthropic_supported),
+                protocol_probe_version = COALESCE(excluded.protocol_probe_version, proxy_endpoint_model_cache.protocol_probe_version),
                 checked_at_utc = excluded.checked_at_utc;
             """;
         command.Parameters.AddWithValue("$base_url", baseUrl);
@@ -397,6 +416,7 @@ public sealed class ProxyEndpointModelCacheService
         command.Parameters.AddWithValue("$chat_supported", chatSupported is null ? DBNull.Value : chatSupported.Value ? 1 : 0);
         command.Parameters.AddWithValue("$responses_supported", responsesSupported is null ? DBNull.Value : responsesSupported.Value ? 1 : 0);
         command.Parameters.AddWithValue("$anthropic_supported", anthropicSupported is null ? DBNull.Value : anthropicSupported.Value ? 1 : 0);
+        command.Parameters.AddWithValue("$protocol_probe_version", protocolProbeVersion is null ? DBNull.Value : protocolProbeVersion.Value);
         command.Parameters.AddWithValue("$checked_at_utc", checkedAt.ToUniversalTime().ToString("O"));
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
@@ -417,6 +437,7 @@ public sealed class ProxyEndpointModelCacheService
                 chat_supported,
                 responses_supported,
                 anthropic_supported,
+                protocol_probe_version,
                 checked_at_utc
             FROM proxy_endpoint_model_cache
             WHERE base_url = $base_url
@@ -444,7 +465,8 @@ public sealed class ProxyEndpointModelCacheService
             chatSupported == true,
             responsesSupported == true,
             anthropicSupported == true);
-        var checkedAtText = reader.GetString(6);
+        var protocolProbeVersion = reader.IsDBNull(6) ? null : (int?)reader.GetInt32(6);
+        var checkedAtText = reader.GetString(7);
         var checkedAt = DateTimeOffset.TryParse(checkedAtText, out var parsed)
             ? parsed
             : DateTimeOffset.MinValue;
@@ -457,38 +479,8 @@ public sealed class ProxyEndpointModelCacheService
             chatSupported,
             responsesSupported,
             anthropicSupported,
-            checkedAt);
-    }
-
-    private static ProxyProbeScenarioResult? FindScenario(
-        IReadOnlyList<ProxyProbeScenarioResult>? scenarios,
-        ProxyProbeScenarioKind kind)
-        => scenarios?.FirstOrDefault(item => item.Scenario == kind);
-
-    private static bool IsOpenAiChatCompletionsSupported(ProxyDiagnosticsResult result)
-    {
-        var chatScenario = FindScenario(result.ScenarioResults, ProxyProbeScenarioKind.ChatCompletions);
-        if (chatScenario is null)
-        {
-            return result.ChatRequestSucceeded;
-        }
-
-        if (!chatScenario.Success)
-        {
-            return false;
-        }
-
-        if (chatScenario.Trace is null)
-        {
-            return result.ChatRequestSucceeded &&
-                   FindScenario(result.ScenarioResults, ProxyProbeScenarioKind.AnthropicMessages)?.Success != true &&
-                   FindScenario(result.ScenarioResults, ProxyProbeScenarioKind.Responses)?.Success != true;
-        }
-
-        return string.Equals(
-            ProxyWireApiProbeService.NormalizeWireApi(chatScenario.Trace.WireApi),
-            ProxyWireApiProbeService.ChatCompletionsWireApi,
-            StringComparison.Ordinal);
+            checkedAt,
+            protocolProbeVersion);
     }
 
     private static string? ResolvePreferredWireApi(

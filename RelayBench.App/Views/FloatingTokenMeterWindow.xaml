@@ -31,7 +31,9 @@
         </ContextMenu>
     </Window.ContextMenu>
 
-    <Border Padding="8,5"
+    <Border x:Name="RootChrome"
+            Padding="8,5"
+            Opacity="0"
             Background="#F2101820"
             BorderBrush="#40FFFFFF"
             BorderThickness="1"
@@ -39,6 +41,12 @@
             ClipToBounds="True"
             ToolTip="{Binding TransparentProxyMetricsSummary, Mode=OneWay}"
             SnapsToDevicePixels="True">
+        <Border.RenderTransform>
+            <TransformGroup>
+                <ScaleTransform x:Name="RootScale" ScaleX="0.985" ScaleY="0.985" />
+                <TranslateTransform x:Name="RootTranslate" Y="4" />
+            </TransformGroup>
+        </Border.RenderTransform>
         <Border.Effect>
             <DropShadowEffect BlurRadius="14"
                               Direction="270"

@@ -30,6 +30,11 @@ public static class ModelResponseTextExtractor
             return chatText;
         }
 
+        if (TryExtractResponseLikeText(root, out var responseText))
+        {
+            return responseText;
+        }
+
         if (TryExtractDirectText(root, out var directText))
         {
             return directText;
@@ -73,6 +78,35 @@ public static class ModelResponseTextExtractor
         }
 
         return null;
+    }
+
+    private static bool TryExtractResponseLikeText(JsonElement root, out string? text)
+    {
+        text = null;
+        StringBuilder builder = new();
+
+        if (root.TryGetProperty("output_text", out var outputText))
+        {
+            AppendContentText(outputText, builder);
+        }
+
+        if (root.TryGetProperty("output", out var output))
+        {
+            AppendContentText(output, builder);
+        }
+
+        if (root.TryGetProperty("message", out var message))
+        {
+            AppendContentText(message, builder);
+        }
+
+        if (builder.Length <= 0)
+        {
+            return false;
+        }
+
+        text = builder.ToString();
+        return true;
     }
 
     private static bool TryExtractChatCompletionsText(JsonElement root, out string? text)
@@ -123,7 +157,15 @@ public static class ModelResponseTextExtractor
 
         if (element.ValueKind == JsonValueKind.Object)
         {
-            return TryExtractDirectText(element, out text);
+            StringBuilder objectBuilder = new();
+            AppendContentText(element, objectBuilder);
+            if (objectBuilder.Length <= 0)
+            {
+                return false;
+            }
+
+            text = objectBuilder.ToString();
+            return true;
         }
 
         if (element.ValueKind != JsonValueKind.Array)
@@ -134,17 +176,7 @@ public static class ModelResponseTextExtractor
         StringBuilder builder = new();
         foreach (var item in element.EnumerateArray())
         {
-            if (item.ValueKind == JsonValueKind.String)
-            {
-                builder.Append(item.GetString());
-                continue;
-            }
-
-            if (item.ValueKind == JsonValueKind.Object &&
-                TryExtractDirectText(item, out var itemText))
-            {
-                builder.Append(itemText);
-            }
+            AppendContentText(item, builder);
         }
 
         if (builder.Length <= 0)
@@ -158,7 +190,68 @@ public static class ModelResponseTextExtractor
 
     private static bool TryExtractDirectText(JsonElement element, out string? text)
     {
-        foreach (var propertyName in new[] { "output_text", "text", "content", "completion" })
+        foreach (var propertyName in new[] { "output_text", "text", "content", "completion", "delta", "value" })
+        {
+            if (!element.TryGetProperty(propertyName, out var property))
+            {
+                continue;
+            }
+
+            if (property.ValueKind == JsonValueKind.String)
+            {
+                text = property.GetString();
+                return !string.IsNullOrEmpty(text);
+            }
+
+            if ((property.ValueKind is JsonValueKind.Object or JsonValueKind.Array) &&
+                TryExtractContentPartsText(property, out text))
+            {
+                return !string.IsNullOrEmpty(text);
+            }
+        }
+
+        text = null;
+        return false;
+    }
+
+    private static void AppendContentText(JsonElement element, StringBuilder builder)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.String:
+                builder.Append(element.GetString());
+                return;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                {
+                    AppendContentText(item, builder);
+                }
+
+                return;
+            case JsonValueKind.Object:
+                break;
+            default:
+                return;
+        }
+
+        if (TryExtractDirectTextWithoutNestedContent(element, out var directText))
+        {
+            builder.Append(directText);
+        }
+
+        foreach (var propertyName in new[] { "content", "output", "message", "item", "delta", "text", "output_text", "summary" })
+        {
+            if (element.TryGetProperty(propertyName, out var nested) &&
+                nested.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
+            {
+                AppendContentText(nested, builder);
+            }
+        }
+    }
+
+    private static bool TryExtractDirectTextWithoutNestedContent(JsonElement element, out string? text)
+    {
+        foreach (var propertyName in new[] { "output_text", "text", "content", "completion", "delta", "value" })
         {
             if (element.TryGetProperty(propertyName, out var property) &&
                 property.ValueKind == JsonValueKind.String)

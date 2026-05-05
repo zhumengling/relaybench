@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.ComponentModel;
+using System.Net.Http;
 using System.Windows;
 using RelayBench.App.Infrastructure;
 using RelayBench.App.Services;
@@ -126,6 +127,30 @@ public sealed partial class MainWindowViewModel
         set => SetProperty(ref _transparentProxyRewriteModel, value);
     }
 
+    public bool TransparentProxyStartUnifiedEndpointOnLaunch
+    {
+        get => _transparentProxyStartUnifiedEndpointOnLaunch;
+        set
+        {
+            if (SetProperty(ref _transparentProxyStartUnifiedEndpointOnLaunch, value))
+            {
+                OnPropertyChanged(nameof(TransparentProxyUnifiedEndpointSummary));
+            }
+        }
+    }
+
+    public bool TransparentProxyEnableAppCapture
+    {
+        get => _transparentProxyEnableAppCapture;
+        set
+        {
+            if (SetProperty(ref _transparentProxyEnableAppCapture, value))
+            {
+                OnPropertyChanged(nameof(TransparentProxyAppCaptureSummary));
+            }
+        }
+    }
+
     public bool IsTransparentProxySettingsDrawerOpen
     {
         get => _isTransparentProxySettingsDrawerOpen;
@@ -136,6 +161,18 @@ public sealed partial class MainWindowViewModel
     {
         get => _isTransparentProxyListenSettingsOpen;
         private set => SetProperty(ref _isTransparentProxyListenSettingsOpen, value);
+    }
+
+    public bool IsTransparentProxyAppCaptureSettingsOpen
+    {
+        get => _isTransparentProxyAppCaptureSettingsOpen;
+        private set => SetProperty(ref _isTransparentProxyAppCaptureSettingsOpen, value);
+    }
+
+    public bool IsTransparentProxyAdvancedNetworkSettingsOpen
+    {
+        get => _isTransparentProxyAdvancedNetworkSettingsOpen;
+        private set => SetProperty(ref _isTransparentProxyAdvancedNetworkSettingsOpen, value);
     }
 
     public bool IsTransparentProxyProviderSettingsOpen
@@ -168,6 +205,18 @@ public sealed partial class MainWindowViewModel
 
     public string TransparentProxyLogExpandToolTip
         => IsTransparentProxyLogExpanded ? "收起日志" : "展开日志";
+
+    public string TransparentProxyLogSourceFilterKey
+    {
+        get => _transparentProxyLogSourceFilterKey;
+        set
+        {
+            if (SetProperty(ref _transparentProxyLogSourceFilterKey, string.IsNullOrWhiteSpace(value) ? "all" : value))
+            {
+                RefreshTransparentProxyLogView();
+            }
+        }
+    }
 
     public string TransparentProxyLogFilterText
     {
@@ -234,6 +283,12 @@ public sealed partial class MainWindowViewModel
         private set => SetProperty(ref _transparentProxyMetricsSummary, value);
     }
 
+    public string TransparentProxyIngressSummary
+    {
+        get => _transparentProxyIngressSummary;
+        private set => SetProperty(ref _transparentProxyIngressSummary, value);
+    }
+
     public string TransparentProxyRoutingSummary
     {
         get => _transparentProxyRoutingSummary;
@@ -250,6 +305,145 @@ public sealed partial class MainWindowViewModel
     {
         get => _transparentProxyProtocolSummary;
         private set => SetProperty(ref _transparentProxyProtocolSummary, value);
+    }
+
+    public string TransparentProxyCaptureDiagnosticsSummary
+    {
+        get => _transparentProxyCaptureDiagnosticsSummary;
+        private set => SetProperty(ref _transparentProxyCaptureDiagnosticsSummary, value);
+    }
+
+    public string TransparentProxyCodexPreviewText
+    {
+        get => _transparentProxyCodexPreviewText;
+        private set => SetProperty(ref _transparentProxyCodexPreviewText, value);
+    }
+
+    public string TransparentProxyCodexConfigPath
+    {
+        get => _transparentProxyCodexConfigPath;
+        private set => SetProperty(ref _transparentProxyCodexConfigPath, value);
+    }
+
+    public string TransparentProxyCodexStatusText
+    {
+        get => _transparentProxyCodexStatusText;
+        private set => SetProperty(ref _transparentProxyCodexStatusText, value);
+    }
+
+    public string TransparentProxyClaudePreviewText
+    {
+        get => _transparentProxyClaudePreviewText;
+        private set => SetProperty(ref _transparentProxyClaudePreviewText, value);
+    }
+
+    public string TransparentProxyClaudeConfigPath
+    {
+        get => _transparentProxyClaudeConfigPath;
+        private set => SetProperty(ref _transparentProxyClaudeConfigPath, value);
+    }
+
+    public string TransparentProxyClaudeStatusText
+    {
+        get => _transparentProxyClaudeStatusText;
+        private set => SetProperty(ref _transparentProxyClaudeStatusText, value);
+    }
+
+    public string TransparentProxyVsCodePreviewText
+    {
+        get => _transparentProxyVsCodePreviewText;
+        private set => SetProperty(ref _transparentProxyVsCodePreviewText, value);
+    }
+
+    public string TransparentProxyVsCodeConfigPath
+    {
+        get => _transparentProxyVsCodeConfigPath;
+        private set => SetProperty(ref _transparentProxyVsCodeConfigPath, value);
+    }
+
+    public string TransparentProxyVsCodeStatusText
+    {
+        get => _transparentProxyVsCodeStatusText;
+        private set => SetProperty(ref _transparentProxyVsCodeStatusText, value);
+    }
+
+    public string TransparentProxyVsCodeSettingsScopeKey
+    {
+        get => _transparentProxyVsCodeSettingsScopeKey;
+        set
+        {
+            var normalized = TransparentProxyVsCodeSettingsScopes.NormalizeKey(value);
+            if (SetProperty(ref _transparentProxyVsCodeSettingsScopeKey, normalized))
+            {
+                OnPropertyChanged(nameof(TransparentProxyVsCodeSettingsScopeToolTip));
+                TransparentProxyVsCodeStatusText =
+                    $"VS Code 接管范围已切换为 {TransparentProxyVsCodeSettingsScopes.GetDisplayName(GetTransparentProxyVsCodeSettingsScope())}，点击预览查看目标文件。";
+            }
+        }
+    }
+
+    public string TransparentProxyVsCodeSettingsScopeToolTip
+        => GetTransparentProxyVsCodeSettingsScope() is TransparentProxyVsCodeSettingsScope.User
+            ? "写入 VS Code 用户 settings.json，影响新开的 VS Code 集成终端。"
+            : $"工作区目录：{GetTransparentProxyVsCodeWorkspaceDirectory()}";
+
+    public string TransparentProxyLaunchWrapperPreviewText
+    {
+        get => _transparentProxyLaunchWrapperPreviewText;
+        private set => SetProperty(ref _transparentProxyLaunchWrapperPreviewText, value);
+    }
+
+    public string TransparentProxyLaunchWrapperPathText
+    {
+        get => _transparentProxyLaunchWrapperPathText;
+        private set => SetProperty(ref _transparentProxyLaunchWrapperPathText, value);
+    }
+
+    public string TransparentProxyLaunchWrapperStatusText
+    {
+        get => _transparentProxyLaunchWrapperStatusText;
+        private set => SetProperty(ref _transparentProxyLaunchWrapperStatusText, value);
+    }
+
+    public bool IsTransparentProxyPacRunning
+    {
+        get => _isTransparentProxyPacRunning;
+        private set
+        {
+            SetProperty(ref _isTransparentProxyPacRunning, value);
+        }
+    }
+
+    public string TransparentProxySystemProxyStatusText
+    {
+        get => _transparentProxySystemProxyStatusText;
+        private set => SetProperty(ref _transparentProxySystemProxyStatusText, value);
+    }
+
+    public bool IsTransparentProxyTunRunning
+    {
+        get => _isTransparentProxyTunRunning;
+        private set
+        {
+            if (SetProperty(ref _isTransparentProxyTunRunning, value))
+            {
+                StartTransparentProxyTunCommand.RaiseCanExecuteChanged();
+                StopTransparentProxyTunCommand.RaiseCanExecuteChanged();
+                OnPropertyChanged(nameof(TransparentProxyTunRunStateText));
+            }
+        }
+    }
+
+    public string TransparentProxyTunStatusText
+    {
+        get => _transparentProxyTunStatusText;
+        private set => SetProperty(ref _transparentProxyTunStatusText, value);
+    }
+
+    public string TransparentProxyTunPreviewText
+    {
+        get => _transparentProxyTunPreviewText;
+        private set => SetProperty(ref _transparentProxyTunPreviewText, value);
     }
 
     public string TransparentProxyTotalRequestsText
@@ -280,6 +474,12 @@ public sealed partial class MainWindowViewModel
     {
         get => _transparentProxyCacheHitsText;
         private set => SetProperty(ref _transparentProxyCacheHitsText, value);
+    }
+
+    public string TransparentProxyCacheEfficiencyToolTip
+    {
+        get => _transparentProxyCacheEfficiencyToolTip;
+        private set => SetProperty(ref _transparentProxyCacheEfficiencyToolTip, value);
     }
 
     public string TransparentProxyP95LatencyText
@@ -318,67 +518,215 @@ public sealed partial class MainWindowViewModel
         private set => SetProperty(ref _transparentProxyTokenMeterAccentBrush, value);
     }
 
+    public string TransparentProxyCopyEndpointButtonText
+    {
+        get => _transparentProxyCopyEndpointButtonText;
+        private set => SetProperty(ref _transparentProxyCopyEndpointButtonText, value);
+    }
+
+    public string TransparentProxyCopyPowerShellButtonText
+    {
+        get => _transparentProxyCopyPowerShellButtonText;
+        private set => SetProperty(ref _transparentProxyCopyPowerShellButtonText, value);
+    }
+
+    public string TransparentProxyCopyCmdButtonText
+    {
+        get => _transparentProxyCopyCmdButtonText;
+        private set => SetProperty(ref _transparentProxyCopyCmdButtonText, value);
+    }
+
+    public string TransparentProxyHealthTestButtonText
+    {
+        get => _transparentProxyHealthTestButtonText;
+        private set => SetProperty(ref _transparentProxyHealthTestButtonText, value);
+    }
+
     public string TransparentProxyLocalEndpoint
         => $"http://127.0.0.1:{ParseTransparentProxyPort()}/v1";
+
+    public string TransparentProxyOpenAiChatEndpoint
+        => $"{TransparentProxyLocalEndpoint}/chat/completions";
+
+    public string TransparentProxyResponsesEndpoint
+        => $"{TransparentProxyLocalEndpoint}/responses";
+
+    public string TransparentProxyAnthropicEndpoint
+        => $"http://127.0.0.1:{ParseTransparentProxyPort()}/v1/messages";
+
+    public string TransparentProxyModelsEndpoint
+        => $"{TransparentProxyLocalEndpoint}/models";
 
     public string TransparentProxyHealthEndpoint
         => $"http://127.0.0.1:{ParseTransparentProxyPort()}/relaybench/health";
 
+    public string TransparentProxyPowerShellEnvSnippet
+        => _transparentProxyCliEnvironmentService.Build(ParseTransparentProxyPort()).PowerShell;
+
+    public string TransparentProxyCmdEnvSnippet
+        => _transparentProxyCliEnvironmentService.Build(ParseTransparentProxyPort()).Cmd;
+
+    public string TransparentProxyPacForwardProxyEndpoint
+        => $"127.0.0.1:{ResolveTransparentProxyPacForwardProxyPort()}";
+
+    public string TransparentProxyTunRunStateText
+        => IsTransparentProxyTunRunning
+            ? $"TUN 运行中：mihomo -> {TransparentProxyPacForwardProxyEndpoint}"
+            : "TUN 未启动";
+
+    public string TransparentProxyTlsCaptureStatusText
+        => "内容级 TLS 接管未启用。当前 TUN 只做网络层 tunnel-only 接管，不能读取 HTTPS 请求体，也不会改写 API Key 或 Base URL；需要协议转换和缓存时请让应用直接接入本地统一出口。";
+
+    public string TransparentProxyTunMixedEndpoint
+        => $"127.0.0.1:{ResolveTransparentProxyTunMixedPort()}";
+
+    public string TransparentProxyTunControllerEndpoint
+        => $"127.0.0.1:{ResolveTransparentProxyTunControllerPort()}";
+
+    public string TransparentProxyUnifiedEndpointSummary
+        => TransparentProxyStartUnifiedEndpointOnLaunch
+            ? "启动 RelayBench 时自动打开本地统一出口；本地 agent 可直接接入，应用接管关闭也不影响。"
+            : "本地统一出口不会随启动自动打开；需要手动启动后应用和本地 agent 才能接入。";
+
+    public string TransparentProxyAppCaptureSummary
+        => TransparentProxyEnableAppCapture
+            ? "AI 应用接管已启用：后续将按应用配置接入统一出口，不默认改系统代理。"
+            : "AI 应用接管未启用：Codex、VS Codex、Codex CLI、Claude CLI 暂不自动改配置。";
+
+    public string TransparentProxyAppCaptureSafetySummary
+        => "默认只做显式 Base URL/配置接入；TUN 属于高级模式，默认不会影响 ChatGPT/OpenAI 官网、GitHub、npm、插件市场或普通网络。";
+
     public string TransparentProxyRunStateText
-        => IsTransparentProxyRunning ? "运行中" : "已停止";
+        => _isTransparentProxyStarting
+            ? "启动中"
+            : IsTransparentProxyRunning
+                ? "统一出口运行中"
+                : "统一出口已停止";
 
     public string TransparentProxyRunStateBrush
-        => IsTransparentProxyRunning ? "#059669" : "#64748B";
+        => _isTransparentProxyStarting
+            ? "#D97706"
+            : IsTransparentProxyRunning
+                ? "#059669"
+                : "#64748B";
 
     private bool CanStartTransparentProxy()
-        => !IsTransparentProxyRunning && !IsBusy;
+        => !IsTransparentProxyRunning && !IsBusy && !_isTransparentProxyStarting;
 
     private async Task StartTransparentProxyAsync()
+        => await StartTransparentProxyCoreAsync(isAutoStart: false);
+
+    private async Task StartTransparentProxyCoreAsync(bool isAutoStart)
     {
+        if (_isTransparentProxyStarting || IsTransparentProxyRunning)
+        {
+            return;
+        }
+
+        _isTransparentProxyStarting = true;
+        StartTransparentProxyCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(TransparentProxyRunStateText));
+        OnPropertyChanged(nameof(TransparentProxyRunStateBrush));
         var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
-        if (routes.Count == 0)
+        try
         {
-            TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromWorkspace();
-            routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+            if (routes.Count == 0)
+            {
+                TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromWorkspace();
+                routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+            }
+
+            if (routes.Count > 0 && !isAutoStart)
+            {
+                routes = await ResolveTransparentProxyRouteProtocolsAsync(
+                    routes,
+                    forceProbe: false,
+                    fetchCatalogModels: false,
+                    CancellationToken.None);
+            }
+
+            TransparentProxyServerConfig config = new(
+                ParseTransparentProxyPort(),
+                routes,
+                ParseBoundedInt(TransparentProxyRateLimitPerMinuteText, fallback: 60, min: 0, max: 6000),
+                ParseBoundedInt(TransparentProxyMaxConcurrencyText, fallback: 8, min: 1, max: 128),
+                TransparentProxyEnableFallback,
+                TransparentProxyEnableCache,
+                ParseBoundedInt(TransparentProxyCacheTtlSecondsText, fallback: 60, min: 1, max: 3600),
+                false,
+                ProxyIgnoreTlsErrors,
+                ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300))
+            {
+                RouteStrategy = TransparentProxyRouteStrategyKey,
+                RequestRetry = ParseBoundedInt(TransparentProxyRequestRetryText, fallback: 1, min: 0, max: 5),
+                MaxRetryIntervalSeconds = ParseBoundedInt(TransparentProxyMaxRetryIntervalSecondsText, fallback: 8, min: 1, max: 60),
+                SessionAffinityTtlSeconds = ParseBoundedInt(TransparentProxySessionAffinityTtlSecondsText, fallback: 1800, min: 30, max: 86400),
+                ModelCooldownSeconds = ParseBoundedInt(TransparentProxyModelCooldownSecondsText, fallback: 120, min: 15, max: 1800)
+            };
+
+            await _transparentProxyService.StartAsync(config);
+            IsTransparentProxyRunning = true;
+            TransparentProxyStatusSummary = routes.Count > 0
+                ? $"本地统一出口已监听：{TransparentProxyLocalEndpoint}"
+                : $"本地统一出口已监听：{TransparentProxyLocalEndpoint}，当前还没有配置上游路由。";
+            TransparentProxyHealthSummary = $"健康检查：{TransparentProxyHealthEndpoint}";
+            RefreshTransparentProxyRoutePreview();
+            if (routes.Count > 0)
+            {
+                BeginTransparentProxyProtocolAutoDiscovery(routes);
+            }
+
+            SaveState();
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write(isAutoStart ? "TransparentProxy.AutoStart" : "TransparentProxy.Start", ex);
+            TransparentProxyStatusSummary = BuildTransparentProxyStartFailureMessage(ex, isAutoStart);
+            TransparentProxyHealthSummary = "健康检查：未监听。";
+        }
+        finally
+        {
+            _isTransparentProxyStarting = false;
+            StartTransparentProxyCommand.RaiseCanExecuteChanged();
+            OnPropertyChanged(nameof(TransparentProxyRunStateText));
+            OnPropertyChanged(nameof(TransparentProxyRunStateBrush));
+        }
+    }
+
+    private string BuildTransparentProxyStartFailureMessage(Exception ex, bool isAutoStart)
+    {
+        var port = ParseTransparentProxyPort();
+        var prefix = isAutoStart ? "本地统一出口自动启动失败" : "本地统一出口启动失败";
+        if (!IsTransparentProxyPortListenFailure(ex))
+        {
+            return $"{prefix}：{ex.Message}";
         }
 
-        if (routes.Count == 0)
+        var inspection = _transparentProxyPortInspectorService.Inspect(port);
+        return inspection.IsListening
+            ? $"{prefix}：{inspection.Summary} 请换端口或关闭占用进程后重试。"
+            : $"{prefix}：端口 {port} 无法监听。{inspection.Summary}";
+    }
+
+    private static bool IsTransparentProxyPortListenFailure(Exception ex)
+    {
+        for (var current = ex; current is not null; current = current.InnerException)
         {
-            throw new InvalidOperationException("没有可用上游。请先填写当前接口，或从批量候选生成路由表。");
+            if (current is System.Net.HttpListenerException)
+            {
+                return true;
+            }
+
+            if (current.Message.Contains("Failed to listen", StringComparison.OrdinalIgnoreCase) ||
+                current.Message.Contains("already in use", StringComparison.OrdinalIgnoreCase) ||
+                current.Message.Contains("正在使用", StringComparison.OrdinalIgnoreCase) ||
+                current.Message.Contains("访问被拒绝", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
         }
 
-        routes = await ResolveTransparentProxyRouteProtocolsAsync(
-            routes,
-            forceProbe: false,
-            fetchCatalogModels: false,
-            CancellationToken.None);
-
-        TransparentProxyServerConfig config = new(
-            ParseTransparentProxyPort(),
-            routes,
-            ParseBoundedInt(TransparentProxyRateLimitPerMinuteText, fallback: 60, min: 0, max: 6000),
-            ParseBoundedInt(TransparentProxyMaxConcurrencyText, fallback: 8, min: 1, max: 128),
-            TransparentProxyEnableFallback,
-            TransparentProxyEnableCache,
-            ParseBoundedInt(TransparentProxyCacheTtlSecondsText, fallback: 60, min: 1, max: 3600),
-            false,
-            ProxyIgnoreTlsErrors,
-            ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300))
-        {
-            RouteStrategy = TransparentProxyRouteStrategyKey,
-            RequestRetry = ParseBoundedInt(TransparentProxyRequestRetryText, fallback: 1, min: 0, max: 5),
-            MaxRetryIntervalSeconds = ParseBoundedInt(TransparentProxyMaxRetryIntervalSecondsText, fallback: 8, min: 1, max: 60),
-            SessionAffinityTtlSeconds = ParseBoundedInt(TransparentProxySessionAffinityTtlSecondsText, fallback: 1800, min: 30, max: 86400),
-            ModelCooldownSeconds = ParseBoundedInt(TransparentProxyModelCooldownSecondsText, fallback: 120, min: 15, max: 1800)
-        };
-
-        await _transparentProxyService.StartAsync(config);
-        IsTransparentProxyRunning = true;
-        TransparentProxyStatusSummary = $"本地入口已监听：{TransparentProxyLocalEndpoint}";
-        TransparentProxyHealthSummary = $"健康检查：{TransparentProxyHealthEndpoint}";
-        RefreshTransparentProxyRoutePreview();
-        BeginTransparentProxyProtocolAutoDiscovery(routes);
-        SaveState();
+        return false;
     }
 
     private async Task StopTransparentProxyAsync()
@@ -386,12 +734,44 @@ public sealed partial class MainWindowViewModel
         CancelTransparentProxyProtocolAutoDiscovery();
         await _transparentProxyService.StopAsync();
         IsTransparentProxyRunning = false;
-        TransparentProxyStatusSummary = "本地透明代理已停止。";
+        TransparentProxyStatusSummary = "本地统一出口已停止。";
         TransparentProxyHealthSummary = "健康检查：未监听。";
+    }
+
+    private void StartTransparentProxyUnifiedEndpointOnLaunch()
+    {
+        if (!TransparentProxyStartUnifiedEndpointOnLaunch)
+        {
+            TransparentProxyStatusSummary = "本地统一出口未自动启动，可在透明代理页手动开启。";
+            return;
+        }
+
+        _ = StartTransparentProxyUnifiedEndpointOnLaunchAsync();
+    }
+
+    private async Task StartTransparentProxyUnifiedEndpointOnLaunchAsync()
+    {
+        await Task.Delay(400);
+        if (IsTransparentProxyRunning || _isTransparentProxyStarting)
+        {
+            return;
+        }
+
+        await StartTransparentProxyCoreAsync(isAutoStart: true);
     }
 
     public async Task StopTransparentProxyForExitAsync()
     {
+        if (IsTransparentProxyTunRunning)
+        {
+            await StopTransparentProxyTunAsync();
+        }
+
+        if (IsTransparentProxyPacRunning)
+        {
+            await StopTransparentProxyTunForwarderAsync();
+        }
+
         if (!IsTransparentProxyRunning)
         {
             return;
@@ -475,10 +855,104 @@ public sealed partial class MainWindowViewModel
             });
     }
 
+    private bool CanApplyTransparentProxyToAdvancedLab()
+        => !IsBusy;
+
+    private async Task ApplyTransparentProxyToAdvancedLabAsync()
+    {
+        if (!IsTransparentProxyRunning)
+        {
+            await StartTransparentProxyAsync();
+        }
+
+        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+        if (routes.Count == 0)
+        {
+            StatusMessage = "透明代理还没有可用路由，暂时不能接入数据安全。";
+            return;
+        }
+
+        var model = ResolveTransparentProxyClientDefaultModel(routes);
+        var apiKey = ResolveTransparentProxyClientApiKey(routes);
+        var models = ResolveTransparentProxyClientModels(routes);
+        var context = BuildTransparentProxyAdvancedLabContext(routes, model);
+        AdvancedTestLab.ApplyTransparentProxyEndpoint(
+            TransparentProxyLocalEndpoint,
+            apiKey,
+            models,
+            model,
+            context);
+        StatusMessage = $"数据安全已接入本地透明代理：{model}。";
+        AppendHistory("数据安全", "接入透明代理模型池", $"{TransparentProxyLocalEndpoint} · {model} · {context}");
+        SaveState();
+    }
+
     private Task RefreshTransparentProxyRoutesFromWorkspaceAsync()
     {
         TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromWorkspace();
         RefreshTransparentProxyRouteEditorItemsFromText();
+        SaveState();
+        return Task.CompletedTask;
+    }
+
+    private Task ImportProxyBatchToTransparentProxyAsync()
+    {
+        TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromWorkspace();
+        RefreshTransparentProxyRouteEditorItemsFromText();
+        IsTransparentProxySettingsDrawerOpen = true;
+        IsTransparentProxyProviderSettingsOpen = true;
+        IsTransparentProxyListenSettingsOpen = false;
+        IsTransparentProxyAppCaptureSettingsOpen = false;
+        TransparentProxyStatusSummary = $"已从当前接口和批量入口组生成 {TransparentProxyRouteEditorItems.Count} 个透明代理节点。";
+        SaveState();
+        return Task.CompletedTask;
+    }
+
+    private Task ExportTransparentProxyRoutesToBatchAsync()
+    {
+        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+        if (routes.Count == 0)
+        {
+            TransparentProxyStatusSummary = "没有可导出的透明代理节点。";
+            return Task.CompletedTask;
+        }
+
+        var added = 0;
+        var updated = 0;
+        foreach (var route in routes)
+        {
+            var model = ResolveBatchModelFromTransparentProxyRoute(route);
+            var existing = ProxyBatchEditorItems.FirstOrDefault(item =>
+                string.Equals(item.BaseUrl.Trim(), route.BaseUrl.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                string.Equals((item.EntryModel ?? item.SiteGroupModel ?? string.Empty).Trim(), model, StringComparison.OrdinalIgnoreCase));
+            var next = new ProxyBatchEditorItemViewModel(
+                string.IsNullOrWhiteSpace(route.Name) ? BuildBatchDefaultName(route.BaseUrl, ProxyBatchEditorItems.Count + 1) : route.Name.Trim(),
+                route.BaseUrl.Trim(),
+                route.ApiKey.Trim(),
+                model,
+                "透明代理",
+                null,
+                null,
+                includeInBatchTest: true);
+
+            if (existing is null)
+            {
+                AttachProxyBatchEditorItem(next);
+                ProxyBatchEditorItems.Add(next);
+                added++;
+            }
+            else
+            {
+                existing.ApplyFrom(next);
+                updated++;
+            }
+        }
+
+        RefreshProxyBatchSiteGroups();
+        RefreshProxyBatchEditorCollectionState();
+        RebuildProxyBatchTargetsTextFromEditorItems();
+        TransparentProxyStatusSummary = $"已导出到批量入口组：新增 {added} 个，更新 {updated} 个。";
+        StatusMessage = TransparentProxyStatusSummary;
         SaveState();
         return Task.CompletedTask;
     }
@@ -507,6 +981,8 @@ public sealed partial class MainWindowViewModel
         if (!IsTransparentProxySettingsDrawerOpen)
         {
             IsTransparentProxyListenSettingsOpen = false;
+            IsTransparentProxyAppCaptureSettingsOpen = false;
+            IsTransparentProxyAdvancedNetworkSettingsOpen = false;
             IsTransparentProxyProviderSettingsOpen = false;
         }
 
@@ -519,11 +995,791 @@ public sealed partial class MainWindowViewModel
         IsTransparentProxyListenSettingsOpen = shouldOpen;
         if (shouldOpen)
         {
+            IsTransparentProxyAppCaptureSettingsOpen = false;
+            IsTransparentProxyAdvancedNetworkSettingsOpen = false;
             IsTransparentProxyProviderSettingsOpen = false;
         }
 
         return Task.CompletedTask;
     }
+
+    private Task ToggleTransparentProxyAppCaptureSettingsAsync()
+    {
+        var shouldOpen = !IsTransparentProxyAppCaptureSettingsOpen;
+        IsTransparentProxyAppCaptureSettingsOpen = shouldOpen;
+        if (shouldOpen)
+        {
+            IsTransparentProxyListenSettingsOpen = false;
+            IsTransparentProxyAdvancedNetworkSettingsOpen = false;
+            IsTransparentProxyProviderSettingsOpen = false;
+            RefreshTransparentProxyCaptureTargets();
+            RefreshTransparentProxyCaptureDiagnostics();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task RefreshTransparentProxyCaptureTargetsAsync()
+    {
+        RefreshTransparentProxyCaptureTargets();
+        RefreshTransparentProxyCaptureDiagnostics();
+        TransparentProxyStatusSummary = "已刷新 AI 应用接管检测状态。";
+        StatusMessage = TransparentProxyCaptureDiagnosticsSummary;
+        return Task.CompletedTask;
+    }
+
+    private Task RefreshTransparentProxyCaptureDiagnosticsAsync()
+    {
+        RefreshTransparentProxyCaptureTargets();
+        RefreshTransparentProxyCaptureDiagnostics();
+        TransparentProxyStatusSummary = TransparentProxyCaptureDiagnosticsSummary;
+        StatusMessage = TransparentProxyCaptureDiagnosticsSummary;
+        return Task.CompletedTask;
+    }
+
+    private void RefreshTransparentProxyCaptureTargets()
+    {
+        var apps = _transparentProxyAppDetectorService.Detect();
+        var artifacts = _transparentProxyCaptureArtifactStore.ScanDefaultArtifacts();
+        TransparentProxyCaptureTargets.Clear();
+        foreach (var app in apps)
+        {
+            var target = new TransparentProxyCaptureTargetViewModel(app);
+            target.ApplyArtifact(FindTransparentProxyCaptureArtifact(app, artifacts));
+            TransparentProxyCaptureTargets.Add(target);
+        }
+
+        ApplyTransparentProxyCaptureTargetMetrics(_latestTransparentProxyMetricsSnapshot);
+    }
+
+    private static TransparentProxyCaptureArtifactSnapshot? FindTransparentProxyCaptureArtifact(
+        TransparentProxyDetectedApp app,
+        IReadOnlyList<TransparentProxyCaptureArtifactSnapshot> artifacts)
+        => artifacts.FirstOrDefault(artifact =>
+               string.Equals(artifact.TargetId, app.Id, StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(artifact.Path, app.ConfigPath, StringComparison.OrdinalIgnoreCase)) ??
+           artifacts.FirstOrDefault(artifact =>
+               app.Id.Contains("codex", StringComparison.OrdinalIgnoreCase) &&
+               artifact.TargetId.Contains("codex", StringComparison.OrdinalIgnoreCase));
+
+    private void RefreshTransparentProxyCaptureDiagnostics()
+    {
+        var apps = _transparentProxyAppDetectorService.Detect();
+        var artifacts = _transparentProxyCaptureArtifactStore.ScanDefaultArtifacts();
+        var launcherCount = _transparentProxyLaunchWrapperService
+            .ScanKnownLaunchers()
+            .Sum(static item => item.ExistingCount);
+        var detectedCount = apps.Count(static app =>
+            !app.Status.Contains("未检测到", StringComparison.OrdinalIgnoreCase));
+        var configCount = apps.Count(static app =>
+            !string.IsNullOrWhiteSpace(app.ConfigPath) &&
+            System.IO.File.Exists(app.ConfigPath));
+        var restorePointCount = artifacts.Count(static artifact => artifact.BackupCount > 0);
+        var guard = _transparentProxyNetworkGuardService.Inspect();
+        var unifiedText = IsTransparentProxyRunning
+            ? $"统一出口 {TransparentProxyLocalEndpoint}"
+            : "统一出口未运行";
+        var tunText = IsTransparentProxyTunRunning ? "TUN 运行" : "TUN 未启动";
+        var adminText = guard.IsAdministrator ? "管理员权限可用" : "TUN 需管理员权限";
+        var sidecarText = string.IsNullOrWhiteSpace(guard.MihomoPath)
+            ? "未发现 mihomo"
+            : "mihomo 已发现";
+
+        TransparentProxyCaptureDiagnosticsSummary =
+            $"接管诊断：{unifiedText}；目标 {apps.Count} 个，已检测 {detectedCount} 个，配置文件 {configCount} 个，恢复点 {restorePointCount} 个，临时启动器 {launcherCount} 个；{tunText}；{adminText}，{sidecarText}。";
+    }
+
+    private void ApplyTransparentProxyCaptureTargetMetrics(TransparentProxyMetricsSnapshot? snapshot)
+    {
+        foreach (var target in TransparentProxyCaptureTargets)
+        {
+            target.ApplyMetrics(snapshot?.Ingresses);
+        }
+    }
+
+    private bool CanConfigureTransparentProxyCodexCapture()
+        => !IsBusy;
+
+    private Task PreviewTransparentProxyCodexCaptureAsync()
+        => ExecuteBusyActionAsync(
+            "正在生成 Codex CLI 接管预览...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("生成预览", 42d);
+                var context = BuildTransparentProxyCodexCaptureContext();
+                var preview = _transparentProxyCodexConfigService.Preview(
+                    context.BaseUrl,
+                    context.Model,
+                    context.WireApi);
+                ApplyTransparentProxyCodexPreview(preview);
+                TransparentProxyCodexStatusText = preview.Changed
+                    ? "预览已生成：写入前会备份现有 config.toml，只更新 RelayBench provider。"
+                    : "预览已生成：当前 Codex CLI 配置已经指向 RelayBench。";
+                TransparentProxyStatusSummary = TransparentProxyCodexStatusText;
+                StatusMessage = TransparentProxyCodexStatusText;
+                RefreshTransparentProxyCaptureTargets();
+                await Task.CompletedTask;
+            },
+            "Codex CLI 接管",
+            "预览中",
+            18d);
+
+    private Task ApplyTransparentProxyCodexCaptureAsync()
+        => ExecuteBusyActionAsync(
+            "正在写入 Codex CLI 接管配置...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("启动统一出口", 24d);
+                if (!IsTransparentProxyRunning)
+                {
+                    await StartTransparentProxyCoreAsync(isAutoStart: false);
+                }
+
+                if (!IsTransparentProxyRunning)
+                {
+                    throw new InvalidOperationException("本地统一出口未能启动，已取消写入 Codex CLI 配置。");
+                }
+
+                UpdateGlobalTaskProgress("写入 Codex 配置", 58d);
+                var context = BuildTransparentProxyCodexCaptureContext();
+                var result = _transparentProxyCodexConfigService.Apply(
+                    context.BaseUrl,
+                    context.Model,
+                    context.WireApi);
+                var preview = _transparentProxyCodexConfigService.Preview(
+                    context.BaseUrl,
+                    context.Model,
+                    context.WireApi);
+                ApplyTransparentProxyCodexPreview(preview);
+
+                TransparentProxyEnableAppCapture = true;
+                TransparentProxyCodexStatusText = string.IsNullOrWhiteSpace(result.BackupPath)
+                    ? result.Summary
+                    : $"{result.Summary} 备份：{result.BackupPath}";
+                TransparentProxyCodexStatusText += await BuildTransparentProxyPostApplyHealthTextAsync();
+                TransparentProxyStatusSummary = result.Summary;
+                StatusMessage = result.Summary;
+                RefreshTransparentProxyCaptureTargets();
+                SaveState();
+            },
+            "Codex CLI 接管",
+            "写入中",
+            16d);
+
+    private Task RestoreTransparentProxyCodexCaptureAsync()
+        => ExecuteBusyActionAsync(
+            "正在恢复 Codex CLI 接管配置...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("恢复配置", 48d);
+                var result = _transparentProxyCodexConfigService.RestoreLatestBackup();
+                var context = BuildTransparentProxyCodexCaptureContext();
+                var preview = _transparentProxyCodexConfigService.Preview(
+                    context.BaseUrl,
+                    context.Model,
+                    context.WireApi);
+                ApplyTransparentProxyCodexPreview(preview);
+                TransparentProxyCodexStatusText = string.IsNullOrWhiteSpace(result.BackupPath)
+                    ? result.Summary
+                    : $"{result.Summary} 来源：{result.BackupPath}";
+                TransparentProxyStatusSummary = result.Summary;
+                StatusMessage = result.Summary;
+                RefreshTransparentProxyCaptureTargets();
+                await Task.CompletedTask;
+            },
+            "Codex CLI 接管",
+            "恢复中",
+            18d);
+
+    private bool CanConfigureTransparentProxyLauncher()
+        => !IsBusy;
+
+    private Task PreviewTransparentProxyCodexLauncherAsync()
+        => PreviewTransparentProxyLauncherAsync("codex-cli", "Codex CLI", "codex");
+
+    private Task WriteTransparentProxyCodexLauncherAsync()
+        => WriteTransparentProxyLauncherAsync("codex-cli", "Codex CLI", "codex");
+
+    private Task PreviewTransparentProxyClaudeLauncherAsync()
+        => PreviewTransparentProxyLauncherAsync("claude-cli", "Claude CLI", "claude");
+
+    private Task WriteTransparentProxyClaudeLauncherAsync()
+        => WriteTransparentProxyLauncherAsync("claude-cli", "Claude CLI", "claude");
+
+    private Task PreviewTransparentProxyLauncherAsync(string id, string displayName, string command)
+        => ExecuteBusyActionAsync(
+            $"正在生成 {displayName} 临时启动器预览...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("生成启动器预览", 42d);
+                var preview = _transparentProxyLaunchWrapperService.Preview(
+                    id,
+                    displayName,
+                    command,
+                    ParseTransparentProxyPort());
+                ApplyTransparentProxyLaunchWrapperPreview(preview);
+                TransparentProxyLaunchWrapperStatusText =
+                    $"{displayName} 临时启动器预览已生成；使用时请保持统一出口运行。";
+                TransparentProxyStatusSummary = TransparentProxyLaunchWrapperStatusText;
+                StatusMessage = TransparentProxyLaunchWrapperStatusText;
+                await Task.CompletedTask;
+            },
+            $"{displayName} 临时启动器",
+            "预览中",
+            18d);
+
+    private Task WriteTransparentProxyLauncherAsync(string id, string displayName, string command)
+        => ExecuteBusyActionAsync(
+            $"正在生成 {displayName} 临时启动器...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("写入启动器", 48d);
+                var result = _transparentProxyLaunchWrapperService.Write(
+                    id,
+                    displayName,
+                    command,
+                    ParseTransparentProxyPort());
+                var preview = _transparentProxyLaunchWrapperService.Preview(
+                    id,
+                    displayName,
+                    command,
+                    ParseTransparentProxyPort());
+                ApplyTransparentProxyLaunchWrapperPreview(preview);
+                TransparentProxyEnableAppCapture = true;
+                TransparentProxyLaunchWrapperStatusText =
+                    $"{result.Summary} PowerShell：{result.PowerShellPath}；CMD：{result.CmdPath}";
+                TransparentProxyStatusSummary = result.Summary;
+                StatusMessage = result.Summary;
+                SaveState();
+                await Task.CompletedTask;
+            },
+            $"{displayName} 临时启动器",
+            "生成中",
+            18d);
+
+    private void ApplyTransparentProxyLaunchWrapperPreview(TransparentProxyLaunchWrapperPreview preview)
+    {
+        TransparentProxyLaunchWrapperPathText =
+            $"PowerShell：{preview.PowerShellPath}    CMD：{preview.CmdPath}";
+        TransparentProxyLaunchWrapperPreviewText = string.Join(
+            Environment.NewLine,
+            [
+                $"# {preview.DisplayName} PowerShell",
+                preview.PowerShellScript.TrimEnd(),
+                string.Empty,
+                $"# {preview.DisplayName} CMD",
+                preview.CmdScript.TrimEnd()
+            ]);
+    }
+
+    private TransparentProxyCodexCaptureContext BuildTransparentProxyCodexCaptureContext()
+    {
+        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+        if (routes.Count == 0)
+        {
+            routes = TransparentProxyRouteTextCodec.ParseRoutes(BuildTransparentProxyRoutesTextFromWorkspace());
+        }
+
+        var model = routes.Count == 0
+            ? "gpt-5.4"
+            : ResolveTransparentProxyClientDefaultModel(routes);
+        return new(
+            TransparentProxyLocalEndpoint,
+            string.IsNullOrWhiteSpace(model) ? "gpt-5.4" : model,
+            ResolveTransparentProxyCodexWireApi(routes));
+    }
+
+    private static string ResolveTransparentProxyCodexWireApi(IReadOnlyList<TransparentProxyRoute> routes)
+    {
+        if (routes.Count == 0)
+        {
+            return "responses";
+        }
+
+        return routes.Any(static route =>
+            route.ResponsesSupported != false ||
+            route.AnthropicMessagesSupported == true ||
+            route.AnthropicMessagesSupported is null)
+            ? "responses"
+            : "chat";
+    }
+
+    private void ApplyTransparentProxyCodexPreview(TransparentProxyCodexConfigPreview preview)
+    {
+        TransparentProxyCodexConfigPath = preview.ConfigPath;
+        TransparentProxyCodexPreviewText = preview.PreviewText;
+    }
+
+    private bool CanConfigureTransparentProxyClaudeCapture()
+        => !IsBusy;
+
+    private Task PreviewTransparentProxyClaudeCaptureAsync()
+        => ExecuteBusyActionAsync(
+            "正在生成 Claude CLI 接管预览...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("生成预览", 42d);
+                var preview = _transparentProxyClaudeConfigService.Preview(TransparentProxyLocalEndpoint);
+                ApplyTransparentProxyClaudePreview(preview);
+                TransparentProxyClaudeStatusText = preview.Changed
+                    ? "预览已生成：写入前会备份现有 settings.json，只更新 env 接管变量。"
+                    : "预览已生成：当前 Claude CLI 配置已经指向 RelayBench。";
+                TransparentProxyStatusSummary = TransparentProxyClaudeStatusText;
+                StatusMessage = TransparentProxyClaudeStatusText;
+                RefreshTransparentProxyCaptureTargets();
+                await Task.CompletedTask;
+            },
+            "Claude CLI 接管",
+            "预览中",
+            18d);
+
+    private Task ApplyTransparentProxyClaudeCaptureAsync()
+        => ExecuteBusyActionAsync(
+            "正在写入 Claude CLI 接管配置...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("启动统一出口", 24d);
+                if (!IsTransparentProxyRunning)
+                {
+                    await StartTransparentProxyCoreAsync(isAutoStart: false);
+                }
+
+                if (!IsTransparentProxyRunning)
+                {
+                    throw new InvalidOperationException("本地统一出口未能启动，已取消写入 Claude CLI 配置。");
+                }
+
+                UpdateGlobalTaskProgress("写入 Claude 配置", 58d);
+                var result = _transparentProxyClaudeConfigService.Apply(TransparentProxyLocalEndpoint);
+                var preview = _transparentProxyClaudeConfigService.Preview(TransparentProxyLocalEndpoint);
+                ApplyTransparentProxyClaudePreview(preview);
+
+                TransparentProxyEnableAppCapture = true;
+                TransparentProxyClaudeStatusText = string.IsNullOrWhiteSpace(result.BackupPath)
+                    ? result.Summary
+                    : $"{result.Summary} 备份：{result.BackupPath}";
+                TransparentProxyClaudeStatusText += await BuildTransparentProxyPostApplyHealthTextAsync();
+                TransparentProxyStatusSummary = result.Summary;
+                StatusMessage = result.Summary;
+                RefreshTransparentProxyCaptureTargets();
+                SaveState();
+            },
+            "Claude CLI 接管",
+            "写入中",
+            16d);
+
+    private Task RestoreTransparentProxyClaudeCaptureAsync()
+        => ExecuteBusyActionAsync(
+            "正在恢复 Claude CLI 接管配置...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("恢复配置", 48d);
+                var result = _transparentProxyClaudeConfigService.RestoreLatestBackup();
+                var preview = _transparentProxyClaudeConfigService.Preview(TransparentProxyLocalEndpoint);
+                ApplyTransparentProxyClaudePreview(preview);
+                TransparentProxyClaudeStatusText = string.IsNullOrWhiteSpace(result.BackupPath)
+                    ? result.Summary
+                    : $"{result.Summary} 来源：{result.BackupPath}";
+                TransparentProxyStatusSummary = result.Summary;
+                StatusMessage = result.Summary;
+                RefreshTransparentProxyCaptureTargets();
+                await Task.CompletedTask;
+            },
+            "Claude CLI 接管",
+            "恢复中",
+            18d);
+
+    private void ApplyTransparentProxyClaudePreview(TransparentProxyClaudeConfigPreview preview)
+    {
+        TransparentProxyClaudeConfigPath = preview.SettingsPath;
+        TransparentProxyClaudePreviewText = preview.PreviewText;
+    }
+
+    private bool CanConfigureTransparentProxyVsCodeCapture()
+        => !IsBusy;
+
+    private TransparentProxyVsCodeSettingsScope GetTransparentProxyVsCodeSettingsScope()
+        => TransparentProxyVsCodeSettingsScopes.Parse(TransparentProxyVsCodeSettingsScopeKey);
+
+    private static string GetTransparentProxyVsCodeWorkspaceDirectory()
+        => RelayBenchPaths.RootDirectory;
+
+    private TransparentProxyVsCodeSettingsPreview BuildTransparentProxyVsCodePreview()
+        => _transparentProxyVsCodeSettingsService.Preview(
+            TransparentProxyLocalEndpoint,
+            GetTransparentProxyVsCodeSettingsScope(),
+            GetTransparentProxyVsCodeWorkspaceDirectory());
+
+    private Task PreviewTransparentProxyVsCodeCaptureAsync()
+        => ExecuteBusyActionAsync(
+            "正在生成 VS Code 终端接管预览...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("生成预览", 42d);
+                var preview = BuildTransparentProxyVsCodePreview();
+                ApplyTransparentProxyVsCodePreview(preview);
+                var scopeName = TransparentProxyVsCodeSettingsScopes.GetDisplayName(GetTransparentProxyVsCodeSettingsScope());
+                TransparentProxyVsCodeStatusText = preview.Changed
+                    ? $"预览已生成：{scopeName}写入前会备份 VS Code settings.json，只更新终端环境变量。"
+                    : $"预览已生成：VS Code {scopeName}终端环境已经指向 RelayBench。";
+                TransparentProxyStatusSummary = TransparentProxyVsCodeStatusText;
+                StatusMessage = TransparentProxyVsCodeStatusText;
+                RefreshTransparentProxyCaptureTargets();
+                await Task.CompletedTask;
+            },
+            "VS Code 终端接管",
+            "预览中",
+            18d);
+
+    private Task ApplyTransparentProxyVsCodeCaptureAsync()
+        => ExecuteBusyActionAsync(
+            "正在写入 VS Code 终端接管配置...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("启动统一出口", 24d);
+                if (!IsTransparentProxyRunning)
+                {
+                    await StartTransparentProxyCoreAsync(isAutoStart: false);
+                }
+
+                if (!IsTransparentProxyRunning)
+                {
+                    throw new InvalidOperationException("本地统一出口未能启动，已取消写入 VS Code 终端配置。");
+                }
+
+                UpdateGlobalTaskProgress("写入 VS Code 设置", 58d);
+                var scope = GetTransparentProxyVsCodeSettingsScope();
+                var workspaceDirectory = GetTransparentProxyVsCodeWorkspaceDirectory();
+                var result = _transparentProxyVsCodeSettingsService.Apply(TransparentProxyLocalEndpoint, scope, workspaceDirectory);
+                var preview = _transparentProxyVsCodeSettingsService.Preview(TransparentProxyLocalEndpoint, scope, workspaceDirectory);
+                ApplyTransparentProxyVsCodePreview(preview);
+
+                TransparentProxyEnableAppCapture = true;
+                TransparentProxyVsCodeStatusText = result.BackupFiles.Count == 0
+                    ? result.Summary
+                    : $"{result.Summary} 备份：{string.Join("；", result.BackupFiles)}";
+                TransparentProxyVsCodeStatusText += await BuildTransparentProxyPostApplyHealthTextAsync();
+                TransparentProxyStatusSummary = result.Summary;
+                StatusMessage = result.Summary;
+                RefreshTransparentProxyCaptureTargets();
+                SaveState();
+            },
+            "VS Code 终端接管",
+            "写入中",
+            16d);
+
+    private Task RestoreTransparentProxyVsCodeCaptureAsync()
+        => ExecuteBusyActionAsync(
+            "正在恢复 VS Code 终端接管配置...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("恢复配置", 48d);
+                var scope = GetTransparentProxyVsCodeSettingsScope();
+                var workspaceDirectory = GetTransparentProxyVsCodeWorkspaceDirectory();
+                var result = _transparentProxyVsCodeSettingsService.RestoreLatestBackups(scope, workspaceDirectory);
+                var preview = _transparentProxyVsCodeSettingsService.Preview(TransparentProxyLocalEndpoint, scope, workspaceDirectory);
+                ApplyTransparentProxyVsCodePreview(preview);
+                TransparentProxyVsCodeStatusText = result.BackupFiles.Count == 0
+                    ? result.Summary
+                    : $"{result.Summary} 来源：{string.Join("；", result.BackupFiles)}";
+                TransparentProxyStatusSummary = result.Summary;
+                StatusMessage = result.Summary;
+                RefreshTransparentProxyCaptureTargets();
+                await Task.CompletedTask;
+            },
+            "VS Code 终端接管",
+            "恢复中",
+            18d);
+
+    private void ApplyTransparentProxyVsCodePreview(TransparentProxyVsCodeSettingsPreview preview)
+    {
+        TransparentProxyVsCodeConfigPath = string.Join("；", preview.SettingsPaths);
+        TransparentProxyVsCodePreviewText = preview.PreviewText;
+    }
+
+    private Task ToggleTransparentProxyAdvancedNetworkSettingsAsync()
+    {
+        var shouldOpen = !IsTransparentProxyAdvancedNetworkSettingsOpen;
+        IsTransparentProxyAdvancedNetworkSettingsOpen = shouldOpen;
+        if (shouldOpen)
+        {
+            IsTransparentProxyListenSettingsOpen = false;
+            IsTransparentProxyAppCaptureSettingsOpen = false;
+            IsTransparentProxyProviderSettingsOpen = false;
+            RefreshTransparentProxyTunPreview();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task StopTransparentProxyTunForwarderAsync()
+    {
+        await _transparentProxyForwardProxyService.StopAsync();
+        IsTransparentProxyPacRunning = false;
+    }
+
+    private void RefreshTransparentProxySystemProxyStatus()
+    {
+        TransparentProxySystemProxyStatusText =
+            _transparentProxySystemProxyService.Inspect(BuildLegacyTransparentProxyPacEndpoint()).Summary;
+    }
+
+    private string BuildLegacyTransparentProxyPacEndpoint()
+        => $"http://127.0.0.1:{ParseTransparentProxyPort()}/relaybench/pac";
+
+    private Task PreviewTransparentProxyTunAsync()
+    {
+        RefreshTransparentProxyTunPreview();
+        TransparentProxyStatusSummary = "TUN 预览已生成：默认只接管 OpenAI / Anthropic API 域名，ChatGPT/OpenAI 官网和其余网络保持 DIRECT；不会改写 API Key 或 Base URL。";
+        StatusMessage = TransparentProxyStatusSummary;
+        return Task.CompletedTask;
+    }
+
+    private bool CanStartTransparentProxyTun()
+        => !IsBusy && !IsTransparentProxyTunRunning;
+
+    private Task StartTransparentProxyTunAsync()
+        => ExecuteBusyActionAsync(
+            "正在检查 TUN 高级模式...",
+            async () =>
+            {
+                var options = BuildTransparentProxyTunOptions();
+                var config = _transparentProxyTunService.BuildMihomoConfig(options);
+                var validation = _transparentProxyNetworkGuardService.ValidateMihomoConfig(config);
+                var guard = _transparentProxyNetworkGuardService.Inspect();
+
+                if (!validation.IsSafe)
+                {
+                    TransparentProxyTunPreviewText = BuildTransparentProxyTunPreviewText(config, guard, validation);
+                    TransparentProxyTunStatusText = "TUN 配置安全校验未通过，已保持系统网络不变。";
+                    TransparentProxyStatusSummary = TransparentProxyTunStatusText;
+                    StatusMessage = TransparentProxyTunStatusText;
+                    return;
+                }
+
+                if (!guard.IsAdministrator)
+                {
+                    TransparentProxyTunPreviewText = BuildTransparentProxyTunPreviewText(config, guard, validation);
+                    TransparentProxyTunStatusText = "TUN 需要管理员权限；当前仅完成预览，未启动 mihomo。";
+                    TransparentProxyStatusSummary = TransparentProxyTunStatusText;
+                    StatusMessage = TransparentProxyTunStatusText;
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(guard.MihomoPath))
+                {
+                    TransparentProxyTunPreviewText = BuildTransparentProxyTunPreviewText(config, guard, validation);
+                    TransparentProxyTunStatusText = "未找到 mihomo sidecar；请放到程序目录或 tools\\mihomo 后再启动。";
+                    TransparentProxyStatusSummary = TransparentProxyTunStatusText;
+                    StatusMessage = TransparentProxyTunStatusText;
+                    return;
+                }
+
+                if (!IsTransparentProxyRunning)
+                {
+                    await StartTransparentProxyCoreAsync(isAutoStart: false);
+                }
+
+                if (!IsTransparentProxyPacRunning)
+                {
+                    await _transparentProxyForwardProxyService.StartAsync(options.ForwardProxyPort);
+                    IsTransparentProxyPacRunning = true;
+                }
+
+                var result = await _transparentProxyTunService.StartAsync(guard.MihomoPath, options);
+                IsTransparentProxyTunRunning = result.Started;
+                TransparentProxyTunPreviewText = BuildTransparentProxyTunPreviewText(config, guard, validation);
+                TransparentProxyTunStatusText = result.Started
+                    ? $"TUN 已启动：mihomo 使用 {TransparentProxyTunMixedEndpoint}，AI API 经内部转发器 {TransparentProxyPacForwardProxyEndpoint} 转发。"
+                    : result.StatusText;
+                TransparentProxyStatusSummary = TransparentProxyTunStatusText;
+                StatusMessage = TransparentProxyTunStatusText;
+            },
+            "TUN 高级模式",
+            "启动中",
+            22d);
+
+    private async Task StopTransparentProxyTunAsync()
+    {
+        await _transparentProxyTunService.StopAsync();
+        IsTransparentProxyTunRunning = false;
+        TransparentProxyTunStatusText = "TUN 已停止；未修改系统代理设置。";
+        TransparentProxyStatusSummary = TransparentProxyTunStatusText;
+        StatusMessage = TransparentProxyTunStatusText;
+    }
+
+    private async Task RestoreTransparentProxyNetworkAsync()
+    {
+        List<string> recoverySummaries = [];
+        var systemProxyRestore = _transparentProxySystemProxyService.RestoreLatestSnapshot();
+        if (systemProxyRestore.Succeeded ||
+            !systemProxyRestore.Summary.Contains("未发现", StringComparison.OrdinalIgnoreCase))
+        {
+            recoverySummaries.Add(systemProxyRestore.Summary);
+        }
+
+        RefreshTransparentProxySystemProxyStatus();
+
+        var residualTunCleanup = await _transparentProxyTunService.StopResidualSessionAsync();
+        if (residualTunCleanup.Cleared)
+        {
+            recoverySummaries.Add(residualTunCleanup.Summary);
+        }
+        else if (!residualTunCleanup.Summary.Contains("未发现", StringComparison.OrdinalIgnoreCase))
+        {
+            recoverySummaries.Add(residualTunCleanup.Summary);
+        }
+
+        if (IsTransparentProxyTunRunning)
+        {
+            await StopTransparentProxyTunAsync();
+            recoverySummaries.Add("TUN 已停止");
+        }
+
+        if (IsTransparentProxyPacRunning)
+        {
+            await StopTransparentProxyTunForwarderAsync();
+            recoverySummaries.Add("TUN 内部转发器已停止");
+        }
+
+        RestoreTransparentProxyCaptureBackups(recoverySummaries);
+
+        var recoveryDetail = recoverySummaries.Count == 0
+            ? "未发现正在运行的高级网络接管或可恢复的应用接管备份。"
+            : string.Join("；", recoverySummaries);
+        TransparentProxyTunStatusText = $"网络接管已恢复：{recoveryDetail}";
+        TransparentProxyStatusSummary = TransparentProxyTunStatusText;
+        StatusMessage = TransparentProxyTunStatusText;
+        RefreshTransparentProxyTunPreview();
+        RefreshTransparentProxyCaptureTargets();
+        RefreshTransparentProxyCaptureDiagnostics();
+    }
+
+    private void RefreshTransparentProxyNetworkResidualState()
+    {
+        var residual = _transparentProxyTunService.InspectResidualSession();
+        if (!residual.HasSession)
+        {
+            return;
+        }
+
+        RefreshTransparentProxyTunPreview();
+        TransparentProxyTunStatusText = residual.Summary;
+        TransparentProxyStatusSummary = residual.IsProcessRunning
+            ? $"{residual.Summary} 可点击恢复网络安全停止。"
+            : $"{residual.Summary} 可点击恢复网络清理记录。";
+        StatusMessage = TransparentProxyStatusSummary;
+    }
+
+    private void RestoreTransparentProxyCaptureBackups(List<string> recoverySummaries)
+    {
+        try
+        {
+            var codex = _transparentProxyCodexConfigService.RestoreLatestBackup();
+            TransparentProxyCodexStatusText = string.IsNullOrWhiteSpace(codex.BackupPath)
+                ? codex.Summary
+                : $"{codex.Summary} 来源：{codex.BackupPath}";
+            if (codex.Succeeded)
+            {
+                recoverySummaries.Add("Codex CLI 配置已恢复");
+                ApplyTransparentProxyCodexPreview(_transparentProxyCodexConfigService.Preview(
+                    TransparentProxyLocalEndpoint,
+                    ResolveTransparentProxyClientDefaultModel(TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText)),
+                    ProxyWireApiProbeService.ResponsesWireApi));
+            }
+        }
+        catch (Exception ex)
+        {
+            TransparentProxyCodexStatusText = $"Codex CLI 恢复失败：{ex.Message}";
+            recoverySummaries.Add("Codex CLI 恢复失败");
+        }
+
+        try
+        {
+            var claude = _transparentProxyClaudeConfigService.RestoreLatestBackup();
+            TransparentProxyClaudeStatusText = string.IsNullOrWhiteSpace(claude.BackupPath)
+                ? claude.Summary
+                : $"{claude.Summary} 来源：{claude.BackupPath}";
+            if (claude.Succeeded)
+            {
+                recoverySummaries.Add("Claude CLI 配置已恢复");
+                ApplyTransparentProxyClaudePreview(_transparentProxyClaudeConfigService.Preview(TransparentProxyLocalEndpoint));
+            }
+        }
+        catch (Exception ex)
+        {
+            TransparentProxyClaudeStatusText = $"Claude CLI 恢复失败：{ex.Message}";
+            recoverySummaries.Add("Claude CLI 恢复失败");
+        }
+
+        try
+        {
+            var vsCode = _transparentProxyVsCodeSettingsService.RestoreLatestBackups(
+                TransparentProxyVsCodeSettingsScope.UserAndWorkspace,
+                GetTransparentProxyVsCodeWorkspaceDirectory());
+            TransparentProxyVsCodeStatusText = vsCode.BackupFiles.Count == 0
+                ? vsCode.Summary
+                : $"{vsCode.Summary} 来源：{string.Join("；", vsCode.BackupFiles)}";
+            if (vsCode.Succeeded)
+            {
+                recoverySummaries.Add("VS Code 终端配置已恢复");
+                ApplyTransparentProxyVsCodePreview(BuildTransparentProxyVsCodePreview());
+            }
+        }
+        catch (Exception ex)
+        {
+            TransparentProxyVsCodeStatusText = $"VS Code 恢复失败：{ex.Message}";
+            recoverySummaries.Add("VS Code 恢复失败");
+        }
+
+        try
+        {
+            var launchers = _transparentProxyLaunchWrapperService.DeleteKnownLaunchers();
+            TransparentProxyLaunchWrapperStatusText = launchers.Summary;
+            TransparentProxyLaunchWrapperPathText = string.Join("；", launchers.DeletedPaths.Concat(launchers.FailedPaths));
+            if (launchers.DeletedCount > 0)
+            {
+                recoverySummaries.Add("CLI 临时启动器已删除");
+            }
+        }
+        catch (Exception ex)
+        {
+            TransparentProxyLaunchWrapperStatusText = $"CLI 临时启动器清理失败：{ex.Message}";
+            recoverySummaries.Add("CLI 临时启动器清理失败");
+        }
+    }
+
+    private void RefreshTransparentProxyTunPreview()
+    {
+        var options = BuildTransparentProxyTunOptions();
+        var config = _transparentProxyTunService.BuildMihomoConfig(options);
+        var guard = _transparentProxyNetworkGuardService.Inspect();
+        var validation = _transparentProxyNetworkGuardService.ValidateMihomoConfig(config);
+        TransparentProxyTunPreviewText = BuildTransparentProxyTunPreviewText(config, guard, validation);
+        TransparentProxyTunStatusText = IsTransparentProxyTunRunning
+            ? $"TUN 运行中：mihomo -> {TransparentProxyPacForwardProxyEndpoint}；ChatGPT/OpenAI 官网、GitHub/npm/VS Code marketplace 保持 DIRECT。"
+            : validation.IsSafe
+                ? "TUN 配置预览安全；启动前仍需管理员权限和 mihomo sidecar。"
+                : "TUN 配置预览未通过安全校验。";
+    }
+
+    private string BuildTransparentProxyTunPreviewText(
+        string config,
+        TransparentProxyNetworkGuardSnapshot guard,
+        TransparentProxyNetworkGuardValidationResult validation)
+    {
+        var diagnostics = string.Join(Environment.NewLine, guard.Diagnostics);
+        var validationText = validation.IsSafe
+            ? "安全校验：通过。"
+            : "安全校验：未通过。" + Environment.NewLine + string.Join(Environment.NewLine, validation.Issues.Select(issue => "- " + issue));
+
+        return $"{diagnostics}{Environment.NewLine}{validationText}{Environment.NewLine}{Environment.NewLine}{config}";
+    }
+
+    private sealed record TransparentProxyCodexCaptureContext(
+        string BaseUrl,
+        string Model,
+        string WireApi);
 
     private Task ToggleTransparentProxyProviderSettingsAsync()
     {
@@ -532,6 +1788,8 @@ public sealed partial class MainWindowViewModel
         if (shouldOpen)
         {
             IsTransparentProxyListenSettingsOpen = false;
+            IsTransparentProxyAppCaptureSettingsOpen = false;
+            IsTransparentProxyAdvancedNetworkSettingsOpen = false;
         }
 
         return Task.CompletedTask;
@@ -586,7 +1844,7 @@ public sealed partial class MainWindowViewModel
 
         if (string.IsNullOrWhiteSpace(item.BaseUrl))
         {
-            throw new InvalidOperationException("请先填写 Base URL。");
+            throw new InvalidOperationException("请先填写接口地址。");
         }
 
         var effectiveApiKey = !string.IsNullOrWhiteSpace(item.ApiKey)
@@ -594,7 +1852,7 @@ public sealed partial class MainWindowViewModel
             : ProxyApiKey;
         if (string.IsNullOrWhiteSpace(effectiveApiKey))
         {
-            throw new InvalidOperationException("请先填写 API Key。");
+            throw new InvalidOperationException("请先填写接口密钥。");
         }
 
         var settings = new ProxyEndpointSettings(
@@ -645,8 +1903,8 @@ public sealed partial class MainWindowViewModel
 
         var routeId = TransparentProxyRouteTextCodec.BuildRouteId(item.Name, item.BaseUrl, item.Prefix);
         TransparentProxyStatusSummary = _transparentProxyService.ResetRouteCircuit(routeId)
-            ? $"Route circuit reset: {item.Name}"
-            : $"Route circuit is not active yet: {item.Name}";
+            ? $"已重置路由熔断：{item.Name}"
+            : $"该路由还没有运行态熔断记录：{item.Name}";
         return Task.CompletedTask;
     }
 
@@ -718,6 +1976,55 @@ public sealed partial class MainWindowViewModel
 
         return Task.CompletedTask;
     }
+
+    private Task GenerateTransparentProxyCandidateRoutesAsync()
+        => ExecuteBusyActionAsync(
+            "正在生成透明代理候选路由...",
+            async () =>
+            {
+                UpdateGlobalTaskProgress("生成路由", 10d);
+                TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromWorkspace();
+                RefreshTransparentProxyRouteEditorItemsFromText();
+                RefreshTransparentProxyRoutePreview();
+
+                var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+                IReadOnlyList<TransparentProxyRoute> hydratedRoutes = routes;
+                if (routes.Count > 0)
+                {
+                    UpdateGlobalTaskProgress("拉取模型", 30d);
+                    hydratedRoutes = await ResolveTransparentProxyRouteProtocolsAsync(
+                        routes,
+                        forceProbe: true,
+                        fetchCatalogModels: true,
+                        CancellationToken.None);
+                    ApplyHydratedTransparentProxyRoutesToEditor(hydratedRoutes);
+                    RefreshTransparentProxyRoutePreview();
+                    if (IsTransparentProxyRunning)
+                    {
+                        _transparentProxyService.UpdateRouteProtocols(hydratedRoutes);
+                    }
+                }
+                else
+                {
+                    TransparentProxyProtocolSummary = "协议探测：没有从当前接口或批量候选中找到可用路由。";
+                }
+
+                UpdateGlobalTaskProgress("测试出口", 86d);
+                if (!IsTransparentProxyRunning)
+                {
+                    await StartTransparentProxyCoreAsync(isAutoStart: false);
+                }
+
+                await RefreshTransparentProxyHealthAsync();
+                TransparentProxyStatusSummary = hydratedRoutes.Count > 0
+                    ? $"生成候选路由完成：{hydratedRoutes.Count} 个节点，协议探测和统一出口端点测试已完成。{TransparentProxyHealthSummary}"
+                    : $"生成候选路由完成：没有可用节点。{TransparentProxyHealthSummary}";
+                StatusMessage = TransparentProxyStatusSummary;
+                SaveState();
+            },
+            "生成候选路由",
+            "生成中",
+            8d);
 
     private Task ProbeTransparentProxyProtocolsAsync()
         => ExecuteBusyActionAsync(
@@ -868,7 +2175,122 @@ public sealed partial class MainWindowViewModel
     {
         Clipboard.SetText(TransparentProxyLocalEndpoint);
         TransparentProxyStatusSummary = $"已复制本地入口：{TransparentProxyLocalEndpoint}";
+        StatusMessage = TransparentProxyStatusSummary;
+        _ = ShowTransparentProxyCopyFeedbackAsync("endpoint");
         return Task.CompletedTask;
+    }
+
+    private Task CopyTransparentProxyPowerShellEnvAsync()
+    {
+        Clipboard.SetText(TransparentProxyPowerShellEnvSnippet);
+        TransparentProxyStatusSummary = "已复制 PowerShell 临时环境变量片段。";
+        StatusMessage = TransparentProxyStatusSummary;
+        _ = ShowTransparentProxyCopyFeedbackAsync("powershell");
+        return Task.CompletedTask;
+    }
+
+    private Task CopyTransparentProxyCmdEnvAsync()
+    {
+        Clipboard.SetText(TransparentProxyCmdEnvSnippet);
+        TransparentProxyStatusSummary = "已复制 CMD 临时环境变量片段。";
+        StatusMessage = TransparentProxyStatusSummary;
+        _ = ShowTransparentProxyCopyFeedbackAsync("cmd");
+        return Task.CompletedTask;
+    }
+
+    private async Task TestTransparentProxyHealthAsync()
+    {
+        TransparentProxyHealthTestButtonText = "\uE895";
+        try
+        {
+            await RefreshTransparentProxyHealthAsync();
+        }
+        finally
+        {
+            TransparentProxyHealthTestButtonText = "\uE9D9";
+        }
+    }
+
+    private async Task RefreshTransparentProxyHealthAsync()
+    {
+        try
+        {
+            using var client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(3);
+            using var response = await client.GetAsync(TransparentProxyHealthEndpoint);
+            TransparentProxyHealthSummary = response.IsSuccessStatusCode
+                ? $"健康检查通过：{TransparentProxyHealthEndpoint}"
+                : $"健康检查失败：HTTP {(int)response.StatusCode}，{TransparentProxyHealthEndpoint}";
+            TransparentProxyStatusSummary = TransparentProxyHealthSummary;
+            StatusMessage = TransparentProxyHealthSummary;
+        }
+        catch (Exception ex)
+        {
+            TransparentProxyHealthSummary = $"健康检查失败：{ex.Message}";
+            TransparentProxyStatusSummary = TransparentProxyHealthSummary;
+            StatusMessage = TransparentProxyHealthSummary;
+        }
+    }
+
+    private async Task<string> BuildTransparentProxyPostApplyHealthTextAsync()
+    {
+        try
+        {
+            using var client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(3);
+            using var response = await client.GetAsync(TransparentProxyHealthEndpoint);
+            return response.IsSuccessStatusCode
+                ? "；接入测试：统一出口健康。"
+                : $"；接入测试：统一出口返回 HTTP {(int)response.StatusCode}。";
+        }
+        catch (Exception ex)
+        {
+            return $"；接入测试失败：{ex.Message}";
+        }
+    }
+
+    private async Task ShowTransparentProxyCopyFeedbackAsync(string target)
+    {
+        _transparentProxyCopyFeedbackCancellationSource?.Cancel();
+        _transparentProxyCopyFeedbackCancellationSource?.Dispose();
+        var cancellationSource = new CancellationTokenSource();
+        _transparentProxyCopyFeedbackCancellationSource = cancellationSource;
+
+        ApplyTransparentProxyCopyButtonText(target, "OK");
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1.2), cancellationSource.Token);
+            if (!cancellationSource.IsCancellationRequested)
+            {
+                ResetTransparentProxyCopyButtonTexts();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void ApplyTransparentProxyCopyButtonText(string target, string text)
+    {
+        switch (target)
+        {
+            case "endpoint":
+                TransparentProxyCopyEndpointButtonText = text;
+                break;
+            case "powershell":
+                TransparentProxyCopyPowerShellButtonText = text;
+                break;
+            case "cmd":
+                TransparentProxyCopyCmdButtonText = text;
+                break;
+        }
+    }
+
+    private void ResetTransparentProxyCopyButtonTexts()
+    {
+        TransparentProxyCopyEndpointButtonText = "\uE8C8";
+        TransparentProxyCopyPowerShellButtonText = "PS";
+        TransparentProxyCopyCmdButtonText = "CMD";
     }
 
     private Task ClearTransparentProxyLogsAsync()
@@ -884,7 +2306,7 @@ public sealed partial class MainWindowViewModel
     private async Task ExportTransparentProxyLogsAsync()
     {
         var exportPath = await _transparentProxyLogStore.ExportCsvAsync(RelayBenchPaths.ExportsDirectory);
-        TransparentProxyStatusSummary = $"Transparent proxy logs exported: {exportPath}";
+        TransparentProxyStatusSummary = $"透明代理日志已导出：{exportPath}";
     }
 
     private Task CloseTransparentProxyLogDetailAsync()
@@ -912,6 +2334,8 @@ public sealed partial class MainWindowViewModel
     private void LoadTransparentProxyState(AppStateSnapshot snapshot)
     {
         var config = _transparentProxyConfigStore.Load(snapshot);
+        TransparentProxyStartUnifiedEndpointOnLaunch = config.StartUnifiedEndpointOnLaunch;
+        TransparentProxyEnableAppCapture = config.EnableAppCapture;
         TransparentProxyPortText = config.PortText;
         TransparentProxyRoutesText = config.RoutesText;
         TransparentProxyRateLimitPerMinuteText = config.RateLimitPerMinuteText;
@@ -925,6 +2349,7 @@ public sealed partial class MainWindowViewModel
         TransparentProxySessionAffinityTtlSecondsText = config.SessionAffinityTtlSecondsText;
         TransparentProxyModelCooldownSecondsText = config.ModelCooldownSecondsText;
         TransparentProxyRewriteModel = config.RewriteModel;
+        TransparentProxyVsCodeSettingsScopeKey = config.VsCodeSettingsScopeKey;
 
         if (string.IsNullOrWhiteSpace(TransparentProxyRoutesText))
         {
@@ -933,6 +2358,7 @@ public sealed partial class MainWindowViewModel
 
         RefreshTransparentProxyRouteEditorItemsFromText();
         RefreshTransparentProxyRoutePreview();
+        RefreshTransparentProxyCaptureTargets();
     }
 
     private void ApplyTransparentProxyStateToSnapshot(AppStateSnapshot snapshot)
@@ -957,7 +2383,10 @@ public sealed partial class MainWindowViewModel
             MaxRetryIntervalSecondsText = TransparentProxyMaxRetryIntervalSecondsText,
             SessionAffinityTtlSecondsText = TransparentProxySessionAffinityTtlSecondsText,
             ModelCooldownSecondsText = TransparentProxyModelCooldownSecondsText,
-            RewriteModel = TransparentProxyRewriteModel
+            RewriteModel = TransparentProxyRewriteModel,
+            StartUnifiedEndpointOnLaunch = TransparentProxyStartUnifiedEndpointOnLaunch,
+            EnableAppCapture = TransparentProxyEnableAppCapture,
+            VsCodeSettingsScopeKey = TransparentProxyVsCodeSettingsScopeKey
         };
 
     private async Task<IReadOnlyList<TransparentProxyRoute>> ResolveTransparentProxyRouteProtocolsAsync(
@@ -1135,10 +2564,9 @@ public sealed partial class MainWindowViewModel
                     continue;
                 }
 
-                var modelsText = string.Join(Environment.NewLine, route.Models);
-                if (!string.Equals(item.ModelsText, modelsText, StringComparison.Ordinal))
+                if (!AreTransparentProxyModelMappingsEquivalent(item.ModelMappings, route.ModelMappings))
                 {
-                    item.ModelsText = modelsText;
+                    item.ReplaceModelMappings(route.ModelMappings);
                     changed = true;
                 }
             }
@@ -1154,12 +2582,30 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    private static bool AreTransparentProxyModelMappingsEquivalent(
+        IReadOnlyCollection<TransparentProxyModelMappingViewModel> current,
+        IReadOnlyList<TransparentProxyModelMapping> next)
+    {
+        var currentKeys = current
+            .Where(static item => !string.IsNullOrWhiteSpace(item.Name))
+            .Select(static item => $"{item.Name.Trim()}\u001F{item.Alias.Trim()}")
+            .OrderBy(static item => item, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var nextKeys = next
+            .Where(static item => !string.IsNullOrWhiteSpace(item.Name))
+            .Select(static item => $"{item.Name.Trim()}\u001F{item.Alias.Trim()}")
+            .OrderBy(static item => item, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return currentKeys.SequenceEqual(nextKeys, StringComparer.OrdinalIgnoreCase);
+    }
+
     private void RefreshTransparentProxyRoutePreview()
     {
         var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
         var metrics = _transparentProxyService.IsRunning
             ? null
             : new TransparentProxyMetricsSnapshot(false, ParseTransparentProxyPort(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [], 0, 0d, null);
+        var registry = _transparentProxyModelRegistryService.BuildSnapshot(routes, metrics?.Routes);
 
         TransparentProxyRoutes.Clear();
         var priority = 0;
@@ -1181,9 +2627,21 @@ public sealed partial class MainWindowViewModel
             TransparentProxyRoutes.Add(viewModel);
         }
 
+        ReplaceTransparentProxyModelPools(registry.Pools);
         TransparentProxyRoutingSummary = routes.Count == 0
-            ? "尚未配置上游路由。每行格式：名称 | Base URL | 模型 | API Key。"
-            : $"已配置 {routes.Count} 路上游，自动选路会综合配置顺序、熔断、错误率和延迟。";
+            ? "尚未配置上游路由。每行格式：名称 | 接口地址 | 模型 | 接口密钥。"
+            : $"已配置 {routes.Count} 路上游，{registry.Pools.Count(static pool => !pool.IsPassThrough)} 个模型池；自动选路会综合优先级、熔断、错误率和延迟。";
+    }
+
+    private void ReplaceTransparentProxyModelPools(IReadOnlyList<TransparentProxyModelPoolSnapshot> pools)
+    {
+        TransparentProxyModelPools.Clear();
+        foreach (var pool in pools
+                     .Where(static item => !item.IsPassThrough || item.RouteCount > 0)
+                     .Take(12))
+        {
+            TransparentProxyModelPools.Add(new TransparentProxyModelPoolViewModel(pool));
+        }
     }
 
     private void OnTransparentProxyLogEmitted(object? sender, TransparentProxyLogEntry entry)
@@ -1226,8 +2684,10 @@ public sealed partial class MainWindowViewModel
     private void RefreshTransparentProxyLogView()
     {
         var filter = TransparentProxyLogFilterText.Trim();
+        var sourceFilter = TransparentProxyLogSourceFilterKey;
         var selectedRequestId = SelectedTransparentProxyLog?.RequestId;
         var rows = _allTransparentProxyLogs
+            .Where(row => MatchesTransparentProxyLogSourceFilter(row, sourceFilter))
             .Where(row => MatchesTransparentProxyLogFilter(row, filter))
             .Take(300)
             .ToArray();
@@ -1244,6 +2704,26 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    private static bool MatchesTransparentProxyLogSourceFilter(TransparentProxyLogEntryViewModel row, string sourceFilter)
+        => sourceFilter switch
+        {
+            "unified" => Contains(row.IngressKind, "UnifiedLocalEndpoint") ||
+                         Contains(row.SourceApplication, "本地统一出口"),
+            "codex" => Contains(row.SourceApplication, "Codex") ||
+                       Contains(row.CaptureMode, "Codex"),
+            "claude" => Contains(row.SourceApplication, "Claude") ||
+                        Contains(row.CaptureMode, "Claude"),
+            "vscode" => Contains(row.SourceApplication, "VS") ||
+                        Contains(row.SourceApplication, "Code") ||
+                        Contains(row.CaptureMode, "VS") ||
+                        Contains(row.CaptureMode, "Code"),
+            "tunnel" => Contains(row.IngressKind, "PacProxy") ||
+                        Contains(row.IngressKind, "TunProxy") ||
+                        Contains(row.CaptureMode, "TUN") ||
+                        Contains(row.CaptureMode, "tunnel"),
+            _ => true
+        };
+
     private static bool MatchesTransparentProxyLogFilter(TransparentProxyLogEntryViewModel row, string filter)
     {
         if (string.IsNullOrWhiteSpace(filter))
@@ -1259,16 +2739,24 @@ public sealed partial class MainWindowViewModel
                Contains(row.Message, filter) ||
                Contains(row.RequestId, filter) ||
                Contains(row.WireApi, filter) ||
+               Contains(row.IngressKind, filter) ||
+               Contains(row.SourceApplication, filter) ||
+               Contains(row.CaptureMode, filter) ||
+               Contains(row.TargetHost, filter) ||
                Contains(row.AttemptSummary, filter);
 
         static bool Contains(string value, string keyword)
             => value?.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
+    private static bool Contains(string value, string keyword)
+        => value?.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
+
     private void OnTransparentProxyMetricsChanged(object? sender, TransparentProxyMetricsSnapshot snapshot)
     {
         Application.Current.Dispatcher.BeginInvoke(() =>
         {
+            _latestTransparentProxyMetricsSnapshot = snapshot;
             IsTransparentProxyRunning = snapshot.IsRunning;
             TransparentProxyTotalRequestsText = snapshot.TotalRequests.ToString(CultureInfo.InvariantCulture);
             TransparentProxySuccessRateText = snapshot.TotalRequests <= 0
@@ -1276,7 +2764,9 @@ public sealed partial class MainWindowViewModel
                 : $"{snapshot.SuccessRequests * 100d / snapshot.TotalRequests:0.#}%";
             TransparentProxyActiveRequestsText = snapshot.ActiveRequests.ToString(CultureInfo.InvariantCulture);
             TransparentProxyFallbackRequestsText = snapshot.FallbackRequests.ToString(CultureInfo.InvariantCulture);
-            TransparentProxyCacheHitsText = snapshot.CacheHits.ToString(CultureInfo.InvariantCulture);
+            TransparentProxyCacheHitsText = snapshot.ResponseCacheLeaseWaits > 0
+                ? $"{snapshot.CacheHits.ToString(CultureInfo.InvariantCulture)}/{snapshot.ResponseCacheLeaseWaits.ToString(CultureInfo.InvariantCulture)}"
+                : snapshot.CacheHits.ToString(CultureInfo.InvariantCulture);
             TransparentProxyP95LatencyText = snapshot.P95LatencyMs <= 0
                 ? "-"
                 : $"{snapshot.P95LatencyMs.ToString(CultureInfo.InvariantCulture)} ms";
@@ -1286,14 +2776,21 @@ public sealed partial class MainWindowViewModel
             _transparentProxyLatestIsRunning = snapshot.IsRunning;
             TransparentProxyTotalTokensText = $"{FormatCompactTokenCount(snapshot.TotalOutputTokens)} tokens";
             TransparentProxyTokensPerSecondText = FormatTokensPerSecond(snapshot.TokensPerSecond);
+            var latestUsageSource = ResolveTransparentProxyLatestUsageSource(snapshot.RecentUsageEvents);
             UpdateTransparentProxyTokenMeter(
                 snapshot.IsRunning,
                 snapshot.TotalOutputTokens,
                 snapshot.TokensPerSecond,
-                snapshot.LastTokenActivityAt);
+                snapshot.LastTokenActivityAt,
+                latestUsageSource);
+            TransparentProxyIngressSummary = BuildTransparentProxyIngressSummary(snapshot.Ingresses);
+            ApplyTransparentProxyCaptureTargetMetrics(snapshot);
+            var responseCacheRate = FormatRate(snapshot.ResponseCacheHits, snapshot.ResponseCacheHits + snapshot.ResponseCacheMisses);
+            var promptSessionRate = FormatRate(snapshot.PromptSessionCacheHits, snapshot.PromptSessionCacheHits + snapshot.PromptSessionCacheMisses);
+            TransparentProxyCacheEfficiencyToolTip =
+                $"本地缓存命中 {snapshot.CacheHits}；响应缓存 {snapshot.ResponseCacheHits}/{snapshot.ResponseCacheMisses}（{responseCacheRate}）；并发合并等待 {snapshot.ResponseCacheLeaseWaits}；进行中 key {snapshot.ResponseCacheInFlightKeys}；Prompt 会话 {snapshot.PromptSessionCacheEntryCount}（{promptSessionRate}）。";
             TransparentProxyMetricsSummary =
-                $"请求 {snapshot.TotalRequests}，成功 {snapshot.SuccessRequests}，失败 {snapshot.FailedRequests}，fallback {snapshot.FallbackRequests}，缓存 {snapshot.CacheHits}，限速 {snapshot.RateLimitedRequests}，P50 {snapshot.P50LatencyMs} ms，P95 {snapshot.P95LatencyMs} ms，输出 {FormatCompactTokenCount(snapshot.TotalOutputTokens)} tokens。";
-            TransparentProxyMetricsSummary = $"Requests {snapshot.TotalRequests}, success {snapshot.SuccessRequests}, failed {snapshot.FailedRequests}, fallback {snapshot.FallbackRequests}, local cache {snapshot.CacheHits}, cache entries {snapshot.ResponseCacheEntryCount}/{snapshot.ModelListCacheEntryCount}, prompt sessions {snapshot.PromptSessionCacheEntryCount}, evicted {snapshot.ResponseCacheEvictions}, upstream prompt cache {FormatCompactTokenCount(snapshot.PromptCacheTokens)}, rate limited {snapshot.RateLimitedRequests}, P50 {snapshot.P50LatencyMs} ms, P95 {snapshot.P95LatencyMs} ms, output {FormatCompactTokenCount(snapshot.TotalOutputTokens)} tokens.";
+                $"请求 {snapshot.TotalRequests}，成功 {snapshot.SuccessRequests}，失败 {snapshot.FailedRequests}，fallback {snapshot.FallbackRequests}，本地缓存命中 {snapshot.CacheHits}，响应缓存 {snapshot.ResponseCacheHits}/{snapshot.ResponseCacheMisses}（{responseCacheRate}），模型列表 {snapshot.ModelListCacheEntryCount} 条，Prompt 会话 {snapshot.PromptSessionCacheEntryCount}（{promptSessionRate}），上游 Prompt Cache {FormatCompactTokenCount(snapshot.PromptCacheTokens)}，限速 {snapshot.RateLimitedRequests}，P50 {snapshot.P50LatencyMs} ms，P95 {snapshot.P95LatencyMs} ms，输出 {FormatCompactTokenCount(snapshot.TotalOutputTokens)} tokens。{TransparentProxyIngressSummary}";
             TransparentProxyStatusSummary = snapshot.IsRunning
                 ? $"运行中：{TransparentProxyLocalEndpoint}，活跃 {snapshot.ActiveRequests}，缓存条目 {snapshot.CacheEntryCount}。"
                 : "本地透明代理未启动。";
@@ -1306,6 +2803,17 @@ public sealed partial class MainWindowViewModel
             {
                 byId.TryGetValue(route.Id, out var metrics);
                 route.ApplyMetrics(metrics);
+            }
+
+            if (snapshot.ModelPools is { Count: > 0 } modelPools)
+            {
+                ReplaceTransparentProxyModelPools(modelPools);
+            }
+            else
+            {
+                var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+                ReplaceTransparentProxyModelPools(
+                    _transparentProxyModelRegistryService.BuildSnapshot(routes, snapshot.Routes).Pools);
             }
         });
     }
@@ -1335,7 +2843,8 @@ public sealed partial class MainWindowViewModel
         bool isRunning,
         long totalOutputTokens,
         double tokensPerSecond,
-        DateTimeOffset? lastTokenActivityAt)
+        DateTimeOffset? lastTokenActivityAt,
+        string? sourceApplication = null)
     {
         var now = DateTimeOffset.UtcNow;
         var isStreaming = tokensPerSecond >= 0.5d &&
@@ -1349,7 +2858,8 @@ public sealed partial class MainWindowViewModel
                 isRunning,
                 totalOutputTokens,
                 tokensPerSecond,
-                isStreaming);
+                isStreaming,
+                sourceApplication);
             TransparentProxyTokenMeterAccentBrush = "#0E9F6E";
             return;
         }
@@ -1360,7 +2870,8 @@ public sealed partial class MainWindowViewModel
             isRunning,
             totalOutputTokens,
             tokensPerSecond,
-            isStreaming: false);
+            isStreaming: false,
+            sourceApplication);
         TransparentProxyTokenMeterAccentBrush = isRunning ? "#64748B" : "#94A3B8";
     }
 
@@ -1369,14 +2880,18 @@ public sealed partial class MainWindowViewModel
         bool isRunning,
         long totalOutputTokens,
         double tokensPerSecond,
-        bool isStreaming)
+        bool isStreaming,
+        string? sourceApplication)
     {
         var phase = (now.ToUnixTimeSeconds() / 4) % 3;
+        var sourceText = string.IsNullOrWhiteSpace(sourceApplication) || string.Equals(sourceApplication, "-", StringComparison.Ordinal)
+            ? "本地统一出口"
+            : sourceApplication.Trim();
         if (isStreaming)
         {
             return phase switch
             {
-                1 => "实时输出中",
+                1 => sourceText,
                 2 => $"累计 {FormatCompactTokenCount(totalOutputTokens)}",
                 _ => "tokens / sec"
             };
@@ -1390,15 +2905,49 @@ public sealed partial class MainWindowViewModel
         return phase switch
         {
             1 => FormatTokensPerSecond(tokensPerSecond),
-            2 => "等待新请求",
+            2 => sourceText,
             _ => "本阶段累计"
         };
+    }
+
+    private static string ResolveTransparentProxyLatestUsageSource(IReadOnlyList<TransparentProxyUsageEvent>? events)
+    {
+        var latest = events?
+            .Where(static item => item.OutputTokenDelta > 0 || item.PromptCacheTokenDelta > 0)
+            .OrderByDescending(static item => item.Sequence)
+            .FirstOrDefault();
+        return latest?.SourceApplication ?? string.Empty;
+    }
+
+    private static string BuildTransparentProxyIngressSummary(IReadOnlyList<TransparentProxyIngressMetricsSnapshot>? ingresses)
+    {
+        if (ingresses is null || ingresses.Count == 0)
+        {
+            return "入口来源：等待请求。";
+        }
+
+        var top = ingresses
+            .OrderByDescending(static item => item.Requests)
+            .ThenByDescending(static item => item.OutputTokens)
+            .Take(3)
+            .Select(static item =>
+            {
+                var tokens = item.OutputTokens > 0 ? $"，{FormatCompactTokenCount(item.OutputTokens)} tokens" : string.Empty;
+                var tunnel = item.TunnelOnlyRequests > 0 ? $"，tunnel {item.TunnelOnlyRequests}" : string.Empty;
+                return $"{item.SourceApplication} {item.Requests} 请求{tokens}{tunnel}";
+            });
+        return "入口来源：" + string.Join("；", top) + "。";
     }
 
     private static string FormatTokensPerSecond(double value)
         => value <= 0.05d
             ? "0 tok/s"
             : $"{value.ToString("0.#", CultureInfo.InvariantCulture)} tok/s";
+
+    private static string FormatRate(long numerator, long denominator)
+        => denominator <= 0
+            ? "0%"
+            : $"{(numerator * 100d / denominator).ToString("0.#", CultureInfo.InvariantCulture)}%";
 
     private static string FormatCompactTokenCount(long value)
     {
@@ -1469,6 +3018,91 @@ public sealed partial class MainWindowViewModel
         return "relaybench-auto";
     }
 
+    private string BuildTransparentProxyAdvancedLabContext(IReadOnlyList<TransparentProxyRoute> routes, string model)
+    {
+        var routeCount = routes.Count;
+        var modelCount = ResolveTransparentProxyClientModels(routes).Count;
+        var strategyName = TransparentProxyRouteStrategyOptions
+            .FirstOrDefault(option => string.Equals(option.Key, TransparentProxyRouteStrategyKey, StringComparison.OrdinalIgnoreCase))
+            ?.DisplayName ?? TransparentProxyRouteStrategyKey;
+        var protocolSummary = routes.Any(static route =>
+                route.ResponsesSupported.HasValue ||
+                route.AnthropicMessagesSupported.HasValue ||
+                route.ChatCompletionsSupported.HasValue)
+            ? BuildTransparentProxyProtocolContext(routes)
+            : "协议：Responses → Anthropic Messages → OpenAI Chat 自动探测回退";
+        var cacheText = TransparentProxyEnableCache ? "缓存开启" : "缓存关闭";
+        var fallbackText = TransparentProxyEnableFallback ? "fallback 开启" : "fallback 关闭";
+        return $"透明代理上下文：{routeCount} 个节点，{modelCount} 个模型入口，当前模型 {model}，策略 {strategyName}，{fallbackText}，{cacheText}，{protocolSummary}。";
+    }
+
+    private static string BuildTransparentProxyProtocolContext(IReadOnlyList<TransparentProxyRoute> routes)
+    {
+        static string Format(bool? value)
+            => value == true ? "可用" : value == false ? "不可用" : "待探测";
+
+        var responses = MergeSupport(routes.Select(static route => route.ResponsesSupported));
+        var anthropic = MergeSupport(routes.Select(static route => route.AnthropicMessagesSupported));
+        var chat = MergeSupport(routes.Select(static route => route.ChatCompletionsSupported));
+        return $"协议：Responses {Format(responses)} / Anthropic {Format(anthropic)} / OpenAI Chat {Format(chat)}";
+    }
+
+    private static bool? MergeSupport(IEnumerable<bool?> values)
+    {
+        var materialized = values.ToArray();
+        if (materialized.Any(static value => value == true))
+        {
+            return true;
+        }
+
+        return materialized.Any(static value => value is null) ? null : false;
+    }
+
+    private static IReadOnlyList<string> ResolveTransparentProxyClientModels(IReadOnlyList<TransparentProxyRoute> routes)
+    {
+        List<string> models = [];
+        foreach (var route in routes
+                     .OrderBy(static item => item.Priority > 0 ? item.Priority : int.MaxValue)
+                     .ThenBy(static item => item.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            var prefix = route.Prefix.Trim().Trim('/');
+            foreach (var mapping in route.ModelMappings)
+            {
+                var model = mapping.EffectiveAlias;
+                if (string.IsNullOrWhiteSpace(model))
+                {
+                    continue;
+                }
+
+                models.Add(string.IsNullOrWhiteSpace(prefix) ? model.Trim() : $"{prefix}/{model.Trim()}");
+            }
+
+            if (route.ModelMappings.Count == 0 && !string.IsNullOrWhiteSpace(route.Model))
+            {
+                models.Add(string.IsNullOrWhiteSpace(prefix) ? route.Model.Trim() : $"{prefix}/{route.Model.Trim()}");
+            }
+        }
+
+        return models
+            .Where(static item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(200)
+            .ToArray();
+    }
+
+    private static string ResolveBatchModelFromTransparentProxyRoute(TransparentProxyRoute route)
+    {
+        var model = route.ModelMappings.FirstOrDefault()?.Name;
+        if (!string.IsNullOrWhiteSpace(model))
+        {
+            return model.Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(route.Model)
+            ? "relaybench-auto"
+            : route.Model.Trim();
+    }
+
     private string ResolveTransparentProxyClientApiKey(IReadOnlyList<TransparentProxyRoute> routes)
     {
         var routeKeys = routes
@@ -1497,10 +3131,52 @@ public sealed partial class MainWindowViewModel
     private int ParseTransparentProxyPort()
         => ParseBoundedInt(TransparentProxyPortText, fallback: 17880, min: 1024, max: 65535);
 
+    private int ResolveTransparentProxyPacForwardProxyPort()
+    {
+        var port = ParseTransparentProxyPort();
+        return port < 65535 ? port + 1 : 17881;
+    }
+
+    private TransparentProxyTunConfigOptions BuildTransparentProxyTunOptions()
+    {
+        var port = ParseTransparentProxyPort();
+        return new TransparentProxyTunConfigOptions(
+            port,
+            ResolveTransparentProxyPacForwardProxyPort(),
+            ResolveTransparentProxyTunMixedPort(),
+            ResolveTransparentProxyTunControllerPort(),
+            ResolveTransparentProxyTunDnsPort());
+    }
+
+    private int ResolveTransparentProxyTunMixedPort()
+        => ResolveTransparentProxyAdjacentPort(offset: 2, fallback: 17882);
+
+    private int ResolveTransparentProxyTunControllerPort()
+        => ResolveTransparentProxyAdjacentPort(offset: 3, fallback: 17883);
+
+    private int ResolveTransparentProxyTunDnsPort()
+        => ResolveTransparentProxyAdjacentPort(offset: 4, fallback: 17884);
+
+    private int ResolveTransparentProxyAdjacentPort(int offset, int fallback)
+    {
+        var port = ParseTransparentProxyPort();
+        return port <= 65535 - offset ? port + offset : fallback;
+    }
+
     private void NotifyTransparentProxyEndpointChanged()
     {
         OnPropertyChanged(nameof(TransparentProxyLocalEndpoint));
+        OnPropertyChanged(nameof(TransparentProxyOpenAiChatEndpoint));
+        OnPropertyChanged(nameof(TransparentProxyResponsesEndpoint));
+        OnPropertyChanged(nameof(TransparentProxyAnthropicEndpoint));
+        OnPropertyChanged(nameof(TransparentProxyModelsEndpoint));
         OnPropertyChanged(nameof(TransparentProxyHealthEndpoint));
+        OnPropertyChanged(nameof(TransparentProxyPowerShellEnvSnippet));
+        OnPropertyChanged(nameof(TransparentProxyCmdEnvSnippet));
+        OnPropertyChanged(nameof(TransparentProxyPacForwardProxyEndpoint));
+        OnPropertyChanged(nameof(TransparentProxyTunRunStateText));
+        OnPropertyChanged(nameof(TransparentProxyTunMixedEndpoint));
+        OnPropertyChanged(nameof(TransparentProxyTunControllerEndpoint));
         OnPropertyChanged(nameof(TransparentProxyStatusSummary));
     }
 }

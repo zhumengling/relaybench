@@ -9,8 +9,10 @@ release/
 
 # Local development artifacts
 .artifacts/
+artifacts/
 .codex-screenshots/
 .codex/
+.dotnet-cli-home/
 .dotnet-cli/
 .superpowers/
 .superpowers/
@@ -19,6 +21,7 @@ docs/superpowers/
 .tmp_stunprobe/
 *.nettest-backup-*
 docs/prototypes/*.png
+docs/plans/
 _reference/
 
 # IDE / OS

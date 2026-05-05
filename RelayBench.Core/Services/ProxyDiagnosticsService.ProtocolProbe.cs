@@ -121,21 +121,17 @@ public sealed partial class ProxyDiagnosticsService
         var anthropicSupported = anthropicProbe.ScenarioResult.Success;
         scenarioResults.Add(anthropicProbe.ScenarioResult);
 
-        var chatSupported = false;
-        if (ShouldProbeChatCompletionsForProtocolProbe(anthropicSupported, responsesSupported))
-        {
-            var chatPath = BuildApiPath(baseUri, "chat/completions");
-            var chatProbe = await ProbeJsonScenarioAsync(
-                client,
-                chatPath,
-                BuildChatPayload(probeModel, stream: false),
-                ProxyProbeScenarioKind.ChatCompletions,
-                "OpenAI Chat Completions",
-                ParseChatPreview,
-                cancellationToken);
-            chatSupported = chatProbe.ScenarioResult.Success;
-            scenarioResults.Add(chatProbe.ScenarioResult);
-        }
+        var chatPath = BuildApiPath(baseUri, "chat/completions");
+        var chatProbe = await ProbeJsonScenarioAsync(
+            client,
+            chatPath,
+            BuildChatPayload(probeModel, stream: false),
+            ProxyProbeScenarioKind.ChatCompletions,
+            "OpenAI Chat Completions",
+            ParseChatPreview,
+            cancellationToken);
+        var chatSupported = chatProbe.ScenarioResult.Success;
+        scenarioResults.Add(chatProbe.ScenarioResult);
 
         var preferredWireApi = ResolvePreferredWireApi(
             chatSupported,
@@ -332,13 +328,6 @@ public sealed partial class ProxyDiagnosticsService
         var likelyChatModel = sampleModels.FirstOrDefault(static model => !LooksLikeNonChatModel(model));
         return likelyChatModel ?? sampleModels.FirstOrDefault() ?? normalizedRequested;
     }
-
-    private static bool ShouldProbeChatCompletionsForProtocolProbe(
-        bool anthropicSupported,
-        bool responsesSupported)
-        => ProxyWireApiProbeService.ShouldProbeChatCompletions(
-            anthropicSupported,
-            responsesSupported);
 
     private static string? ResolvePreferredWireApi(
         bool chatSupported,

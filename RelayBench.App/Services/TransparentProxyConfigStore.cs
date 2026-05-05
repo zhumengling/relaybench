@@ -66,6 +66,8 @@ internal sealed class TransparentProxyConfigStore
     public static TransparentProxyConfigSnapshot FromAppState(AppStateSnapshot? snapshot)
         => Normalize(new TransparentProxyConfigSnapshot
         {
+            StartUnifiedEndpointOnLaunch = snapshot?.TransparentProxyStartUnifiedEndpointOnLaunch ?? false,
+            EnableAppCapture = snapshot?.TransparentProxyEnableAppCapture ?? false,
             PortText = snapshot?.TransparentProxyPortText ?? "17880",
             RoutesText = snapshot?.TransparentProxyRoutesText ?? string.Empty,
             RateLimitPerMinuteText = snapshot?.TransparentProxyRateLimitPerMinuteText ?? "60",
@@ -78,12 +80,15 @@ internal sealed class TransparentProxyConfigStore
             MaxRetryIntervalSecondsText = snapshot?.TransparentProxyMaxRetryIntervalSecondsText ?? "8",
             SessionAffinityTtlSecondsText = snapshot?.TransparentProxySessionAffinityTtlSecondsText ?? "1800",
             ModelCooldownSecondsText = snapshot?.TransparentProxyModelCooldownSecondsText ?? "120",
-            RewriteModel = snapshot?.TransparentProxyRewriteModel ?? false
+            RewriteModel = snapshot?.TransparentProxyRewriteModel ?? false,
+            VsCodeSettingsScopeKey = snapshot?.TransparentProxyVsCodeSettingsScopeKey ?? TransparentProxyVsCodeSettingsScopes.UserKey
         }, null);
 
     public static void ApplyToAppState(TransparentProxyConfigSnapshot config, AppStateSnapshot snapshot)
     {
         var normalized = Normalize(config, null);
+        snapshot.TransparentProxyStartUnifiedEndpointOnLaunch = normalized.StartUnifiedEndpointOnLaunch;
+        snapshot.TransparentProxyEnableAppCapture = normalized.EnableAppCapture;
         snapshot.TransparentProxyPortText = normalized.PortText;
         snapshot.TransparentProxyRoutesText = normalized.RoutesText;
         snapshot.TransparentProxyRateLimitPerMinuteText = normalized.RateLimitPerMinuteText;
@@ -97,6 +102,7 @@ internal sealed class TransparentProxyConfigStore
         snapshot.TransparentProxySessionAffinityTtlSecondsText = normalized.SessionAffinityTtlSecondsText;
         snapshot.TransparentProxyModelCooldownSecondsText = normalized.ModelCooldownSecondsText;
         snapshot.TransparentProxyRewriteModel = normalized.RewriteModel;
+        snapshot.TransparentProxyVsCodeSettingsScopeKey = normalized.VsCodeSettingsScopeKey;
     }
 
     private static TransparentProxyConfigSnapshot Normalize(
@@ -106,6 +112,8 @@ internal sealed class TransparentProxyConfigStore
         var legacy = legacySnapshot is null ? null : FromAppState(legacySnapshot);
         return new TransparentProxyConfigSnapshot
         {
+            StartUnifiedEndpointOnLaunch = snapshot.StartUnifiedEndpointOnLaunch,
+            EnableAppCapture = snapshot.EnableAppCapture,
             PortText = Coalesce(snapshot.PortText, legacy?.PortText, "17880"),
             RoutesText = string.IsNullOrWhiteSpace(snapshot.RoutesText)
                 ? legacy?.RoutesText ?? string.Empty
@@ -121,7 +129,9 @@ internal sealed class TransparentProxyConfigStore
             MaxRetryIntervalSecondsText = Coalesce(snapshot.MaxRetryIntervalSecondsText, legacy?.MaxRetryIntervalSecondsText, "8"),
             SessionAffinityTtlSecondsText = Coalesce(snapshot.SessionAffinityTtlSecondsText, legacy?.SessionAffinityTtlSecondsText, "1800"),
             ModelCooldownSecondsText = Coalesce(snapshot.ModelCooldownSecondsText, legacy?.ModelCooldownSecondsText, "120"),
-            RewriteModel = snapshot.RewriteModel
+            RewriteModel = snapshot.RewriteModel,
+            VsCodeSettingsScopeKey = TransparentProxyVsCodeSettingsScopes.NormalizeKey(
+                Coalesce(snapshot.VsCodeSettingsScopeKey, legacy?.VsCodeSettingsScopeKey, TransparentProxyVsCodeSettingsScopes.UserKey))
         };
     }
 
@@ -204,6 +214,10 @@ internal sealed class TransparentProxyConfigStore
 
 internal sealed class TransparentProxyConfigSnapshot
 {
+    public bool StartUnifiedEndpointOnLaunch { get; set; }
+
+    public bool EnableAppCapture { get; set; }
+
     public string PortText { get; set; } = "17880";
 
     public string RoutesText { get; set; } = string.Empty;
@@ -229,4 +243,6 @@ internal sealed class TransparentProxyConfigSnapshot
     public string ModelCooldownSecondsText { get; set; } = "120";
 
     public bool RewriteModel { get; set; }
+
+    public string VsCodeSettingsScopeKey { get; set; } = TransparentProxyVsCodeSettingsScopes.UserKey;
 }

@@ -82,6 +82,27 @@ public static class ChatSseParser
         }
     }
 
+    public static bool TryExtractOutputTokenCount(string data, out int tokenCount)
+    {
+        tokenCount = 0;
+        if (string.IsNullOrWhiteSpace(data) ||
+            string.Equals(data.Trim(), "[DONE]", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(data);
+            tokenCount = TryExtractOutputTokenCount(document.RootElement);
+            return tokenCount > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public static string? TryExtractError(string body)
     {
         try
@@ -97,6 +118,81 @@ public static class ChatSseParser
         }
 
         return string.IsNullOrWhiteSpace(body) ? null : body.Trim();
+    }
+
+    private static int TryExtractOutputTokenCount(JsonElement root)
+    {
+        var count = Math.Max(
+            TryExtractUsageOutputTokens(root, "usage"),
+            Math.Max(
+                TryExtractUsageOutputTokens(root, "response", "usage"),
+                TryExtractUsageOutputTokens(root, "message", "usage")));
+        if (count > 0)
+        {
+            return count;
+        }
+
+        if (root.TryGetProperty("usage", out var usage) &&
+            usage.ValueKind == JsonValueKind.Object)
+        {
+            count = Math.Max(
+                TryReadIntProperty(usage, "generated_tokens"),
+                TryReadIntProperty(usage, "completionTokens"));
+            if (count > 0)
+            {
+                return count;
+            }
+        }
+
+        if (root.TryGetProperty("usageMetadata", out var usageMetadata) &&
+            usageMetadata.ValueKind == JsonValueKind.Object)
+        {
+            return TryReadIntProperty(usageMetadata, "candidatesTokenCount");
+        }
+
+        return 0;
+    }
+
+    private static int TryExtractUsageOutputTokens(JsonElement root, params string[] path)
+    {
+        var usage = root;
+        foreach (var segment in path)
+        {
+            if (usage.ValueKind != JsonValueKind.Object ||
+                !usage.TryGetProperty(segment, out usage))
+            {
+                return 0;
+            }
+        }
+
+        if (usage.ValueKind != JsonValueKind.Object)
+        {
+            return 0;
+        }
+
+        return Math.Max(
+            Math.Max(
+                TryReadIntProperty(usage, "completion_tokens"),
+                TryReadIntProperty(usage, "output_tokens")),
+            Math.Max(
+                TryReadIntProperty(usage, "completionTokens"),
+                TryReadIntProperty(usage, "generated_tokens")));
+    }
+
+    private static int TryReadIntProperty(JsonElement root, string propertyName)
+    {
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty(propertyName, out var value))
+        {
+            return 0;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number when value.TryGetInt32(out var number) => Math.Max(0, number),
+            JsonValueKind.String when int.TryParse(value.GetString(), out var number) => Math.Max(0, number),
+            _ => 0
+        };
     }
 
     private static bool TryExtractChatCompletionsDelta(JsonElement root, out string? delta)

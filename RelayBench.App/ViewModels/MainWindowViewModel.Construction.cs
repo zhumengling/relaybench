@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using RelayBench.App.Infrastructure;
 using RelayBench.App.ViewModels.AdvancedTesting;
+using RelayBench.Core.AdvancedTesting.Runners;
 using RelayBench.Core.Models;
 
 namespace RelayBench.App.ViewModels;
@@ -9,20 +10,27 @@ public sealed partial class MainWindowViewModel : ObservableObject
 {
     public MainWindowViewModel()
     {
-        _transparentProxyProtocolDiscoveryService = new(
+        _proxyEndpointProtocolProbeService = new(
             _proxyDiagnosticsService,
             _proxyEndpointModelCacheService);
+        _transparentProxyProtocolDiscoveryService = new(
+            _proxyDiagnosticsService,
+            _proxyEndpointModelCacheService,
+            _proxyEndpointProtocolProbeService);
         _transparentProxyService.LogEmitted += OnTransparentProxyLogEmitted;
         _transparentProxyService.MetricsChanged += OnTransparentProxyMetricsChanged;
+        _transparentProxyForwardProxyService.TunnelLogEmitted += OnTransparentProxyLogEmitted;
 
         SpeedTestProfiles = new ObservableCollection<SpeedTestProfile>(_cloudflareSpeedTestService.GetProfiles());
         PortScanProfiles = new ObservableCollection<PortScanProfile>(_portScanDiagnosticsService.GetProfiles());
-        AdvancedTestLab = new AdvancedTestLabViewModel(() => new(
-            ProxyBaseUrl,
-            ProxyApiKey,
-            ProxyModel,
-            ProxyIgnoreTlsErrors,
-            ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300)));
+        AdvancedTestLab = new AdvancedTestLabViewModel(
+            () => new(
+                ProxyBaseUrl,
+                ProxyApiKey,
+                ProxyModel,
+                ProxyIgnoreTlsErrors,
+                ParseBoundedInt(ProxyTimeoutSecondsText, fallback: 20, min: 5, max: 300)),
+            new AdvancedTestRunner(_proxyEndpointProtocolProbeService));
 
         DashboardCards =
         [
@@ -153,12 +161,39 @@ public sealed partial class MainWindowViewModel : ObservableObject
         StartTransparentProxyCommand = new AsyncRelayCommand(StartTransparentProxyAsync, CanStartTransparentProxy, onError: HandleNonFatalCommandException);
         StopTransparentProxyCommand = new AsyncRelayCommand(StopTransparentProxyAsync, () => IsTransparentProxyRunning, onError: HandleNonFatalCommandException);
         RefreshTransparentProxyRoutesCommand = new AsyncRelayCommand(RefreshTransparentProxyRoutesFromWorkspaceAsync, onError: HandleNonFatalCommandException);
+        GenerateTransparentProxyCandidateRoutesCommand = new AsyncRelayCommand(GenerateTransparentProxyCandidateRoutesAsync, CanRun, onError: HandleNonFatalCommandException);
         ProbeTransparentProxyProtocolsCommand = new AsyncRelayCommand(ProbeTransparentProxyProtocolsAsync, CanRun, onError: HandleNonFatalCommandException);
         RunTransparentProxySelfTestCommand = new AsyncRelayCommand(RunTransparentProxySelfTestAsync, CanRun, onError: HandleNonFatalCommandException);
         ApplyTransparentProxyToAppsCommand = new AsyncRelayCommand(ApplyTransparentProxyToAppsAsync, CanApplyTransparentProxyToApps, onError: HandleNonFatalCommandException);
+        ApplyTransparentProxyToAdvancedLabCommand = new AsyncRelayCommand(ApplyTransparentProxyToAdvancedLabAsync, CanApplyTransparentProxyToAdvancedLab, onError: HandleNonFatalCommandException);
+        ImportProxyBatchToTransparentProxyCommand = new AsyncRelayCommand(ImportProxyBatchToTransparentProxyAsync, onError: HandleNonFatalCommandException);
+        ExportTransparentProxyRoutesToBatchCommand = new AsyncRelayCommand(ExportTransparentProxyRoutesToBatchAsync, onError: HandleNonFatalCommandException);
         AddTransparentProxyRouteEditorItemCommand = new AsyncRelayCommand(AddTransparentProxyRouteEditorItemAsync, onError: HandleNonFatalCommandException);
         ToggleTransparentProxySettingsDrawerCommand = new AsyncRelayCommand(ToggleTransparentProxySettingsDrawerAsync, onError: HandleNonFatalCommandException);
         ToggleTransparentProxyListenSettingsCommand = new AsyncRelayCommand(ToggleTransparentProxyListenSettingsAsync, onError: HandleNonFatalCommandException);
+        ToggleTransparentProxyAppCaptureSettingsCommand = new AsyncRelayCommand(ToggleTransparentProxyAppCaptureSettingsAsync, onError: HandleNonFatalCommandException);
+        RefreshTransparentProxyCaptureTargetsCommand = new AsyncRelayCommand(RefreshTransparentProxyCaptureTargetsAsync, onError: HandleNonFatalCommandException);
+        RefreshTransparentProxyCaptureDiagnosticsCommand = new AsyncRelayCommand(RefreshTransparentProxyCaptureDiagnosticsAsync, onError: HandleNonFatalCommandException);
+        ToggleTransparentProxyAdvancedNetworkSettingsCommand = new AsyncRelayCommand(ToggleTransparentProxyAdvancedNetworkSettingsAsync, onError: HandleNonFatalCommandException);
+        CopyTransparentProxyPowerShellEnvCommand = new AsyncRelayCommand(CopyTransparentProxyPowerShellEnvAsync, onError: HandleNonFatalCommandException);
+        CopyTransparentProxyCmdEnvCommand = new AsyncRelayCommand(CopyTransparentProxyCmdEnvAsync, onError: HandleNonFatalCommandException);
+        PreviewTransparentProxyTunCommand = new AsyncRelayCommand(PreviewTransparentProxyTunAsync, onError: HandleNonFatalCommandException);
+        StartTransparentProxyTunCommand = new AsyncRelayCommand(StartTransparentProxyTunAsync, CanStartTransparentProxyTun, onError: HandleNonFatalCommandException);
+        StopTransparentProxyTunCommand = new AsyncRelayCommand(StopTransparentProxyTunAsync, () => IsTransparentProxyTunRunning, onError: HandleNonFatalCommandException);
+        RestoreTransparentProxyNetworkCommand = new AsyncRelayCommand(RestoreTransparentProxyNetworkAsync, onError: HandleNonFatalCommandException);
+        PreviewTransparentProxyCodexCaptureCommand = new AsyncRelayCommand(PreviewTransparentProxyCodexCaptureAsync, CanConfigureTransparentProxyCodexCapture, onError: HandleNonFatalCommandException);
+        ApplyTransparentProxyCodexCaptureCommand = new AsyncRelayCommand(ApplyTransparentProxyCodexCaptureAsync, CanConfigureTransparentProxyCodexCapture, onError: HandleNonFatalCommandException);
+        RestoreTransparentProxyCodexCaptureCommand = new AsyncRelayCommand(RestoreTransparentProxyCodexCaptureAsync, CanConfigureTransparentProxyCodexCapture, onError: HandleNonFatalCommandException);
+        PreviewTransparentProxyCodexLauncherCommand = new AsyncRelayCommand(PreviewTransparentProxyCodexLauncherAsync, CanConfigureTransparentProxyLauncher, onError: HandleNonFatalCommandException);
+        WriteTransparentProxyCodexLauncherCommand = new AsyncRelayCommand(WriteTransparentProxyCodexLauncherAsync, CanConfigureTransparentProxyLauncher, onError: HandleNonFatalCommandException);
+        PreviewTransparentProxyClaudeCaptureCommand = new AsyncRelayCommand(PreviewTransparentProxyClaudeCaptureAsync, CanConfigureTransparentProxyClaudeCapture, onError: HandleNonFatalCommandException);
+        ApplyTransparentProxyClaudeCaptureCommand = new AsyncRelayCommand(ApplyTransparentProxyClaudeCaptureAsync, CanConfigureTransparentProxyClaudeCapture, onError: HandleNonFatalCommandException);
+        RestoreTransparentProxyClaudeCaptureCommand = new AsyncRelayCommand(RestoreTransparentProxyClaudeCaptureAsync, CanConfigureTransparentProxyClaudeCapture, onError: HandleNonFatalCommandException);
+        PreviewTransparentProxyClaudeLauncherCommand = new AsyncRelayCommand(PreviewTransparentProxyClaudeLauncherAsync, CanConfigureTransparentProxyLauncher, onError: HandleNonFatalCommandException);
+        WriteTransparentProxyClaudeLauncherCommand = new AsyncRelayCommand(WriteTransparentProxyClaudeLauncherAsync, CanConfigureTransparentProxyLauncher, onError: HandleNonFatalCommandException);
+        PreviewTransparentProxyVsCodeCaptureCommand = new AsyncRelayCommand(PreviewTransparentProxyVsCodeCaptureAsync, CanConfigureTransparentProxyVsCodeCapture, onError: HandleNonFatalCommandException);
+        ApplyTransparentProxyVsCodeCaptureCommand = new AsyncRelayCommand(ApplyTransparentProxyVsCodeCaptureAsync, CanConfigureTransparentProxyVsCodeCapture, onError: HandleNonFatalCommandException);
+        RestoreTransparentProxyVsCodeCaptureCommand = new AsyncRelayCommand(RestoreTransparentProxyVsCodeCaptureAsync, CanConfigureTransparentProxyVsCodeCapture, onError: HandleNonFatalCommandException);
         ToggleTransparentProxyProviderSettingsCommand = new AsyncRelayCommand(ToggleTransparentProxyProviderSettingsAsync, onError: HandleNonFatalCommandException);
         OpenTransparentProxyRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?>(OpenTransparentProxyRouteSettingsAsync, item => item is not null, onError: HandleNonFatalCommandException);
         OpenTransparentProxyRuntimeRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteViewModel?>(OpenTransparentProxyRuntimeRouteSettingsAsync, route => route is not null, onError: HandleNonFatalCommandException);
@@ -171,6 +206,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         MoveTransparentProxyRouteEditorItemUpCommand = new AsyncRelayCommand(MoveTransparentProxyRouteEditorItemUpAsync, () => SelectedTransparentProxyRouteEditorItem is not null, onError: HandleNonFatalCommandException);
         MoveTransparentProxyRouteEditorItemDownCommand = new AsyncRelayCommand(MoveTransparentProxyRouteEditorItemDownAsync, () => SelectedTransparentProxyRouteEditorItem is not null, onError: HandleNonFatalCommandException);
         CopyTransparentProxyEndpointCommand = new AsyncRelayCommand(CopyTransparentProxyEndpointAsync, onError: HandleNonFatalCommandException);
+        TestTransparentProxyHealthCommand = new AsyncRelayCommand(TestTransparentProxyHealthAsync, onError: HandleNonFatalCommandException);
         ClearTransparentProxyLogsCommand = new AsyncRelayCommand(ClearTransparentProxyLogsAsync);
         ExportTransparentProxyLogsCommand = new AsyncRelayCommand(ExportTransparentProxyLogsAsync, onError: HandleNonFatalCommandException);
         CloseTransparentProxyLogDetailCommand = new AsyncRelayCommand(CloseTransparentProxyLogDetailAsync);
@@ -219,6 +255,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         ResetIpRiskPresentation();
         LoadState();
+        RefreshTransparentProxyNetworkResidualState();
+        StartTransparentProxyUnifiedEndpointOnLaunch();
         _ = LoadTransparentProxyLogsAsync();
         LoadChatSession();
         RefreshSingleStationInlineChartPlaceholder();

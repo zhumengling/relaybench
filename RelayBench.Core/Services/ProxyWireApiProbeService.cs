@@ -13,6 +13,7 @@ public sealed record ProxyWireApiDecision(
 
 public static class ProxyWireApiProbeService
 {
+    public const int CurrentProtocolProbeVersion = 3;
     public const string ChatCompletionsWireApi = "chat";
     public const string ResponsesWireApi = "responses";
     public const string AnthropicMessagesWireApi = "anthropic";
@@ -31,11 +32,6 @@ public static class ProxyWireApiProbeService
 
     public static string NormalizeWireApiOrChat(string? wireApi)
         => NormalizeWireApi(wireApi) ?? ChatCompletionsWireApi;
-
-    public static bool ShouldProbeChatCompletions(
-        bool anthropicSupported,
-        bool responsesSupported)
-        => !anthropicSupported && !responsesSupported;
 
     public static string? ResolvePreferredWireApi(
         bool chatSupported,
@@ -67,7 +63,7 @@ public static class ProxyWireApiProbeService
         bool anthropicSupported,
         string? preferredWireApi)
     {
-        var chatText = chatSupported ? "chat available" : "chat not used/failed";
+        var chatText = chatSupported ? "chat available" : "chat unavailable";
         var responsesText = responsesSupported ? "responses available" : "responses unavailable";
         var anthropicText = anthropicSupported ? "messages available" : "messages unavailable";
         var preferredText = string.IsNullOrWhiteSpace(preferredWireApi)

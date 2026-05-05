@@ -102,6 +102,7 @@ public sealed partial class MainWindowViewModel
         });
         var throughputBenchmark = await _proxyDiagnosticsService.RunThroughputBenchmarkAsync(
             throughputSettings,
+            baselineResult: result,
             liveProgress: throughputLiveProgress,
             cancellationToken: cancellationToken);
         result = result with { ThroughputBenchmarkResult = throughputBenchmark };

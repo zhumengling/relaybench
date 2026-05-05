@@ -48,6 +48,7 @@ public partial class FloatingTokenMeterWindow : Window
 
         ClampToWorkArea();
         PlacementChanged?.Invoke(this, EventArgs.Empty);
+        PlayOpenAnimation();
     }
 
     private void Window_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -160,4 +161,33 @@ public partial class FloatingTokenMeterWindow : Window
             Duration = TimeSpan.FromMilliseconds(190),
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
+
+    private void PlayOpenAnimation()
+    {
+        if (!SystemParameters.ClientAreaAnimation)
+        {
+            RootChrome.Opacity = 1d;
+            RootScale.ScaleX = 1d;
+            RootScale.ScaleY = 1d;
+            RootTranslate.Y = 0d;
+            return;
+        }
+
+        var duration = TimeSpan.FromMilliseconds(160);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        RootChrome.BeginAnimation(OpacityProperty, new DoubleAnimation(1d, duration)
+        {
+            EasingFunction = ease
+        });
+        RootTranslate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation(0d, duration)
+        {
+            EasingFunction = ease
+        });
+        var scale = new DoubleAnimation(1d, duration)
+        {
+            EasingFunction = ease
+        };
+        RootScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, scale);
+        RootScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, scale);
+    }
 }

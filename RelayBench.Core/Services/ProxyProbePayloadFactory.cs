@@ -44,7 +44,21 @@ public static class ProxyProbePayloadFactory
             model,
             max_output_tokens = ResponsesProbeMaxOutputTokens,
             instructions = "You are a connectivity probe. Reply with a very short plain-text answer. Do not include reasoning, analysis, markdown, or thinking.",
-            input = "/no_think\nReply with exactly: proxy-ok"
+            input = new object[]
+            {
+                new
+                {
+                    role = "user",
+                    content = new object[]
+                    {
+                        new
+                        {
+                            type = "input_text",
+                            text = "/no_think\nReply with exactly: proxy-ok"
+                        }
+                    }
+                }
+            }
         };
 
         return JsonSerializer.Serialize(payload);
@@ -127,6 +141,38 @@ public static class ProxyProbePayloadFactory
                     content =
                         $"/no_think\nOutput exactly {normalizedSegmentCount} lines. Each line must begin with a marker from [001] to [{normalizedSegmentCount:000}]. " +
                         "After the marker, write 8 to 12 short English words about relay stream stability. Do not skip numbers, merge lines, add markdown, or add explanations."
+                }
+            }
+        };
+
+        return JsonSerializer.Serialize(payload);
+    }
+
+    public static string BuildThroughputStreamingPayload(string model, int targetOutputTokens)
+    {
+        var normalizedTarget = Math.Clamp(targetOutputTokens, 96, 1400);
+        var lineCount = Math.Clamp((int)Math.Ceiling(normalizedTarget / 30d), 6, 48);
+        var wordsPerLine = normalizedTarget < 512 ? 10 : 18;
+        var payload = new
+        {
+            model,
+            max_tokens = normalizedTarget,
+            temperature = 0,
+            stream = true,
+            messages = new object[]
+            {
+                new
+                {
+                    role = "system",
+                    content = "You are a streaming throughput probe. Output sustained plain text quickly. Follow the requested line count exactly. Do not include reasoning, analysis, markdown, code, headings, or explanations."
+                },
+                new
+                {
+                    role = "user",
+                    content =
+                        $"/no_think\nOutput exactly {lineCount} plain lines. Each line must begin with a marker from [001] to [{lineCount:000}] and then contain about {wordsPerLine} short English words. " +
+                        "Use simple factual sentences about routing, fallback, latency, cache behavior, and token streaming. " +
+                        $"Do not stop before [{lineCount:000}], do not merge lines, do not add bullets, and do not add a closing note."
                 }
             }
         };

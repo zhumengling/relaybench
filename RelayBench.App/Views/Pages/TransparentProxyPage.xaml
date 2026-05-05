@@ -6,6 +6,8 @@
              xmlns:infra="clr-namespace:RelayBench.App.Infrastructure"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              PreviewMouseDown="TransparentProxyPageRoot_OnPreviewMouseDown"
+             PreviewKeyDown="TransparentProxyPageRoot_OnPreviewKeyDown"
+             Focusable="True"
              Style="{StaticResource MotionPageRootStyle}"
              mc:Ignorable="d">
     <UserControl.Resources>
@@ -57,6 +59,15 @@
             <Setter Property="Height" Value="32" />
             <Setter Property="FontSize" Value="12.8" />
             <Setter Property="Margin" Value="0,0,5,0" />
+        </Style>
+
+        <Style x:Key="GatewayCopyBadgeButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource GatewayIconButtonStyle}">
+            <Setter Property="Width" Value="38" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
         <Style x:Key="GatewayPrimaryIconButtonStyle"
@@ -298,6 +309,19 @@
             <Setter Property="ClipToBounds" Value="True" />
         </Style>
 
+        <Style x:Key="GatewayModelPoolChipStyle" TargetType="Border">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MaxWidth" Value="220" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="Padding" Value="8,3" />
+            <Setter Property="Background" Value="#FBFCFE" />
+            <Setter Property="BorderBrush" Value="#E0E7F2" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="ClipToBounds" Value="True" />
+        </Style>
+
         <Style x:Key="GatewayMonoCellTextStyle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
             <Setter Property="FontSize" Value="11.6" />
@@ -403,12 +427,12 @@
                             ClipToBounds="True">
                     <WrapPanel VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource SectionTitleTextStyle}"
-                                   Text="透明代理"
+                                   Text="本地统一出口"
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock Margin="8,1,0,0"
                                    VerticalAlignment="Center"
                                    Style="{StaticResource SectionHintTextStyle}"
-                                   Text="本地入口调度器" />
+                                   Text="默认启动 · 应用接管可选" />
                         <Border Margin="10,0,0,0"
                                 VerticalAlignment="Center"
                                 Style="{StaticResource GatewayStatusPillStyle}">
@@ -443,31 +467,20 @@
                     <Button Command="{Binding StartTransparentProxyCommand}"
                             Content="&#xE768;"
                             Style="{StaticResource GatewayPrimaryIconButtonStyle}"
-                            ToolTip="启动透明代理" />
+                            ToolTip="启动本地统一出口" />
                     <Button Command="{Binding StopTransparentProxyCommand}"
                             Content="&#xE71A;"
                             Style="{StaticResource GatewayIconButtonStyle}"
-                            ToolTip="停止透明代理" />
-                    <Button Command="{Binding CopyTransparentProxyEndpointCommand}"
-                            Content="&#xE8C8;"
-                            Style="{StaticResource GatewayIconButtonStyle}"
-                            ToolTip="复制本地入口" />
-                    <Button Command="{Binding ApplyTransparentProxyToAppsCommand}"
-                            Content="&#xECAA;"
-                            Style="{StaticResource GatewayIconButtonStyle}"
-                            ToolTip="应用本地透明代理到软件" />
-                    <Button Command="{Binding RefreshTransparentProxyRoutesCommand}"
+                            ToolTip="停止本地统一出口" />
+                    <Button Command="{Binding GenerateTransparentProxyCandidateRoutesCommand}"
+                            AutomationProperties.Name="生成候选路由"
                             Content="&#xE72C;"
                             Style="{StaticResource GatewayIconButtonStyle}"
-                            ToolTip="从当前接口和批量候选生成路由" />
-                    <Button Command="{Binding ProbeTransparentProxyProtocolsCommand}"
-                            Content="&#xE946;"
+                            ToolTip="按顺序执行：从当前接口和批量候选生成路由、拉取模型并探测协议、测试本地统一出口端点" />
+                    <Button Command="{Binding RestoreTransparentProxyNetworkCommand}"
+                            Content="&#xE777;"
                             Style="{StaticResource GatewayIconButtonStyle}"
-                            ToolTip="拉取模型并探测 Responses / Anthropic / OpenAI Chat 协议" />
-                    <Button Command="{Binding RunTransparentProxySelfTestCommand}"
-                            Content="&#xE9D9;"
-                            Style="{StaticResource GatewayIconButtonStyle}"
-                            ToolTip="运行本地代理自检：fallback、模型聚合和短缓存" />
+                            ToolTip="停止 TUN 接管并清理旧版系统代理备份" />
                     <Button Click="ToggleTokenMeterButton_OnClick"
                             Content="&#xE9D2;"
                             IsEnabled="{Binding IsTransparentProxyRunning, Mode=OneWay}"
@@ -519,33 +532,25 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <TextBlock Margin="0,3,0,0"
-                                   Visibility="Collapsed"
-                                   Text="{Binding TransparentProxyHealthSummary, Mode=OneWay}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource SectionHintTextStyle}">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsTransparentProxySettingsDrawerOpen}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
                     </StackPanel>
 
-                    <Grid Grid.Row="1"
-                          Margin="0,6,0,0"
-                          MinHeight="0"
-                          Visibility="{Binding IsTransparentProxySettingsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
+                    <ScrollViewer Grid.Row="1"
+                                  Margin="0,6,0,0"
+                                  MinHeight="0"
+                                  CanContentScroll="False"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding IsTransparentProxySettingsDrawerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
 
                             <Button Grid.Row="0"
                                     Command="{Binding ToggleTransparentProxyListenSettingsCommand}"
@@ -577,9 +582,12 @@
                                      <Grid.RowDefinitions>
                                          <RowDefinition Height="Auto" />
                                          <RowDefinition Height="Auto" />
-                                         <RowDefinition Height="Auto" />
-                                         <RowDefinition Height="Auto" />
-                                     </Grid.RowDefinitions>
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                      </Grid.RowDefinitions>
 
                                      <TextBlock Style="{StaticResource FieldLabelTextStyle}"
                                                 Text="监听" />
@@ -620,8 +628,39 @@
                                              Style="{StaticResource CompactInputTextBoxStyle}"
                                              ToolTip="{Binding TransparentProxyLocalEndpoint, Mode=OneWay}"
                                              Text="{Binding TransparentProxyLocalEndpoint, Mode=OneWay}" />
-                                </Grid>
-                            </Border>
+                                     <TextBox Grid.Row="4"
+                                              Margin="0,5,0,0"
+                                              FontFamily="Cascadia Mono, Consolas"
+                                              IsReadOnly="True"
+                                              Style="{StaticResource CompactInputTextBoxStyle}"
+                                              ToolTip="{Binding TransparentProxyResponsesEndpoint, Mode=OneWay}"
+                                              Text="{Binding TransparentProxyResponsesEndpoint, Mode=OneWay}" />
+                                      <TextBox Grid.Row="5"
+                                               Margin="0,5,0,0"
+                                               FontFamily="Cascadia Mono, Consolas"
+                                               IsReadOnly="True"
+                                               Style="{StaticResource CompactInputTextBoxStyle}"
+                                               ToolTip="{Binding TransparentProxyAnthropicEndpoint, Mode=OneWay}"
+                                               Text="{Binding TransparentProxyAnthropicEndpoint, Mode=OneWay}" />
+                                     <StackPanel Grid.Row="6"
+                                                 Margin="0,6,0,0"
+                                                 HorizontalAlignment="Right"
+                                                 Orientation="Horizontal">
+                                         <Button Command="{Binding CopyTransparentProxyEndpointCommand}"
+                                                 Content="{Binding TransparentProxyCopyEndpointButtonText, Mode=OneWay}"
+                                                 Style="{StaticResource GatewayIconButtonStyle}"
+                                                 ToolTip="{Binding TransparentProxyLocalEndpoint, Mode=OneWay}" />
+                                         <Button Command="{Binding CopyTransparentProxyPowerShellEnvCommand}"
+                                                 Content="{Binding TransparentProxyCopyPowerShellButtonText, Mode=OneWay}"
+                                                 Style="{StaticResource GatewayCopyBadgeButtonStyle}"
+                                                 ToolTip="复制 PowerShell 接入命令" />
+                                         <Button Command="{Binding CopyTransparentProxyCmdEnvCommand}"
+                                                 Content="{Binding TransparentProxyCopyCmdButtonText, Mode=OneWay}"
+                                                 Style="{StaticResource GatewayCopyBadgeButtonStyle}"
+                                                 ToolTip="复制 CMD 接入命令" />
+                                      </StackPanel>
+                                 </Grid>
+                             </Border>
 
                             <Border Grid.Row="2"
                                     Tag="{Binding IsTransparentProxyListenSettingsOpen}"
@@ -720,6 +759,143 @@
                             </Border>
 
                             <Button Grid.Row="3"
+                                    Command="{Binding ToggleTransparentProxyAdvancedNetworkSettingsCommand}"
+                                    Tag="{Binding IsTransparentProxyAdvancedNetworkSettingsOpen}"
+                                    Style="{StaticResource GatewayDrawerMenuButtonStyle}"
+                                    ToolTip="展开或收起高级网络接管">
+                                <Grid VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="20" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Style="{StaticResource GatewayDrawerMenuGlyphStyle}"
+                                               Text="&#xE774;" />
+                                    <TextBlock Grid.Column="1"
+                                               Style="{StaticResource GatewayDrawerMenuTextStyle}"
+                                               Text="高级网络接管" />
+                                    <TextBlock Grid.Column="2"
+                                               Tag="{Binding IsTransparentProxyAdvancedNetworkSettingsOpen}"
+                                               Style="{StaticResource GatewayAccordionChevronStyle}" />
+                                </Grid>
+                            </Button>
+
+                            <Border Grid.Row="4"
+                                    Tag="{Binding IsTransparentProxyAdvancedNetworkSettingsOpen}"
+                                    Style="{StaticResource GatewayAccordionPanelStyle}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <DockPanel LastChildFill="True">
+                                        <StackPanel DockPanel.Dock="Right"
+                                                    Margin="8,0,0,0"
+                                                    Orientation="Horizontal">
+                                            <Button Command="{Binding PreviewTransparentProxyTunCommand}"
+                                                    Content="&#xE8A5;"
+                                                    Style="{StaticResource GatewayIconButtonStyle}"
+                                                    ToolTip="预览 mihomo TUN 配置" />
+                                            <Button Command="{Binding StartTransparentProxyTunCommand}"
+                                                    Content="&#xE768;"
+                                                    Style="{StaticResource GatewayIconButtonStyle}"
+                                                    ToolTip="启动 TUN 高级模式" />
+                                            <Button Command="{Binding StopTransparentProxyTunCommand}"
+                                                    Content="&#xE71A;"
+                                                    Style="{StaticResource GatewayIconButtonStyle}"
+                                                    ToolTip="停止 TUN 高级模式" />
+                                            <Button Command="{Binding RestoreTransparentProxyNetworkCommand}"
+                                                    Content="&#xE777;"
+                                                    Style="{StaticResource GatewayIconButtonStyle}"
+                                                    ToolTip="一键恢复网络接管" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                       Text="TUN 高级模式" />
+                                            <TextBlock Margin="0,2,0,0"
+                                                       FontSize="10.5"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       Text="{Binding TransparentProxyTunRunStateText, Mode=OneWay}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding TransparentProxyTunStatusText, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </DockPanel>
+
+                                    <TextBlock Grid.Row="1"
+                                               Margin="0,6,0,0"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               Text="TUN 只接管 OpenAI / Anthropic API 域名；ChatGPT/OpenAI 官网、GitHub、npm 与普通网络保持直连。它不会改写 API Key 或 Base URL，Codex Desktop 请使用“应用接入”写入配置。"
+                                               TextWrapping="Wrap" />
+
+                                    <Grid Grid.Row="2"
+                                          Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 FontFamily="Cascadia Mono, Consolas"
+                                                 IsReadOnly="True"
+                                                 Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="{Binding TransparentProxyTunMixedEndpoint, Mode=OneWay}"
+                                                 Text="{Binding TransparentProxyTunMixedEndpoint, Mode=OneWay}" />
+                                        <TextBox Grid.Column="2"
+                                                 FontFamily="Cascadia Mono, Consolas"
+                                                 IsReadOnly="True"
+                                                 Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="{Binding TransparentProxyTunControllerEndpoint, Mode=OneWay}"
+                                                 Text="{Binding TransparentProxyTunControllerEndpoint, Mode=OneWay}" />
+                                    </Grid>
+                                    <TextBlock Grid.Row="3"
+                                               Margin="0,6,0,0"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               Text="{Binding TransparentProxyTunStatusText, Mode=OneWay}"
+                                               TextWrapping="Wrap" />
+                                    <TextBox Grid.Row="4"
+                                             Margin="0,6,0,0"
+                                             MaxHeight="150"
+                                             MinHeight="84"
+                                             Padding="8,6"
+                                             AcceptsReturn="True"
+                                             FontFamily="Cascadia Mono, Consolas"
+                                             FontSize="10.5"
+                                             HorizontalScrollBarVisibility="Disabled"
+                                             IsReadOnly="True"
+                                             Text="{Binding TransparentProxyTunPreviewText, Mode=OneWay}"
+                                             TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto" />
+                                    <Border Grid.Row="5"
+                                            Margin="0,7,0,0"
+                                            Padding="8,6"
+                                            Background="#F8FAFC"
+                                            BorderBrush="#E2E8F0"
+                                            BorderThickness="1"
+                                            CornerRadius="6">
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock DockPanel.Dock="Left"
+                                                       Margin="0,0,7,0"
+                                                       VerticalAlignment="Center"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       Text="&#xE946;" />
+                                            <TextBlock FontSize="10.5"
+                                                       Foreground="{StaticResource MutedBrush}"
+                                                       Text="{Binding TransparentProxyTlsCaptureStatusText, Mode=OneWay}"
+                                                       TextWrapping="Wrap" />
+                                        </DockPanel>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <Button Grid.Row="5"
                                     Command="{Binding ToggleTransparentProxyProviderSettingsCommand}"
                                     Tag="{Binding IsTransparentProxyProviderSettingsOpen}"
                                     Style="{StaticResource GatewayDrawerMenuButtonStyle}"
@@ -742,7 +918,7 @@
                                 </Grid>
                             </Button>
 
-                            <Border Grid.Row="4"
+                            <Border Grid.Row="6"
                                     VerticalAlignment="Stretch"
                                     Tag="{Binding IsTransparentProxyProviderSettingsOpen}"
                                     Style="{StaticResource GatewayAccordionPanelStyle}">
@@ -757,6 +933,14 @@
                                     <DockPanel LastChildFill="True">
                                         <StackPanel DockPanel.Dock="Right"
                                                     Orientation="Horizontal">
+                                            <Button Command="{Binding ImportProxyBatchToTransparentProxyCommand}"
+                                                    Content="&#xE72C;"
+                                                    Style="{StaticResource GatewayIconButtonStyle}"
+                                                    ToolTip="从当前接口和批量入口组同步到透明代理" />
+                                            <Button Command="{Binding ExportTransparentProxyRoutesToBatchCommand}"
+                                                    Content="&#xE74E;"
+                                                    Style="{StaticResource GatewayIconButtonStyle}"
+                                                    ToolTip="将透明代理节点导出到批量入口组" />
                                             <Button Command="{Binding AddTransparentProxyRouteEditorItemCommand}"
                                                     Content="&#xE710;"
                                                     Style="{StaticResource GatewayIconButtonStyle}"
@@ -815,7 +999,7 @@
                                                                 MinWidth="92"
                                                                 Binding="{Binding BaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                 ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
-                                                                Header="Base URL" />
+                                                                Header="接口地址" />
                                             <DataGridTextColumn Width="82"
                                                                 MinWidth="72"
                                                                 Binding="{Binding ModelCountText, Mode=OneWay}"
@@ -824,7 +1008,7 @@
                                             <DataGridTemplateColumn Width="0"
                                                                     Visibility="Collapsed"
                                                                     MinWidth="0"
-                                                                    Header="API Key">
+                                                                    Header="密钥">
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>
                                                         <TextBlock Style="{StaticResource GatewayMonoCellTextStyle}"
@@ -869,7 +1053,7 @@
                                             </Grid.RowDefinitions>
                                             <TextBlock Style="{StaticResource SectionHintTextStyle}"
                                                        TextWrapping="Wrap"
-                                                       Text="每行格式：名称 | Base URL | 模型 | API Key。以 # 开头的行会保留但不启用。" />
+                                                       Text="每行格式：名称 | 接口地址 | 模型 | 接口密钥。以 # 开头的行会保留但不启用。" />
                                             <TextBox Grid.Row="1"
                                                      Margin="0,6,0,0"
                                                      Style="{StaticResource GatewayMultilineRouteTextBoxStyle}"
@@ -878,11 +1062,14 @@
                                     </Expander>
                                 </Grid>
                             </Border>
-                    </Grid>
+                        </Grid>
+                    </ScrollViewer>
                 </Grid>
             </Border>
 
-            <Grid Grid.Column="2" MinHeight="0">
+            <Grid Grid.Column="2"
+                  HorizontalAlignment="Stretch"
+                  MinHeight="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="6" />
@@ -916,7 +1103,7 @@
                 <UniformGrid Grid.Row="0"
                              Height="40"
                              HorizontalAlignment="Stretch"
-                             Columns="6">
+                             Columns="4">
                     <Border Style="{StaticResource GatewayMetricTileStyle}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource GatewayMetricLabelTextStyle}" Text="总请求" />
@@ -941,16 +1128,12 @@
                             <TextBlock Style="{StaticResource GatewayMetricValueTextStyle}" Text="{Binding TransparentProxyFallbackRequestsText, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
-                    <Border Style="{StaticResource GatewayMetricTileStyle}">
+                    <Border Visibility="Collapsed"
+                            Style="{StaticResource GatewayMetricTileStyle}"
+                            ToolTip="{Binding TransparentProxyCacheEfficiencyToolTip, Mode=OneWay}">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource GatewayMetricLabelTextStyle}" Text="缓存命中" />
+                            <TextBlock Style="{StaticResource GatewayMetricLabelTextStyle}" Text="缓存/合并" />
                             <TextBlock Style="{StaticResource GatewayMetricValueTextStyle}" Text="{Binding TransparentProxyCacheHitsText, Mode=OneWay}" />
-                        </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource GatewayMetricTileStyle}" Margin="0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource GatewayMetricLabelTextStyle}" Text="P95" />
-                            <TextBlock Style="{StaticResource GatewayMetricValueTextStyle}" Text="{Binding TransparentProxyP95LatencyText, Mode=OneWay}" />
                         </StackPanel>
                     </Border>
                 </UniformGrid>
@@ -958,8 +1141,10 @@
                 <Border Grid.Row="2"
                         Padding="8"
                         Style="{StaticResource SectionPanelBorderStyle}">
-                    <Grid>
+                    <Grid x:Name="TransparentProxyRouteQueueGrid"
+                          ClipToBounds="True">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
@@ -974,6 +1159,11 @@
                             <TextBlock Margin="0,3,0,0"
                                        Style="{StaticResource SectionHintTextStyle}"
                                        Text="{Binding TransparentProxyRoutingSummary, Mode=OneWay}" />
+                            <TextBlock Margin="0,2,0,0"
+                                       Style="{StaticResource SectionHintTextStyle}"
+                                       Text="{Binding TransparentProxyIngressSummary, Mode=OneWay}"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding TransparentProxyIngressSummary, Mode=OneWay}" />
                         </StackPanel>
                         <TextBlock Grid.Column="1"
                                    MaxWidth="360"
@@ -984,9 +1174,82 @@
                                    ToolTip="{Binding TransparentProxyProtocolSummary, Mode=OneWay}"
                                    Text="{Binding TransparentProxyProtocolSummary, Mode=OneWay}" />
 
-                        <DataGrid Grid.Row="1"
+                        <ScrollViewer x:Name="TransparentProxyModelPoolScroller"
+                                      Grid.Row="1"
+                                      Grid.ColumnSpan="2"
+                                      Margin="0,7,0,0"
+                                      MaxHeight="88"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                        <ItemsControl Width="{Binding ActualWidth, ElementName=TransparentProxyModelPoolScroller}"
+                                      ClipToBounds="True"
+                                      ItemsSource="{Binding TransparentProxyModelPools}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource GatewayModelPoolChipStyle}"
+                                            ToolTip="{Binding ToolTipText}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Grid.Column="0"
+                                                     Width="7"
+                                                     Height="7"
+                                                     Margin="0,0,7,0"
+                                                     VerticalAlignment="Center"
+                                                     Fill="{Binding HealthBrush}" />
+                                            <StackPanel Grid.Column="1"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock FontFamily="Cascadia Mono, Consolas"
+                                                           FontSize="11.2"
+                                                           FontWeight="SemiBold"
+                                                           LineHeight="14"
+                                                           MaxHeight="16"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding DisplayModelName}" />
+                                                <TextBlock Margin="0,1,0,0"
+                                                           FontSize="10.4"
+                                                           Foreground="{StaticResource MutedBrush}"
+                                                           LineHeight="13"
+                                                           MaxHeight="14"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding MemberCountText}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2"
+                                                        Margin="8,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        HorizontalAlignment="Right">
+                                                <TextBlock FontSize="10.4"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{Binding HealthBrush}"
+                                                           LineHeight="13"
+                                                           TextAlignment="Right"
+                                                           Text="{Binding HealthText}" />
+                                                <TextBlock Margin="0,1,0,0"
+                                                           FontSize="10.2"
+                                                           Foreground="{StaticResource MutedBrush}"
+                                                           LineHeight="12"
+                                                           TextAlignment="Right"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding ProtocolSummary}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        </ScrollViewer>
+
+                        <DataGrid Grid.Row="2"
                                   Grid.ColumnSpan="2"
-                                  Margin="0,8,0,0"
+                                  Margin="0,4,0,0"
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="False"
                                   CanUserDeleteRows="False"
@@ -1018,7 +1281,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTemplateColumn Width="2.4*" MinWidth="260" Header="Base URL">
+                                <DataGridTemplateColumn Width="2.4*" MinWidth="260" Header="接口地址">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Style="{StaticResource GatewayMonoCellTextStyle}"
@@ -1067,13 +1330,15 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Width="62"
-                                                    MinWidth="52"
+                                <DataGridTextColumn Width="0"
+                                                    Visibility="Collapsed"
+                                                    MinWidth="0"
                                                     ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
                                                     Binding="{Binding StatsText}"
                                                     Header="统计" />
-                                <DataGridTextColumn Width="46"
-                                                    MinWidth="42"
+                                <DataGridTextColumn Width="0"
+                                                    Visibility="Collapsed"
+                                                    MinWidth="0"
                                                     ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
                                                     Binding="{Binding LatencyText}"
                                                     Header="延迟" />
@@ -1116,7 +1381,16 @@
                                        Margin="0,4,10,0"
                                        Style="{StaticResource SectionTitleTextStyle}"
                                        Text="请求日志" />
-                            <TextBox Width="260"
+                            <ComboBox DockPanel.Dock="Left"
+                                      Width="122"
+                                      Margin="0,0,6,0"
+                                      DisplayMemberPath="DisplayName"
+                                      ItemsSource="{Binding TransparentProxyLogSourceFilterOptions}"
+                                      SelectedValuePath="Key"
+                                      SelectedValue="{Binding TransparentProxyLogSourceFilterKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      Style="{StaticResource CompactComboBoxStyle}"
+                                      ToolTip="按入口来源筛选日志" />
+                            <TextBox Width="220"
                                      HorizontalAlignment="Left"
                                      Style="{StaticResource CompactInputTextBoxStyle}"
                                      Text="{Binding TransparentProxyLogFilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -1161,7 +1435,7 @@
                                   VirtualizingPanel.IsVirtualizing="True"
                                   VirtualizingPanel.VirtualizationMode="Recycling">
                             <DataGrid.Columns>
-                                <DataGridTemplateColumn Width="118" MinWidth="104" Header="事件">
+                                <DataGridTemplateColumn Width="138" MinWidth="118" Header="事件">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Grid VerticalAlignment="Center">
@@ -1193,14 +1467,22 @@
                                                                    TextAlignment="Center"
                                                                    TextTrimming="CharacterEllipsis" />
                                                     </Border>
-                                                    <TextBlock Margin="7,1,0,0"
-                                                               FontFamily="Cascadia Mono, Consolas"
-                                                               FontSize="10.6"
-                                                               Foreground="{StaticResource MutedBrush}"
-                                                               LineHeight="13"
-                                                               Text="{Binding Method}"
-                                                               TextTrimming="CharacterEllipsis" />
-                                                </StackPanel>
+                                                     <TextBlock Margin="7,1,0,0"
+                                                                FontFamily="Cascadia Mono, Consolas"
+                                                                FontSize="10.6"
+                                                                Foreground="{StaticResource MutedBrush}"
+                                                                LineHeight="13"
+                                                                Text="{Binding Method}"
+                                                                TextTrimming="CharacterEllipsis" />
+                                                     <TextBlock Margin="7,1,0,0"
+                                                                MaxWidth="58"
+                                                                FontSize="10.6"
+                                                                Foreground="{StaticResource MutedBrush}"
+                                                                LineHeight="13"
+                                                                Text="{Binding SourceText}"
+                                                                TextTrimming="CharacterEllipsis"
+                                                                ToolTip="{Binding SourceApplication}" />
+                                                 </StackPanel>
                                             </Grid>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
@@ -1355,260 +1637,432 @@
                                 ToolTip="关闭" />
                     </Grid>
 
-                    <Grid Grid.Row="1"
-                          Margin="0,12,0,12"
-                          MinHeight="0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                            <Grid Grid.Row="0">
+                    <TabControl Grid.Row="1"
+                                Margin="0,10,0,10"
+                                MinHeight="0"
+                                Padding="7">
+                        <TabItem Header="基础">
+                            <Grid MinHeight="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="10" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="10" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1.35*" />
+                                    <ColumnDefinition Width="1.25*" />
                                     <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="0.7*" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="0.9*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                               Text="Provider name" />
-                                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                             Text="{Binding TransparentProxyRouteSettingsItem.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                               Text="Priority" />
-                                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                             Text="{Binding TransparentProxyRouteSettingsItem.PriorityText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="4">
-                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                               Text="Prefix" />
-                                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                             ToolTip="示例：openrouter；客户端可请求 openrouter/model-id 指定该节点。"
-                                             Text="{Binding TransparentProxyRouteSettingsItem.Prefix, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                            </Grid>
-
-                            <StackPanel Grid.Row="1"
-                                        Margin="0,10,0,0">
-                                <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                           Text="Base URL" />
-                                <TextBox FontFamily="Cascadia Mono, Consolas"
-                                         Style="{StaticResource CompactInputTextBoxStyle}"
-                                         Text="{Binding TransparentProxyRouteSettingsItem.BaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="2"
-                                        Margin="0,10,0,0">
-                                <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                           Text="API Key" />
-                                <PasswordBox Height="30"
-                                             Style="{StaticResource CompactSecretInputPasswordBoxStyle}"
-                                             infra:PasswordBoxAssistant.BoundPassword="{Binding TransparentProxyRouteSettingsItem.ApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Margin="0,4,0,0"
-                                           Style="{StaticResource SectionHintTextStyle}"
-                                           Text="留空时继承客户端 Authorization；填写后对该节点覆盖为 Bearer token。" />
-                            </StackPanel>
-
-                            <Grid Grid.Row="3"
-                                  Margin="0,10,0,0"
-                                  MinHeight="0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="0.82*" />
                                 </Grid.ColumnDefinitions>
 
-                                <Grid Grid.Column="0"
-                                      MinHeight="0">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="0.8*" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="1.05*" />
-                                    </Grid.RowDefinitions>
-                                    <DockPanel Grid.Row="0"
-                                               LastChildFill="True">
-                                        <Button DockPanel.Dock="Right"
-                                                Margin="6,0,0,0"
-                                                Command="{Binding FetchTransparentProxyRouteEditorItemModelsCommand}"
-                                                CommandParameter="{Binding TransparentProxyRouteSettingsItem}"
-                                                Content="从 /models 获取"
-                                                MinWidth="104"
-                                                ToolTip="从该节点 /v1/models 拉取全部模型" />
-                                        <Button DockPanel.Dock="Right"
-                                                Command="{Binding AddTransparentProxyRouteModelMappingCommand}"
-                                                CommandParameter="{Binding TransparentProxyRouteSettingsItem}"
-                                                Content="添加模型"
-                                                MinWidth="76"
-                                                ToolTip="手动添加一个模型映射" />
-                                        <TextBlock Margin="0,5,8,0"
-                                                   Style="{StaticResource FieldLabelTextStyle}"
-                                                   Text="模型列表 name -> alias" />
-                                    </DockPanel>
-                                    <DataGrid Grid.Row="1"
-                                              Margin="0,6,0,0"
-                                              AutoGenerateColumns="False"
-                                              CanUserAddRows="False"
-                                              CanUserDeleteRows="False"
-                                              ColumnHeaderStyle="{StaticResource GatewayCompactDataGridHeaderStyle}"
-                                              EnableColumnVirtualization="True"
-                                              EnableRowVirtualization="True"
-                                              GridLinesVisibility="Horizontal"
-                                              HeadersVisibility="Column"
-                                              IsReadOnly="False"
-                                              ItemsSource="{Binding TransparentProxyRouteSettingsItem.ModelMappings}"
-                                              MinColumnWidth="0"
-                                              RowHeight="32"
-                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                              ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                              VirtualizingPanel.IsVirtualizing="True"
-                                              VirtualizingPanel.VirtualizationMode="Recycling">
-                                        <DataGrid.Columns>
-                                            <DataGridTextColumn Width="1.05*"
-                                                                MinWidth="150"
-                                                                Binding="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
-                                                                Header="name / 上游模型" />
-                                            <DataGridTextColumn Width="1.05*"
-                                                                MinWidth="150"
-                                                                Binding="{Binding Alias, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
-                                                                Header="alias / 显示名称" />
-                                            <DataGridTemplateColumn Width="36" MinWidth="34" Header="">
-                                                <DataGridTemplateColumn.CellTemplate>
-                                                    <DataTemplate>
-                                                        <Button Width="28"
-                                                                Height="28"
-                                                                Margin="0"
-                                                                Command="{Binding DataContext.RemoveTransparentProxyRouteModelMappingCommand, ElementName=TransparentProxyPageRoot}"
-                                                                CommandParameter="{Binding}"
-                                                                Content="&#xE711;"
-                                                                Style="{StaticResource GatewayIconButtonStyle}"
-                                                                ToolTip="删除模型映射" />
-                                                    </DataTemplate>
-                                                </DataGridTemplateColumn.CellTemplate>
-                                            </DataGridTemplateColumn>
-                                        </DataGrid.Columns>
-                                    </DataGrid>
-                                    <TextBlock Grid.Row="2"
-                                               Margin="0,4,0,0"
-                                               Style="{StaticResource SectionHintTextStyle}"
-                                               Text="{Binding TransparentProxyRouteSettingsItem.ModelPreviewText, Mode=OneWay}" />
+                                <Grid Grid.ColumnSpan="3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.4*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="0.65*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="0.9*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="提供商名称" />
+                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding TransparentProxyRouteSettingsItem.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="优先级" />
+                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding TransparentProxyRouteSettingsItem.PriorityText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="前缀" />
+                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="示例：openrouter；客户端可请求 openrouter/model-id 指定该节点。"
+                                                 Text="{Binding TransparentProxyRouteSettingsItem.Prefix, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="6"
+                                              Margin="4,19,0,0"
+                                              Content="启用"
+                                              IsChecked="{Binding TransparentProxyRouteSettingsItem.IsEnabled, Mode=TwoWay}" />
                                 </Grid>
 
-                                <Grid Grid.Column="2"
+                                <StackPanel Grid.Row="2"
+                                            Grid.Column="0">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                               Text="接口地址" />
+                                    <TextBox FontFamily="Cascadia Mono, Consolas"
+                                             Style="{StaticResource CompactInputTextBoxStyle}"
+                                             Text="{Binding TransparentProxyRouteSettingsItem.BaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2"
+                                            Grid.Column="2">
+                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                               Text="出站代理" />
+                                    <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                             ToolTip="留空继承系统代理；direct/none 直连；也可填写 http(s):// 或 socks5://"
+                                             Text="{Binding TransparentProxyRouteSettingsItem.OutboundProxy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <Grid Grid.Row="4"
+                                      Grid.ColumnSpan="3"
                                       MinHeight="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.05*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="1.15*" />
+                                    </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="0.78*" MinHeight="86" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="0.95*" MinHeight="112" />
+                                        <RowDefinition Height="*" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                               Text="Custom headers" />
-                                    <TextBox Grid.Row="1"
-                                             Margin="0,6,0,0"
-                                             MinHeight="0"
-                                             AcceptsReturn="True"
-                                             AcceptsTab="True"
-                                             FontFamily="Cascadia Mono, Consolas"
-                                             FontSize="11.4"
-                                             HorizontalScrollBarVisibility="Disabled"
-                                             Padding="8,6"
-                                             Style="{StaticResource {x:Type TextBox}}"
-                                             TextWrapping="Wrap"
-                                             VerticalScrollBarVisibility="Auto"
-                                             ToolTip="每行一个 Header: value"
-                                             Text="{Binding TransparentProxyRouteSettingsItem.HeadersText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <StackPanel Grid.Row="2"
-                                                Margin="0,8,0,0">
+
+                                    <StackPanel Grid.Column="0">
                                         <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                   Text="Excluded models" />
-                                        <TextBox Margin="0,5,0,0"
-                                                 FontFamily="Cascadia Mono, Consolas"
-                                                 Style="{StaticResource CompactInputTextBoxStyle}"
-                                                 ToolTip="Use comma-separated wildcard patterns, for example gpt-4o-mini*,claude-*"
-                                                 Text="{Binding TransparentProxyRouteSettingsItem.ExcludedModelsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                   Text="接口密钥" />
+                                        <PasswordBox Height="30"
+                                                     Style="{StaticResource CompactSecretInputPasswordBoxStyle}"
+                                                     infra:PasswordBoxAssistant.BoundPassword="{Binding TransparentProxyRouteSettingsItem.ApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Margin="0,5,0,0"
+                                                   Style="{StaticResource SectionHintTextStyle}"
+                                                   Text="留空继承客户端 Authorization；填写后仅覆盖该节点。" />
                                     </StackPanel>
-                                    <Grid Grid.Row="3"
-                                          Margin="0,8,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="8" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                       Text="Outbound proxy" />
-                                            <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                                     ToolTip="留空继承系统代理；direct/none 直连；也可填写 http(s):// 或 socks5://"
-                                                     Text="{Binding TransparentProxyRouteSettingsItem.OutboundProxy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                       Text="Retry" />
-                                            <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                                     ToolTip="留空继承全局；0-5"
-                                                     Text="{Binding TransparentProxyRouteSettingsItem.RequestRetryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Row="1"
-                                                    Grid.Column="0"
-                                                    Margin="0,5,0,0">
-                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                       Text="Retry wait" />
-                                            <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                                     ToolTip="留空继承全局最大重试等待秒数"
-                                                     Text="{Binding TransparentProxyRouteSettingsItem.MaxRetryIntervalSecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Row="1"
-                                                    Grid.Column="2"
-                                                    Margin="0,5,0,0">
-                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                       Text="Cooldown" />
-                                            <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
-                                                     ToolTip="留空继承全局模型冷却秒数"
-                                                     Text="{Binding TransparentProxyRouteSettingsItem.ModelCooldownSecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                    </Grid>
-                                    <Grid Grid.Row="4"
-                                          Margin="0,8,0,0"
+
+                                    <Grid Grid.Column="2"
+                                          Grid.RowSpan="2"
                                           MinHeight="0">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="*" />
                                         </Grid.RowDefinitions>
                                         <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                   Text="Payload rules" />
+                                                   Text="自定义请求头" />
                                         <TextBox Grid.Row="1"
-                                                 Margin="0,5,0,0"
+                                                 Margin="0,6,0,0"
                                                  MinHeight="0"
                                                  AcceptsReturn="True"
                                                  AcceptsTab="True"
                                                  FontFamily="Cascadia Mono, Consolas"
-                                                 FontSize="11.2"
+                                                 FontSize="11.4"
                                                  HorizontalScrollBarVisibility="Disabled"
                                                  Padding="8,6"
                                                  Style="{StaticResource {x:Type TextBox}}"
                                                  TextWrapping="Wrap"
                                                  VerticalScrollBarVisibility="Auto"
-                                                 ToolTip="JSON：default / override / filter，可按 models、protocol、path 匹配"
-                                                 Text="{Binding TransparentProxyRouteSettingsItem.PayloadRulesText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                 ToolTip="每行一个 Header: value"
+                                                 Text="{Binding TransparentProxyRouteSettingsItem.HeadersText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </Grid>
+
+                                    <StackPanel Grid.Row="1"
+                                                Grid.Column="0"
+                                                Margin="0,16,0,0">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="排除模型" />
+                                        <TextBox Margin="0,5,0,0"
+                                                 FontFamily="Cascadia Mono, Consolas"
+                                                 Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="用英文逗号分隔通配符，例如 gpt-4o-mini*,claude-*"
+                                                 Text="{Binding TransparentProxyRouteSettingsItem.ExcludedModelsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
                                 </Grid>
                             </Grid>
-                    </Grid>
+                        </TabItem>
+
+                        <TabItem Header="模型">
+                            <Grid MinHeight="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <DockPanel LastChildFill="True">
+                                    <Button DockPanel.Dock="Right"
+                                            Margin="6,0,0,0"
+                                            Command="{Binding FetchTransparentProxyRouteEditorItemModelsCommand}"
+                                            CommandParameter="{Binding TransparentProxyRouteSettingsItem}"
+                                            Content="从 /models 获取"
+                                            MinWidth="110"
+                                            ToolTip="从该节点 /v1/models 拉取全部模型" />
+                                    <Button DockPanel.Dock="Right"
+                                            Command="{Binding AddTransparentProxyRouteModelMappingCommand}"
+                                            CommandParameter="{Binding TransparentProxyRouteSettingsItem}"
+                                            Content="添加模型"
+                                            MinWidth="82"
+                                            ToolTip="手动添加一个模型映射" />
+                                    <TextBlock Margin="0,5,8,0"
+                                               Style="{StaticResource FieldLabelTextStyle}"
+                                               Text="模型映射表" />
+                                </DockPanel>
+                                <DataGrid Grid.Row="1"
+                                          Margin="0,7,0,0"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          ColumnHeaderStyle="{StaticResource GatewayCompactDataGridHeaderStyle}"
+                                          EnableColumnVirtualization="True"
+                                          EnableRowVirtualization="True"
+                                          GridLinesVisibility="Horizontal"
+                                          HeadersVisibility="Column"
+                                          IsReadOnly="False"
+                                          ItemsSource="{Binding TransparentProxyRouteSettingsItem.ModelMappings}"
+                                          MinColumnWidth="0"
+                                          RowHeight="32"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                          VirtualizingPanel.IsVirtualizing="True"
+                                          VirtualizingPanel.VirtualizationMode="Recycling">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Width="1.15*"
+                                                            MinWidth="180"
+                                                            Binding="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
+                                                            Header="上游模型名称" />
+                                        <DataGridTextColumn Width="1.15*"
+                                                            MinWidth="180"
+                                                            Binding="{Binding Alias, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            ElementStyle="{StaticResource GatewayDataGridTextColumnElementStyle}"
+                                                            Header="对外显示名称 / Alias" />
+                                        <DataGridTemplateColumn Width="42" MinWidth="38" Header="">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Width="28"
+                                                            Height="28"
+                                                            Margin="0"
+                                                            Command="{Binding DataContext.RemoveTransparentProxyRouteModelMappingCommand, ElementName=TransparentProxyPageRoot}"
+                                                            CommandParameter="{Binding}"
+                                                            Content="&#xE711;"
+                                                            Style="{StaticResource GatewayIconButtonStyle}"
+                                                            ToolTip="删除模型映射" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <TextBlock Grid.Row="2"
+                                           Margin="0,6,0,0"
+                                           Style="{StaticResource SectionHintTextStyle}"
+                                           Text="{Binding TransparentProxyRouteSettingsItem.ModelPreviewText, Mode=OneWay}" />
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="协议">
+                            <Grid MinHeight="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Border Padding="10"
+                                        Background="#F8FAFC"
+                                        BorderBrush="#DCE6F8"
+                                        BorderThickness="1"
+                                        CornerRadius="8">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource SectionTitleTextStyle}"
+                                                   Text="自动协议顺序" />
+                                        <TextBlock Margin="0,4,0,0"
+                                                   Style="{StaticResource SectionHintTextStyle}"
+                                                   Text="默认按 Responses → Anthropic Messages → OpenAI Chat 探测和回退；已探测失败的协议不会优先选中。" />
+                                    </StackPanel>
+                                </Border>
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0"
+                                            Padding="10"
+                                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                       Text="探测状态" />
+                                            <TextBlock Margin="0,4,0,0"
+                                                       TextWrapping="Wrap"
+                                                       Style="{StaticResource SectionHintTextStyle}"
+                                                       Text="{Binding TransparentProxyProtocolSummary}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="2"
+                                            Padding="10"
+                                            Style="{StaticResource DialogMetaStripBorderStyle}">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                       Text="转发策略" />
+                                            <TextBlock Margin="0,4,0,0"
+                                                       TextWrapping="Wrap"
+                                                       Style="{StaticResource SectionHintTextStyle}"
+                                                       Text="OpenAI 兼容和 Responses API 均拉取全部模型；请求不指定节点时进入同模型池调度。" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="缓存">
+                            <Grid MinHeight="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="170" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="170" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0"
+                                              Margin="0,18,0,0"
+                                              Content="启用响应缓存"
+                                              IsChecked="{Binding TransparentProxyEnableCache, Mode=TwoWay}" />
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="缓存 TTL 秒" />
+                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding TransparentProxyCacheTtlSecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="会话粘滞 TTL 秒" />
+                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 Text="{Binding TransparentProxySessionAffinityTtlSecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Grid>
+                                <Border Grid.Row="2"
+                                        Padding="10"
+                                        Background="#F8FAFC"
+                                        BorderBrush="#DCE6F8"
+                                        BorderThickness="1"
+                                        CornerRadius="8">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="缓存说明" />
+                                        <TextBlock Margin="0,4,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Style="{StaticResource SectionHintTextStyle}"
+                                                   Text="{Binding TransparentProxyCacheEfficiencyToolTip}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="熔断">
+                            <Grid MinHeight="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="重试次数" />
+                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="留空继承全局；0-5"
+                                                 Text="{Binding TransparentProxyRouteSettingsItem.RequestRetryText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="重试等待" />
+                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="留空继承全局最大重试等待秒数"
+                                                 Text="{Binding TransparentProxyRouteSettingsItem.MaxRetryIntervalSecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="模型冷却秒" />
+                                        <TextBox Style="{StaticResource CompactInputTextBoxStyle}"
+                                                 ToolTip="留空继承全局模型冷却秒数"
+                                                 Text="{Binding TransparentProxyRouteSettingsItem.ModelCooldownSecondsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="6"
+                                            Margin="0,18,0,0"
+                                            Command="{Binding ResetTransparentProxyRouteCircuitCommand}"
+                                            CommandParameter="{Binding TransparentProxyRouteSettingsItem}"
+                                            Content="重置熔断"
+                                            MinWidth="104"
+                                            ToolTip="重置该路由节点的熔断状态" />
+                                </Grid>
+                                <Border Grid.Row="2"
+                                        Padding="10"
+                                        Background="#F8FAFC"
+                                        BorderBrush="#DCE6F8"
+                                        BorderThickness="1"
+                                        CornerRadius="8">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                                   Text="当前规则" />
+                                        <TextBlock Margin="0,4,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Style="{StaticResource SectionHintTextStyle}"
+                                                   Text="429、quota、timeout、5xx、model_not_found 会进入不同冷却；流式首包发出后只记录失败，不再切换节点。" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="Payload">
+                            <Grid MinHeight="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Style="{StaticResource FieldLabelTextStyle}"
+                                               Text="请求体规则" />
+                                    <TextBlock Grid.Column="2"
+                                               HorizontalAlignment="Right"
+                                               Style="{StaticResource SectionHintTextStyle}"
+                                               Foreground="{Binding TransparentProxyRouteSettingsItem.PayloadRuleStateBrush, Mode=OneWay}"
+                                               TextAlignment="Right"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding TransparentProxyRouteSettingsItem.PayloadRuleSummary, Mode=OneWay}"
+                                               Text="{Binding TransparentProxyRouteSettingsItem.PayloadRuleSummary, Mode=OneWay}" />
+                                </Grid>
+                                <TextBox Grid.Row="1"
+                                         Margin="0,6,0,0"
+                                         MinHeight="0"
+                                         AcceptsReturn="True"
+                                         AcceptsTab="True"
+                                         FontFamily="Cascadia Mono, Consolas"
+                                         FontSize="11.2"
+                                         HorizontalScrollBarVisibility="Disabled"
+                                         Padding="8,6"
+                                         Style="{StaticResource {x:Type TextBox}}"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         ToolTip="规则类型：默认(default)、覆盖(override)、过滤(filter)；可按模型、协议、路径匹配"
+                                         Text="{Binding TransparentProxyRouteSettingsItem.PayloadRulesText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
 
                     <DockPanel Grid.Row="2" LastChildFill="False">
                         <TextBlock DockPanel.Dock="Left"
@@ -1619,9 +2073,9 @@
                                 Margin="12,0,0,0"
                                 Command="{Binding ResetTransparentProxyRouteCircuitCommand}"
                                 CommandParameter="{Binding TransparentProxyRouteSettingsItem}"
-                                Content="Reset circuit"
+                                Content="重置熔断"
                                 MinWidth="104"
-                                ToolTip="Reset this route circuit breaker state" />
+                                ToolTip="重置该路由节点的熔断状态" />
                         <Button DockPanel.Dock="Right"
                                 Command="{Binding CloseTransparentProxyRouteSettingsCommand}"
                                 Content="完成"

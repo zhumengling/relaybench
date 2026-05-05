@@ -18,6 +18,17 @@ public sealed class AdvancedReportExporter
         builder.AppendLine();
         builder.AppendLine($"- Base URL: {result.Endpoint.BaseUrl}");
         builder.AppendLine($"- Model: {result.Endpoint.Model}");
+        if (!string.IsNullOrWhiteSpace(result.Endpoint.DisplayModelName) &&
+            !string.Equals(result.Endpoint.DisplayModelName, result.Endpoint.Model, StringComparison.Ordinal))
+        {
+            builder.AppendLine($"- Display Model: {result.Endpoint.DisplayModelName}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Endpoint.ProtocolHint))
+        {
+            builder.AppendLine($"- Protocol / Route: {Escape(result.Endpoint.ProtocolHint)}");
+        }
+
         builder.AppendLine($"- Started: {result.StartedAt:yyyy-MM-dd HH:mm:ss zzz}");
         builder.AppendLine($"- Completed: {result.CompletedAt:yyyy-MM-dd HH:mm:ss zzz}");
         builder.AppendLine($"- Overall: {result.Scores.Overall:0.0}");

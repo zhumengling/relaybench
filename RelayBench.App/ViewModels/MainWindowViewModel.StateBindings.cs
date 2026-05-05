@@ -63,9 +63,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ExportPortScanExcelCommand.RaiseCanExecuteChanged();
                 RunSplitRoutingCommand.RaiseCanExecuteChanged();
                 StartTransparentProxyCommand.RaiseCanExecuteChanged();
+                GenerateTransparentProxyCandidateRoutesCommand.RaiseCanExecuteChanged();
                 ProbeTransparentProxyProtocolsCommand.RaiseCanExecuteChanged();
                 RunTransparentProxySelfTestCommand.RaiseCanExecuteChanged();
                 ApplyTransparentProxyToAppsCommand.RaiseCanExecuteChanged();
+                StartTransparentProxyTunCommand.RaiseCanExecuteChanged();
+                StopTransparentProxyTunCommand.RaiseCanExecuteChanged();
+                PreviewTransparentProxyCodexCaptureCommand.RaiseCanExecuteChanged();
+                ApplyTransparentProxyCodexCaptureCommand.RaiseCanExecuteChanged();
+                RestoreTransparentProxyCodexCaptureCommand.RaiseCanExecuteChanged();
+                PreviewTransparentProxyCodexLauncherCommand.RaiseCanExecuteChanged();
+                WriteTransparentProxyCodexLauncherCommand.RaiseCanExecuteChanged();
+                PreviewTransparentProxyClaudeCaptureCommand.RaiseCanExecuteChanged();
+                ApplyTransparentProxyClaudeCaptureCommand.RaiseCanExecuteChanged();
+                RestoreTransparentProxyClaudeCaptureCommand.RaiseCanExecuteChanged();
+                PreviewTransparentProxyClaudeLauncherCommand.RaiseCanExecuteChanged();
+                WriteTransparentProxyClaudeLauncherCommand.RaiseCanExecuteChanged();
+                PreviewTransparentProxyVsCodeCaptureCommand.RaiseCanExecuteChanged();
+                ApplyTransparentProxyVsCodeCaptureCommand.RaiseCanExecuteChanged();
+                RestoreTransparentProxyVsCodeCaptureCommand.RaiseCanExecuteChanged();
             }
         }
     }

@@ -566,7 +566,7 @@ public sealed partial class MainWindowViewModel
     }
 
     private static string BuildBatchRankingQuickMetrics(ProxyBatchAggregateRow row)
-        => $"平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)} | 平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)} | 独立吞吐（3 轮中位数） {FormatTokensPerSecond(row.AverageBenchmarkTokensPerSecond)}";
+        => $"平均普通 {FormatMillisecondsValue(row.AverageChatLatencyMs)} | 平均 TTFT {FormatMillisecondsValue(row.AverageTtftMs)} | 独立吞吐 {FormatTokensPerSecond(row.AverageBenchmarkTokensPerSecond)}";
 
     private static string BuildBatchRankingCapabilitySummary(ProxyBatchAggregateRow row)
         => $"{BuildBatchStabilityLabel(row)} | 综合分 {row.CompositeScore:F1} | 能力均值 {FormatBatchDisplayedCapabilityAverage(row)} | {BuildBatchCapabilityBreakdown(row, includeDeepHint: false)}";

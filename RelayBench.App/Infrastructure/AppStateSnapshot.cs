@@ -122,6 +122,10 @@ public sealed class AppStateSnapshot
 
     public string SplitRoutingHostsText { get; set; } = "chatgpt.com\napi.openai.com\ngithub.com\ncloudflare.com\nspeed.cloudflare.com";
 
+    public bool TransparentProxyStartUnifiedEndpointOnLaunch { get; set; }
+
+    public bool TransparentProxyEnableAppCapture { get; set; }
+
     public string TransparentProxyPortText { get; set; } = "17880";
 
     public string TransparentProxyRoutesText { get; set; } = string.Empty;
@@ -147,6 +151,8 @@ public sealed class AppStateSnapshot
     public string TransparentProxyModelCooldownSecondsText { get; set; } = "120";
 
     public bool TransparentProxyRewriteModel { get; set; }
+
+    public string TransparentProxyVsCodeSettingsScopeKey { get; set; } = "user";
 
     public List<RunHistoryEntry> HistoryEntries { get; set; } = [];
 

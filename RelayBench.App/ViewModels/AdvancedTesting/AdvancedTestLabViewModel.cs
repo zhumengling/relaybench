@@ -25,6 +25,8 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
     private string _advancedBaseUrl = string.Empty;
     private string _advancedApiKey = string.Empty;
     private string _advancedModel = string.Empty;
+    private string _advancedEndpointModeKey = AdvancedEndpointModes.Direct;
+    private string _advancedTransparentProxyContext = string.Empty;
     private bool _isAdvancedModelMenuOpen;
     private bool _advancedIgnoreTlsErrors;
     private int _advancedTimeoutSeconds = 20;
@@ -67,6 +69,11 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
         TestCases = new ObservableCollection<AdvancedTestCaseViewModel>(caseDefinitions);
         VisibleTestCases = new ObservableCollection<AdvancedTestCaseViewModel>();
         AdvancedModelOptions = [];
+        AdvancedEndpointModeOptions =
+        [
+            new(AdvancedEndpointModes.Direct, "直接接口"),
+            new(AdvancedEndpointModes.TransparentProxy, "透明代理")
+        ];
         Logs = [];
         ScenarioScores =
         [
@@ -102,6 +109,8 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
     public ObservableCollection<AdvancedTestCaseViewModel> VisibleTestCases { get; }
 
     public ObservableCollection<string> AdvancedModelOptions { get; }
+
+    public ObservableCollection<SelectionOption> AdvancedEndpointModeOptions { get; }
 
     public ObservableCollection<AdvancedLogEntryViewModel> Logs { get; }
 
@@ -190,6 +199,33 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
                 OnEndpointConfigChanged();
             }
         }
+    }
+
+    public string AdvancedEndpointModeKey
+    {
+        get => _advancedEndpointModeKey;
+        set
+        {
+            var normalized = AdvancedEndpointModes.Normalize(value);
+            if (SetProperty(ref _advancedEndpointModeKey, normalized))
+            {
+                RefreshEndpointSummary();
+                OnPropertyChanged(nameof(IsAdvancedTransparentProxyMode));
+                OnPropertyChanged(nameof(AdvancedEndpointModeText));
+            }
+        }
+    }
+
+    public bool IsAdvancedTransparentProxyMode
+        => string.Equals(AdvancedEndpointModeKey, AdvancedEndpointModes.TransparentProxy, StringComparison.Ordinal);
+
+    public string AdvancedEndpointModeText
+        => IsAdvancedTransparentProxyMode ? "透明代理模型池" : "直接接口";
+
+    public string AdvancedTransparentProxyContext
+    {
+        get => _advancedTransparentProxyContext;
+        private set => SetProperty(ref _advancedTransparentProxyContext, value ?? string.Empty);
     }
 
     public string? AdvancedModelOptionSelection
@@ -396,8 +432,42 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
     {
         var endpoint = BuildConfiguredEndpoint();
         EndpointSummary = endpoint.IsComplete
-            ? $"{endpoint.BaseUrl.Trim()} · {endpoint.Model.Trim()} · 超时 {endpoint.TimeoutSeconds}s"
+            ? $"{AdvancedEndpointModeText} · {endpoint.BaseUrl.Trim()} · {endpoint.Model.Trim()} · 超时 {endpoint.TimeoutSeconds}s"
             : "请先在单站测试中填写接口地址、API Key 和模型。";
+    }
+
+    public void ApplyTransparentProxyEndpoint(
+        string baseUrl,
+        string apiKey,
+        IReadOnlyList<string> modelOptions,
+        string selectedModel,
+        string routeContext)
+    {
+        AdvancedEndpointModeKey = AdvancedEndpointModes.TransparentProxy;
+        AdvancedBaseUrl = baseUrl;
+        AdvancedApiKey = apiKey;
+        AdvancedModelOptions.Clear();
+        foreach (var model in modelOptions
+                     .Where(static item => !string.IsNullOrWhiteSpace(item))
+                     .Select(static item => item.Trim())
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .Take(200))
+        {
+            AdvancedModelOptions.Add(model);
+        }
+
+        if (!string.IsNullOrWhiteSpace(selectedModel) &&
+            !AdvancedModelOptions.Contains(selectedModel, StringComparer.OrdinalIgnoreCase))
+        {
+            AdvancedModelOptions.Insert(0, selectedModel.Trim());
+        }
+
+        AdvancedModel = string.IsNullOrWhiteSpace(selectedModel)
+            ? AdvancedModelOptions.FirstOrDefault() ?? "relaybench-auto"
+            : selectedModel.Trim();
+        AdvancedTransparentProxyContext = routeContext;
+        RefreshEndpointSummary();
+        AddLog("INFO", $"已切换到透明代理模型池：{AdvancedModel}。{routeContext}");
     }
 
     private async Task StartAsync()
@@ -488,7 +558,9 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
                     AdvancedModel = AdvancedModelOptions[0];
                 }
 
-                CurrentStatusText = $"数据安全测试模型拉取完成，共 {AdvancedModelOptions.Count} 个；该列表不与单站测试共用。";
+                CurrentStatusText = IsAdvancedTransparentProxyMode
+                    ? $"透明代理模型池拉取完成，共 {AdvancedModelOptions.Count} 个；请求将由本地路由队列自动调度。"
+                    : $"数据安全测试模型拉取完成，共 {AdvancedModelOptions.Count} 个；该列表不与单站测试共用。";
                 AddLog("INFO", CurrentStatusText);
             }
             else
@@ -720,6 +792,11 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
         StringBuilder builder = new();
         builder.AppendLine("RelayBench 数据安全测试诊断摘要");
         builder.AppendLine(EndpointSummary);
+        if (IsAdvancedTransparentProxyMode && !string.IsNullOrWhiteSpace(AdvancedTransparentProxyContext))
+        {
+            builder.AppendLine(AdvancedTransparentProxyContext);
+        }
+
         if (_lastResult is not null)
         {
             builder.AppendLine($"总分: {_lastResult.Scores.Overall:0.0}");
@@ -741,7 +818,12 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
             AdvancedApiKey,
             AdvancedModel,
             _advancedIgnoreTlsErrors,
-            _advancedTimeoutSeconds);
+            _advancedTimeoutSeconds,
+            PreferredWireApi: null,
+            DisplayModelName: IsAdvancedTransparentProxyMode ? $"透明代理模型池 / {AdvancedModel}" : AdvancedModel,
+            ProtocolHint: IsAdvancedTransparentProxyMode && !string.IsNullOrWhiteSpace(AdvancedTransparentProxyContext)
+                ? AdvancedTransparentProxyContext
+                : null);
 
     private void OnEndpointConfigChanged()
     {
@@ -801,5 +883,16 @@ public sealed class AdvancedTestLabViewModel : ObservableObject
         OpenRawRequestCommand.RaiseCanExecuteChanged();
         OpenRawResponseCommand.RaiseCanExecuteChanged();
         OpenErrorDetailCommand.RaiseCanExecuteChanged();
+    }
+
+    private static class AdvancedEndpointModes
+    {
+        public const string Direct = "direct";
+        public const string TransparentProxy = "transparent_proxy";
+
+        public static string Normalize(string? value)
+            => string.Equals(value, TransparentProxy, StringComparison.OrdinalIgnoreCase)
+                ? TransparentProxy
+                : Direct;
     }
 }

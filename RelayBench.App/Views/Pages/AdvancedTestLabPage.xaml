@@ -98,13 +98,15 @@
                         <RowDefinition Height="34" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="244" />
+                        <ColumnDefinition Width="110" />
                         <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="220" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="140" />
                         <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="158" />
+                        <ColumnDefinition Width="164" />
                         <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -113,36 +115,51 @@
                     <TextBlock Grid.Row="0"
                                Grid.Column="0"
                                Style="{StaticResource FieldLabelTextStyle}"
+                               Text="入口模式" />
+                    <ComboBox Grid.Row="1"
+                              Grid.Column="0"
+                              Height="34"
+                              Margin="0"
+                              VerticalAlignment="Center"
+                              DisplayMemberPath="DisplayName"
+                              ItemsSource="{Binding AdvancedEndpointModeOptions}"
+                              SelectedValue="{Binding AdvancedEndpointModeKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              SelectedValuePath="Key"
+                              ToolTip="{Binding AdvancedEndpointModeText}" />
+
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="2"
+                               Style="{StaticResource FieldLabelTextStyle}"
                                Text="接口地址" />
                     <TextBox Grid.Row="1"
-                             Grid.Column="0"
+                             Grid.Column="2"
                              Style="{StaticResource AdvancedLabCommandInputTextBoxStyle}"
                              ToolTip="{Binding AdvancedBaseUrl}"
                              Text="{Binding AdvancedBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
 
                     <TextBlock Grid.Row="0"
-                               Grid.Column="2"
+                               Grid.Column="4"
                                Style="{StaticResource FieldLabelTextStyle}"
                                Text="API Key" />
                     <PasswordBox Grid.Row="1"
-                                 Grid.Column="2"
+                                 Grid.Column="4"
                                  Style="{StaticResource AdvancedLabCommandSecretInputPasswordBoxStyle}"
                                  infra:PasswordBoxAssistant.BoundPassword="{Binding AdvancedApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                     <Button Grid.Row="1"
-                            Grid.Column="4"
+                            Grid.Column="6"
                             Command="{Binding DataContext.OpenAdvancedTestLabProxyEndpointHistoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             Content="&#xE81C;"
                             Style="{StaticResource AdvancedLabCommandIconButtonStyle}"
                             ToolTip="历史接口" />
 
                     <TextBlock Grid.Row="0"
-                               Grid.Column="6"
+                               Grid.Column="8"
                                Style="{StaticResource FieldLabelTextStyle}"
                                Text="模型" />
                     <Grid x:Name="AdvancedModelPickerRoot"
                           Grid.Row="1"
-                          Grid.Column="6">
+                          Grid.Column="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
@@ -192,7 +209,7 @@
                     </Grid>
 
                     <Button Grid.Row="1"
-                            Grid.Column="8"
+                            Grid.Column="10"
                             Command="{Binding FetchAdvancedModelsCommand}"
                             Content="&#xE72C;"
                             Style="{StaticResource AdvancedLabCommandIconButtonStyle}"
@@ -203,6 +220,10 @@
                             Margin="18,0,0,0"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Bottom">
+                    <Button Command="{Binding DataContext.ApplyTransparentProxyToAdvancedLabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Content="&#xE968;"
+                            Style="{StaticResource AdvancedLabCommandIconButtonStyle}"
+                            ToolTip="使用本地透明代理模型池" />
                     <Button Command="{Binding StartCommand}"
                             Content="&#xE768;"
                             Style="{StaticResource AdvancedLabCommandPrimaryIconButtonStyle}"

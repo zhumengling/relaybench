@@ -374,7 +374,13 @@ internal sealed class TransparentProxyRouteRuntimeState
             ChatCompletionsSupported,
             ResponsesSupported,
             AnthropicMessagesSupported,
-            ProtocolCheckedAt);
+            ProtocolCheckedAt,
+            ModelStates
+                .Select(static pair => new TransparentProxyModelCooldownSnapshot(
+                    pair.Key,
+                    pair.Value.ConsecutiveFailures,
+                    pair.Value.CooldownUntil))
+                .ToArray());
 
     private static string NormalizeModelKey(string? modelName)
     {
@@ -391,7 +397,7 @@ internal sealed class TransparentProxyRouteRuntimeState
     }
 
     private static bool ShouldCoolModel(int statusCode)
-        => statusCode is 429 or 503 || statusCode >= 500;
+        => statusCode is 404 or 429 or 503 || statusCode >= 500;
 }
 
 internal sealed record TransparentProxyRoutePermit(string RouteId, bool UsedHalfOpenPermit);

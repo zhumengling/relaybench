@@ -204,6 +204,9 @@ public sealed partial class ProxyDiagnosticsService
     private static string BuildLongStreamingPayload(string model, int segmentCount)
         => ProxyProbePayloadFactory.BuildLongStreamingPayload(model, segmentCount);
 
+    private static string BuildThroughputStreamingPayload(string model, int targetOutputTokens)
+        => ProxyProbePayloadFactory.BuildThroughputStreamingPayload(model, targetOutputTokens);
+
     private static string BuildSystemPromptPayload(string model)
         => ProxyProbePayloadFactory.BuildSystemPromptPayload(model);
 

@@ -39,7 +39,12 @@ public sealed class TransparentProxyLogStore
                     model_name,
                     request_id,
                     wire_api,
-                    attempt_summary)
+                    attempt_summary,
+                    ingress_kind,
+                    source_application,
+                    capture_mode,
+                    target_host,
+                    was_tunnel_only)
                 VALUES (
                     $timestamp_utc,
                     $level,
@@ -52,7 +57,12 @@ public sealed class TransparentProxyLogStore
                     $model_name,
                     $request_id,
                     $wire_api,
-                    $attempt_summary);
+                    $attempt_summary,
+                    $ingress_kind,
+                    $source_application,
+                    $capture_mode,
+                    $target_host,
+                    $was_tunnel_only);
                 """;
             BindEntry(command, entry);
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
@@ -85,7 +95,12 @@ public sealed class TransparentProxyLogStore
                     model_name,
                     request_id,
                     wire_api,
-                    attempt_summary
+                    attempt_summary,
+                    ingress_kind,
+                    source_application,
+                    capture_mode,
+                    target_host,
+                    was_tunnel_only
                 FROM transparent_proxy_logs
                 ORDER BY id DESC
                 LIMIT $limit;
@@ -132,7 +147,7 @@ public sealed class TransparentProxyLogStore
         var entries = await LoadRecentAsync(5000, cancellationToken).ConfigureAwait(false);
 
         StringBuilder builder = new();
-        builder.AppendLine("time,level,method,path,model,route,status,elapsed_ms,request_id,wire_api,message,attempt_summary");
+        builder.AppendLine("time,level,method,path,model,route,status,elapsed_ms,request_id,wire_api,ingress_kind,source_application,capture_mode,target_host,was_tunnel_only,message,attempt_summary");
         foreach (var entry in entries)
         {
             builder.AppendLine(string.Join(",",
@@ -146,6 +161,11 @@ public sealed class TransparentProxyLogStore
                 Csv(entry.ElapsedMs.ToString(CultureInfo.InvariantCulture)),
                 Csv(entry.RequestId),
                 Csv(entry.WireApi),
+                Csv(entry.IngressKind),
+                Csv(entry.SourceApplication),
+                Csv(entry.CaptureMode),
+                Csv(entry.TargetHost),
+                Csv(entry.WasTunnelOnly ? "true" : "false"),
                 Csv(entry.Message),
                 Csv(entry.AttemptSummary)));
         }
@@ -184,7 +204,12 @@ public sealed class TransparentProxyLogStore
                 model_name TEXT NOT NULL,
                 request_id TEXT NOT NULL DEFAULT '',
                 wire_api TEXT NOT NULL DEFAULT '',
-                attempt_summary TEXT NOT NULL DEFAULT ''
+                attempt_summary TEXT NOT NULL DEFAULT '',
+                ingress_kind TEXT NOT NULL DEFAULT '',
+                source_application TEXT NOT NULL DEFAULT '',
+                capture_mode TEXT NOT NULL DEFAULT '',
+                target_host TEXT NOT NULL DEFAULT '',
+                was_tunnel_only INTEGER NOT NULL DEFAULT 0
             );
             CREATE INDEX IF NOT EXISTS ix_transparent_proxy_logs_timestamp
                 ON transparent_proxy_logs(timestamp_utc DESC);
@@ -193,6 +218,11 @@ public sealed class TransparentProxyLogStore
         await EnsureColumnAsync(connection, "request_id", "TEXT NOT NULL DEFAULT ''", cancellationToken).ConfigureAwait(false);
         await EnsureColumnAsync(connection, "wire_api", "TEXT NOT NULL DEFAULT ''", cancellationToken).ConfigureAwait(false);
         await EnsureColumnAsync(connection, "attempt_summary", "TEXT NOT NULL DEFAULT ''", cancellationToken).ConfigureAwait(false);
+        await EnsureColumnAsync(connection, "ingress_kind", "TEXT NOT NULL DEFAULT ''", cancellationToken).ConfigureAwait(false);
+        await EnsureColumnAsync(connection, "source_application", "TEXT NOT NULL DEFAULT ''", cancellationToken).ConfigureAwait(false);
+        await EnsureColumnAsync(connection, "capture_mode", "TEXT NOT NULL DEFAULT ''", cancellationToken).ConfigureAwait(false);
+        await EnsureColumnAsync(connection, "target_host", "TEXT NOT NULL DEFAULT ''", cancellationToken).ConfigureAwait(false);
+        await EnsureColumnAsync(connection, "was_tunnel_only", "INTEGER NOT NULL DEFAULT 0", cancellationToken).ConfigureAwait(false);
         _initialized = true;
     }
 
@@ -244,6 +274,11 @@ public sealed class TransparentProxyLogStore
         command.Parameters.AddWithValue("$request_id", ProbeTraceRedactor.RedactText(entry.RequestId));
         command.Parameters.AddWithValue("$wire_api", ProbeTraceRedactor.RedactText(entry.WireApi));
         command.Parameters.AddWithValue("$attempt_summary", ProbeTraceRedactor.RedactText(entry.AttemptSummary));
+        command.Parameters.AddWithValue("$ingress_kind", ProbeTraceRedactor.RedactText(entry.IngressKind));
+        command.Parameters.AddWithValue("$source_application", ProbeTraceRedactor.RedactText(entry.SourceApplication));
+        command.Parameters.AddWithValue("$capture_mode", ProbeTraceRedactor.RedactText(entry.CaptureMode));
+        command.Parameters.AddWithValue("$target_host", ProbeTraceRedactor.RedactText(entry.TargetHost));
+        command.Parameters.AddWithValue("$was_tunnel_only", entry.WasTunnelOnly ? 1 : 0);
     }
 
     private static TransparentProxyLogEntry ReadEntry(SqliteDataReader reader)
@@ -264,7 +299,12 @@ public sealed class TransparentProxyLogStore
             reader.GetString(8),
             reader.GetString(9),
             reader.GetString(10),
-            reader.GetString(11));
+            reader.GetString(11),
+            reader.GetString(12),
+            reader.GetString(13),
+            reader.GetString(14),
+            reader.GetString(15),
+            reader.GetInt32(16) != 0);
     }
 
     private static string Csv(string? value)
