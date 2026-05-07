@@ -169,17 +169,79 @@ public sealed partial class MainWindowViewModel
         private set => SetProperty(ref _isTransparentProxyAppCaptureSettingsOpen, value);
     }
 
-    public bool IsTransparentProxyAdvancedNetworkSettingsOpen
-    {
-        get => _isTransparentProxyAdvancedNetworkSettingsOpen;
-        private set => SetProperty(ref _isTransparentProxyAdvancedNetworkSettingsOpen, value);
-    }
-
     public bool IsTransparentProxyProviderSettingsOpen
     {
         get => _isTransparentProxyProviderSettingsOpen;
         private set => SetProperty(ref _isTransparentProxyProviderSettingsOpen, value);
     }
+
+    public bool IsTransparentProxyOAuthPanelOpen
+    {
+        get => _isTransparentProxyOAuthPanelOpen;
+        private set => SetProperty(ref _isTransparentProxyOAuthPanelOpen, value);
+    }
+
+    public bool IsCodexOAuthLoginInProgress
+    {
+        get => _isCodexOAuthLoginInProgress;
+        private set
+        {
+            if (SetProperty(ref _isCodexOAuthLoginInProgress, value))
+            {
+                StartCodexOAuthLoginCommand.RaiseCanExecuteChanged();
+                CancelCodexOAuthLoginCommand.RaiseCanExecuteChanged();
+                SubmitCodexOAuthCallbackCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsCodexOAuthManualCallbackVisible
+    {
+        get => _isCodexOAuthManualCallbackVisible;
+        private set => SetProperty(ref _isCodexOAuthManualCallbackVisible, value);
+    }
+
+    public string CodexOAuthLoginStatusText
+    {
+        get => _codexOAuthLoginStatusText;
+        private set => SetProperty(ref _codexOAuthLoginStatusText, value);
+    }
+
+    public string CodexOAuthLoginStepText
+    {
+        get => _codexOAuthLoginStepText;
+        private set => SetProperty(ref _codexOAuthLoginStepText, value);
+    }
+
+    public string CodexOAuthManualCallbackText
+    {
+        get => _codexOAuthManualCallbackText;
+        set => SetProperty(ref _codexOAuthManualCallbackText, value ?? string.Empty);
+    }
+
+    public string CodexOAuthLoginUrlText
+    {
+        get => _codexOAuthLoginUrlText;
+        private set
+        {
+            if (SetProperty(ref _codexOAuthLoginUrlText, value))
+            {
+                CopyCodexOAuthLoginUrlCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public CodexOAuthCredentialViewModel? SelectedCodexOAuthCredential
+    {
+        get => _selectedCodexOAuthCredential;
+        set => SetProperty(ref _selectedCodexOAuthCredential, value);
+    }
+
+    public bool HasCodexOAuthCredentials
+        => CodexOAuthCredentials.Count > 0;
+
+    public bool HasNoCodexOAuthCredentials
+        => CodexOAuthCredentials.Count == 0;
 
     public bool IsTransparentProxyRouteSettingsOpen
     {
@@ -405,47 +467,6 @@ public sealed partial class MainWindowViewModel
         private set => SetProperty(ref _transparentProxyLaunchWrapperStatusText, value);
     }
 
-    public bool IsTransparentProxyPacRunning
-    {
-        get => _isTransparentProxyPacRunning;
-        private set
-        {
-            SetProperty(ref _isTransparentProxyPacRunning, value);
-        }
-    }
-
-    public string TransparentProxySystemProxyStatusText
-    {
-        get => _transparentProxySystemProxyStatusText;
-        private set => SetProperty(ref _transparentProxySystemProxyStatusText, value);
-    }
-
-    public bool IsTransparentProxyTunRunning
-    {
-        get => _isTransparentProxyTunRunning;
-        private set
-        {
-            if (SetProperty(ref _isTransparentProxyTunRunning, value))
-            {
-                StartTransparentProxyTunCommand.RaiseCanExecuteChanged();
-                StopTransparentProxyTunCommand.RaiseCanExecuteChanged();
-                OnPropertyChanged(nameof(TransparentProxyTunRunStateText));
-            }
-        }
-    }
-
-    public string TransparentProxyTunStatusText
-    {
-        get => _transparentProxyTunStatusText;
-        private set => SetProperty(ref _transparentProxyTunStatusText, value);
-    }
-
-    public string TransparentProxyTunPreviewText
-    {
-        get => _transparentProxyTunPreviewText;
-        private set => SetProperty(ref _transparentProxyTunPreviewText, value);
-    }
-
     public string TransparentProxyTotalRequestsText
     {
         get => _transparentProxyTotalRequestsText;
@@ -566,23 +587,6 @@ public sealed partial class MainWindowViewModel
     public string TransparentProxyCmdEnvSnippet
         => _transparentProxyCliEnvironmentService.Build(ParseTransparentProxyPort()).Cmd;
 
-    public string TransparentProxyPacForwardProxyEndpoint
-        => $"127.0.0.1:{ResolveTransparentProxyPacForwardProxyPort()}";
-
-    public string TransparentProxyTunRunStateText
-        => IsTransparentProxyTunRunning
-            ? $"TUN 运行中：mihomo -> {TransparentProxyPacForwardProxyEndpoint}"
-            : "TUN 未启动";
-
-    public string TransparentProxyTlsCaptureStatusText
-        => "内容级 TLS 接管未启用。当前 TUN 只做网络层 tunnel-only 接管，不能读取 HTTPS 请求体，也不会改写 API Key 或 Base URL；需要协议转换和缓存时请让应用直接接入本地统一出口。";
-
-    public string TransparentProxyTunMixedEndpoint
-        => $"127.0.0.1:{ResolveTransparentProxyTunMixedPort()}";
-
-    public string TransparentProxyTunControllerEndpoint
-        => $"127.0.0.1:{ResolveTransparentProxyTunControllerPort()}";
-
     public string TransparentProxyUnifiedEndpointSummary
         => TransparentProxyStartUnifiedEndpointOnLaunch
             ? "启动 RelayBench 时自动打开本地统一出口；本地 agent 可直接接入，应用接管关闭也不影响。"
@@ -594,7 +598,7 @@ public sealed partial class MainWindowViewModel
             : "AI 应用接管未启用：Codex、VS Codex、Codex CLI、Claude CLI 暂不自动改配置。";
 
     public string TransparentProxyAppCaptureSafetySummary
-        => "默认只做显式 Base URL/配置接入；TUN 属于高级模式，默认不会影响 ChatGPT/OpenAI 官网、GitHub、npm、插件市场或普通网络。";
+        => "默认只做显式 Base URL/配置接入；不会修改系统代理、浏览器访问路径、GitHub、npm、插件市场或普通网络。";
 
     public string TransparentProxyRunStateText
         => _isTransparentProxyStarting
@@ -762,16 +766,6 @@ public sealed partial class MainWindowViewModel
 
     public async Task StopTransparentProxyForExitAsync()
     {
-        if (IsTransparentProxyTunRunning)
-        {
-            await StopTransparentProxyTunAsync();
-        }
-
-        if (IsTransparentProxyPacRunning)
-        {
-            await StopTransparentProxyTunForwarderAsync();
-        }
-
         if (!IsTransparentProxyRunning)
         {
             return;
@@ -982,7 +976,6 @@ public sealed partial class MainWindowViewModel
         {
             IsTransparentProxyListenSettingsOpen = false;
             IsTransparentProxyAppCaptureSettingsOpen = false;
-            IsTransparentProxyAdvancedNetworkSettingsOpen = false;
             IsTransparentProxyProviderSettingsOpen = false;
         }
 
@@ -996,7 +989,6 @@ public sealed partial class MainWindowViewModel
         if (shouldOpen)
         {
             IsTransparentProxyAppCaptureSettingsOpen = false;
-            IsTransparentProxyAdvancedNetworkSettingsOpen = false;
             IsTransparentProxyProviderSettingsOpen = false;
         }
 
@@ -1010,7 +1002,6 @@ public sealed partial class MainWindowViewModel
         if (shouldOpen)
         {
             IsTransparentProxyListenSettingsOpen = false;
-            IsTransparentProxyAdvancedNetworkSettingsOpen = false;
             IsTransparentProxyProviderSettingsOpen = false;
             RefreshTransparentProxyCaptureTargets();
             RefreshTransparentProxyCaptureDiagnostics();
@@ -1075,18 +1066,12 @@ public sealed partial class MainWindowViewModel
             !string.IsNullOrWhiteSpace(app.ConfigPath) &&
             System.IO.File.Exists(app.ConfigPath));
         var restorePointCount = artifacts.Count(static artifact => artifact.BackupCount > 0);
-        var guard = _transparentProxyNetworkGuardService.Inspect();
         var unifiedText = IsTransparentProxyRunning
             ? $"统一出口 {TransparentProxyLocalEndpoint}"
             : "统一出口未运行";
-        var tunText = IsTransparentProxyTunRunning ? "TUN 运行" : "TUN 未启动";
-        var adminText = guard.IsAdministrator ? "管理员权限可用" : "TUN 需管理员权限";
-        var sidecarText = string.IsNullOrWhiteSpace(guard.MihomoPath)
-            ? "未发现 mihomo"
-            : "mihomo 已发现";
 
         TransparentProxyCaptureDiagnosticsSummary =
-            $"接管诊断：{unifiedText}；目标 {apps.Count} 个，已检测 {detectedCount} 个，配置文件 {configCount} 个，恢复点 {restorePointCount} 个，临时启动器 {launcherCount} 个；{tunText}；{adminText}，{sidecarText}。";
+            $"接管诊断：{unifiedText}；目标 {apps.Count} 个，已检测 {detectedCount} 个，配置文件 {configCount} 个，恢复点 {restorePointCount} 个，临时启动器 {launcherCount} 个。";
     }
 
     private void ApplyTransparentProxyCaptureTargetMetrics(TransparentProxyMetricsSnapshot? snapshot)
@@ -1497,285 +1482,6 @@ public sealed partial class MainWindowViewModel
         TransparentProxyVsCodePreviewText = preview.PreviewText;
     }
 
-    private Task ToggleTransparentProxyAdvancedNetworkSettingsAsync()
-    {
-        var shouldOpen = !IsTransparentProxyAdvancedNetworkSettingsOpen;
-        IsTransparentProxyAdvancedNetworkSettingsOpen = shouldOpen;
-        if (shouldOpen)
-        {
-            IsTransparentProxyListenSettingsOpen = false;
-            IsTransparentProxyAppCaptureSettingsOpen = false;
-            IsTransparentProxyProviderSettingsOpen = false;
-            RefreshTransparentProxyTunPreview();
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private async Task StopTransparentProxyTunForwarderAsync()
-    {
-        await _transparentProxyForwardProxyService.StopAsync();
-        IsTransparentProxyPacRunning = false;
-    }
-
-    private void RefreshTransparentProxySystemProxyStatus()
-    {
-        TransparentProxySystemProxyStatusText =
-            _transparentProxySystemProxyService.Inspect(BuildLegacyTransparentProxyPacEndpoint()).Summary;
-    }
-
-    private string BuildLegacyTransparentProxyPacEndpoint()
-        => $"http://127.0.0.1:{ParseTransparentProxyPort()}/relaybench/pac";
-
-    private Task PreviewTransparentProxyTunAsync()
-    {
-        RefreshTransparentProxyTunPreview();
-        TransparentProxyStatusSummary = "TUN 预览已生成：默认只接管 OpenAI / Anthropic API 域名，ChatGPT/OpenAI 官网和其余网络保持 DIRECT；不会改写 API Key 或 Base URL。";
-        StatusMessage = TransparentProxyStatusSummary;
-        return Task.CompletedTask;
-    }
-
-    private bool CanStartTransparentProxyTun()
-        => !IsBusy && !IsTransparentProxyTunRunning;
-
-    private Task StartTransparentProxyTunAsync()
-        => ExecuteBusyActionAsync(
-            "正在检查 TUN 高级模式...",
-            async () =>
-            {
-                var options = BuildTransparentProxyTunOptions();
-                var config = _transparentProxyTunService.BuildMihomoConfig(options);
-                var validation = _transparentProxyNetworkGuardService.ValidateMihomoConfig(config);
-                var guard = _transparentProxyNetworkGuardService.Inspect();
-
-                if (!validation.IsSafe)
-                {
-                    TransparentProxyTunPreviewText = BuildTransparentProxyTunPreviewText(config, guard, validation);
-                    TransparentProxyTunStatusText = "TUN 配置安全校验未通过，已保持系统网络不变。";
-                    TransparentProxyStatusSummary = TransparentProxyTunStatusText;
-                    StatusMessage = TransparentProxyTunStatusText;
-                    return;
-                }
-
-                if (!guard.IsAdministrator)
-                {
-                    TransparentProxyTunPreviewText = BuildTransparentProxyTunPreviewText(config, guard, validation);
-                    TransparentProxyTunStatusText = "TUN 需要管理员权限；当前仅完成预览，未启动 mihomo。";
-                    TransparentProxyStatusSummary = TransparentProxyTunStatusText;
-                    StatusMessage = TransparentProxyTunStatusText;
-                    return;
-                }
-
-                if (string.IsNullOrWhiteSpace(guard.MihomoPath))
-                {
-                    TransparentProxyTunPreviewText = BuildTransparentProxyTunPreviewText(config, guard, validation);
-                    TransparentProxyTunStatusText = "未找到 mihomo sidecar；请放到程序目录或 tools\\mihomo 后再启动。";
-                    TransparentProxyStatusSummary = TransparentProxyTunStatusText;
-                    StatusMessage = TransparentProxyTunStatusText;
-                    return;
-                }
-
-                if (!IsTransparentProxyRunning)
-                {
-                    await StartTransparentProxyCoreAsync(isAutoStart: false);
-                }
-
-                if (!IsTransparentProxyPacRunning)
-                {
-                    await _transparentProxyForwardProxyService.StartAsync(options.ForwardProxyPort);
-                    IsTransparentProxyPacRunning = true;
-                }
-
-                var result = await _transparentProxyTunService.StartAsync(guard.MihomoPath, options);
-                IsTransparentProxyTunRunning = result.Started;
-                TransparentProxyTunPreviewText = BuildTransparentProxyTunPreviewText(config, guard, validation);
-                TransparentProxyTunStatusText = result.Started
-                    ? $"TUN 已启动：mihomo 使用 {TransparentProxyTunMixedEndpoint}，AI API 经内部转发器 {TransparentProxyPacForwardProxyEndpoint} 转发。"
-                    : result.StatusText;
-                TransparentProxyStatusSummary = TransparentProxyTunStatusText;
-                StatusMessage = TransparentProxyTunStatusText;
-            },
-            "TUN 高级模式",
-            "启动中",
-            22d);
-
-    private async Task StopTransparentProxyTunAsync()
-    {
-        await _transparentProxyTunService.StopAsync();
-        IsTransparentProxyTunRunning = false;
-        TransparentProxyTunStatusText = "TUN 已停止；未修改系统代理设置。";
-        TransparentProxyStatusSummary = TransparentProxyTunStatusText;
-        StatusMessage = TransparentProxyTunStatusText;
-    }
-
-    private async Task RestoreTransparentProxyNetworkAsync()
-    {
-        List<string> recoverySummaries = [];
-        var systemProxyRestore = _transparentProxySystemProxyService.RestoreLatestSnapshot();
-        if (systemProxyRestore.Succeeded ||
-            !systemProxyRestore.Summary.Contains("未发现", StringComparison.OrdinalIgnoreCase))
-        {
-            recoverySummaries.Add(systemProxyRestore.Summary);
-        }
-
-        RefreshTransparentProxySystemProxyStatus();
-
-        var residualTunCleanup = await _transparentProxyTunService.StopResidualSessionAsync();
-        if (residualTunCleanup.Cleared)
-        {
-            recoverySummaries.Add(residualTunCleanup.Summary);
-        }
-        else if (!residualTunCleanup.Summary.Contains("未发现", StringComparison.OrdinalIgnoreCase))
-        {
-            recoverySummaries.Add(residualTunCleanup.Summary);
-        }
-
-        if (IsTransparentProxyTunRunning)
-        {
-            await StopTransparentProxyTunAsync();
-            recoverySummaries.Add("TUN 已停止");
-        }
-
-        if (IsTransparentProxyPacRunning)
-        {
-            await StopTransparentProxyTunForwarderAsync();
-            recoverySummaries.Add("TUN 内部转发器已停止");
-        }
-
-        RestoreTransparentProxyCaptureBackups(recoverySummaries);
-
-        var recoveryDetail = recoverySummaries.Count == 0
-            ? "未发现正在运行的高级网络接管或可恢复的应用接管备份。"
-            : string.Join("；", recoverySummaries);
-        TransparentProxyTunStatusText = $"网络接管已恢复：{recoveryDetail}";
-        TransparentProxyStatusSummary = TransparentProxyTunStatusText;
-        StatusMessage = TransparentProxyTunStatusText;
-        RefreshTransparentProxyTunPreview();
-        RefreshTransparentProxyCaptureTargets();
-        RefreshTransparentProxyCaptureDiagnostics();
-    }
-
-    private void RefreshTransparentProxyNetworkResidualState()
-    {
-        var residual = _transparentProxyTunService.InspectResidualSession();
-        if (!residual.HasSession)
-        {
-            return;
-        }
-
-        RefreshTransparentProxyTunPreview();
-        TransparentProxyTunStatusText = residual.Summary;
-        TransparentProxyStatusSummary = residual.IsProcessRunning
-            ? $"{residual.Summary} 可点击恢复网络安全停止。"
-            : $"{residual.Summary} 可点击恢复网络清理记录。";
-        StatusMessage = TransparentProxyStatusSummary;
-    }
-
-    private void RestoreTransparentProxyCaptureBackups(List<string> recoverySummaries)
-    {
-        try
-        {
-            var codex = _transparentProxyCodexConfigService.RestoreLatestBackup();
-            TransparentProxyCodexStatusText = string.IsNullOrWhiteSpace(codex.BackupPath)
-                ? codex.Summary
-                : $"{codex.Summary} 来源：{codex.BackupPath}";
-            if (codex.Succeeded)
-            {
-                recoverySummaries.Add("Codex CLI 配置已恢复");
-                ApplyTransparentProxyCodexPreview(_transparentProxyCodexConfigService.Preview(
-                    TransparentProxyLocalEndpoint,
-                    ResolveTransparentProxyClientDefaultModel(TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText)),
-                    ProxyWireApiProbeService.ResponsesWireApi));
-            }
-        }
-        catch (Exception ex)
-        {
-            TransparentProxyCodexStatusText = $"Codex CLI 恢复失败：{ex.Message}";
-            recoverySummaries.Add("Codex CLI 恢复失败");
-        }
-
-        try
-        {
-            var claude = _transparentProxyClaudeConfigService.RestoreLatestBackup();
-            TransparentProxyClaudeStatusText = string.IsNullOrWhiteSpace(claude.BackupPath)
-                ? claude.Summary
-                : $"{claude.Summary} 来源：{claude.BackupPath}";
-            if (claude.Succeeded)
-            {
-                recoverySummaries.Add("Claude CLI 配置已恢复");
-                ApplyTransparentProxyClaudePreview(_transparentProxyClaudeConfigService.Preview(TransparentProxyLocalEndpoint));
-            }
-        }
-        catch (Exception ex)
-        {
-            TransparentProxyClaudeStatusText = $"Claude CLI 恢复失败：{ex.Message}";
-            recoverySummaries.Add("Claude CLI 恢复失败");
-        }
-
-        try
-        {
-            var vsCode = _transparentProxyVsCodeSettingsService.RestoreLatestBackups(
-                TransparentProxyVsCodeSettingsScope.UserAndWorkspace,
-                GetTransparentProxyVsCodeWorkspaceDirectory());
-            TransparentProxyVsCodeStatusText = vsCode.BackupFiles.Count == 0
-                ? vsCode.Summary
-                : $"{vsCode.Summary} 来源：{string.Join("；", vsCode.BackupFiles)}";
-            if (vsCode.Succeeded)
-            {
-                recoverySummaries.Add("VS Code 终端配置已恢复");
-                ApplyTransparentProxyVsCodePreview(BuildTransparentProxyVsCodePreview());
-            }
-        }
-        catch (Exception ex)
-        {
-            TransparentProxyVsCodeStatusText = $"VS Code 恢复失败：{ex.Message}";
-            recoverySummaries.Add("VS Code 恢复失败");
-        }
-
-        try
-        {
-            var launchers = _transparentProxyLaunchWrapperService.DeleteKnownLaunchers();
-            TransparentProxyLaunchWrapperStatusText = launchers.Summary;
-            TransparentProxyLaunchWrapperPathText = string.Join("；", launchers.DeletedPaths.Concat(launchers.FailedPaths));
-            if (launchers.DeletedCount > 0)
-            {
-                recoverySummaries.Add("CLI 临时启动器已删除");
-            }
-        }
-        catch (Exception ex)
-        {
-            TransparentProxyLaunchWrapperStatusText = $"CLI 临时启动器清理失败：{ex.Message}";
-            recoverySummaries.Add("CLI 临时启动器清理失败");
-        }
-    }
-
-    private void RefreshTransparentProxyTunPreview()
-    {
-        var options = BuildTransparentProxyTunOptions();
-        var config = _transparentProxyTunService.BuildMihomoConfig(options);
-        var guard = _transparentProxyNetworkGuardService.Inspect();
-        var validation = _transparentProxyNetworkGuardService.ValidateMihomoConfig(config);
-        TransparentProxyTunPreviewText = BuildTransparentProxyTunPreviewText(config, guard, validation);
-        TransparentProxyTunStatusText = IsTransparentProxyTunRunning
-            ? $"TUN 运行中：mihomo -> {TransparentProxyPacForwardProxyEndpoint}；ChatGPT/OpenAI 官网、GitHub/npm/VS Code marketplace 保持 DIRECT。"
-            : validation.IsSafe
-                ? "TUN 配置预览安全；启动前仍需管理员权限和 mihomo sidecar。"
-                : "TUN 配置预览未通过安全校验。";
-    }
-
-    private string BuildTransparentProxyTunPreviewText(
-        string config,
-        TransparentProxyNetworkGuardSnapshot guard,
-        TransparentProxyNetworkGuardValidationResult validation)
-    {
-        var diagnostics = string.Join(Environment.NewLine, guard.Diagnostics);
-        var validationText = validation.IsSafe
-            ? "安全校验：通过。"
-            : "安全校验：未通过。" + Environment.NewLine + string.Join(Environment.NewLine, validation.Issues.Select(issue => "- " + issue));
-
-        return $"{diagnostics}{Environment.NewLine}{validationText}{Environment.NewLine}{Environment.NewLine}{config}";
-    }
-
     private sealed record TransparentProxyCodexCaptureContext(
         string BaseUrl,
         string Model,
@@ -1789,10 +1495,246 @@ public sealed partial class MainWindowViewModel
         {
             IsTransparentProxyListenSettingsOpen = false;
             IsTransparentProxyAppCaptureSettingsOpen = false;
-            IsTransparentProxyAdvancedNetworkSettingsOpen = false;
         }
 
         return Task.CompletedTask;
+    }
+
+    private Task ToggleTransparentProxyOAuthPanelAsync()
+    {
+        IsTransparentProxyOAuthPanelOpen = !IsTransparentProxyOAuthPanelOpen;
+        if (IsTransparentProxyOAuthPanelOpen)
+        {
+            RefreshCodexOAuthCredentials();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task StartCodexOAuthLoginAsync()
+    {
+        IsTransparentProxyProviderSettingsOpen = true;
+        IsTransparentProxyOAuthPanelOpen = true;
+        IsCodexOAuthLoginInProgress = true;
+        IsCodexOAuthManualCallbackVisible = false;
+        CodexOAuthManualCallbackText = string.Empty;
+        CodexOAuthLoginStatusText = "正在打开 Codex OAuth 登录窗口...";
+        CodexOAuthLoginStepText = "1/4 生成登录请求";
+        CodexOAuthLoginUrlText = string.Empty;
+
+        CodexOAuthLoginSession? session = null;
+        try
+        {
+            session = await _codexOAuthService.BeginLoginAsync(CancellationToken.None);
+            _currentCodexOAuthLoginSession = session;
+            CodexOAuthLoginUrlText = session.AuthUrl;
+            CodexOAuthLoginStepText = "2/4 等待浏览器授权";
+            CodexOAuthLoginStatusText = (session.CallbackServerStarted, session.BrowserOpened) switch
+            {
+                (true, true) => "浏览器已打开，请完成 Codex 登录。15 秒后可手动粘贴回调地址。",
+                (true, false) => "浏览器打开失败，请复制登录链接到浏览器完成授权。",
+                (false, true) => "OAuth 回调端口不可用，浏览器已打开；请复制最终回调地址手动粘贴。",
+                _ => "OAuth 回调端口不可用且浏览器未打开，请复制登录链接并手动粘贴回调地址。"
+            };
+            IsCodexOAuthManualCallbackVisible = !session.CallbackServerStarted || !session.BrowserOpened;
+            _ = ShowCodexOAuthManualCallbackLaterAsync(session.Id);
+            var credential = await _codexOAuthService.CompleteLoginAsync(
+                session,
+                CancellationToken.None,
+                () =>
+                {
+                    CodexOAuthLoginStepText = "3/4 换取并保存令牌";
+                    CodexOAuthLoginStatusText = "已收到浏览器授权，正在换取令牌并安全保存。";
+                });
+            CodexOAuthLoginStepText = "4/4 保存完成";
+            CodexOAuthLoginStatusText = $"Codex OAuth 登录完成：{credential.DisplayName}";
+            RefreshCodexOAuthCredentials();
+            RefreshTransparentProxyRoutePreview();
+            SaveState();
+        }
+        catch (OperationCanceledException)
+        {
+            CodexOAuthLoginStepText = "已取消";
+            CodexOAuthLoginStatusText = "Codex OAuth 登录已取消。";
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("CodexOAuth.Login", ex);
+            CodexOAuthLoginStepText = "需要处理";
+            CodexOAuthLoginStatusText = $"Codex OAuth 登录失败：{ProbeTraceRedactor.RedactText(ex.Message)}";
+            IsCodexOAuthManualCallbackVisible = true;
+        }
+        finally
+        {
+            if (ReferenceEquals(_currentCodexOAuthLoginSession, session))
+            {
+                _currentCodexOAuthLoginSession = null;
+            }
+
+            session?.Dispose();
+            IsCodexOAuthLoginInProgress = false;
+        }
+    }
+
+    private async Task ShowCodexOAuthManualCallbackLaterAsync(string sessionId)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(15));
+        if (_currentCodexOAuthLoginSession?.Id == sessionId && IsCodexOAuthLoginInProgress)
+        {
+            IsCodexOAuthManualCallbackVisible = true;
+            CodexOAuthLoginStatusText = "如果浏览器没有自动回到 RelayBench，请粘贴回调地址。";
+        }
+    }
+
+    private Task CancelCodexOAuthLoginAsync()
+    {
+        _currentCodexOAuthLoginSession?.Cancel();
+        CodexOAuthLoginStatusText = "正在取消 Codex OAuth 登录...";
+        return Task.CompletedTask;
+    }
+
+    private Task SubmitCodexOAuthCallbackAsync()
+    {
+        if (!_codexOAuthService.SubmitManualCallback(_currentCodexOAuthLoginSession, CodexOAuthManualCallbackText))
+        {
+            CodexOAuthLoginStatusText = "回调地址无效，请确认地址中包含 code 和 state。";
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task CopyCodexOAuthLoginUrlAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(CodexOAuthLoginUrlText))
+        {
+            Clipboard.SetText(CodexOAuthLoginUrlText);
+            CodexOAuthLoginStatusText = "Codex OAuth 登录链接已复制。";
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshCodexOAuthCredentialAsync(CodexOAuthCredentialViewModel? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        CodexOAuthLoginStatusText = $"正在刷新 {item.DisplayName}...";
+        await _codexOAuthService.RefreshCredentialAsync(item.Id, CancellationToken.None);
+        CodexOAuthLoginStatusText = $"{item.DisplayName} 刷新完成。";
+        RefreshCodexOAuthCredentials();
+    }
+
+    private Task DisableCodexOAuthCredentialAsync(CodexOAuthCredentialViewModel? item)
+    {
+        if (item is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        var isDisabled = string.Equals(item.State, CodexOAuthCredentialState.Disabled.ToString(), StringComparison.OrdinalIgnoreCase);
+        _codexOAuthService.DisableCredential(item.Id, !isDisabled);
+        CodexOAuthLoginStatusText = isDisabled ? $"{item.DisplayName} 已启用。" : $"{item.DisplayName} 已停用。";
+        RefreshCodexOAuthCredentials();
+        return Task.CompletedTask;
+    }
+
+    private Task DeleteCodexOAuthCredentialAsync(CodexOAuthCredentialViewModel? item)
+    {
+        if (item is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        _codexOAuthService.DeleteCredential(item.Id);
+        foreach (var route in TransparentProxyRouteEditorItems.Where(route =>
+                     string.Equals(route.OAuthCredentialId, item.Id, StringComparison.OrdinalIgnoreCase)))
+        {
+            route.AuthMode = TransparentProxyRouteAuthModes.ApiKey;
+            route.OAuthCredentialId = string.Empty;
+        }
+
+        UpdateTransparentProxyRoutesTextFromEditor();
+        CodexOAuthLoginStatusText = $"{item.DisplayName} 已删除。";
+        RefreshCodexOAuthCredentials();
+        RefreshTransparentProxyRoutePreview();
+        SaveState();
+        return Task.CompletedTask;
+    }
+
+    private Task CreateCodexOAuthRouteAsync()
+    {
+        var credential = CodexOAuthCredentials.FirstOrDefault(static item => item.CanUse) ?? CodexOAuthCredentials.FirstOrDefault();
+        if (credential is null)
+        {
+            CodexOAuthLoginStatusText = "请先登录 Codex OAuth。";
+            return Task.CompletedTask;
+        }
+
+        var item = new TransparentProxyRouteEditorItemViewModel
+        {
+            Name = $"Codex OAuth {credential.PlanType}",
+            BaseUrl = CodexOAuthConstants.DefaultBackendBaseUrl,
+            AuthMode = TransparentProxyRouteAuthModes.CodexOAuth,
+            OAuthProvider = CodexOAuthConstants.Provider,
+            OAuthCredentialId = credential.Id,
+            CodexBackendBaseUrl = CodexOAuthConstants.DefaultBackendBaseUrl,
+            PriorityText = "0"
+        };
+        item.ReplaceModelMappings(new[]
+        {
+            "gpt-5.4",
+            "gpt-5.4-codex",
+            "gpt-5.4-mini"
+        });
+        AttachTransparentProxyRouteEditorItem(item);
+        TransparentProxyRouteEditorItems.Add(item);
+        SelectedTransparentProxyRouteEditorItem = item;
+        UpdateTransparentProxyRoutesTextFromEditor();
+        RefreshTransparentProxyRoutePreview();
+        SaveState();
+        return OpenTransparentProxyRouteSettingsAsync(item);
+    }
+
+    private void RefreshCodexOAuthCredentials()
+    {
+        var credentials = _codexOAuthService.GetCredentials();
+        CodexOAuthCredentials.Clear();
+        foreach (var credential in credentials)
+        {
+            CodexOAuthCredentials.Add(new CodexOAuthCredentialViewModel(credential));
+        }
+
+        OnPropertyChanged(nameof(HasCodexOAuthCredentials));
+        OnPropertyChanged(nameof(HasNoCodexOAuthCredentials));
+        CreateCodexOAuthRouteCommand.RaiseCanExecuteChanged();
+        if (credentials.Count > 0 && CodexOAuthLoginStatusText.Contains("尚未登录", StringComparison.Ordinal))
+        {
+            CodexOAuthLoginStatusText = $"已保存 {credentials.Count} 个 Codex OAuth 账号。";
+        }
+    }
+
+    private void OnCodexOAuthCredentialsChanged(object? sender, EventArgs e)
+    {
+        if (Application.Current?.Dispatcher is null)
+        {
+            return;
+        }
+
+        Application.Current.Dispatcher.BeginInvoke(() =>
+        {
+            var selectedId = SelectedCodexOAuthCredential?.Id ?? string.Empty;
+            RefreshCodexOAuthCredentials();
+            if (!string.IsNullOrWhiteSpace(selectedId))
+            {
+                SelectedCodexOAuthCredential = CodexOAuthCredentials.FirstOrDefault(item =>
+                    string.Equals(item.Id, selectedId, StringComparison.OrdinalIgnoreCase));
+            }
+
+            RefreshTransparentProxyRoutePreview();
+        });
     }
 
     private Task OpenTransparentProxyRouteSettingsAsync(TransparentProxyRouteEditorItemViewModel? item)
@@ -1983,7 +1925,12 @@ public sealed partial class MainWindowViewModel
             async () =>
             {
                 UpdateGlobalTaskProgress("生成路由", 10d);
-                TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromWorkspace();
+                var preservedOAuthItems = TransparentProxyRouteTextCodec.ParseEditorItems(TransparentProxyRoutesText)
+                    .Where(static item => string.Equals(item.AuthMode, TransparentProxyRouteAuthModes.CodexOAuth, StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+                var generatedItems = TransparentProxyRouteTextCodec.ParseEditorItems(BuildTransparentProxyRoutesTextFromWorkspace());
+                var mergedItems = MergeTransparentProxyCandidateEditorItems(generatedItems, preservedOAuthItems);
+                TransparentProxyRoutesText = TransparentProxyRouteTextCodec.BuildRoutesTextFromEditor(mergedItems);
                 RefreshTransparentProxyRouteEditorItemsFromText();
                 RefreshTransparentProxyRoutePreview();
 
@@ -2017,7 +1964,7 @@ public sealed partial class MainWindowViewModel
 
                 await RefreshTransparentProxyHealthAsync();
                 TransparentProxyStatusSummary = hydratedRoutes.Count > 0
-                    ? $"生成候选路由完成：{hydratedRoutes.Count} 个节点，协议探测和统一出口端点测试已完成。{TransparentProxyHealthSummary}"
+                    ? $"生成候选路由完成：{hydratedRoutes.Count} 个节点，协议探测和统一出口端点测试已完成。{BuildCodexOAuthCandidateHint(hydratedRoutes)}{TransparentProxyHealthSummary}"
                     : $"生成候选路由完成：没有可用节点。{TransparentProxyHealthSummary}";
                 StatusMessage = TransparentProxyStatusSummary;
                 SaveState();
@@ -2025,6 +1972,83 @@ public sealed partial class MainWindowViewModel
             "生成候选路由",
             "生成中",
             8d);
+
+    private static IReadOnlyList<TransparentProxyRouteEditorItemViewModel> MergeTransparentProxyCandidateEditorItems(
+        IReadOnlyList<TransparentProxyRouteEditorItemViewModel> generatedItems,
+        IReadOnlyList<TransparentProxyRouteEditorItemViewModel> preservedOAuthItems)
+    {
+        if (preservedOAuthItems.Count == 0)
+        {
+            return generatedItems;
+        }
+
+        List<TransparentProxyRouteEditorItemViewModel> merged = [..generatedItems];
+        var existingOAuthKeys = new HashSet<string>(
+            generatedItems
+                .Where(static item => string.Equals(item.AuthMode, TransparentProxyRouteAuthModes.CodexOAuth, StringComparison.OrdinalIgnoreCase))
+                .Select(static item => string.IsNullOrWhiteSpace(item.OAuthCredentialId) ? item.Name : item.OAuthCredentialId),
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var item in preservedOAuthItems)
+        {
+            var key = string.IsNullOrWhiteSpace(item.OAuthCredentialId) ? item.Name : item.OAuthCredentialId;
+            if (existingOAuthKeys.Add(key))
+            {
+                merged.Add(item);
+            }
+        }
+
+        return merged;
+    }
+
+    private string BuildCodexOAuthCandidateHint(IReadOnlyList<TransparentProxyRoute> routes)
+    {
+        var oauthRouteCount = routes.Count(static route => route.IsCodexOAuth);
+        if (oauthRouteCount > 0)
+        {
+            return $"保留 Codex OAuth 路由 {oauthRouteCount} 条。{BuildCodexOAuthRouteCredentialSummary(routes)}";
+        }
+
+        return CodexOAuthCredentials.Count > 0
+            ? "已有 Codex OAuth 账号，可在 OAuth 区域一键创建路由。"
+            : string.Empty;
+    }
+
+    private string BuildCodexOAuthRouteCredentialSummary(IReadOnlyList<TransparentProxyRoute> routes)
+    {
+        var oauthRoutes = routes.Where(static route => route.IsCodexOAuth).ToArray();
+        if (oauthRoutes.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        var credentials = _codexOAuthService.GetCredentials()
+            .ToDictionary(static item => item.Id, StringComparer.OrdinalIgnoreCase);
+        var ready = 0;
+        var warning = 0;
+        var missing = 0;
+        foreach (var route in oauthRoutes)
+        {
+            if (!credentials.TryGetValue(route.OAuthCredentialId, out var credential))
+            {
+                missing++;
+                continue;
+            }
+
+            if (credential.State == CodexOAuthCredentialState.Ready ||
+                credential.State == CodexOAuthCredentialState.RefreshBackoff &&
+                credential.AccessTokenExpiresAt is { } expiresAt &&
+                expiresAt > DateTimeOffset.UtcNow)
+            {
+                ready++;
+            }
+            else
+            {
+                warning++;
+            }
+        }
+
+        return $"OAuth 账号状态：可用 {ready}，需处理 {warning}，缺失 {missing}。";
+    }
 
     private Task ProbeTransparentProxyProtocolsAsync()
         => ExecuteBusyActionAsync(
@@ -2357,6 +2381,7 @@ public sealed partial class MainWindowViewModel
         }
 
         RefreshTransparentProxyRouteEditorItemsFromText();
+        RefreshCodexOAuthCredentials();
         RefreshTransparentProxyRoutePreview();
         RefreshTransparentProxyCaptureTargets();
     }
@@ -2401,6 +2426,24 @@ public sealed partial class MainWindowViewModel
             return routes;
         }
 
+        var codexOAuthRoutes = routes
+            .Where(static route => route.IsCodexOAuth)
+            .Select(static route => route.WithProtocol(
+                ProxyWireApiProbeService.ResponsesWireApi,
+                chatCompletionsSupported: true,
+                responsesSupported: true,
+                anthropicMessagesSupported: true,
+                DateTimeOffset.UtcNow))
+            .ToArray();
+        var routesToProbe = routes
+            .Where(static route => !route.IsCodexOAuth)
+            .ToArray();
+        if (routesToProbe.Length == 0)
+        {
+            TransparentProxyProtocolSummary = $"协议探测：Codex OAuth 路由使用 Codex Responses 后端，并适配 Chat / Responses / Anthropic 客户端，跳过常规探测 {codexOAuthRoutes.Length} 条。{BuildCodexOAuthRouteCredentialSummary(codexOAuthRoutes)}";
+            return codexOAuthRoutes;
+        }
+
         var options = new TransparentProxyProtocolDiscoveryOptions(
             forceProbe,
             fetchCatalogModels,
@@ -2420,7 +2463,7 @@ public sealed partial class MainWindowViewModel
             }
         });
         var result = await _transparentProxyProtocolDiscoveryService.DiscoverAsync(
-            routes,
+            routesToProbe,
             options,
             progress,
             cancellationToken);
@@ -2431,8 +2474,21 @@ public sealed partial class MainWindowViewModel
         }
 
         TransparentProxyProtocolSummary =
-            $"协议探测：写入/刷新 {result.ProbedModels} 个模型，命中缓存 {result.CachedModels} 个，跳过 {result.SkippedRoutes} 条路由。优先级 Responses → Anthropic → OpenAI Chat。";
-        return result.HydratedRoutes;
+            $"协议探测：写入/刷新 {result.ProbedModels} 个模型，命中缓存 {result.CachedModels} 个，跳过 {result.SkippedRoutes} 条路由。优先级 Responses → Anthropic → OpenAI Chat。{BuildCodexOAuthRouteCredentialSummary(codexOAuthRoutes)}";
+        if (codexOAuthRoutes.Length == 0)
+        {
+            return result.HydratedRoutes;
+        }
+
+        var hydratedById = result.HydratedRoutes.ToDictionary(static route => route.Id, StringComparer.OrdinalIgnoreCase);
+        var codexById = codexOAuthRoutes.ToDictionary(static route => route.Id, StringComparer.OrdinalIgnoreCase);
+        return routes
+            .Select(route => codexById.TryGetValue(route.Id, out var codexRoute)
+                ? codexRoute
+                : hydratedById.TryGetValue(route.Id, out var hydratedRoute)
+                    ? hydratedRoute
+                    : route)
+            .ToArray();
     }
 
     private string BuildTransparentProxyRoutesTextFromWorkspace()
@@ -2717,10 +2773,6 @@ public sealed partial class MainWindowViewModel
                         Contains(row.SourceApplication, "Code") ||
                         Contains(row.CaptureMode, "VS") ||
                         Contains(row.CaptureMode, "Code"),
-            "tunnel" => Contains(row.IngressKind, "PacProxy") ||
-                        Contains(row.IngressKind, "TunProxy") ||
-                        Contains(row.CaptureMode, "TUN") ||
-                        Contains(row.CaptureMode, "tunnel"),
             _ => true
         };
 
@@ -2933,8 +2985,7 @@ public sealed partial class MainWindowViewModel
             .Select(static item =>
             {
                 var tokens = item.OutputTokens > 0 ? $"，{FormatCompactTokenCount(item.OutputTokens)} tokens" : string.Empty;
-                var tunnel = item.TunnelOnlyRequests > 0 ? $"，tunnel {item.TunnelOnlyRequests}" : string.Empty;
-                return $"{item.SourceApplication} {item.Requests} 请求{tokens}{tunnel}";
+                return $"{item.SourceApplication} {item.Requests} 请求{tokens}";
             });
         return "入口来源：" + string.Join("；", top) + "。";
     }
@@ -3131,38 +3182,6 @@ public sealed partial class MainWindowViewModel
     private int ParseTransparentProxyPort()
         => ParseBoundedInt(TransparentProxyPortText, fallback: 17880, min: 1024, max: 65535);
 
-    private int ResolveTransparentProxyPacForwardProxyPort()
-    {
-        var port = ParseTransparentProxyPort();
-        return port < 65535 ? port + 1 : 17881;
-    }
-
-    private TransparentProxyTunConfigOptions BuildTransparentProxyTunOptions()
-    {
-        var port = ParseTransparentProxyPort();
-        return new TransparentProxyTunConfigOptions(
-            port,
-            ResolveTransparentProxyPacForwardProxyPort(),
-            ResolveTransparentProxyTunMixedPort(),
-            ResolveTransparentProxyTunControllerPort(),
-            ResolveTransparentProxyTunDnsPort());
-    }
-
-    private int ResolveTransparentProxyTunMixedPort()
-        => ResolveTransparentProxyAdjacentPort(offset: 2, fallback: 17882);
-
-    private int ResolveTransparentProxyTunControllerPort()
-        => ResolveTransparentProxyAdjacentPort(offset: 3, fallback: 17883);
-
-    private int ResolveTransparentProxyTunDnsPort()
-        => ResolveTransparentProxyAdjacentPort(offset: 4, fallback: 17884);
-
-    private int ResolveTransparentProxyAdjacentPort(int offset, int fallback)
-    {
-        var port = ParseTransparentProxyPort();
-        return port <= 65535 - offset ? port + offset : fallback;
-    }
-
     private void NotifyTransparentProxyEndpointChanged()
     {
         OnPropertyChanged(nameof(TransparentProxyLocalEndpoint));
@@ -3173,10 +3192,6 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(TransparentProxyHealthEndpoint));
         OnPropertyChanged(nameof(TransparentProxyPowerShellEnvSnippet));
         OnPropertyChanged(nameof(TransparentProxyCmdEnvSnippet));
-        OnPropertyChanged(nameof(TransparentProxyPacForwardProxyEndpoint));
-        OnPropertyChanged(nameof(TransparentProxyTunRunStateText));
-        OnPropertyChanged(nameof(TransparentProxyTunMixedEndpoint));
-        OnPropertyChanged(nameof(TransparentProxyTunControllerEndpoint));
         OnPropertyChanged(nameof(TransparentProxyStatusSummary));
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using RelayBench.App.Infrastructure;
+using RelayBench.App.Services;
 using RelayBench.App.ViewModels.AdvancedTesting;
 using RelayBench.Core.AdvancedTesting.Runners;
 using RelayBench.Core.Models;
@@ -10,6 +11,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 {
     public MainWindowViewModel()
     {
+        _transparentProxyService = new TransparentProxyService(null, _codexOAuthService);
         _proxyEndpointProtocolProbeService = new(
             _proxyDiagnosticsService,
             _proxyEndpointModelCacheService);
@@ -19,7 +21,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _proxyEndpointProtocolProbeService);
         _transparentProxyService.LogEmitted += OnTransparentProxyLogEmitted;
         _transparentProxyService.MetricsChanged += OnTransparentProxyMetricsChanged;
-        _transparentProxyForwardProxyService.TunnelLogEmitted += OnTransparentProxyLogEmitted;
+        _codexOAuthService.CredentialsChanged += OnCodexOAuthCredentialsChanged;
 
         SpeedTestProfiles = new ObservableCollection<SpeedTestProfile>(_cloudflareSpeedTestService.GetProfiles());
         PortScanProfiles = new ObservableCollection<PortScanProfile>(_portScanDiagnosticsService.GetProfiles());
@@ -174,13 +176,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ToggleTransparentProxyAppCaptureSettingsCommand = new AsyncRelayCommand(ToggleTransparentProxyAppCaptureSettingsAsync, onError: HandleNonFatalCommandException);
         RefreshTransparentProxyCaptureTargetsCommand = new AsyncRelayCommand(RefreshTransparentProxyCaptureTargetsAsync, onError: HandleNonFatalCommandException);
         RefreshTransparentProxyCaptureDiagnosticsCommand = new AsyncRelayCommand(RefreshTransparentProxyCaptureDiagnosticsAsync, onError: HandleNonFatalCommandException);
-        ToggleTransparentProxyAdvancedNetworkSettingsCommand = new AsyncRelayCommand(ToggleTransparentProxyAdvancedNetworkSettingsAsync, onError: HandleNonFatalCommandException);
         CopyTransparentProxyPowerShellEnvCommand = new AsyncRelayCommand(CopyTransparentProxyPowerShellEnvAsync, onError: HandleNonFatalCommandException);
         CopyTransparentProxyCmdEnvCommand = new AsyncRelayCommand(CopyTransparentProxyCmdEnvAsync, onError: HandleNonFatalCommandException);
-        PreviewTransparentProxyTunCommand = new AsyncRelayCommand(PreviewTransparentProxyTunAsync, onError: HandleNonFatalCommandException);
-        StartTransparentProxyTunCommand = new AsyncRelayCommand(StartTransparentProxyTunAsync, CanStartTransparentProxyTun, onError: HandleNonFatalCommandException);
-        StopTransparentProxyTunCommand = new AsyncRelayCommand(StopTransparentProxyTunAsync, () => IsTransparentProxyTunRunning, onError: HandleNonFatalCommandException);
-        RestoreTransparentProxyNetworkCommand = new AsyncRelayCommand(RestoreTransparentProxyNetworkAsync, onError: HandleNonFatalCommandException);
         PreviewTransparentProxyCodexCaptureCommand = new AsyncRelayCommand(PreviewTransparentProxyCodexCaptureAsync, CanConfigureTransparentProxyCodexCapture, onError: HandleNonFatalCommandException);
         ApplyTransparentProxyCodexCaptureCommand = new AsyncRelayCommand(ApplyTransparentProxyCodexCaptureAsync, CanConfigureTransparentProxyCodexCapture, onError: HandleNonFatalCommandException);
         RestoreTransparentProxyCodexCaptureCommand = new AsyncRelayCommand(RestoreTransparentProxyCodexCaptureAsync, CanConfigureTransparentProxyCodexCapture, onError: HandleNonFatalCommandException);
@@ -195,6 +192,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ApplyTransparentProxyVsCodeCaptureCommand = new AsyncRelayCommand(ApplyTransparentProxyVsCodeCaptureAsync, CanConfigureTransparentProxyVsCodeCapture, onError: HandleNonFatalCommandException);
         RestoreTransparentProxyVsCodeCaptureCommand = new AsyncRelayCommand(RestoreTransparentProxyVsCodeCaptureAsync, CanConfigureTransparentProxyVsCodeCapture, onError: HandleNonFatalCommandException);
         ToggleTransparentProxyProviderSettingsCommand = new AsyncRelayCommand(ToggleTransparentProxyProviderSettingsAsync, onError: HandleNonFatalCommandException);
+        ToggleTransparentProxyOAuthPanelCommand = new AsyncRelayCommand(ToggleTransparentProxyOAuthPanelAsync, onError: HandleNonFatalCommandException);
+        StartCodexOAuthLoginCommand = new AsyncRelayCommand(StartCodexOAuthLoginAsync, () => !IsCodexOAuthLoginInProgress, onError: HandleNonFatalCommandException);
+        CancelCodexOAuthLoginCommand = new AsyncRelayCommand(CancelCodexOAuthLoginAsync, () => IsCodexOAuthLoginInProgress, onError: HandleNonFatalCommandException);
+        SubmitCodexOAuthCallbackCommand = new AsyncRelayCommand(SubmitCodexOAuthCallbackAsync, () => IsCodexOAuthLoginInProgress, onError: HandleNonFatalCommandException);
+        CopyCodexOAuthLoginUrlCommand = new AsyncRelayCommand(CopyCodexOAuthLoginUrlAsync, () => !string.IsNullOrWhiteSpace(CodexOAuthLoginUrlText), onError: HandleNonFatalCommandException);
+        RefreshCodexOAuthCredentialCommand = new AsyncRelayCommand<CodexOAuthCredentialViewModel?>(RefreshCodexOAuthCredentialAsync, item => item is not null, onError: HandleNonFatalCommandException);
+        DisableCodexOAuthCredentialCommand = new AsyncRelayCommand<CodexOAuthCredentialViewModel?>(DisableCodexOAuthCredentialAsync, item => item is not null, onError: HandleNonFatalCommandException);
+        DeleteCodexOAuthCredentialCommand = new AsyncRelayCommand<CodexOAuthCredentialViewModel?>(DeleteCodexOAuthCredentialAsync, item => item is not null, onError: HandleNonFatalCommandException);
+        CreateCodexOAuthRouteCommand = new AsyncRelayCommand(CreateCodexOAuthRouteAsync, () => CodexOAuthCredentials.Count > 0, onError: HandleNonFatalCommandException);
         OpenTransparentProxyRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?>(OpenTransparentProxyRouteSettingsAsync, item => item is not null, onError: HandleNonFatalCommandException);
         OpenTransparentProxyRuntimeRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteViewModel?>(OpenTransparentProxyRuntimeRouteSettingsAsync, route => route is not null, onError: HandleNonFatalCommandException);
         CloseTransparentProxyRouteSettingsCommand = new AsyncRelayCommand(CloseTransparentProxyRouteSettingsAsync, onError: HandleNonFatalCommandException);
@@ -255,7 +261,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         ResetIpRiskPresentation();
         LoadState();
-        RefreshTransparentProxyNetworkResidualState();
         StartTransparentProxyUnifiedEndpointOnLaunch();
         _ = LoadTransparentProxyLogsAsync();
         LoadChatSession();

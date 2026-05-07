@@ -25,7 +25,11 @@ internal static class TransparentProxyRouteTextCodec
                     RequestRetryText = item.RequestRetryText,
                     MaxRetryIntervalSecondsText = item.MaxRetryIntervalSecondsText,
                     ModelCooldownSecondsText = item.ModelCooldownSecondsText,
-                    PayloadRulesText = item.PayloadRulesText
+                    PayloadRulesText = item.PayloadRulesText,
+                    AuthMode = item.AuthMode,
+                    OAuthProvider = item.OAuthProvider,
+                    OAuthCredentialId = item.OAuthCredentialId,
+                    CodexBackendBaseUrl = item.CodexBackendBaseUrl
                 };
                 return $"{prefix}v4 | {EscapeRouteField(item.Name)} | {EscapeRouteField(item.BaseUrl)} | {EscapeRouteField(item.ApiKey)} | {EscapeRouteField(JoinRouteModels(item.ModelMappings))} | {EscapeRouteField(item.PriorityText)} | {EscapeRouteField(item.Prefix)} | {EscapeRouteField(SerializeHeaders(item.Headers))} | {EscapeRouteField(item.ExcludedModelsText)} | {EncodeOptions(options)}";
             }));
@@ -50,6 +54,10 @@ internal static class TransparentProxyRouteTextCodec
                 MaxRetryIntervalSecondsText = parsed.Options.MaxRetryIntervalSecondsText,
                 ModelCooldownSecondsText = parsed.Options.ModelCooldownSecondsText,
                 PayloadRulesText = parsed.Options.PayloadRulesText,
+                AuthMode = parsed.Options.AuthMode,
+                OAuthProvider = parsed.Options.OAuthProvider,
+                OAuthCredentialId = parsed.Options.OAuthCredentialId,
+                CodexBackendBaseUrl = parsed.Options.CodexBackendBaseUrl,
                 ApiKey = parsed.ApiKey
             });
         }
@@ -91,7 +99,11 @@ internal static class TransparentProxyRouteTextCodec
                 requestRetry: ParseOptionalInt(parsed.Options.RequestRetryText, min: 0, max: 5),
                 maxRetryIntervalSeconds: ParseOptionalInt(parsed.Options.MaxRetryIntervalSecondsText, min: 1, max: 60),
                 modelCooldownSeconds: ParseOptionalInt(parsed.Options.ModelCooldownSecondsText, min: 15, max: 1800),
-                payloadRulesText: parsed.Options.PayloadRulesText));
+                payloadRulesText: parsed.Options.PayloadRulesText,
+                authMode: parsed.Options.AuthMode,
+                oauthProvider: parsed.Options.OAuthProvider,
+                oauthCredentialId: parsed.Options.OAuthCredentialId,
+                codexBackendBaseUrl: parsed.Options.CodexBackendBaseUrl));
         }
 
         return routes;
@@ -375,6 +387,14 @@ internal sealed class TransparentProxyRouteTextOptions
     public string ModelCooldownSecondsText { get; set; } = string.Empty;
 
     public string PayloadRulesText { get; set; } = string.Empty;
+
+    public string AuthMode { get; set; } = TransparentProxyRouteAuthModes.ApiKey;
+
+    public string OAuthProvider { get; set; } = string.Empty;
+
+    public string OAuthCredentialId { get; set; } = string.Empty;
+
+    public string CodexBackendBaseUrl { get; set; } = string.Empty;
 }
 
 internal sealed record TransparentProxyRouteTextSeed(

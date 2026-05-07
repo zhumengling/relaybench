@@ -28,7 +28,8 @@ internal static class TransparentProxyUpstreamRequestFactory
         TransparentProxyRoute route,
         byte[] body,
         string wireApi,
-        IReadOnlyDictionary<string, string> extraHeaders)
+        IReadOnlyDictionary<string, string> extraHeaders,
+        TransparentProxyRouteAuthMaterial? authMaterial = null)
     {
         HttpRequestMessage request = new(new HttpMethod(method), upstreamUrl);
         foreach (var headerName in source.Headers.AllKeys)
@@ -55,7 +56,18 @@ internal static class TransparentProxyUpstreamRequestFactory
             ? route.ApiKey.Trim()
             : ExtractBearerToken(source.Headers["Authorization"]);
 
-        if (!string.IsNullOrWhiteSpace(route.ApiKey))
+        if (authMaterial?.IsCodexOAuth == true)
+        {
+            request.Headers.Remove("Authorization");
+            request.Headers.Remove("x-api-key");
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {authMaterial.BearerToken}");
+            foreach (var header in authMaterial.Headers)
+            {
+                request.Headers.Remove(header.Key);
+                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(route.ApiKey))
         {
             request.Headers.Remove("Authorization");
             request.Headers.Remove("x-api-key");
@@ -64,11 +76,19 @@ internal static class TransparentProxyUpstreamRequestFactory
 
         foreach (var header in extraHeaders)
         {
+            if (authMaterial?.IsCodexOAuth == true &&
+                (string.Equals(header.Key, "Authorization", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(header.Key, "x-api-key", StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
             request.Headers.Remove(header.Key);
             request.Headers.TryAddWithoutValidation(header.Key, header.Value);
         }
 
-        if (string.Equals(wireApi, ProxyWireApiProbeService.AnthropicMessagesWireApi, StringComparison.Ordinal))
+        if (authMaterial?.IsCodexOAuth != true &&
+            string.Equals(wireApi, ProxyWireApiProbeService.AnthropicMessagesWireApi, StringComparison.Ordinal))
         {
             request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
             if (!string.IsNullOrWhiteSpace(effectiveApiKey))

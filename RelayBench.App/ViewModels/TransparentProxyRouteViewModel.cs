@@ -31,7 +31,9 @@ public sealed class TransparentProxyRouteViewModel : ObservableObject
         Models = route.Models;
         ConfiguredPriority = route.Priority;
         Prefix = route.Prefix;
-        ApiKeyPreview = BuildApiKeyPreview(route.ApiKey);
+        ApiKeyPreview = route.IsCodexOAuth
+            ? BuildCodexOAuthPreview(route.OAuthCredentialId)
+            : BuildApiKeyPreview(route.ApiKey);
         ApplyProtocol(
             route.PreferredWireApi,
             route.ChatCompletionsSupported,
@@ -263,6 +265,21 @@ public sealed class TransparentProxyRouteViewModel : ObservableObject
         return apiKey.Length <= 8
             ? "***"
             : $"{apiKey[..Math.Min(3, apiKey.Length)]}...{apiKey[^Math.Min(4, apiKey.Length)..]}";
+    }
+
+    private static string BuildCodexOAuthPreview(string credentialId)
+    {
+        var value = credentialId.Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Codex OAuth 未绑定账号";
+        }
+
+        return value.Contains('@', StringComparison.Ordinal)
+            ? $"Codex OAuth {CodexOAuthCredential.MaskEmail(value)}"
+            : value.Length <= 12
+                ? "Codex OAuth ***"
+                : $"Codex OAuth {value[..Math.Min(8, value.Length)]}...";
     }
 
     private static string FormatSupport(bool? supported)

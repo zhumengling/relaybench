@@ -21,6 +21,10 @@ public sealed class TransparentProxyRouteEditorItemViewModel : ObservableObject
     private string _maxRetryIntervalSecondsText = string.Empty;
     private string _modelCooldownSecondsText = string.Empty;
     private string _payloadRulesText = string.Empty;
+    private string _authMode = TransparentProxyRouteAuthModes.ApiKey;
+    private string _oauthProvider = string.Empty;
+    private string _oauthCredentialId = string.Empty;
+    private string _codexBackendBaseUrl = string.Empty;
     private string _apiKey = string.Empty;
     private bool _isSyncingModelMappings;
 
@@ -138,6 +142,46 @@ public sealed class TransparentProxyRouteEditorItemViewModel : ObservableObject
         }
     }
 
+    public string AuthMode
+    {
+        get => _authMode;
+        set
+        {
+            var normalized = TransparentProxyRouteAuthModes.Normalize(value);
+            if (SetProperty(ref _authMode, normalized))
+            {
+                OnPropertyChanged(nameof(IsApiKeyAuth));
+                OnPropertyChanged(nameof(IsCodexOAuthAuth));
+                OnPropertyChanged(nameof(AuthModeDisplayText));
+                OnPropertyChanged(nameof(ApiKeyPreview));
+            }
+        }
+    }
+
+    public string OAuthProvider
+    {
+        get => _oauthProvider;
+        set => SetProperty(ref _oauthProvider, value ?? string.Empty);
+    }
+
+    public string OAuthCredentialId
+    {
+        get => _oauthCredentialId;
+        set
+        {
+            if (SetProperty(ref _oauthCredentialId, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(OAuthCredentialPreview));
+            }
+        }
+    }
+
+    public string CodexBackendBaseUrl
+    {
+        get => _codexBackendBaseUrl;
+        set => SetProperty(ref _codexBackendBaseUrl, value ?? string.Empty);
+    }
+
     public TransparentProxyPayloadRuleViewModel PayloadRulePreview
         => TransparentProxyPayloadRuleViewModel.FromText(PayloadRulesText);
 
@@ -159,10 +203,27 @@ public sealed class TransparentProxyRouteEditorItemViewModel : ObservableObject
         }
     }
 
+    public bool IsApiKeyAuth
+        => string.Equals(AuthMode, TransparentProxyRouteAuthModes.ApiKey, StringComparison.OrdinalIgnoreCase);
+
+    public bool IsCodexOAuthAuth
+        => string.Equals(AuthMode, TransparentProxyRouteAuthModes.CodexOAuth, StringComparison.OrdinalIgnoreCase);
+
+    public string AuthModeDisplayText
+        => IsCodexOAuthAuth ? "Codex OAuth" : "API Key";
+
+    public string OAuthCredentialPreview
+        => string.IsNullOrWhiteSpace(OAuthCredentialId) ? "未选择 Codex 账号" : OAuthCredentialId;
+
     public string ApiKeyPreview
     {
         get
         {
+            if (IsCodexOAuthAuth)
+            {
+                return "Codex OAuth";
+            }
+
             var value = ApiKey.Trim();
             if (string.IsNullOrWhiteSpace(value))
             {

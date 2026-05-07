@@ -67,8 +67,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ProbeTransparentProxyProtocolsCommand.RaiseCanExecuteChanged();
                 RunTransparentProxySelfTestCommand.RaiseCanExecuteChanged();
                 ApplyTransparentProxyToAppsCommand.RaiseCanExecuteChanged();
-                StartTransparentProxyTunCommand.RaiseCanExecuteChanged();
-                StopTransparentProxyTunCommand.RaiseCanExecuteChanged();
                 PreviewTransparentProxyCodexCaptureCommand.RaiseCanExecuteChanged();
                 ApplyTransparentProxyCodexCaptureCommand.RaiseCanExecuteChanged();
                 RestoreTransparentProxyCodexCaptureCommand.RaiseCanExecuteChanged();

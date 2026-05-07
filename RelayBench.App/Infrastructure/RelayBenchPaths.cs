@@ -32,6 +32,8 @@ public static class RelayBenchPaths
 
     public static string TransparentProxyConfigPath => Path.Combine(ConfigDirectory, "transparent-proxy.json");
 
+    public static string TransparentProxyCodexOAuthPath => Path.Combine(ConfigDirectory, "transparent-proxy-codex-oauth.json");
+
     public static string TransparentProxyCachePath => Path.Combine(DataDirectory, "transparent-proxy-cache.sqlite");
 
     public static string TransparentProxyRouteHealthPath => Path.Combine(DataDirectory, "transparent-proxy-route-health.sqlite");

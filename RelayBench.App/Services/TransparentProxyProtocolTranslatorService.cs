@@ -51,6 +51,22 @@ internal sealed class TransparentProxyProtocolTranslatorService
             var upstreamModel = TryReadRequestModel(directBody) ?? modelBody.UpstreamModel;
             var isToolExchange = IsToolExchangeRequest(directBody);
             var preferJsonStreamExtraction = streamRequested && PrefersJsonStreamExtraction(directBody);
+            if (route.IsCodexOAuth)
+            {
+                allAttempts.Add(BuildCodexOAuthPreparedRequest(
+                    method,
+                    pathAndQuery,
+                    directBody,
+                    route,
+                    promptSession,
+                    clientModel,
+                    upstreamModel,
+                    streamRequested,
+                    isToolExchange,
+                    preferJsonStreamExtraction));
+                continue;
+            }
+
             if (IsOpenAiChatCompletionsRequest(method, pathAndQuery))
             {
                 var requestText = Encoding.UTF8.GetString(directBody);
@@ -85,6 +101,7 @@ internal sealed class TransparentProxyProtocolTranslatorService
                             : optimizedModel;
                         attempts.Add(new TransparentProxyPreparedRequest(
                             prepared.WireApi,
+                            ProxyWireApiProbeService.ChatCompletionsWireApi,
                             BuildUpstreamUrl(route.BaseUrl, "/v1/" + prepared.RelativePath + query),
                             body,
                             headers,
@@ -288,6 +305,7 @@ internal sealed class TransparentProxyProtocolTranslatorService
             : optimizedModel;
         return new TransparentProxyPreparedRequest(
             wireApi,
+            wireApi,
             BuildUpstreamUrl(route.BaseUrl, pathAndQuery),
             body,
             headers,
@@ -314,6 +332,76 @@ internal sealed class TransparentProxyProtocolTranslatorService
         }
 
         return merged;
+    }
+
+    private TransparentProxyPreparedRequest BuildCodexOAuthPreparedRequest(
+        string method,
+        string pathAndQuery,
+        byte[] requestBody,
+        TransparentProxyRoute route,
+        TransparentProxyPromptSessionMaterial promptSession,
+        string clientModel,
+        string upstreamModel,
+        bool streamRequested,
+        bool isToolExchange,
+        bool preferJsonStreamExtraction)
+    {
+        var clientWireApi = InferWireApiFromPath(pathAndQuery);
+        var targetWireApi = ProxyWireApiProbeService.ResponsesWireApi;
+        var headers = MergeHeaders(route.Headers, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+        byte[] body;
+        var normalizeToChat = string.Equals(clientWireApi, ProxyWireApiProbeService.ChatCompletionsWireApi, StringComparison.Ordinal);
+
+        if (IsOpenAiChatCompletionsRequest(method, pathAndQuery))
+        {
+            var prepared = _translatorRegistry.PreparePostJson(
+                ExtractRelativePath(pathAndQuery),
+                Encoding.UTF8.GetString(requestBody),
+                targetWireApi,
+                streamRequested);
+            body = Encoding.UTF8.GetBytes(prepared.RequestBody);
+            foreach (var header in prepared.ExtraHeaders)
+            {
+                headers[header.Key] = header.Value;
+            }
+        }
+        else if (string.Equals(clientWireApi, ProxyWireApiProbeService.AnthropicMessagesWireApi, StringComparison.Ordinal))
+        {
+            body = CodexBackendProtocolAdapter.ConvertAnthropicMessagesToResponses(requestBody, streamRequested);
+            normalizeToChat = false;
+        }
+        else
+        {
+            body = CodexBackendProtocolAdapter.NormalizeResponsesPayload(requestBody, streamRequested);
+        }
+
+        body = _payloadRuleService.Apply(
+            body,
+            route,
+            targetWireApi,
+            clientModel,
+            upstreamModel,
+            pathAndQuery);
+        body = _promptCacheOptimizer.Apply(
+            body,
+            promptSession,
+            targetWireApi,
+            headers,
+            out var optimizedModel);
+        var preparedModel = string.IsNullOrWhiteSpace(optimizedModel)
+            ? TryReadRequestModel(body) ?? upstreamModel
+            : optimizedModel;
+        return new TransparentProxyPreparedRequest(
+            targetWireApi,
+            clientWireApi,
+            CodexBackendProtocolAdapter.BuildResponsesUrl(route),
+            body,
+            headers,
+            normalizeToChat,
+            string.IsNullOrWhiteSpace(clientModel) ? preparedModel : clientModel,
+            preparedModel,
+            isToolExchange,
+            preferJsonStreamExtraction);
     }
 
     private IReadOnlyList<TransparentProxyModelSelectedBody> BuildRouteModelSelectedBodies(

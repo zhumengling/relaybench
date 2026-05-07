@@ -51,6 +51,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<TransparentProxyRouteEditorItemViewModel> TransparentProxyRouteEditorItems { get; } = [];
 
+    public ObservableCollection<CodexOAuthCredentialViewModel> CodexOAuthCredentials { get; } = [];
+
     public ObservableCollection<TransparentProxyLogEntryViewModel> TransparentProxyLogs { get; } = [];
 
     public ObservableCollection<SelectionOption> TransparentProxyLogSourceFilterOptions { get; } =
@@ -59,8 +61,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         new("unified", "统一出口"),
         new("codex", "Codex"),
         new("claude", "Claude"),
-        new("vscode", "VS Code"),
-        new("tunnel", "TUN")
+        new("vscode", "VS Code")
     ];
 
     public ObservableCollection<SelectionOption> TransparentProxyVsCodeSettingsScopeOptions { get; } =
@@ -312,19 +313,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand RefreshTransparentProxyCaptureDiagnosticsCommand { get; }
 
-    public AsyncRelayCommand ToggleTransparentProxyAdvancedNetworkSettingsCommand { get; }
-
     public AsyncRelayCommand CopyTransparentProxyPowerShellEnvCommand { get; }
 
     public AsyncRelayCommand CopyTransparentProxyCmdEnvCommand { get; }
-
-    public AsyncRelayCommand PreviewTransparentProxyTunCommand { get; }
-
-    public AsyncRelayCommand StartTransparentProxyTunCommand { get; }
-
-    public AsyncRelayCommand StopTransparentProxyTunCommand { get; }
-
-    public AsyncRelayCommand RestoreTransparentProxyNetworkCommand { get; }
 
     public AsyncRelayCommand PreviewTransparentProxyCodexCaptureCommand { get; }
 
@@ -353,6 +344,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public AsyncRelayCommand RestoreTransparentProxyVsCodeCaptureCommand { get; }
 
     public AsyncRelayCommand ToggleTransparentProxyProviderSettingsCommand { get; }
+
+    public AsyncRelayCommand ToggleTransparentProxyOAuthPanelCommand { get; }
+
+    public AsyncRelayCommand StartCodexOAuthLoginCommand { get; }
+
+    public AsyncRelayCommand CancelCodexOAuthLoginCommand { get; }
+
+    public AsyncRelayCommand SubmitCodexOAuthCallbackCommand { get; }
+
+    public AsyncRelayCommand CopyCodexOAuthLoginUrlCommand { get; }
+
+    public AsyncRelayCommand<CodexOAuthCredentialViewModel?> RefreshCodexOAuthCredentialCommand { get; }
+
+    public AsyncRelayCommand<CodexOAuthCredentialViewModel?> DisableCodexOAuthCredentialCommand { get; }
+
+    public AsyncRelayCommand<CodexOAuthCredentialViewModel?> DeleteCodexOAuthCredentialCommand { get; }
+
+    public AsyncRelayCommand CreateCodexOAuthRouteCommand { get; }
 
     public AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?> OpenTransparentProxyRouteSettingsCommand { get; }
 

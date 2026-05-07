@@ -22,11 +22,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly RouteDiagnosticsService _routeDiagnosticsService = new();
     private readonly PortScanDiagnosticsService _portScanDiagnosticsService = new();
     private readonly SplitRoutingDiagnosticsService _splitRoutingDiagnosticsService = new();
-    private readonly TransparentProxyService _transparentProxyService = new();
-    private readonly TransparentProxySystemProxyService _transparentProxySystemProxyService = new();
-    private readonly TransparentProxyForwardProxyService _transparentProxyForwardProxyService = new();
-    private readonly TransparentProxyTunService _transparentProxyTunService = new();
-    private readonly TransparentProxyNetworkGuardService _transparentProxyNetworkGuardService = new();
+    private readonly CodexOAuthService _codexOAuthService = new();
+    private readonly TransparentProxyService _transparentProxyService;
     private readonly TransparentProxyPortInspectorService _transparentProxyPortInspectorService = new();
     private readonly TransparentProxySelfTestService _transparentProxySelfTestService = new();
     private readonly TransparentProxyConfigStore _transparentProxyConfigStore = new();
@@ -159,8 +156,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _isTransparentProxySettingsDrawerOpen;
     private bool _isTransparentProxyListenSettingsOpen;
     private bool _isTransparentProxyAppCaptureSettingsOpen;
-    private bool _isTransparentProxyAdvancedNetworkSettingsOpen;
     private bool _isTransparentProxyProviderSettingsOpen;
+    private bool _isTransparentProxyOAuthPanelOpen;
+    private bool _isCodexOAuthLoginInProgress;
+    private bool _isCodexOAuthManualCallbackVisible;
+    private CodexOAuthCredentialViewModel? _selectedCodexOAuthCredential;
     private bool _isTransparentProxyRouteSettingsOpen;
     private bool _isTransparentProxyLogExpanded;
     private string _transparentProxyLogSourceFilterKey = "all";
@@ -189,11 +189,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _transparentProxyLaunchWrapperPreviewText = "点击 Codex 或 Claude 行内的启动器按钮，会生成只影响当前子进程的 PowerShell / CMD 临时启动器。";
     private string _transparentProxyLaunchWrapperPathText = string.Empty;
     private string _transparentProxyLaunchWrapperStatusText = "临时启动器尚未生成；它不会修改系统代理或全局环境变量。";
-    private bool _isTransparentProxyPacRunning;
-    private string _transparentProxySystemProxyStatusText = "旧版系统代理备份：等待检查。";
-    private bool _isTransparentProxyTunRunning;
-    private string _transparentProxyTunStatusText = "TUN 高级模式未启动。";
-    private string _transparentProxyTunPreviewText = "点击预览会生成 mihomo TUN 配置；默认只接管 AI API 域名，ChatGPT/OpenAI 官网直连。TUN 是 tunnel-only，不替换 API Key 或 Base URL。Codex Desktop 请使用“应用接入”写入配置。";
     private string _transparentProxyTotalRequestsText = "0";
     private string _transparentProxySuccessRateText = "-";
     private string _transparentProxyActiveRequestsText = "0";
@@ -219,6 +214,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _transparentProxyCopyPowerShellButtonText = "PS";
     private string _transparentProxyCopyCmdButtonText = "CMD";
     private string _transparentProxyHealthTestButtonText = "\uE9D9";
+    private string _codexOAuthLoginStatusText = "尚未登录 Codex OAuth。";
+    private string _codexOAuthLoginStepText = "待命";
+    private string _codexOAuthManualCallbackText = string.Empty;
+    private string _codexOAuthLoginUrlText = string.Empty;
+    private CodexOAuthLoginSession? _currentCodexOAuthLoginSession;
     private readonly List<TransparentProxyLogEntryViewModel> _allTransparentProxyLogs = [];
     private readonly Dictionary<string, TransparentProxyProtocolDiscoverySnapshot> _transparentProxyProtocolSnapshots = new(StringComparer.OrdinalIgnoreCase);
 

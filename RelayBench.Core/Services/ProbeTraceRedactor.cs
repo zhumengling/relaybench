@@ -16,6 +16,7 @@ public static class ProbeTraceRedactor
         "token",
         "access_token",
         "refresh_token",
+        "id_token",
         "password",
         "secret",
         "client_secret",
@@ -85,7 +86,7 @@ public static class ProbeTraceRedactor
 
             var key = fragment[..equalsIndex];
             var value = fragment[(equalsIndex + 1)..];
-            fragments[i] = IsSensitiveName(Uri.UnescapeDataString(key))
+            fragments[i] = IsSensitiveUrlName(Uri.UnescapeDataString(key))
                 ? $"{key}=***"
                 : $"{key}={RedactText(value)}";
         }
@@ -131,6 +132,8 @@ public static class ProbeTraceRedactor
         normalized = RedactInlineAssignments(normalized, "token");
         normalized = RedactInlineAssignments(normalized, "access_token");
         normalized = RedactInlineAssignments(normalized, "refresh_token");
+        normalized = RedactInlineAssignments(normalized, "id_token");
+        normalized = RedactInlineAssignments(normalized, "code");
         normalized = RedactInlineAssignments(normalized, "password");
         normalized = RedactInlineAssignments(normalized, "secret");
         normalized = RedactInlineAssignments(normalized, "client_secret");
@@ -189,6 +192,10 @@ public static class ProbeTraceRedactor
         => SensitiveNames.Contains(name.Replace("_", "-", StringComparison.OrdinalIgnoreCase)) ||
            SensitiveNames.Contains(name);
 
+    private static bool IsSensitiveUrlName(string name)
+        => IsSensitiveName(name) ||
+           name.Equals("code", StringComparison.OrdinalIgnoreCase);
+
     private static string MaskBearer(string value)
     {
         const string prefix = "Bearer ";
@@ -223,20 +230,28 @@ public static class ProbeTraceRedactor
     private static string RedactInlineAssignments(string value, string key)
     {
         var search = key + "=";
-        var index = value.IndexOf(search, StringComparison.OrdinalIgnoreCase);
-        if (index < 0)
+        var cursor = 0;
+        var normalized = value;
+        while (cursor < normalized.Length)
         {
-            return value;
+            var index = normalized.IndexOf(search, cursor, StringComparison.OrdinalIgnoreCase);
+            if (index < 0)
+            {
+                break;
+            }
+
+            var start = index + search.Length;
+            var end = normalized.IndexOfAny(['&', ' ', '\r', '\n', '\t', '"', '\''], start);
+            if (end < 0)
+            {
+                end = normalized.Length;
+            }
+
+            normalized = normalized[..start] + "***" + normalized[end..];
+            cursor = start + 3;
         }
 
-        var start = index + search.Length;
-        var end = value.IndexOfAny(['&', ' ', '\r', '\n', '\t', '"', '\''], start);
-        if (end < 0)
-        {
-            end = value.Length;
-        }
-
-        return value[..start] + "***" + value[end..];
+        return normalized;
     }
 
     private static bool IsLikelyLargeBinary(string value)

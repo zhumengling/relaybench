@@ -7,14 +7,40 @@ internal sealed class TransparentProxyManagementApiService
     public object BuildHealthPayload(
         bool isRunning,
         TransparentProxyServerConfig? config,
-        TransparentProxyMetricsSnapshot metrics)
-        => new
+        TransparentProxyMetricsSnapshot metrics,
+        IReadOnlyList<CodexOAuthCredential> codexOAuthCredentials)
+    {
+        var codexOAuthRoutes = config?.Routes.Count(static route => route.IsCodexOAuth) ?? 0;
+        return new
         {
             status = isRunning ? "ok" : "stopped",
             port = config?.Port ?? 0,
             routes = config?.Routes.Count ?? 0,
+            codexOAuth = new
+            {
+                routes = codexOAuthRoutes,
+                ready = codexOAuthCredentials.Count(static item => item.State == CodexOAuthCredentialState.Ready),
+                refreshing = codexOAuthCredentials.Count(static item => item.State == CodexOAuthCredentialState.Refreshing),
+                refreshBackoff = codexOAuthCredentials.Count(static item => item.State == CodexOAuthCredentialState.RefreshBackoff),
+                needsRelogin = codexOAuthCredentials.Count(static item => item.State == CodexOAuthCredentialState.NeedsRelogin),
+                disabled = codexOAuthCredentials.Count(static item => item.State == CodexOAuthCredentialState.Disabled),
+                accounts = codexOAuthCredentials.Select(static item => new
+                {
+                    id = MaskCredentialReference(item.Id),
+                    name = item.DisplayName,
+                    state = item.State.ToString(),
+                    plan = item.PlanType,
+                    account = item.AccountIdHash,
+                    item.AccessTokenExpiresAt,
+                    item.LastRefreshAt,
+                    item.RefreshBackoffUntil,
+                    item.RefreshFailureCount,
+                    lastError = ProbeTraceRedactor.RedactText(item.LastError)
+                }).ToArray()
+            },
             metrics
         };
+    }
 
     public object BuildCachePayload(
         TransparentProxyCacheStats responseStats,
@@ -182,16 +208,9 @@ internal sealed class TransparentProxyManagementApiService
         bool isRunning,
         TransparentProxyServerConfig? config,
         IReadOnlyList<TransparentProxyDetectedApp> apps,
-        TransparentProxyNetworkGuardSnapshot guard,
-        TransparentProxyNetworkGuardValidationResult tunValidation,
-        TransparentProxyTunResidualSession tunResidualSession,
-        TransparentProxySystemProxyInspection legacySystemProxy,
         TransparentProxyPortInspectionResult portInspection,
         TransparentProxyCliEnvironmentSnapshot cliEnvironment,
-        IReadOnlyList<TransparentProxyLaunchWrapperArtifact> launchWrappers,
-        string tunForwarderEndpoint,
-        string tunMixedEndpoint,
-        string tunControllerEndpoint)
+        IReadOnlyList<TransparentProxyLaunchWrapperArtifact> launchWrappers)
         => new
         {
             generatedAt = DateTimeOffset.UtcNow,
@@ -241,45 +260,12 @@ internal sealed class TransparentProxyManagementApiService
                     item.CmdExists
                 }).ToArray()
             },
-            legacySystemProxy = new
-            {
-                cleanupOnly = true,
-                legacySystemProxy.CanInspect,
-                legacySystemProxy.IsRelayBenchPacActive,
-                autoConfigUrl = ProbeTraceRedactor.RedactUrl(legacySystemProxy.AutoConfigUrl),
-                legacySystemProxy.ProxyEnabled,
-                legacySystemProxy.ProxyServer,
-                legacySystemProxy.ProxyOverride,
-                legacySystemProxy.Summary
-            },
-            tun = new
-            {
-                mode = "advanced tunnel-only",
-                mixedEndpoint = tunMixedEndpoint,
-                controllerEndpoint = tunControllerEndpoint,
-                forwarderEndpoint = tunForwarderEndpoint,
-                sidecarPath = ProbeTraceRedactor.RedactUrl(guard.MihomoPath ?? string.Empty),
-                guard.IsAdministrator,
-                tunValidation.IsSafe,
-                issues = tunValidation.Issues,
-                diagnostics = guard.Diagnostics,
-                residualSession = new
-                {
-                    tunResidualSession.HasSession,
-                    tunResidualSession.IsProcessRunning,
-                    tunResidualSession.ProcessId,
-                    configPath = ProbeTraceRedactor.RedactUrl(tunResidualSession.ConfigPath),
-                    sidecarPath = ProbeTraceRedactor.RedactUrl(tunResidualSession.SidecarPath),
-                    tunResidualSession.StartedAt,
-                    tunResidualSession.Summary
-                }
-            },
             safety = new
             {
-                tlsInspectionEnabled = false,
-                defaultCapturesOnlyAiDomains = true,
-                githubAndPackageRegistriesDirect = true,
-                oneClickRecoveryAvailable = true
+                localOnly = true,
+                systemProxyUnchanged = true,
+                appConfigOptInOnly = true,
+                recoveryAvailableForAppConfigs = true
             },
             cliEnvironment = new
             {
@@ -387,6 +373,13 @@ internal sealed class TransparentProxyManagementApiService
                         upstream = mapping.Name,
                         alias = mapping.EffectiveAlias
                     }).ToArray(),
+                    auth = new
+                    {
+                        mode = route.AuthMode,
+                        provider = route.IsCodexOAuth ? route.OAuthProvider : string.Empty,
+                        credential = route.IsCodexOAuth ? MaskCredentialReference(route.OAuthCredentialId) : string.Empty,
+                        codexBackendBaseUrl = route.IsCodexOAuth ? ProbeTraceRedactor.RedactUrl(route.CodexBackendBaseUrl) : string.Empty
+                    },
                     protocol = new
                     {
                         preferred = routeMetrics?.PreferredWireApi ?? route.PreferredWireApi,
@@ -429,6 +422,21 @@ internal sealed class TransparentProxyManagementApiService
             ProxyWireApiProbeService.AnthropicMessagesWireApi => "Anthropic Messages",
             _ => "OpenAI Chat"
         };
+
+    private static string MaskCredentialReference(string credentialId)
+    {
+        var normalized = credentialId?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return string.Empty;
+        }
+
+        return normalized.Contains('@', StringComparison.Ordinal)
+            ? CodexOAuthCredential.MaskEmail(normalized)
+            : normalized.Length <= 8
+                ? "***"
+                : $"{normalized[..4]}***{normalized[^4..]}";
+    }
 
     private static double CalculateRate(long numerator, long denominator)
         => denominator <= 0

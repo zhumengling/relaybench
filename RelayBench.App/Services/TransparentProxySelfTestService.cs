@@ -28,11 +28,10 @@ public sealed class TransparentProxySelfTestService
         CheckCodexConfigService(checks);
         CheckClaudeConfigService(checks);
         CheckVsCodeSettingsService(checks);
-        CheckTunForwardProxyAndLegacyRecoveryGuard(checks);
-        CheckTunGenerationAndNetworkGuard(checks);
         CheckPortInspectorService(checks);
         await CheckUnifiedEndpointWithoutRoutesAsync(checks, cancellationToken);
         CheckRouteTextCodec(checks);
+        await CheckCodexOAuthInfrastructureAsync(checks, cancellationToken);
         CheckPersistentResponseCache(checks);
         CheckPromptSessionCache(checks);
         CheckAnthropicCacheControlOptimizer(checks);
@@ -69,6 +68,7 @@ public sealed class TransparentProxySelfTestService
             checks,
             cancellationToken);
         await CheckThroughputBenchmarkAsync(responsesUpstream, checks, cancellationToken);
+        await CheckCodexOAuthUnauthorizedRetryAsync(checks, cancellationToken);
 
         var runtimeCachePath = Path.Combine(Path.GetTempPath(), $"relaybench-transparent-proxy-runtime-cache-{Guid.NewGuid():N}.sqlite");
         await using var proxy = new TransparentProxyService(new TransparentProxyResponseCacheService(runtimeCachePath));
@@ -255,6 +255,10 @@ public sealed class TransparentProxySelfTestService
             v4Editor.MaxRetryIntervalSecondsText = "5";
             v4Editor.ModelCooldownSecondsText = "90";
             v4Editor.PayloadRulesText = "{\"override\":[{\"models\":[\"public-model\"],\"params\":{\"temperature\":0.2}}]}";
+            v4Editor.AuthMode = TransparentProxyRouteAuthModes.CodexOAuth;
+            v4Editor.OAuthProvider = CodexOAuthConstants.Provider;
+            v4Editor.OAuthCredentialId = "codex-selftest";
+            v4Editor.CodexBackendBaseUrl = CodexOAuthConstants.DefaultBackendBaseUrl;
         }
 
         var v4RoundTripRoute = v4Editor is null
@@ -280,8 +284,205 @@ public sealed class TransparentProxySelfTestService
             v4RoundTripRoute.RequestRetry == 2 &&
             v4RoundTripRoute.MaxRetryIntervalSeconds == 5 &&
             v4RoundTripRoute.ModelCooldownSeconds == 90 &&
-            v4RoundTripRoute.PayloadRulesText.Contains("temperature", StringComparison.OrdinalIgnoreCase),
+            v4RoundTripRoute.PayloadRulesText.Contains("temperature", StringComparison.OrdinalIgnoreCase) &&
+            v4RoundTripRoute.IsCodexOAuth &&
+            v4RoundTripRoute.OAuthCredentialId == "codex-selftest" &&
+            v4RoundTripRoute.WithModels(["gpt-5.4"]).IsCodexOAuth &&
+            v4RoundTripRoute.WithProtocol(ProxyWireApiProbeService.ResponsesWireApi, true, true, false, DateTimeOffset.UtcNow).IsCodexOAuth,
                 "\u8def\u7531 v3/v4 \u6587\u672c\u5e94\u7a33\u5b9a\u652f\u6301\u6a21\u578b\u6620\u5c04\u3001headers\u3001prefix\u3001\u4f18\u5148\u7ea7\u3001\u6392\u9664\u89c4\u5219\u548c CPA \u5f0f\u8c03\u5ea6\u9009\u9879\u3002"));
+    }
+
+    private static async Task CheckCodexOAuthInfrastructureAsync(List<TransparentProxySelfTestCheck> checks, CancellationToken cancellationToken)
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"relaybench-codex-oauth-{Guid.NewGuid():N}.json");
+        try
+        {
+            var pkce = CodexOAuthPkceService.Generate();
+            var callback = CodexOAuthCallbackServer.ParseCallback("http://localhost:1455/auth/callback?code=abc&state=xyz");
+            var store = new CodexOAuthCredentialStore(path);
+            store.Save([
+                new CodexOAuthCredential
+                {
+                    Id = "codex-selftest",
+                    Email = "selftest@example.com",
+                    AccountId = "acct-selftest",
+                    AccountIdHash = "abcd1234",
+                    PlanType = "plus",
+                    AccessToken = "access-token-selftest",
+                    RefreshToken = "refresh-token-selftest",
+                    IdToken = "id-token-selftest",
+                    LastRefreshAt = DateTimeOffset.UtcNow,
+                    AccessTokenExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+                }
+            ]);
+            var refreshHandler = new CodexOAuthSelfTestTokenHandler();
+            var refreshStore = new CodexOAuthCredentialStore(path + ".refresh");
+            refreshStore.Save([
+                new CodexOAuthCredential
+                {
+                    Id = "codex-refresh-selftest",
+                    Email = "selftest@example.com",
+                    AccountId = "acct-selftest",
+                    AccountIdHash = "abcd1234",
+                    PlanType = "plus",
+                    AccessToken = "expired-access-token",
+                    RefreshToken = "old-refresh-token",
+                    IdToken = "id-token-selftest",
+                    RefreshFailureCount = 2,
+                    LastRefreshAt = DateTimeOffset.UtcNow.AddHours(-2),
+                    AccessTokenExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-2)
+                }
+            ]);
+            var service = new CodexOAuthService(refreshStore, new HttpClient(refreshHandler));
+            await Task.WhenAll(Enumerable.Range(0, 6).Select(_ =>
+                service.EnsureAccessTokenAsync("codex-refresh-selftest", cancellationToken)));
+            var refreshed = refreshStore.Load().FirstOrDefault(static item => item.Id == "codex-refresh-selftest");
+            var mismatchHandler = new CodexOAuthSelfTestTokenHandler();
+            var mismatchRejected = false;
+            using (var mismatchSession = new CodexOAuthLoginSession(
+                       "mismatch",
+                       "expected-state",
+                       "verifier",
+                       "https://example.invalid/oauth",
+                       new CodexOAuthCallbackServer(_ => true)))
+            {
+                mismatchSession.TryComplete(new CodexOAuthCallbackResult("code", "wrong-state", string.Empty, string.Empty));
+                try
+                {
+                    await new CodexOAuthService(new CodexOAuthCredentialStore(path + ".mismatch"), new HttpClient(mismatchHandler))
+                        .CompleteLoginAsync(mismatchSession, cancellationToken);
+                }
+                catch (InvalidOperationException)
+                {
+                    mismatchRejected = true;
+                }
+            }
+            var staleStore = new CodexOAuthCredentialStore(path + ".stale");
+            staleStore.Save([
+                new CodexOAuthCredential
+                {
+                    Id = "codex-stale-selftest",
+                    Email = "selftest@example.com",
+                    AccountId = "acct-selftest",
+                    AccountIdHash = "abcd1234",
+                    PlanType = "plus",
+                    AccessToken = "stale-access-token",
+                    RefreshToken = "stale-refresh-token",
+                    IdToken = "id-token-selftest",
+                    State = CodexOAuthCredentialState.Refreshing,
+                    LastRefreshAt = DateTimeOffset.UtcNow.AddHours(-2),
+                    AccessTokenExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-2)
+                }
+            ]);
+            _ = new CodexOAuthService(staleStore, new HttpClient(new CodexOAuthSelfTestTokenHandler()));
+            var staleRecovered = staleStore.Load().FirstOrDefault(static item => item.Id == "codex-stale-selftest");
+            var staleBackoffReady = staleRecovered?.RefreshBackoffUntil is { } staleRetryAt &&
+                                    staleRetryAt > DateTimeOffset.UtcNow;
+
+            var backoffHandler = new CodexOAuthSelfTestFailingTokenHandler();
+            var backoffStore = new CodexOAuthCredentialStore(path + ".backoff");
+            backoffStore.Save([
+                new CodexOAuthCredential
+                {
+                    Id = "codex-backoff-selftest",
+                    Email = "selftest@example.com",
+                    AccountId = "acct-selftest",
+                    AccountIdHash = "abcd1234",
+                    PlanType = "plus",
+                    AccessToken = "expired-access-token",
+                    RefreshToken = "backoff-refresh-token",
+                    IdToken = "id-token-selftest",
+                    RefreshFailureCount = 2,
+                    LastRefreshAt = DateTimeOffset.UtcNow.AddHours(-2),
+                    AccessTokenExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-2)
+                }
+            ]);
+            var backoffRejected = false;
+            try
+            {
+                await new CodexOAuthService(backoffStore, new HttpClient(backoffHandler))
+                    .EnsureAccessTokenAsync("codex-backoff-selftest", cancellationToken);
+            }
+            catch (InvalidOperationException)
+            {
+                backoffRejected = true;
+            }
+
+            var backoffCredential = backoffStore.Load().FirstOrDefault(static item => item.Id == "codex-backoff-selftest");
+            var backoffRemaining = backoffCredential?.RefreshBackoffUntil is { } backoffUntil
+                ? backoffUntil - DateTimeOffset.UtcNow
+                : TimeSpan.Zero;
+            var raw = File.ReadAllText(path, Encoding.UTF8);
+            var loaded = store.Load().FirstOrDefault();
+            checks.Add(new(
+                "Codex OAuth infrastructure",
+                pkce.CodeVerifier.Length >= 43 &&
+                pkce.CodeChallenge.Length >= 43 &&
+                callback.Code == "abc" &&
+                callback.State == "xyz" &&
+                loaded is not null &&
+                loaded.AccessToken == "access-token-selftest" &&
+                loaded.RefreshToken == "refresh-token-selftest" &&
+                !raw.Contains("access-token-selftest", StringComparison.Ordinal) &&
+                !raw.Contains("refresh-token-selftest", StringComparison.Ordinal) &&
+                !raw.Contains("id-token-selftest", StringComparison.Ordinal) &&
+                refreshHandler.RequestCount == 1 &&
+                refreshed is not null &&
+                refreshed.AccessToken == "new-access-token" &&
+                refreshed.RefreshToken == "new-refresh-token" &&
+                refreshed.RefreshFailureCount == 0 &&
+                mismatchRejected &&
+                mismatchHandler.RequestCount == 0 &&
+                staleRecovered is not null &&
+                staleRecovered.State == CodexOAuthCredentialState.RefreshBackoff &&
+                staleRecovered.RefreshFailureCount == 1 &&
+                staleBackoffReady &&
+                backoffRejected &&
+                backoffHandler.RequestCount == 3 &&
+                backoffCredential is not null &&
+                backoffCredential.State == CodexOAuthCredentialState.RefreshBackoff &&
+                backoffCredential.RefreshFailureCount == 3 &&
+                backoffRemaining > TimeSpan.FromMinutes(14) &&
+                backoffRemaining <= TimeSpan.FromMinutes(16),
+                "Codex OAuth should generate PKCE data, parse callback URLs, store tokens through DPAPI, recover stale refreshing state and apply progressive refresh backoff."));
+        }
+        catch (Exception ex)
+        {
+            checks.Add(new("Codex OAuth infrastructure", false, $"Codex OAuth self-test failed: {ex.Message}"));
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+
+                if (File.Exists(path + ".refresh"))
+                {
+                    File.Delete(path + ".refresh");
+                }
+
+                if (File.Exists(path + ".mismatch"))
+                {
+                    File.Delete(path + ".mismatch");
+                }
+
+                if (File.Exists(path + ".stale"))
+                {
+                    File.Delete(path + ".stale");
+                }
+
+                if (File.Exists(path + ".backoff"))
+                {
+                    File.Delete(path + ".backoff");
+                }
+            }
+            catch
+            {
+            }
+        }
     }
 
     private static void CheckUsageTokenExtraction(List<TransparentProxySelfTestCheck> checks)
@@ -561,30 +762,13 @@ public sealed class TransparentProxySelfTestService
                         "C:\\Users\\relaybench\\.codex\\config.toml")
                 ],
                 metrics));
-            var networkGuard = new TransparentProxyNetworkGuardService();
-            var tunService = new TransparentProxyTunService();
-            var tunConfig = tunService.BuildMihomoConfig(new TransparentProxyTunConfigOptions(19200, 19201, 19202, 19203, 19204));
             var captureDiagnosticsPayload = JsonSerializer.Serialize(managementApi.BuildCaptureDiagnosticsPayload(
                 false,
                 config,
                 [new TransparentProxyDetectedApp("claude-cli", "Claude CLI", "settings env", "detected", null, "C:\\Users\\relaybench\\.claude\\settings.json")],
-                networkGuard.Inspect(),
-                networkGuard.ValidateMihomoConfig(tunConfig),
-                tunService.InspectResidualSession(),
-                new TransparentProxySystemProxyInspection(
-                    true,
-                    false,
-                    string.Empty,
-                    false,
-                    string.Empty,
-                    string.Empty,
-                    "系统代理：未由 RelayBench 接管。"),
                 new TransparentProxyPortInspectionResult(19200, true, 4321, "RelayBench", "127.0.0.1:19200", "端口 19200 已被 RelayBench (PID 4321) 占用，监听 127.0.0.1:19200。"),
                 new TransparentProxyCliEnvironmentService().Build(19200),
-                [new TransparentProxyLaunchWrapperArtifact("codex-cli", "Codex CLI", "C:\\relaybench\\codex-cli.ps1", "C:\\relaybench\\codex-cli.cmd", true, true)],
-                "127.0.0.1:19201",
-                "127.0.0.1:19202",
-                "127.0.0.1:19203"));
+                [new TransparentProxyLaunchWrapperArtifact("codex-cli", "Codex CLI", "C:\\relaybench\\codex-cli.ps1", "C:\\relaybench\\codex-cli.cmd", true, true)]));
             var captureRecoveryPayload = JsonSerializer.Serialize(managementApi.BuildCaptureRecoveryPayload(
                 false,
                 [
@@ -626,12 +810,13 @@ public sealed class TransparentProxySelfTestService
                 routePayload.Contains("sk-management-secret", StringComparison.Ordinal) is false &&
                 protocolPayload.Contains("Responses", StringComparison.Ordinal) &&
                 captureAppsPayload.Contains("codex-cli", StringComparison.Ordinal) &&
-                captureDiagnosticsPayload.Contains("oneClickRecoveryAvailable", StringComparison.Ordinal) &&
+                captureDiagnosticsPayload.Contains("appConfigOptInOnly", StringComparison.Ordinal) &&
                 captureDiagnosticsPayload.Contains("cliEnvironment", StringComparison.Ordinal) &&
                 captureDiagnosticsPayload.Contains("launchWrappers", StringComparison.Ordinal) &&
                 captureDiagnosticsPayload.Contains("portInspection", StringComparison.Ordinal) &&
-                captureDiagnosticsPayload.Contains("residualSession", StringComparison.Ordinal) &&
-                captureDiagnosticsPayload.Contains("legacySystemProxy", StringComparison.Ordinal) &&
+                !captureDiagnosticsPayload.Contains("residualSession", StringComparison.Ordinal) &&
+                !captureDiagnosticsPayload.Contains("legacySystemProxy", StringComparison.Ordinal) &&
+                !captureDiagnosticsPayload.Contains("\"tun\"", StringComparison.OrdinalIgnoreCase) &&
                 captureRecoveryPayload.Contains("\"executed\":false", StringComparison.Ordinal) &&
                 cooldown.Classify(429, "quota exceeded") == TransparentProxyCooldownKind.Quota &&
                 modelCooled &&
@@ -1017,11 +1202,11 @@ public sealed class TransparentProxySelfTestService
                     DateTimeOffset.Now,
                     "INFO",
                     "POST",
-                    "/v1/chat/completions?api_key=sk-selftest-secret",
+                    "/v1/chat/completions?api_key=sk-selftest-secret&code=oauth-code-selftest&code=oauth-code-second",
                     "selftest-route",
                     200,
                     12,
-                    "Authorization: Bearer sk-selftest-secret token=raw-token",
+                    "Authorization: Bearer sk-selftest-secret token=raw-token id_token=raw-id-token token=raw-token-second",
                     "rb-selftest-model",
                     "req-log-store",
                     "responses",
@@ -1052,7 +1237,11 @@ public sealed class TransparentProxySelfTestService
                 exported.Contains("source_application", StringComparison.OrdinalIgnoreCase) &&
                 exported.Contains("Codex CLI", StringComparison.OrdinalIgnoreCase) &&
                 !combined.Contains("sk-selftest-secret", StringComparison.OrdinalIgnoreCase) &&
-                !combined.Contains("raw-token", StringComparison.OrdinalIgnoreCase),
+                !combined.Contains("raw-token", StringComparison.OrdinalIgnoreCase) &&
+                !combined.Contains("raw-token-second", StringComparison.OrdinalIgnoreCase) &&
+                !combined.Contains("raw-id-token", StringComparison.OrdinalIgnoreCase) &&
+                !combined.Contains("oauth-code-selftest", StringComparison.OrdinalIgnoreCase) &&
+                !combined.Contains("oauth-code-second", StringComparison.OrdinalIgnoreCase),
                 "Transparent proxy logs should persist ingress/source fields to SQLite, export CSV, clear on demand and redact secrets before storage."));
         }
         catch (Exception ex)
@@ -1512,136 +1701,6 @@ public sealed class TransparentProxySelfTestService
         }
     }
 
-    private static void CheckTunForwardProxyAndLegacyRecoveryGuard(List<TransparentProxySelfTestCheck> checks)
-    {
-        try
-        {
-            var savedProxy = new TransparentProxySystemProxySnapshot
-            {
-                AutoConfigUrl = "https://example.com/original.pac",
-                ProxyEnable = 1,
-                ProxyServer = "127.0.0.1:8080",
-                AppliedPacUrl = "http://127.0.0.1:17880/relaybench/pac"
-            };
-            var relayBenchCurrentProxy = new TransparentProxySystemProxySnapshot
-            {
-                AutoConfigUrl = "http://127.0.0.1:17880/relaybench/pac"
-            };
-            var userChangedCurrentProxy = new TransparentProxySystemProxySnapshot
-            {
-                AutoConfigUrl = "https://example.com/user-new.pac"
-            };
-            checks.Add(new(
-                "TUN 内部转发器与旧版 PAC 清理",
-                TransparentProxyForwardProxyService.IsAllowedTunnelHost("api.openai.com") &&
-                TransparentProxyForwardProxyService.IsAllowedTunnelHost("api.anthropic.com") &&
-                TransparentProxyForwardProxyService.IsAllowedTunnelHost("sub.api.openai.com") &&
-                !TransparentProxyForwardProxyService.IsAllowedTunnelHost("chat.openai.com") &&
-                !TransparentProxyForwardProxyService.IsAllowedTunnelHost("chatgpt.com") &&
-                !TransparentProxyForwardProxyService.IsAllowedTunnelHost("platform.openai.com") &&
-                !TransparentProxyForwardProxyService.IsAllowedTunnelHost("github.com") &&
-                !TransparentProxyForwardProxyService.IsAllowedTunnelHost("registry.npmjs.org") &&
-                TransparentProxySystemProxyService.IsRelayBenchPacUrl("http://127.0.0.1:17880/relaybench/pac") &&
-                !TransparentProxySystemProxyService.IsRelayBenchPacUrl("https://example.com/proxy.pac") &&
-                TransparentProxySystemProxyService.ShouldRestoreSnapshot(relayBenchCurrentProxy, savedProxy) &&
-                !TransparentProxySystemProxyService.ShouldRestoreSnapshot(userChangedCurrentProxy, savedProxy),
-                "TUN 内部 HTTP CONNECT 转发器应只允许 AI API 域名；旧版系统 PAC 恢复只能清理 RelayBench 自己写入的备份，不能覆盖用户后续改动。"));
-        }
-        catch (Exception ex)
-        {
-            checks.Add(new(
-                "TUN 内部转发器与旧版 PAC 清理",
-                false,
-                $"TUN 内部转发器自测失败：{ex.Message}"));
-        }
-    }
-
-    private static void CheckTunGenerationAndNetworkGuard(List<TransparentProxySelfTestCheck> checks)
-    {
-        var tunRoot = Path.Combine(Path.GetTempPath(), $"relaybench-tun-session-{Guid.NewGuid():N}");
-        try
-        {
-            var options = new TransparentProxyTunConfigOptions(17880, 17881, 17882, 17883, 17884);
-            var tunService = new TransparentProxyTunService(tunRoot);
-            var config = tunService.BuildMihomoConfig(options);
-            var guard = new TransparentProxyNetworkGuardService();
-            var validation = guard.ValidateMihomoConfig(config);
-            var unsafeValidation = guard.ValidateMihomoConfig(
-                """
-                rules:
-                  - DOMAIN,api.openai.com,RelayBench
-                  - PROCESS-NAME,Code.exe,RelayBench
-                  - MATCH,RelayBench
-                """);
-            var diagnostics = guard.Inspect();
-            Directory.CreateDirectory(Path.GetDirectoryName(tunService.ResidualSessionPath)!);
-            File.WriteAllText(
-                tunService.ResidualSessionPath,
-                JsonSerializer.Serialize(
-                    new TransparentProxyTunSessionSnapshot
-                    {
-                        ProcessId = 999999,
-                        StartedAt = DateTimeOffset.Now.AddMinutes(-15),
-                        SidecarPath = Path.Combine(tunRoot, "mihomo.exe"),
-                        ConfigPath = Path.Combine(tunRoot, "mihomo-relaybench.yaml"),
-                        MixedPort = 17882,
-                        ControllerPort = 17883,
-                        DnsPort = 17884,
-                        ForwardProxyPort = 17881
-                    },
-                    new JsonSerializerOptions { WriteIndented = true }));
-            var residual = tunService.InspectResidualSession();
-            var residualCleanup = tunService.StopResidualSessionAsync().GetAwaiter().GetResult();
-
-            checks.Add(new(
-                "TUN 高级模式与网络守护",
-                validation.IsSafe &&
-                !unsafeValidation.IsSafe &&
-                diagnostics.Diagnostics.Count >= 2 &&
-                config.Contains("route-exclude-address", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("127.0.0.0/8", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("github.com,DIRECT", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("chat.openai.com,DIRECT", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("chatgpt.com,DIRECT", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("oaistatic.com,DIRECT", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("oaiusercontent.com,DIRECT", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("npmjs.org,DIRECT", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("marketplace.visualstudio.com,DIRECT", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("api.openai.com,RelayBench", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("api.anthropic.com,RelayBench", StringComparison.OrdinalIgnoreCase) &&
-                config.Contains("MATCH,DIRECT", StringComparison.OrdinalIgnoreCase) &&
-                !config.Contains("PROCESS-NAME,Code.exe,RelayBench", StringComparison.OrdinalIgnoreCase) &&
-                !config.Contains("PROCESS-NAME,node.exe,RelayBench", StringComparison.OrdinalIgnoreCase) &&
-                !config.Contains("PROCESS-NAME,codex.exe,RelayBench", StringComparison.OrdinalIgnoreCase) &&
-                !config.Contains("PROCESS-NAME,claude.exe,RelayBench", StringComparison.OrdinalIgnoreCase) &&
-                residual.HasSession &&
-                !residual.IsProcessRunning &&
-                residualCleanup.Cleared &&
-                !File.Exists(tunService.ResidualSessionPath),
-                "TUN 配置必须只接管 AI API 域名，并保留 GitHub、npm、VS Code marketplace、局域网和本机 DIRECT；默认不能按进程全量接管，异常退出残留会话可被发现并安全清理。"));
-        }
-        catch (Exception ex)
-        {
-            checks.Add(new(
-                "TUN 高级模式与网络守护",
-                false,
-                $"TUN 高级模式自测失败：{ex.Message}"));
-        }
-        finally
-        {
-            try
-            {
-                if (Directory.Exists(tunRoot))
-                {
-                    Directory.Delete(tunRoot, recursive: true);
-                }
-            }
-            catch
-            {
-            }
-        }
-    }
-
     private static void CheckPortInspectorService(List<TransparentProxySelfTestCheck> checks)
     {
         try
@@ -1881,13 +1940,47 @@ public sealed class TransparentProxySelfTestService
                 .ToArray();
             var payloadsValid = chatAttempts.Length >= 2 &&
                                 chatAttempts.All(static item => PayloadRuleBodyIsValid(item.Body));
+            var codexRoute = new TransparentProxyRoute(
+                "translator-codex-oauth",
+                "Translator Codex OAuth",
+                "https://placeholder.invalid",
+                string.Empty,
+                "gpt-5.4",
+                responsesSupported: true,
+                models: ["gpt-5.4"],
+                authMode: TransparentProxyRouteAuthModes.CodexOAuth,
+                oauthProvider: CodexOAuthConstants.Provider,
+                oauthCredentialId: "codex-selftest",
+                codexBackendBaseUrl: CodexOAuthConstants.DefaultBackendBaseUrl);
+            var anthropicBody = JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                model = "gpt-5.4",
+                max_tokens = 64,
+                stream = true,
+                messages = new[]
+                {
+                    new { role = "user", content = "hello" }
+                }
+            });
+            var codexPrepared = translator.BuildPreparedUpstreamRequests(
+                    "POST",
+                    "/v1/messages",
+                    anthropicBody,
+                    codexRoute,
+                    streamRequested: true)
+                .FirstOrDefault();
 
             checks.Add(new(
                 "Translator route options",
                 upstreamModels.Contains("upstream-a", StringComparer.OrdinalIgnoreCase) &&
                 upstreamModels.Contains("upstream-b", StringComparer.OrdinalIgnoreCase) &&
                 chatAttempts.All(static item => string.Equals(item.ResponseModel, "public", StringComparison.OrdinalIgnoreCase)) &&
-                payloadsValid,
+                payloadsValid &&
+                codexPrepared is not null &&
+                string.Equals(codexPrepared.WireApi, ProxyWireApiProbeService.ResponsesWireApi, StringComparison.Ordinal) &&
+                string.Equals(codexPrepared.ResponseClientWireApi, ProxyWireApiProbeService.AnthropicMessagesWireApi, StringComparison.Ordinal) &&
+                codexPrepared.UpstreamUrl.EndsWith("/responses", StringComparison.OrdinalIgnoreCase) &&
+                Encoding.UTF8.GetString(codexPrepared.Body).Contains("prompt_cache_key", StringComparison.Ordinal),
                 "Translator should expand alias model pools, keep the public response model name and apply per-route payload override/filter rules."));
         }
         catch (Exception ex)
@@ -2196,6 +2289,116 @@ public sealed class TransparentProxySelfTestService
                 "独立吞吐探针",
                 false,
                 $"独立吞吐探针自检失败：{ex.Message}"));
+        }
+    }
+
+    private static async Task CheckCodexOAuthUnauthorizedRetryAsync(
+        List<TransparentProxySelfTestCheck> checks,
+        CancellationToken cancellationToken)
+    {
+        var tokenPath = Path.Combine(Path.GetTempPath(), $"relaybench-codex-oauth-401-{Guid.NewGuid():N}.json");
+        var cachePath = Path.Combine(Path.GetTempPath(), $"relaybench-codex-oauth-401-cache-{Guid.NewGuid():N}.sqlite");
+        try
+        {
+            await using var upstream = await FakeCodexOAuthUpstreamServer.StartAsync(cancellationToken);
+            var store = new CodexOAuthCredentialStore(tokenPath);
+            store.Save([
+                new CodexOAuthCredential
+                {
+                    Id = "codex-401-selftest",
+                    Email = "selftest@example.com",
+                    AccountId = "acct-selftest",
+                    AccountIdHash = "abcd1234",
+                    PlanType = "plus",
+                    AccessToken = "old-access-token",
+                    RefreshToken = "old-refresh-token",
+                    IdToken = "id-token-selftest",
+                    LastRefreshAt = DateTimeOffset.UtcNow,
+                    AccessTokenExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+                }
+            ]);
+
+            var tokenHandler = new CodexOAuthSelfTestTokenHandler();
+            var oauth = new CodexOAuthService(store, new HttpClient(tokenHandler));
+            await using var proxy = new TransparentProxyService(new TransparentProxyResponseCacheService(cachePath), oauth);
+            var proxyPort = GetFreeTcpPort();
+            await proxy.StartAsync(new TransparentProxyServerConfig(
+                proxyPort,
+                [
+                    new TransparentProxyRoute(
+                        "codex-oauth-401",
+                        "Codex OAuth 401",
+                        upstream.BaseUrl,
+                        string.Empty,
+                        "gpt-5.4",
+                        responsesSupported: true,
+                        models: ["gpt-5.4"],
+                        authMode: TransparentProxyRouteAuthModes.CodexOAuth,
+                        oauthProvider: CodexOAuthConstants.Provider,
+                        oauthCredentialId: "codex-401-selftest",
+                        codexBackendBaseUrl: upstream.BaseUrl + "/v1")
+                ],
+                RateLimitPerMinute: 30,
+                MaxConcurrency: 2,
+                EnableFallback: true,
+                EnableCache: false,
+                CacheTtlSeconds: 30,
+                RewriteModel: false,
+                IgnoreTlsErrors: true,
+                UpstreamTimeoutSeconds: 8));
+
+            try
+            {
+                using HttpClient client = new()
+                {
+                    BaseAddress = new Uri($"http://127.0.0.1:{proxyPort}/"),
+                    Timeout = TimeSpan.FromSeconds(12)
+                };
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "client-token-should-not-pass");
+                using var response = await PostJsonAsync(
+                    client,
+                    "v1/chat/completions",
+                    BuildChatRequest("gpt-5.4"),
+                    cancellationToken);
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                var refreshed = store.Load().FirstOrDefault(static item => item.Id == "codex-401-selftest");
+                checks.Add(new(
+                    "Codex OAuth 401 retry",
+                    response.IsSuccessStatusCode &&
+                    body.Contains("codex oauth refreshed ok", StringComparison.OrdinalIgnoreCase) &&
+                    upstream.RequestCount == 2 &&
+                    tokenHandler.RequestCount == 1 &&
+                    refreshed?.AccessToken == "new-access-token" &&
+                    refreshed.RefreshToken == "new-refresh-token" &&
+                    upstream.SawClientBearer == false,
+                    "Codex OAuth route should discard the client bearer, refresh once after 401, retry the same route and persist rotated tokens."));
+            }
+            finally
+            {
+                await proxy.StopAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            checks.Add(new(
+                "Codex OAuth 401 retry",
+                false,
+                $"Codex OAuth 401 retry self-test failed: {ex.Message}"));
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tokenPath))
+                {
+                    File.Delete(tokenPath);
+                }
+            }
+            catch
+            {
+            }
+
+            DeleteSqliteDatabaseFiles(cachePath);
         }
     }
 
@@ -2963,6 +3166,9 @@ public sealed class TransparentProxySelfTestService
         }
     }
 
+    internal static int GetFreeTcpPortForNestedSelfTest()
+        => GetFreeTcpPort();
+
     private sealed class FakeUpstreamServer : IAsyncDisposable
     {
         private readonly HttpListener _listener = new();
@@ -3327,6 +3533,191 @@ public sealed class TransparentProxySelfTestService
         Responses,
         AnthropicOnly,
         ChatOnly
+    }
+}
+
+internal sealed class CodexOAuthSelfTestTokenHandler : HttpMessageHandler
+{
+    private int _requestCount;
+
+    public int RequestCount => Volatile.Read(ref _requestCount);
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref _requestCount);
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                "{\"access_token\":\"new-access-token\",\"refresh_token\":\"new-refresh-token\",\"expires_in\":3600,\"id_token\":\"\"}",
+                Encoding.UTF8,
+                "application/json")
+        };
+        return Task.FromResult(response);
+    }
+}
+
+internal sealed class CodexOAuthSelfTestFailingTokenHandler : HttpMessageHandler
+{
+    private int _requestCount;
+
+    public int RequestCount => Volatile.Read(ref _requestCount);
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref _requestCount);
+        var response = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+        {
+            Content = new StringContent(
+                "{\"error\":\"temporarily_unavailable\"}",
+                Encoding.UTF8,
+                "application/json")
+        };
+        return Task.FromResult(response);
+    }
+}
+
+internal sealed class FakeCodexOAuthUpstreamServer : IAsyncDisposable
+{
+    private readonly HttpListener _listener = new();
+    private readonly CancellationTokenSource _cancellationSource = new();
+    private Task? _loopTask;
+    private int _requestCount;
+    private int _sawClientBearer;
+
+    private FakeCodexOAuthUpstreamServer(int port)
+    {
+        BaseUrl = $"http://127.0.0.1:{port}";
+        _listener.Prefixes.Add(BaseUrl + "/");
+    }
+
+    public string BaseUrl { get; }
+
+    public int RequestCount => Volatile.Read(ref _requestCount);
+
+    public bool SawClientBearer => Volatile.Read(ref _sawClientBearer) > 0;
+
+    public static Task<FakeCodexOAuthUpstreamServer> StartAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var server = new FakeCodexOAuthUpstreamServer(TransparentProxySelfTestService.GetFreeTcpPortForNestedSelfTest());
+        server._listener.Start();
+        server._loopTask = Task.Run(() => server.RunAsync(server._cancellationSource.Token), CancellationToken.None);
+        return Task.FromResult(server);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cancellationSource.CancelAsync();
+        try
+        {
+            _listener.Stop();
+            _listener.Close();
+        }
+        catch
+        {
+        }
+
+        if (_loopTask is not null)
+        {
+            try
+            {
+                await _loopTask;
+            }
+            catch
+            {
+            }
+        }
+
+        _cancellationSource.Dispose();
+    }
+
+    private async Task RunAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                var context = await _listener.GetContextAsync().WaitAsync(cancellationToken);
+                _ = Task.Run(() => HandleAsync(context, cancellationToken), CancellationToken.None);
+            }
+            catch
+            {
+                if (cancellationToken.IsCancellationRequested || !_listener.IsListening)
+                {
+                    return;
+                }
+            }
+        }
+    }
+
+    private async Task HandleAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref _requestCount);
+        try
+        {
+            var path = context.Request.Url?.AbsolutePath ?? "/";
+            var authorization = context.Request.Headers["Authorization"] ?? string.Empty;
+            if (authorization.Contains("client-token-should-not-pass", StringComparison.OrdinalIgnoreCase))
+            {
+                Interlocked.Exchange(ref _sawClientBearer, 1);
+            }
+
+            if (!path.EndsWith("/v1/responses", StringComparison.OrdinalIgnoreCase))
+            {
+                await WriteJsonAsync(context, 404, new { error = new { message = "not found" } }, cancellationToken);
+                return;
+            }
+
+            if (!authorization.Contains("new-access-token", StringComparison.Ordinal))
+            {
+                await WriteJsonAsync(context, 401, new { error = new { message = "expired token" } }, cancellationToken);
+                return;
+            }
+
+            await WriteJsonAsync(context, 200, new
+            {
+                id = "resp_codex_oauth_selftest",
+                @object = "response",
+                model = "gpt-5.4",
+                output = new[]
+                {
+                    new
+                    {
+                        type = "message",
+                        role = "assistant",
+                        content = new[]
+                        {
+                            new { type = "output_text", text = "codex oauth refreshed ok" }
+                        }
+                    }
+                },
+                usage = new { input_tokens = 7, output_tokens = 3, total_tokens = 10 }
+            }, cancellationToken);
+        }
+        catch
+        {
+            try
+            {
+                context.Response.Abort();
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static async Task WriteJsonAsync(
+        HttpListenerContext context,
+        int statusCode,
+        object payload,
+        CancellationToken cancellationToken)
+    {
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(payload);
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        context.Response.ContentLength64 = bytes.LongLength;
+        await context.Response.OutputStream.WriteAsync(bytes, cancellationToken);
+        context.Response.OutputStream.Close();
     }
 }
 

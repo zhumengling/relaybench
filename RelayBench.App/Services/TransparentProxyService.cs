@@ -26,9 +26,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
     private readonly TransparentProxyResponseCachePolicyService _responseCachePolicy = new();
     private readonly TransparentProxyGatewayService _gateway = new();
     private readonly TransparentProxyManagementApiService _managementApi = new();
-    private readonly TransparentProxySystemProxyService _systemProxyService = new();
     private readonly TransparentProxyAppDetectorService _appDetector = new();
-    private readonly TransparentProxyNetworkGuardService _networkGuard = new();
     private readonly TransparentProxyPortInspectorService _portInspector = new();
     private readonly TransparentProxyCaptureArtifactStore _captureArtifactStore = new();
     private readonly TransparentProxyCliEnvironmentService _cliEnvironmentService = new();
@@ -38,6 +36,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
     private readonly TransparentProxyVsCodeSettingsService _vsCodeSettingsService = new();
     private readonly TransparentProxyProtocolTranslatorService _protocolTranslator = new();
     private readonly TransparentProxyResponseNormalizationService _responseNormalizer = new();
+    private readonly CodexOAuthService _codexOAuthService;
     private readonly TransparentProxyRoutePolicyService _routePolicy = new();
     private readonly TransparentProxySchedulerService _scheduler;
     private readonly TransparentProxyResponseForwarderService _responseForwarder;
@@ -84,13 +83,19 @@ public sealed class TransparentProxyService : IAsyncDisposable
     public bool IsRunning => _listener?.IsListening == true;
 
     public TransparentProxyService()
-        : this(null)
+        : this(null, null)
     {
     }
 
     internal TransparentProxyService(TransparentProxyResponseCacheService? responseCache)
+        : this(responseCache, null)
+    {
+    }
+
+    internal TransparentProxyService(TransparentProxyResponseCacheService? responseCache, CodexOAuthService? codexOAuthService)
     {
         _responseCache = responseCache ?? new TransparentProxyResponseCacheService();
+        _codexOAuthService = codexOAuthService ?? new CodexOAuthService();
         _scheduler = new TransparentProxySchedulerService(_routePolicy);
         _responseForwarder = new TransparentProxyResponseForwarderService(
             _responseCache,
@@ -221,6 +226,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
         _listener.Start();
 
         _acceptLoopTask = Task.Run(() => AcceptLoopAsync(_acceptCancellationSource.Token));
+        _codexOAuthService.StartBackgroundRefreshLoop(EmitCodexOAuthBackgroundLog);
         EmitLog(new TransparentProxyLogEntry(
             DateTimeOffset.Now,
             "INFO",
@@ -242,6 +248,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
         _acceptCancellationSource = null;
         _serverCancellationSource = null;
         _listener = null;
+
+        await _codexOAuthService.StopBackgroundRefreshLoopAsync();
 
         if (cancellationSource is not null)
         {
@@ -957,6 +965,31 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
             for (var sendAttempt = 0; ; sendAttempt++)
             {
+                TransparentProxyRouteAuthMaterial? authMaterial;
+                try
+                {
+                    authMaterial = await BuildRouteAuthMaterialAsync(route, streamRequested, attemptCancellationSource.Token);
+                }
+                catch (Exception ex)
+                {
+                    var safeMessage = ProbeTraceRedactor.RedactText(ex.Message);
+                    MarkRouteFailure(route, 401, routeStopwatch.ElapsedMilliseconds, routePermit, modelName: lastLogModel, config: config);
+                    EmitLog(new TransparentProxyLogEntry(
+                        DateTimeOffset.Now,
+                        "WARN",
+                        method,
+                        pathAndQuery,
+                        route.Name,
+                        401,
+                        routeStopwatch.ElapsedMilliseconds,
+                        $"Codex OAuth credential is unavailable: {safeMessage}",
+                        lastLogModel,
+                        requestId,
+                        prepared.WireApi,
+                        string.Join(" > ", requestAttemptSummaries)));
+                    return new TransparentProxyUpstreamAttempt(false, route.Name, 401, "Codex OAuth credential is unavailable.");
+                }
+
                 using var upstreamRequest = TransparentProxyUpstreamRequestFactory.Create(
                     context.Request,
                     method,
@@ -964,7 +997,8 @@ public sealed class TransparentProxyService : IAsyncDisposable
                     route,
                     prepared.Body,
                     prepared.WireApi,
-                    prepared.ExtraHeaders);
+                    prepared.ExtraHeaders,
+                    authMaterial);
 
                 HttpResponseMessage upstreamResponse;
                 try
@@ -1036,6 +1070,68 @@ public sealed class TransparentProxyService : IAsyncDisposable
                 {
                     var statusCode = (int)upstreamResponse.StatusCode;
                     requestAttemptSummaries.Add($"{route.Name}/{DisplayWireApi(prepared.WireApi)}:{statusCode}");
+                    if (route.IsCodexOAuth &&
+                        (statusCode == 401 || statusCode == 403) &&
+                        sendAttempt == 0)
+                    {
+                        try
+                        {
+                            await _codexOAuthService.ForceRefreshAsync(route.OAuthCredentialId, attemptCancellationSource.Token);
+                            EmitLog(new TransparentProxyLogEntry(
+                                DateTimeOffset.Now,
+                                "WARN",
+                                method,
+                                pathAndQuery,
+                                route.Name,
+                                statusCode,
+                                routeStopwatch.ElapsedMilliseconds,
+                                "Codex OAuth token was rejected; refreshed token and retrying once.",
+                                logModel,
+                                requestId,
+                                prepared.WireApi,
+                                string.Join(" > ", requestAttemptSummaries)));
+                            continue;
+                        }
+                        catch (Exception ex)
+                        {
+                            EmitLog(new TransparentProxyLogEntry(
+                                DateTimeOffset.Now,
+                                "WARN",
+                                method,
+                                pathAndQuery,
+                                route.Name,
+                                statusCode,
+                                routeStopwatch.ElapsedMilliseconds,
+                                $"Codex OAuth refresh failed after {statusCode}: {ProbeTraceRedactor.RedactText(ex.Message)}",
+                                logModel,
+                                requestId,
+                                prepared.WireApi,
+                                string.Join(" > ", requestAttemptSummaries)));
+                        }
+                    }
+
+                    if (route.IsCodexOAuth &&
+                        (statusCode == 401 || statusCode == 403) &&
+                        sendAttempt > 0)
+                    {
+                        _codexOAuthService.MarkCredentialRejected(
+                            route.OAuthCredentialId,
+                            $"Codex OAuth token was rejected after forced refresh with status {statusCode}.");
+                        EmitLog(new TransparentProxyLogEntry(
+                            DateTimeOffset.Now,
+                            "WARN",
+                            method,
+                            pathAndQuery,
+                            route.Name,
+                            statusCode,
+                            routeStopwatch.ElapsedMilliseconds,
+                            "Codex OAuth token was rejected after refresh; account marked for re-login.",
+                            logModel,
+                            requestId,
+                            prepared.WireApi,
+                            string.Join(" > ", requestAttemptSummaries)));
+                    }
+
                     var hasNextProtocol = protocolIndex < preparedRequests.Count - 1;
                     if (_retryOrchestrator.ShouldTryNextWireApi(statusCode, prepared.WireApi, hasNextProtocol))
                     {
@@ -1161,6 +1257,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
                             streamRequested,
                             config,
                             prepared.WireApi,
+                            prepared.ResponseClientWireApi,
                             prepared.ResponseModel,
                             logModel,
                             prepared.NormalizeToChatCompletions,
@@ -1176,7 +1273,7 @@ public sealed class TransparentProxyService : IAsyncDisposable
                         route.Name,
                         statusCode,
                         routeStopwatch.ElapsedMilliseconds,
-                        $"Routed to {route.Name} using {DisplayWireApi(prepared.WireApi)}.",
+                        $"Routed to {route.Name} using {DisplayWireApi(prepared.WireApi)}{BuildAuthLogSuffix(authMaterial)}.",
                         logModel,
                         requestId,
                         prepared.WireApi,
@@ -1188,6 +1285,59 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
         MarkRouteFailure(route, lastProtocolAttempt?.StatusCode ?? 502, routeStopwatch.ElapsedMilliseconds, routePermit, modelName: lastLogModel, config: config);
         return lastProtocolAttempt ?? new TransparentProxyUpstreamAttempt(false, route.Name, 502, "No available upstream protocol.");
+    }
+
+    private static string BuildAuthLogSuffix(TransparentProxyRouteAuthMaterial? authMaterial)
+        => authMaterial?.IsCodexOAuth == true
+            ? $" via Codex OAuth {authMaterial.AccountLabel}"
+            : string.Empty;
+
+    private void EmitCodexOAuthBackgroundLog(string message)
+    {
+        var level = message.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
+                    message.Contains("stopped", StringComparison.OrdinalIgnoreCase)
+            ? "WARN"
+            : "INFO";
+        EmitLog(new TransparentProxyLogEntry(
+            DateTimeOffset.Now,
+            level,
+            "-",
+            "/relaybench/oauth/codex",
+            "Codex OAuth",
+            string.Equals(level, "WARN", StringComparison.Ordinal) ? 502 : 200,
+            0,
+            ProbeTraceRedactor.RedactText(message)));
+    }
+
+    private async Task<TransparentProxyRouteAuthMaterial?> BuildRouteAuthMaterialAsync(
+        TransparentProxyRoute route,
+        bool streamRequested,
+        CancellationToken cancellationToken)
+    {
+        if (!route.IsCodexOAuth)
+        {
+            return null;
+        }
+
+        var material = await _codexOAuthService.EnsureAccessTokenAsync(route.OAuthCredentialId, cancellationToken);
+        Dictionary<string, string> headers = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Accept"] = streamRequested ? "text/event-stream" : "application/json",
+            ["Connection"] = "Keep-Alive",
+            ["Originator"] = CodexOAuthConstants.Originator,
+            ["User-Agent"] = CodexOAuthConstants.UserAgent,
+            ["Session_id"] = Guid.NewGuid().ToString()
+        };
+        if (!string.IsNullOrWhiteSpace(material.AccountId))
+        {
+            headers["Chatgpt-Account-Id"] = material.AccountId;
+        }
+
+        return new TransparentProxyRouteAuthMaterial(
+            TransparentProxyRouteAuthModes.CodexOAuth,
+            material.BearerToken,
+            headers,
+            material.AccountLabel);
     }
 
     private static bool CanRouteServeModel(TransparentProxyRoute route, string? requestedModel)
@@ -1651,7 +1801,11 @@ public sealed class TransparentProxyService : IAsyncDisposable
     }
 
     private object BuildHealthPayload()
-        => _managementApi.BuildHealthPayload(IsRunning, _config, CreateMetricsSnapshot());
+        => _managementApi.BuildHealthPayload(
+            IsRunning,
+            _config,
+            CreateMetricsSnapshot(),
+            _codexOAuthService.GetCredentials());
 
     private object BuildCachePayload()
     {
@@ -1681,31 +1835,13 @@ public sealed class TransparentProxyService : IAsyncDisposable
     {
         var config = _config;
         var basePort = config?.Port ?? 17880;
-        var forwardProxyPort = ResolvePacForwardProxyPort(basePort);
-        var tunOptions = new TransparentProxyTunConfigOptions(
-            basePort,
-            forwardProxyPort,
-            ResolveOffsetPort(basePort, 2, 17882),
-            ResolveOffsetPort(basePort, 3, 17883),
-            ResolveOffsetPort(basePort, 4, 17884));
-        var tunService = new TransparentProxyTunService();
-        var tunConfig = tunService.BuildMihomoConfig(tunOptions);
-        var guard = _networkGuard.Inspect();
-        var tunValidation = _networkGuard.ValidateMihomoConfig(tunConfig);
         return _managementApi.BuildCaptureDiagnosticsPayload(
             IsRunning,
             config,
             _appDetector.Detect(),
-            guard,
-            tunValidation,
-            tunService.InspectResidualSession(),
-            _systemProxyService.Inspect($"http://127.0.0.1:{basePort}/relaybench/pac"),
             _portInspector.Inspect(basePort),
             _cliEnvironmentService.Build(basePort),
-            _launchWrapperService.ScanKnownLaunchers(),
-            $"127.0.0.1:{forwardProxyPort}",
-            $"127.0.0.1:{tunOptions.MixedPort}",
-            $"127.0.0.1:{tunOptions.ControllerPort}");
+            _launchWrapperService.ScanKnownLaunchers());
     }
 
     private object BuildCaptureRecoveryPayload(bool execute)
@@ -1727,15 +1863,6 @@ public sealed class TransparentProxyService : IAsyncDisposable
 
     private object BuildProtocolsPayload()
         => _managementApi.BuildProtocolsPayload(_config?.Routes ?? Array.Empty<TransparentProxyRoute>());
-
-    private static int ResolvePacForwardProxyPort(int transparentProxyPort)
-        => transparentProxyPort < 65535 ? transparentProxyPort + 1 : 17881;
-
-    private static int ResolveOffsetPort(int transparentProxyPort, int offset, int fallback)
-    {
-        var candidate = transparentProxyPort + offset;
-        return candidate is >= 1 and <= 65535 ? candidate : fallback;
-    }
 
     private static bool ShouldExecuteCaptureRecovery(string method)
         => string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase) ||
@@ -2392,7 +2519,11 @@ public sealed class TransparentProxyRoute
         int? requestRetry = null,
         int? maxRetryIntervalSeconds = null,
         int? modelCooldownSeconds = null,
-        string? payloadRulesText = null)
+        string? payloadRulesText = null,
+        string? authMode = null,
+        string? oauthProvider = null,
+        string? oauthCredentialId = null,
+        string? codexBackendBaseUrl = null)
     {
         Id = id;
         Name = name;
@@ -2420,6 +2551,10 @@ public sealed class TransparentProxyRoute
         MaxRetryIntervalSeconds = maxRetryIntervalSeconds;
         ModelCooldownSeconds = modelCooldownSeconds;
         PayloadRulesText = payloadRulesText?.Trim() ?? string.Empty;
+        AuthMode = TransparentProxyRouteAuthModes.Normalize(authMode);
+        OAuthProvider = oauthProvider?.Trim() ?? string.Empty;
+        OAuthCredentialId = oauthCredentialId?.Trim() ?? string.Empty;
+        CodexBackendBaseUrl = codexBackendBaseUrl?.Trim() ?? string.Empty;
         CacheScopeId = BuildCacheScopeId(Id, BaseUrl, Prefix, ModelMappings, PayloadRulesText);
         PreferredWireApi = ProxyWireApiProbeService.NormalizeWireApi(preferredWireApi);
         ChatCompletionsSupported = chatCompletionsSupported;
@@ -2460,6 +2595,19 @@ public sealed class TransparentProxyRoute
 
     public string PayloadRulesText { get; }
 
+    public string AuthMode { get; }
+
+    public string OAuthProvider { get; }
+
+    public string OAuthCredentialId { get; }
+
+    public string CodexBackendBaseUrl { get; }
+
+    public bool IsCodexOAuth
+        => string.Equals(AuthMode, TransparentProxyRouteAuthModes.CodexOAuth, StringComparison.OrdinalIgnoreCase) &&
+           string.Equals(OAuthProvider, CodexOAuthConstants.Provider, StringComparison.OrdinalIgnoreCase) &&
+           !string.IsNullOrWhiteSpace(OAuthCredentialId);
+
     public string CacheScopeId { get; }
 
     public string? PreferredWireApi { get; }
@@ -2499,7 +2647,11 @@ public sealed class TransparentProxyRoute
             RequestRetry,
             MaxRetryIntervalSeconds,
             ModelCooldownSeconds,
-            PayloadRulesText)
+            PayloadRulesText,
+            AuthMode,
+            OAuthProvider,
+            OAuthCredentialId,
+            CodexBackendBaseUrl)
         {
             CircuitOpenUntil = CircuitOpenUntil
         };
@@ -2526,7 +2678,11 @@ public sealed class TransparentProxyRoute
             RequestRetry,
             MaxRetryIntervalSeconds,
             ModelCooldownSeconds,
-            PayloadRulesText)
+            PayloadRulesText,
+            AuthMode,
+            OAuthProvider,
+            OAuthCredentialId,
+            CodexBackendBaseUrl)
         {
             CircuitOpenUntil = CircuitOpenUntil
         };
@@ -2840,6 +2996,7 @@ internal sealed record TransparentProxySessionRouteBinding(string RouteId, DateT
 
 internal sealed record TransparentProxyPreparedRequest(
     string WireApi,
+    string ResponseClientWireApi,
     string UpstreamUrl,
     byte[] Body,
     IReadOnlyDictionary<string, string> ExtraHeaders,

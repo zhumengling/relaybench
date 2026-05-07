@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.IO;
 using RelayBench.Core.Services;
+using RelayBench.Core.Support;
 
 namespace RelayBench.App.Services;
 
@@ -51,6 +52,7 @@ internal sealed class TransparentProxyResponseForwarderService
         bool streamRequested,
         TransparentProxyServerConfig config,
         string wireApi,
+        string responseClientWireApi,
         string responseModel,
         string logModel,
         bool normalizeToChatCompletions,
@@ -63,6 +65,37 @@ internal sealed class TransparentProxyResponseForwarderService
         CopyResponseHeaders(upstreamResponse, context.Response);
 
         var contentType = upstreamResponse.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+        var normalizeToAnthropicMessages = statusCode >= 200 &&
+                                           statusCode < 300 &&
+                                           string.Equals(responseClientWireApi, ProxyWireApiProbeService.AnthropicMessagesWireApi, StringComparison.Ordinal) &&
+                                           !string.Equals(wireApi, ProxyWireApiProbeService.AnthropicMessagesWireApi, StringComparison.Ordinal);
+        if (normalizeToAnthropicMessages)
+        {
+            ClearTransformedResponseHeaders(context.Response);
+            if (contentType.Contains("text/event-stream", StringComparison.OrdinalIgnoreCase) || streamRequested)
+            {
+                await CopyNormalizedAnthropicStreamAsync(
+                    context,
+                    upstreamResponse,
+                    responseModel,
+                    wireApi,
+                    cancellationToken);
+                return;
+            }
+
+            await CopyNormalizedAnthropicJsonAsync(
+                context,
+                upstreamResponse,
+                statusCode,
+                cacheKey,
+                config,
+                responseModel,
+                logModel,
+                wireApi,
+                cancellationToken);
+            return;
+        }
+
         if (normalizeToChatCompletions &&
             statusCode >= 200 &&
             statusCode < 300)
@@ -147,6 +180,139 @@ internal sealed class TransparentProxyResponseForwarderService
                 cancellationToken);
         }
 
+        context.Response.OutputStream.Close();
+    }
+
+    private async Task CopyNormalizedAnthropicJsonAsync(
+        HttpListenerContext context,
+        HttpResponseMessage upstreamResponse,
+        int statusCode,
+        string cacheKey,
+        TransparentProxyServerConfig config,
+        string responseModel,
+        string logModel,
+        string wireApi,
+        CancellationToken cancellationToken)
+    {
+        var upstreamBytes = await upstreamResponse.Content.ReadAsByteArrayAsync(cancellationToken);
+        var upstreamText = Encoding.UTF8.GetString(upstreamBytes);
+        TrackPromptCacheTokens(upstreamText);
+        var assistantText = ModelResponseTextExtractor.TryExtractAssistantText(upstreamText) ?? string.Empty;
+        var normalizedBytes = BuildAnthropicMessageBytes(
+            assistantText,
+            ResolveAnthropicModel(responseModel, upstreamText),
+            wireApi,
+            upstreamText);
+        const string normalizedContentType = "application/json; charset=utf-8";
+        context.Response.ContentType = normalizedContentType;
+        context.Response.ContentLength64 = normalizedBytes.LongLength;
+        await context.Response.OutputStream.WriteAsync(normalizedBytes, cancellationToken);
+        TrackResponseBodyTokens(normalizedBytes, includePromptCache: false);
+
+        if (config.EnableCache &&
+            !string.IsNullOrWhiteSpace(cacheKey) &&
+            statusCode >= 200 &&
+            statusCode < 300 &&
+            normalizedBytes.Length <= config.CacheMaxBytes)
+        {
+            _responseCache.StoreResponse(
+                cacheKey,
+                statusCode,
+                normalizedContentType,
+                normalizedBytes,
+                NormalizeLogModel(logModel),
+                config.CacheMaxBytes);
+        }
+
+        context.Response.OutputStream.Close();
+    }
+
+    private async Task CopyNormalizedAnthropicStreamAsync(
+        HttpListenerContext context,
+        HttpResponseMessage upstreamResponse,
+        string responseModel,
+        string wireApi,
+        CancellationToken cancellationToken)
+    {
+        context.Response.ContentType = "text/event-stream; charset=utf-8";
+        context.Response.SendChunked = true;
+        var model = string.IsNullOrWhiteSpace(responseModel) ? "relaybench-proxy" : responseModel.Trim();
+        var messageId = $"msg_relaybench_{Guid.NewGuid():N}";
+        var wroteStop = false;
+        StringBuilder assistantText = new();
+        var finalOutputTokens = 0;
+
+        await WriteAnthropicSseEventAsync(
+            context.Response.OutputStream,
+            "message_start",
+            BuildAnthropicMessageStartEvent(messageId, model),
+            cancellationToken);
+        await WriteAnthropicSseEventAsync(
+            context.Response.OutputStream,
+            "content_block_start",
+            "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}",
+            cancellationToken);
+
+        async Task WriteStopEventsAsync()
+        {
+            if (wroteStop)
+            {
+                return;
+            }
+
+            wroteStop = true;
+            await WriteAnthropicSseEventAsync(
+                context.Response.OutputStream,
+                "content_block_stop",
+                "{\"type\":\"content_block_stop\",\"index\":0}",
+                cancellationToken);
+            var outputTokens = finalOutputTokens > 0
+                ? finalOutputTokens
+                : Math.Max(0, TokenCountEstimator.EstimateOutputTokens(assistantText.ToString()));
+            await WriteAnthropicSseEventAsync(
+                context.Response.OutputStream,
+                "message_delta",
+                BuildAnthropicMessageDeltaEvent(outputTokens),
+                cancellationToken);
+            await WriteAnthropicSseEventAsync(
+                context.Response.OutputStream,
+                "message_stop",
+                "{\"type\":\"message_stop\"}",
+                cancellationToken);
+        }
+
+        await foreach (var sseEvent in _sseFramer.ReadEventsAsync(upstreamResponse.Content, cancellationToken))
+        {
+            var data = sseEvent.Data;
+            if (ChatSseParser.TryExtractOutputTokenCount(data, out var upstreamOutputTokens))
+            {
+                finalOutputTokens = upstreamOutputTokens;
+            }
+
+            if (ChatSseParser.IsDone(data))
+            {
+                await WriteStopEventsAsync();
+                break;
+            }
+
+            var delta = ChatSseParser.TryExtractDelta(data);
+            if (string.IsNullOrEmpty(delta))
+            {
+                TrackPromptCacheTokens(data);
+                continue;
+            }
+
+            assistantText.Append(delta);
+            await WriteAnthropicSseEventAsync(
+                context.Response.OutputStream,
+                "content_block_delta",
+                BuildAnthropicContentDeltaEvent(delta),
+                cancellationToken);
+            TrackOutputTextTokens(delta);
+            TrackPromptCacheTokens(data);
+        }
+
+        await WriteStopEventsAsync();
         context.Response.OutputStream.Close();
     }
 
@@ -568,6 +734,196 @@ internal sealed class TransparentProxyResponseForwarderService
         var bytes = Encoding.UTF8.GetBytes($"data: {data}\n\n");
         await outputStream.WriteAsync(bytes, cancellationToken);
         await outputStream.FlushAsync(cancellationToken);
+    }
+
+    private static async Task WriteAnthropicSseEventAsync(
+        Stream outputStream,
+        string eventName,
+        string data,
+        CancellationToken cancellationToken)
+    {
+        var bytes = Encoding.UTF8.GetBytes($"event: {eventName}\ndata: {data}\n\n");
+        await outputStream.WriteAsync(bytes, cancellationToken);
+        await outputStream.FlushAsync(cancellationToken);
+    }
+
+    private static byte[] BuildAnthropicMessageBytes(
+        string assistantText,
+        string model,
+        string wireApi,
+        string upstreamText)
+    {
+        var usage = ResolveAnthropicUsage(upstreamText, assistantText);
+        return JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            id = $"msg_relaybench_{Guid.NewGuid():N}",
+            type = "message",
+            role = "assistant",
+            model,
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = assistantText
+                }
+            },
+            stop_reason = "end_turn",
+            stop_sequence = (string?)null,
+            usage,
+            relaybench = new
+            {
+                upstream_wire_api = wireApi
+            }
+        });
+    }
+
+    private static string BuildAnthropicMessageStartEvent(string messageId, string model)
+        => JsonSerializer.Serialize(new
+        {
+            type = "message_start",
+            message = new
+            {
+                id = messageId,
+                type = "message",
+                role = "assistant",
+                model,
+                content = Array.Empty<object>(),
+                stop_reason = (string?)null,
+                stop_sequence = (string?)null,
+                usage = new
+                {
+                    input_tokens = 0,
+                    output_tokens = 0
+                }
+            }
+        });
+
+    private static string BuildAnthropicContentDeltaEvent(string delta)
+        => JsonSerializer.Serialize(new
+        {
+            type = "content_block_delta",
+            index = 0,
+            delta = new
+            {
+                type = "text_delta",
+                text = delta
+            }
+        });
+
+    private static string BuildAnthropicMessageDeltaEvent(int outputTokens)
+        => JsonSerializer.Serialize(new
+        {
+            type = "message_delta",
+            delta = new
+            {
+                stop_reason = "end_turn",
+                stop_sequence = (string?)null
+            },
+            usage = new
+            {
+                output_tokens = Math.Max(0, outputTokens)
+            }
+        });
+
+    private static string ResolveAnthropicModel(string responseModel, string upstreamText)
+    {
+        if (!string.IsNullOrWhiteSpace(responseModel))
+        {
+            return responseModel.Trim();
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(upstreamText);
+            return TryReadStringPath(document.RootElement, "model") ??
+                   TryReadStringPath(document.RootElement, "response", "model") ??
+                   "relaybench-proxy";
+        }
+        catch
+        {
+            return "relaybench-proxy";
+        }
+    }
+
+    private static object ResolveAnthropicUsage(string upstreamText, string assistantText)
+    {
+        var inputTokens = 0;
+        var outputTokens = Math.Max(0, TokenCountEstimator.EstimateOutputTokens(assistantText));
+        try
+        {
+            using var document = JsonDocument.Parse(upstreamText);
+            if (TryResolveUsageElement(document.RootElement, out var usage))
+            {
+                inputTokens = Math.Max(
+                    TryReadIntProperty(usage, "input_tokens"),
+                    TryReadIntProperty(usage, "prompt_tokens"));
+                outputTokens = Math.Max(
+                    Math.Max(
+                        TryReadIntProperty(usage, "output_tokens"),
+                        TryReadIntProperty(usage, "completion_tokens")),
+                    outputTokens);
+            }
+        }
+        catch
+        {
+        }
+
+        return new
+        {
+            input_tokens = Math.Max(0, inputTokens),
+            output_tokens = Math.Max(0, outputTokens)
+        };
+    }
+
+    private static bool TryResolveUsageElement(JsonElement root, out JsonElement usage)
+    {
+        if (root.ValueKind == JsonValueKind.Object &&
+            root.TryGetProperty("usage", out usage) &&
+            usage.ValueKind == JsonValueKind.Object)
+        {
+            return true;
+        }
+
+        if (root.ValueKind == JsonValueKind.Object &&
+            root.TryGetProperty("response", out var response) &&
+            response.ValueKind == JsonValueKind.Object &&
+            response.TryGetProperty("usage", out usage) &&
+            usage.ValueKind == JsonValueKind.Object)
+        {
+            return true;
+        }
+
+        usage = default;
+        return false;
+    }
+
+    private static int TryReadIntProperty(JsonElement root, string propertyName)
+        => root.ValueKind == JsonValueKind.Object &&
+           root.TryGetProperty(propertyName, out var property)
+            ? property.ValueKind switch
+            {
+                JsonValueKind.Number when property.TryGetInt32(out var number) => Math.Max(0, number),
+                JsonValueKind.String when int.TryParse(property.GetString(), out var number) => Math.Max(0, number),
+                _ => 0
+            }
+            : 0;
+
+    private static string? TryReadStringPath(JsonElement root, params string[] path)
+    {
+        var current = root;
+        foreach (var segment in path)
+        {
+            if (current.ValueKind != JsonValueKind.Object ||
+                !current.TryGetProperty(segment, out current))
+            {
+                return null;
+            }
+        }
+
+        return current.ValueKind == JsonValueKind.String
+            ? current.GetString()
+            : null;
     }
 
     private static void CopyResponseHeaders(HttpResponseMessage upstreamResponse, HttpListenerResponse response)
