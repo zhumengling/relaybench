@@ -1,7 +1,11 @@
 using System.Globalization;
 using System.ComponentModel;
+using System.IO;
 using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Windows;
+using Microsoft.Win32;
 using RelayBench.App.Infrastructure;
 using RelayBench.App.Services;
 using RelayBench.Core.Models;
@@ -617,6 +621,126 @@ public sealed partial class MainWindowViewModel
     private bool CanStartTransparentProxy()
         => !IsTransparentProxyRunning && !IsBusy && !_isTransparentProxyStarting;
 
+    private IReadOnlyList<TransparentProxyRoute> BuildTransparentProxyRuntimeRoutes(bool includeWorkspaceFallback = false)
+    {
+        var providerRoutes = ParseTransparentProxyProviderRoutes(TransparentProxyRoutesText);
+        var routes = ComposeTransparentProxyRuntimeRoutes(providerRoutes);
+        if (routes.Count > 0 || !includeWorkspaceFallback)
+        {
+            return routes;
+        }
+
+        return ComposeTransparentProxyRuntimeRoutes(ParseTransparentProxyProviderRoutes(BuildTransparentProxyRoutesTextFromWorkspace()));
+    }
+
+    private IReadOnlyList<TransparentProxyRoute> ComposeTransparentProxyRuntimeRoutes(IReadOnlyList<TransparentProxyRoute> providerRoutes)
+    {
+        List<TransparentProxyRoute> routes = providerRoutes
+            .Where(static route => !route.IsCodexOAuth)
+            .Select(ApplyKnownTransparentProxyRouteProtocol)
+            .ToList();
+
+        var existingCredentialIds = new HashSet<string>(
+            routes
+                .Where(static route => route.IsCodexOAuth)
+                .Select(static route => route.OAuthCredentialId)
+                .Where(static id => !string.IsNullOrWhiteSpace(id)),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var credential in _codexOAuthService.GetCredentials()
+                     .Where(IsUsableCodexOAuthCredential)
+                     .OrderBy(static credential => credential.PlanType, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(static credential => credential.Email, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(static credential => credential.Id, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!existingCredentialIds.Add(credential.Id))
+            {
+                continue;
+            }
+
+            routes.Add(BuildCodexOAuthRuntimeRoute(credential));
+        }
+
+        return routes;
+    }
+
+    private IReadOnlyList<TransparentProxyRoute> ParseTransparentProxyProviderRoutes(string text)
+        => TransparentProxyRouteTextCodec.ParseRoutes(text)
+            .Where(static route => !route.IsCodexOAuth)
+            .ToArray();
+
+    private TransparentProxyRoute ApplyKnownTransparentProxyRouteProtocol(TransparentProxyRoute route)
+        => route.IsCodexOAuth
+            ? ApplyCodexOAuthRouteProtocol(route)
+            : _transparentProxyProtocolSnapshots.TryGetValue(route.Id, out var snapshot)
+                ? route.WithProtocol(
+                    snapshot.PreferredWireApi,
+                    snapshot.ChatCompletionsSupported,
+                    snapshot.ResponsesSupported,
+                    snapshot.AnthropicMessagesSupported,
+                    snapshot.CheckedAt)
+                : route;
+
+    private static TransparentProxyRoute ApplyCodexOAuthRouteProtocol(TransparentProxyRoute route)
+        => route.WithProtocol(
+            ProxyWireApiProbeService.ResponsesWireApi,
+            chatCompletionsSupported: true,
+            responsesSupported: true,
+            anthropicMessagesSupported: true,
+            DateTimeOffset.UtcNow);
+
+    private static TransparentProxyRoute BuildCodexOAuthRuntimeRoute(CodexOAuthCredential credential)
+    {
+        string[] models =
+        [
+            "gpt-5.4",
+            "gpt-5.4-codex",
+            "gpt-5.4-mini"
+        ];
+        var mappings = models
+            .Select(static model => new TransparentProxyModelMapping(model, model))
+            .ToArray();
+        var id = TransparentProxyRouteTextCodec.BuildRouteId(
+            "Codex OAuth",
+            CodexOAuthConstants.DefaultBackendBaseUrl,
+            credential.Id);
+        var plan = string.IsNullOrWhiteSpace(credential.PlanType) ? "Codex" : credential.PlanType.Trim();
+        var displayName = string.IsNullOrWhiteSpace(credential.DisplayName) ? credential.Id : credential.DisplayName;
+
+        return new TransparentProxyRoute(
+            id,
+            $"Codex OAuth {plan} {displayName}".Trim(),
+            CodexOAuthConstants.DefaultBackendBaseUrl,
+            string.Empty,
+            models[0],
+            ProxyWireApiProbeService.ResponsesWireApi,
+            chatCompletionsSupported: true,
+            responsesSupported: true,
+            anthropicMessagesSupported: true,
+            DateTimeOffset.UtcNow,
+            models,
+            priority: 0,
+            modelMappings: mappings,
+            authMode: TransparentProxyRouteAuthModes.CodexOAuth,
+            oauthProvider: CodexOAuthConstants.Provider,
+            oauthCredentialId: credential.Id,
+            codexBackendBaseUrl: CodexOAuthConstants.DefaultBackendBaseUrl);
+    }
+
+    private static bool IsUsableCodexOAuthCredential(CodexOAuthCredential credential)
+        => string.Equals(credential.Provider, CodexOAuthConstants.Provider, StringComparison.OrdinalIgnoreCase) &&
+           credential.State is not CodexOAuthCredentialState.Disabled and not CodexOAuthCredentialState.NeedsRelogin &&
+           (!string.IsNullOrWhiteSpace(credential.RefreshToken) || !string.IsNullOrWhiteSpace(credential.AccessToken));
+
+    private void RefreshTransparentProxyRuntimeRoutesAfterOAuthChange()
+    {
+        RefreshTransparentProxyRoutePreview();
+        if (IsTransparentProxyRunning)
+        {
+            _transparentProxyService.UpdateRoutes(BuildTransparentProxyRuntimeRoutes());
+        }
+    }
+
     private async Task StartTransparentProxyAsync()
         => await StartTransparentProxyCoreAsync(isAutoStart: false);
 
@@ -631,13 +755,13 @@ public sealed partial class MainWindowViewModel
         StartTransparentProxyCommand.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(TransparentProxyRunStateText));
         OnPropertyChanged(nameof(TransparentProxyRunStateBrush));
-        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+        var routes = BuildTransparentProxyRuntimeRoutes();
         try
         {
             if (routes.Count == 0)
             {
                 TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromWorkspace();
-                routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+                routes = BuildTransparentProxyRuntimeRoutes();
             }
 
             if (routes.Count > 0 && !isAutoStart)
@@ -784,7 +908,7 @@ public sealed partial class MainWindowViewModel
             await StartTransparentProxyAsync();
         }
 
-        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+        var routes = BuildTransparentProxyRuntimeRoutes();
         if (routes.Count == 0)
         {
             StatusMessage = "透明代理还没有可用路由，暂时不能应用到软件。";
@@ -859,7 +983,7 @@ public sealed partial class MainWindowViewModel
             await StartTransparentProxyAsync();
         }
 
-        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+        var routes = BuildTransparentProxyRuntimeRoutes();
         if (routes.Count == 0)
         {
             StatusMessage = "透明代理还没有可用路由，暂时不能接入数据安全。";
@@ -904,7 +1028,7 @@ public sealed partial class MainWindowViewModel
 
     private Task ExportTransparentProxyRoutesToBatchAsync()
     {
-        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+        var routes = ParseTransparentProxyProviderRoutes(TransparentProxyRoutesText);
         if (routes.Count == 0)
         {
             TransparentProxyStatusSummary = "没有可导出的透明代理节点。";
@@ -966,7 +1090,7 @@ public sealed partial class MainWindowViewModel
         TransparentProxyRouteEditorItems.Add(item);
         SelectedTransparentProxyRouteEditorItem = item;
         UpdateTransparentProxyRoutesTextFromEditor();
-        return Task.CompletedTask;
+        return OpenTransparentProxyRouteSettingsAsync(item);
     }
 
     private Task ToggleTransparentProxySettingsDrawerAsync()
@@ -1259,11 +1383,7 @@ public sealed partial class MainWindowViewModel
 
     private TransparentProxyCodexCaptureContext BuildTransparentProxyCodexCaptureContext()
     {
-        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
-        if (routes.Count == 0)
-        {
-            routes = TransparentProxyRouteTextCodec.ParseRoutes(BuildTransparentProxyRoutesTextFromWorkspace());
-        }
+        var routes = BuildTransparentProxyRuntimeRoutes(includeWorkspaceFallback: true);
 
         var model = routes.Count == 0
             ? "gpt-5.4"
@@ -1549,7 +1669,7 @@ public sealed partial class MainWindowViewModel
             CodexOAuthLoginStepText = "4/4 保存完成";
             CodexOAuthLoginStatusText = $"Codex OAuth 登录完成：{credential.DisplayName}";
             RefreshCodexOAuthCredentials();
-            RefreshTransparentProxyRoutePreview();
+            RefreshTransparentProxyRuntimeRoutesAfterOAuthChange();
             SaveState();
         }
         catch (OperationCanceledException)
@@ -1625,6 +1745,7 @@ public sealed partial class MainWindowViewModel
         await _codexOAuthService.RefreshCredentialAsync(item.Id, CancellationToken.None);
         CodexOAuthLoginStatusText = $"{item.DisplayName} 刷新完成。";
         RefreshCodexOAuthCredentials();
+        RefreshTransparentProxyRuntimeRoutesAfterOAuthChange();
     }
 
     private Task DisableCodexOAuthCredentialAsync(CodexOAuthCredentialViewModel? item)
@@ -1638,7 +1759,49 @@ public sealed partial class MainWindowViewModel
         _codexOAuthService.DisableCredential(item.Id, !isDisabled);
         CodexOAuthLoginStatusText = isDisabled ? $"{item.DisplayName} 已启用。" : $"{item.DisplayName} 已停用。";
         RefreshCodexOAuthCredentials();
+        RefreshTransparentProxyRuntimeRoutesAfterOAuthChange();
         return Task.CompletedTask;
+    }
+
+    private async Task ExportCodexOAuthCredentialAsync(CodexOAuthCredentialViewModel? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        var credential = _codexOAuthService.GetCredentials()
+            .FirstOrDefault(credential => string.Equals(credential.Id, item.Id, StringComparison.OrdinalIgnoreCase));
+        if (credential is null)
+        {
+            CodexOAuthLoginStatusText = "未找到要导出的 Codex OAuth 账号。";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(credential.RefreshToken))
+        {
+            throw new InvalidOperationException($"{credential.DisplayName} 缺少 refresh_token，无法导出 CPA 兼容认证文件。");
+        }
+
+        SaveFileDialog dialog = new()
+        {
+            Title = "导出 Codex OAuth 到 CPA",
+            FileName = BuildCpaCodexOAuthFileName(credential),
+            DefaultExt = ".json",
+            AddExtension = true,
+            OverwritePrompt = true,
+            Filter = "CPA 认证文件 (*.json)|*.json|JSON 文件 (*.json)|*.json|所有文件 (*.*)|*.*"
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            CodexOAuthLoginStatusText = "已取消导出 Codex OAuth。";
+            return;
+        }
+
+        var json = BuildCpaCodexOAuthJson(credential);
+        await File.WriteAllTextAsync(dialog.FileName, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        CodexOAuthLoginStatusText = $"已导出 CPA 认证文件：{dialog.FileName}";
+        StatusMessage = CodexOAuthLoginStatusText;
     }
 
     private Task DeleteCodexOAuthCredentialAsync(CodexOAuthCredentialViewModel? item)
@@ -1659,43 +1822,89 @@ public sealed partial class MainWindowViewModel
         UpdateTransparentProxyRoutesTextFromEditor();
         CodexOAuthLoginStatusText = $"{item.DisplayName} 已删除。";
         RefreshCodexOAuthCredentials();
-        RefreshTransparentProxyRoutePreview();
+        RefreshTransparentProxyRuntimeRoutesAfterOAuthChange();
         SaveState();
         return Task.CompletedTask;
     }
 
-    private Task CreateCodexOAuthRouteAsync()
+    private static string BuildCpaCodexOAuthJson(CodexOAuthCredential credential)
     {
-        var credential = CodexOAuthCredentials.FirstOrDefault(static item => item.CanUse) ?? CodexOAuthCredentials.FirstOrDefault();
-        if (credential is null)
+        var now = DateTimeOffset.UtcNow;
+        Dictionary<string, object?> payload = new(StringComparer.Ordinal)
         {
-            CodexOAuthLoginStatusText = "请先登录 Codex OAuth。";
-            return Task.CompletedTask;
+            ["id_token"] = credential.IdToken,
+            ["access_token"] = credential.AccessToken,
+            ["refresh_token"] = credential.RefreshToken,
+            ["account_id"] = credential.AccountId,
+            ["last_refresh"] = FormatCpaTimestamp(credential.LastRefreshAt ?? credential.UpdatedAt),
+            ["email"] = credential.Email,
+            ["type"] = "codex",
+            ["expired"] = FormatCpaTimestamp(credential.AccessTokenExpiresAt ?? now),
+            ["disabled"] = credential.State == CodexOAuthCredentialState.Disabled
+        };
+
+        return JsonSerializer.Serialize(payload, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+    }
+
+    private static string BuildCpaCodexOAuthFileName(CodexOAuthCredential credential)
+    {
+        var email = SanitizeCpaAuthFileNamePart(credential.Email);
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            email = SanitizeCpaAuthFileNamePart(credential.Id);
         }
 
-        var item = new TransparentProxyRouteEditorItemViewModel
+        var plan = NormalizeCpaPlanType(credential.PlanType);
+        if (string.IsNullOrWhiteSpace(plan))
         {
-            Name = $"Codex OAuth {credential.PlanType}",
-            BaseUrl = CodexOAuthConstants.DefaultBackendBaseUrl,
-            AuthMode = TransparentProxyRouteAuthModes.CodexOAuth,
-            OAuthProvider = CodexOAuthConstants.Provider,
-            OAuthCredentialId = credential.Id,
-            CodexBackendBaseUrl = CodexOAuthConstants.DefaultBackendBaseUrl,
-            PriorityText = "0"
-        };
-        item.ReplaceModelMappings(new[]
+            return $"codex-{email}.json";
+        }
+
+        if (string.Equals(plan, "team", StringComparison.OrdinalIgnoreCase))
         {
-            "gpt-5.4",
-            "gpt-5.4-codex",
-            "gpt-5.4-mini"
-        });
-        AttachTransparentProxyRouteEditorItem(item);
-        TransparentProxyRouteEditorItems.Add(item);
-        SelectedTransparentProxyRouteEditorItem = item;
-        UpdateTransparentProxyRoutesTextFromEditor();
-        RefreshTransparentProxyRoutePreview();
-        SaveState();
-        return OpenTransparentProxyRouteSettingsAsync(item);
+            var accountHash = SanitizeCpaAuthFileNamePart(credential.AccountIdHash);
+            return string.IsNullOrWhiteSpace(accountHash)
+                ? $"codex-{email}-{plan}.json"
+                : $"codex-{accountHash}-{email}-{plan}.json";
+        }
+
+        return $"codex-{email}-{plan}.json";
+    }
+
+    private static string FormatCpaTimestamp(DateTimeOffset value)
+        => value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+
+    private static string NormalizeCpaPlanType(string value)
+    {
+        var builder = new StringBuilder();
+        foreach (var character in (value ?? string.Empty).Trim().ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(character);
+            }
+            else if (builder.Length > 0 && builder[^1] != '-')
+            {
+                builder.Append('-');
+            }
+        }
+
+        return builder.ToString().Trim('-');
+    }
+
+    private static string SanitizeCpaAuthFileNamePart(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var builder = new StringBuilder();
+        foreach (var character in (value ?? string.Empty).Trim())
+        {
+            builder.Append(invalid.Contains(character) ? '-' : character);
+        }
+
+        return builder.ToString().Trim('-', ' ');
     }
 
     private void RefreshCodexOAuthCredentials()
@@ -1709,7 +1918,7 @@ public sealed partial class MainWindowViewModel
 
         OnPropertyChanged(nameof(HasCodexOAuthCredentials));
         OnPropertyChanged(nameof(HasNoCodexOAuthCredentials));
-        CreateCodexOAuthRouteCommand.RaiseCanExecuteChanged();
+        ExportCodexOAuthCredentialCommand.RaiseCanExecuteChanged();
         if (credentials.Count > 0 && CodexOAuthLoginStatusText.Contains("尚未登录", StringComparison.Ordinal))
         {
             CodexOAuthLoginStatusText = $"已保存 {credentials.Count} 个 Codex OAuth 账号。";
@@ -1733,7 +1942,7 @@ public sealed partial class MainWindowViewModel
                     string.Equals(item.Id, selectedId, StringComparison.OrdinalIgnoreCase));
             }
 
-            RefreshTransparentProxyRoutePreview();
+            RefreshTransparentProxyRuntimeRoutesAfterOAuthChange();
         });
     }
 
@@ -1925,16 +2134,14 @@ public sealed partial class MainWindowViewModel
             async () =>
             {
                 UpdateGlobalTaskProgress("生成路由", 10d);
-                var preservedOAuthItems = TransparentProxyRouteTextCodec.ParseEditorItems(TransparentProxyRoutesText)
-                    .Where(static item => string.Equals(item.AuthMode, TransparentProxyRouteAuthModes.CodexOAuth, StringComparison.OrdinalIgnoreCase))
+                var generatedItems = TransparentProxyRouteTextCodec.ParseEditorItems(BuildTransparentProxyRoutesTextFromWorkspace())
+                    .Where(static item => !item.IsCodexOAuthAuth)
                     .ToArray();
-                var generatedItems = TransparentProxyRouteTextCodec.ParseEditorItems(BuildTransparentProxyRoutesTextFromWorkspace());
-                var mergedItems = MergeTransparentProxyCandidateEditorItems(generatedItems, preservedOAuthItems);
-                TransparentProxyRoutesText = TransparentProxyRouteTextCodec.BuildRoutesTextFromEditor(mergedItems);
+                TransparentProxyRoutesText = TransparentProxyRouteTextCodec.BuildRoutesTextFromEditor(generatedItems);
                 RefreshTransparentProxyRouteEditorItemsFromText();
                 RefreshTransparentProxyRoutePreview();
 
-                var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+                var routes = BuildTransparentProxyRuntimeRoutes();
                 IReadOnlyList<TransparentProxyRoute> hydratedRoutes = routes;
                 if (routes.Count > 0)
                 {
@@ -1948,7 +2155,7 @@ public sealed partial class MainWindowViewModel
                     RefreshTransparentProxyRoutePreview();
                     if (IsTransparentProxyRunning)
                     {
-                        _transparentProxyService.UpdateRouteProtocols(hydratedRoutes);
+                        _transparentProxyService.UpdateRoutes(hydratedRoutes);
                     }
                 }
                 else
@@ -1973,43 +2180,16 @@ public sealed partial class MainWindowViewModel
             "生成中",
             8d);
 
-    private static IReadOnlyList<TransparentProxyRouteEditorItemViewModel> MergeTransparentProxyCandidateEditorItems(
-        IReadOnlyList<TransparentProxyRouteEditorItemViewModel> generatedItems,
-        IReadOnlyList<TransparentProxyRouteEditorItemViewModel> preservedOAuthItems)
-    {
-        if (preservedOAuthItems.Count == 0)
-        {
-            return generatedItems;
-        }
-
-        List<TransparentProxyRouteEditorItemViewModel> merged = [..generatedItems];
-        var existingOAuthKeys = new HashSet<string>(
-            generatedItems
-                .Where(static item => string.Equals(item.AuthMode, TransparentProxyRouteAuthModes.CodexOAuth, StringComparison.OrdinalIgnoreCase))
-                .Select(static item => string.IsNullOrWhiteSpace(item.OAuthCredentialId) ? item.Name : item.OAuthCredentialId),
-            StringComparer.OrdinalIgnoreCase);
-        foreach (var item in preservedOAuthItems)
-        {
-            var key = string.IsNullOrWhiteSpace(item.OAuthCredentialId) ? item.Name : item.OAuthCredentialId;
-            if (existingOAuthKeys.Add(key))
-            {
-                merged.Add(item);
-            }
-        }
-
-        return merged;
-    }
-
     private string BuildCodexOAuthCandidateHint(IReadOnlyList<TransparentProxyRoute> routes)
     {
         var oauthRouteCount = routes.Count(static route => route.IsCodexOAuth);
         if (oauthRouteCount > 0)
         {
-            return $"保留 Codex OAuth 路由 {oauthRouteCount} 条。{BuildCodexOAuthRouteCredentialSummary(routes)}";
+            return $"Codex OAuth 账号已自动加入路由队列 {oauthRouteCount} 条。{BuildCodexOAuthRouteCredentialSummary(routes)}";
         }
 
         return CodexOAuthCredentials.Count > 0
-            ? "已有 Codex OAuth 账号，可在 OAuth 区域一键创建路由。"
+            ? "已有 Codex OAuth 账号，但当前没有可用账号路由。"
             : string.Empty;
     }
 
@@ -2055,11 +2235,11 @@ public sealed partial class MainWindowViewModel
             "正在拉取透明代理上游模型并探测协议...",
             async () =>
             {
-                var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+                var routes = BuildTransparentProxyRuntimeRoutes();
                 if (routes.Count == 0)
                 {
                     TransparentProxyRoutesText = BuildTransparentProxyRoutesTextFromWorkspace();
-                    routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+                    routes = BuildTransparentProxyRuntimeRoutes();
                 }
 
                 if (routes.Count == 0)
@@ -2078,7 +2258,7 @@ public sealed partial class MainWindowViewModel
                 RefreshTransparentProxyRoutePreview();
                 if (IsTransparentProxyRunning)
                 {
-                    _transparentProxyService.UpdateRouteProtocols(hydratedRoutes);
+                    _transparentProxyService.UpdateRoutes(hydratedRoutes);
                 }
 
                 SaveState();
@@ -2171,7 +2351,7 @@ public sealed partial class MainWindowViewModel
             RefreshTransparentProxyRoutePreview();
             if (IsTransparentProxyRunning)
             {
-                _transparentProxyService.UpdateRouteProtocols(hydratedRoutes);
+                _transparentProxyService.UpdateRoutes(hydratedRoutes);
             }
 
             SaveState();
@@ -2548,7 +2728,8 @@ public sealed partial class MainWindowViewModel
             }
 
             TransparentProxyRouteEditorItems.Clear();
-            foreach (var item in TransparentProxyRouteTextCodec.ParseEditorItems(TransparentProxyRoutesText))
+            foreach (var item in TransparentProxyRouteTextCodec.ParseEditorItems(TransparentProxyRoutesText)
+                         .Where(static item => !item.IsCodexOAuthAuth))
             {
                 AttachTransparentProxyRouteEditorItem(item);
                 TransparentProxyRouteEditorItems.Add(item);
@@ -2588,7 +2769,8 @@ public sealed partial class MainWindowViewModel
         _isUpdatingTransparentProxyRoutesTextFromEditor = true;
         try
         {
-            TransparentProxyRoutesText = TransparentProxyRouteTextCodec.BuildRoutesTextFromEditor(TransparentProxyRouteEditorItems);
+            TransparentProxyRoutesText = TransparentProxyRouteTextCodec.BuildRoutesTextFromEditor(
+                TransparentProxyRouteEditorItems.Where(static item => !item.IsCodexOAuthAuth).ToArray());
         }
         finally
         {
@@ -2657,7 +2839,7 @@ public sealed partial class MainWindowViewModel
 
     private void RefreshTransparentProxyRoutePreview()
     {
-        var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+        var routes = BuildTransparentProxyRuntimeRoutes();
         var metrics = _transparentProxyService.IsRunning
             ? null
             : new TransparentProxyMetricsSnapshot(false, ParseTransparentProxyPort(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [], 0, 0d, null);
@@ -2863,7 +3045,7 @@ public sealed partial class MainWindowViewModel
             }
             else
             {
-                var routes = TransparentProxyRouteTextCodec.ParseRoutes(TransparentProxyRoutesText);
+                var routes = BuildTransparentProxyRuntimeRoutes();
                 ReplaceTransparentProxyModelPools(
                     _transparentProxyModelRegistryService.BuildSnapshot(routes, snapshot.Routes).Pools);
             }

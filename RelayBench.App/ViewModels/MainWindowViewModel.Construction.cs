@@ -199,8 +199,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CopyCodexOAuthLoginUrlCommand = new AsyncRelayCommand(CopyCodexOAuthLoginUrlAsync, () => !string.IsNullOrWhiteSpace(CodexOAuthLoginUrlText), onError: HandleNonFatalCommandException);
         RefreshCodexOAuthCredentialCommand = new AsyncRelayCommand<CodexOAuthCredentialViewModel?>(RefreshCodexOAuthCredentialAsync, item => item is not null, onError: HandleNonFatalCommandException);
         DisableCodexOAuthCredentialCommand = new AsyncRelayCommand<CodexOAuthCredentialViewModel?>(DisableCodexOAuthCredentialAsync, item => item is not null, onError: HandleNonFatalCommandException);
+        ExportCodexOAuthCredentialCommand = new AsyncRelayCommand<CodexOAuthCredentialViewModel?>(ExportCodexOAuthCredentialAsync, item => item is not null, onError: HandleNonFatalCommandException);
         DeleteCodexOAuthCredentialCommand = new AsyncRelayCommand<CodexOAuthCredentialViewModel?>(DeleteCodexOAuthCredentialAsync, item => item is not null, onError: HandleNonFatalCommandException);
-        CreateCodexOAuthRouteCommand = new AsyncRelayCommand(CreateCodexOAuthRouteAsync, () => CodexOAuthCredentials.Count > 0, onError: HandleNonFatalCommandException);
         OpenTransparentProxyRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?>(OpenTransparentProxyRouteSettingsAsync, item => item is not null, onError: HandleNonFatalCommandException);
         OpenTransparentProxyRuntimeRouteSettingsCommand = new AsyncRelayCommand<TransparentProxyRouteViewModel?>(OpenTransparentProxyRuntimeRouteSettingsAsync, route => route is not null, onError: HandleNonFatalCommandException);
         CloseTransparentProxyRouteSettingsCommand = new AsyncRelayCommand(CloseTransparentProxyRouteSettingsAsync, onError: HandleNonFatalCommandException);

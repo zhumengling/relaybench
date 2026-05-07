@@ -796,10 +796,6 @@
                                                     Content="&#xE72C;"
                                                     Style="{StaticResource GatewayIconButtonStyle}"
                                                     ToolTip="从当前接口和批量入口组同步到透明代理" />
-                                            <Button Command="{Binding ExportTransparentProxyRoutesToBatchCommand}"
-                                                    Content="&#xE74E;"
-                                                    Style="{StaticResource GatewayIconButtonStyle}"
-                                                    ToolTip="将透明代理节点导出到批量入口组" />
                                             <Button Command="{Binding AddTransparentProxyRouteEditorItemCommand}"
                                                     Content="&#xE710;"
                                                     Style="{StaticResource GatewayIconButtonStyle}"
@@ -844,11 +840,49 @@
                                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                                               VirtualizingPanel.IsVirtualizing="True"
                                               VirtualizingPanel.VirtualizationMode="Recycling">
+                                        <DataGrid.RowStyle>
+                                            <Style TargetType="{x:Type DataGridRow}">
+                                                <Setter Property="Tag"
+                                                        Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" />
+                                                <EventSetter Event="PreviewMouseRightButtonDown"
+                                                             Handler="TransparentProxyRouteRow_OnPreviewMouseRightButtonDown" />
+                                                <Setter Property="ContextMenu">
+                                                    <Setter.Value>
+                                                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                            <MenuItem Header="修改路由"
+                                                                      Command="{Binding PlacementTarget.Tag.OpenTransparentProxyRouteSettingsCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                                                      CommandParameter="{Binding}" />
+                                                            <MenuItem Header="拉取模型"
+                                                                      Command="{Binding PlacementTarget.Tag.FetchTransparentProxyRouteEditorItemModelsCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                                                      CommandParameter="{Binding}" />
+                                                            <Separator />
+                                                            <MenuItem Header="上移"
+                                                                      Command="{Binding PlacementTarget.Tag.MoveTransparentProxyRouteEditorItemUpCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                                            <MenuItem Header="下移"
+                                                                      Command="{Binding PlacementTarget.Tag.MoveTransparentProxyRouteEditorItemDownCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                                            <Separator />
+                                                            <MenuItem Header="删除路由"
+                                                                      Command="{Binding PlacementTarget.Tag.RemoveTransparentProxyRouteEditorItemCommand, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                                        </ContextMenu>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </DataGrid.RowStyle>
                                         <DataGrid.Columns>
-                                            <DataGridCheckBoxColumn Width="42"
+                                            <DataGridTemplateColumn Width="42"
                                                                     MinWidth="38"
-                                                                    Binding="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                    Header="启用" />
+                                                                    Header="启用">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"
+                                                                  Focusable="False"
+                                                                  IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                  IsThreeState="False"
+                                                                  ToolTip="单击启用或停用该路由" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
                                             <DataGridTextColumn Width="76"
                                                                 MinWidth="68"
                                                                 Binding="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -979,10 +1013,6 @@
                                                                 Content="&#xE711;"
                                                                 Style="{StaticResource GatewayIconButtonStyle}"
                                                                 ToolTip="取消当前登录" />
-                                                        <Button Command="{Binding CreateCodexOAuthRouteCommand}"
-                                                                Content="&#xE710;"
-                                                                Style="{StaticResource GatewayIconButtonStyle}"
-                                                                ToolTip="用已登录账号创建 Codex OAuth 路由" />
                                                     </StackPanel>
                                                     <TextBlock Margin="0,5,8,0"
                                                                Style="{StaticResource SectionHintTextStyle}"
@@ -1054,6 +1084,13 @@
                                                                                 Content="&#xE7BA;"
                                                                                 Style="{StaticResource GatewayIconButtonStyle}"
                                                                                 ToolTip="启用或停用" />
+                                                                        <Button Width="26"
+                                                                                Height="26"
+                                                                                Command="{Binding DataContext.ExportCodexOAuthCredentialCommand, ElementName=TransparentProxyPageRoot}"
+                                                                                CommandParameter="{Binding}"
+                                                                                Content="&#xE74E;"
+                                                                                Style="{StaticResource GatewayIconButtonStyle}"
+                                                                                ToolTip="导出 CPA 兼容认证文件，包含 refresh_token，请妥善保存" />
                                                                         <Button Width="26"
                                                                                 Height="26"
                                                                                 Command="{Binding DataContext.DeleteCodexOAuthCredentialCommand, ElementName=TransparentProxyPageRoot}"
@@ -1654,6 +1691,7 @@
         <Grid Grid.RowSpan="2"
               Panel.ZIndex="40"
               Background="#66111827"
+              IsVisibleChanged="TransparentProxyRouteSettingsOverlay_OnIsVisibleChanged"
               Visibility="{Binding IsTransparentProxyRouteSettingsOpen, Converter={StaticResource BoolToVisibilityConverter}}">
                     <Border Width="980"
                             MinHeight="620"
@@ -1755,6 +1793,7 @@
                                     <TextBlock Style="{StaticResource FieldLabelTextStyle}"
                                                Text="接口地址" />
                                     <TextBox FontFamily="Cascadia Mono, Consolas"
+                                             x:Name="TransparentProxyRouteSettingsBaseUrlBox"
                                              Style="{StaticResource CompactInputTextBoxStyle}"
                                              Text="{Binding TransparentProxyRouteSettingsItem.BaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
@@ -1790,77 +1829,7 @@
                                                   SelectedValuePath="Tag">
                                             <ComboBoxItem Content="API Key"
                                                           Tag="ApiKey" />
-                                            <ComboBoxItem Content="Codex OAuth"
-                                                          Tag="CodexOAuth" />
                                         </ComboBox>
-                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                   Visibility="{Binding TransparentProxyRouteSettingsItem.IsCodexOAuthAuth, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                   Text="Codex OAuth 账号" />
-                                        <Grid Margin="0,0,0,8"
-                                              Visibility="{Binding TransparentProxyRouteSettingsItem.IsCodexOAuthAuth, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="6" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <ComboBox Height="32"
-                                                      ItemsSource="{Binding CodexOAuthCredentials}"
-                                                      SelectedValue="{Binding TransparentProxyRouteSettingsItem.OAuthCredentialId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                      SelectedValuePath="Id">
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Grid MinWidth="220"
-                                                              ToolTip="{Binding DetailText}">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*" />
-                                                                <ColumnDefinition Width="Auto" />
-                                                            </Grid.ColumnDefinitions>
-                                                            <TextBlock VerticalAlignment="Center"
-                                                                       FontSize="11.2"
-                                                                       FontWeight="SemiBold"
-                                                                       Text="{Binding DisplayName}"
-                                                                       TextTrimming="CharacterEllipsis" />
-                                                            <Border Grid.Column="1"
-                                                                    Margin="8,0,0,0"
-                                                                    Padding="6,1"
-                                                                    Height="20"
-                                                                    VerticalAlignment="Center"
-                                                                    Background="#F8FAFC"
-                                                                    BorderBrush="#E2E8F0"
-                                                                    BorderThickness="1"
-                                                                    CornerRadius="4">
-                                                                <StackPanel Orientation="Horizontal">
-                                                                    <Ellipse Width="6"
-                                                                             Height="6"
-                                                                             Margin="0,0,5,0"
-                                                                             VerticalAlignment="Center"
-                                                                             Fill="{Binding StateBrush}" />
-                                                                    <TextBlock FontSize="10.2"
-                                                                               Foreground="{StaticResource MutedBrush}"
-                                                                               Text="{Binding StateText}" />
-                                                                </StackPanel>
-                                                            </Border>
-                                                        </Grid>
-                                                    </DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
-                                            <Button Grid.Column="2"
-                                                    Width="32"
-                                                    Height="32"
-                                                    Command="{Binding StartCodexOAuthLoginCommand}"
-                                                    Content="&#xE8D7;"
-                                                    Style="{StaticResource GatewayIconButtonStyle}"
-                                                    ToolTip="登录 Codex OAuth" />
-                                        </Grid>
-                                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                                   Visibility="{Binding TransparentProxyRouteSettingsItem.IsCodexOAuthAuth, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                   Text="Codex Backend" />
-                                        <TextBox Margin="0,0,0,8"
-                                                 FontFamily="Cascadia Mono, Consolas"
-                                                 Style="{StaticResource CompactInputTextBoxStyle}"
-                                                 ToolTip="留空使用 https://chatgpt.com/backend-api/codex"
-                                                 Text="{Binding TransparentProxyRouteSettingsItem.CodexBackendBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 Visibility="{Binding TransparentProxyRouteSettingsItem.IsCodexOAuthAuth, Converter={StaticResource BoolToVisibilityConverter}}" />
                                         <TextBlock Style="{StaticResource FieldLabelTextStyle}"
                                                    Visibility="{Binding TransparentProxyRouteSettingsItem.IsApiKeyAuth, Converter={StaticResource BoolToVisibilityConverter}}"
                                                    Text="接口密钥" />

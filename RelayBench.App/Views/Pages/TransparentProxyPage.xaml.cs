@@ -72,6 +72,37 @@ public partial class TransparentProxyPage : UserControl
         }
     }
 
+    private void TransparentProxyRouteRow_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is DataGridRow row)
+        {
+            row.IsSelected = true;
+            row.Focus();
+        }
+    }
+
+    private void TransparentProxyRouteSettingsOverlay_OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is not true)
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(
+            new Action(() =>
+            {
+                if (!TransparentProxyRouteSettingsBaseUrlBox.IsVisible)
+                {
+                    return;
+                }
+
+                TransparentProxyRouteSettingsBaseUrlBox.Focus();
+                Keyboard.Focus(TransparentProxyRouteSettingsBaseUrlBox);
+                TransparentProxyRouteSettingsBaseUrlBox.SelectAll();
+            }),
+            System.Windows.Threading.DispatcherPriority.Input);
+    }
+
     private bool HasOpenSettingsComboBox()
         => FindOpenComboBox(TransparentProxySettingsDrawerHost);
 

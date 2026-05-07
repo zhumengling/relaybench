@@ -359,9 +359,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand<CodexOAuthCredentialViewModel?> DisableCodexOAuthCredentialCommand { get; }
 
-    public AsyncRelayCommand<CodexOAuthCredentialViewModel?> DeleteCodexOAuthCredentialCommand { get; }
+    public AsyncRelayCommand<CodexOAuthCredentialViewModel?> ExportCodexOAuthCredentialCommand { get; }
 
-    public AsyncRelayCommand CreateCodexOAuthRouteCommand { get; }
+    public AsyncRelayCommand<CodexOAuthCredentialViewModel?> DeleteCodexOAuthCredentialCommand { get; }
 
     public AsyncRelayCommand<TransparentProxyRouteEditorItemViewModel?> OpenTransparentProxyRouteSettingsCommand { get; }
 

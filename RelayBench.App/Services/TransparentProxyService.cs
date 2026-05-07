@@ -148,6 +148,74 @@ public sealed class TransparentProxyService : IAsyncDisposable
         PublishMetrics();
     }
 
+    public void UpdateRoutes(IReadOnlyList<TransparentProxyRoute> routes)
+    {
+        lock (_syncRoot)
+        {
+            var config = _config;
+            if (config is null)
+            {
+                return;
+            }
+
+            var nextRoutes = routes.ToArray();
+            var nextIds = new HashSet<string>(nextRoutes.Select(static route => route.Id), StringComparer.OrdinalIgnoreCase);
+            var removedStates = _routeStates
+                .Where(item => !nextIds.Contains(item.Key))
+                .Select(static item => item.Value)
+                .ToArray();
+            if (removedStates.Length > 0)
+            {
+                _routeHealthStore.SaveAll(removedStates);
+                foreach (var routeId in removedStates.Select(static state => state.Id))
+                {
+                    _routeStates.Remove(routeId);
+                }
+            }
+
+            var missingIds = nextRoutes
+                .Select(static route => route.Id)
+                .Where(routeId => !_routeStates.ContainsKey(routeId))
+                .ToArray();
+            var persistedHealth = missingIds.Length == 0
+                ? new Dictionary<string, TransparentProxyRouteHealthSnapshot>(StringComparer.OrdinalIgnoreCase)
+                : _routeHealthStore.Load(missingIds);
+
+            foreach (var route in nextRoutes)
+            {
+                if (_routeStates.TryGetValue(route.Id, out var state))
+                {
+                    state.ApplyProtocol(route);
+                    route.CircuitOpenUntil = state.CircuitOpenUntil;
+                    continue;
+                }
+
+                state = new TransparentProxyRouteRuntimeState(route);
+                if (persistedHealth.TryGetValue(route.Id, out var snapshot))
+                {
+                    state.ApplyHealthSnapshot(snapshot);
+                    route.CircuitOpenUntil = state.CircuitOpenUntil;
+                }
+
+                _routeStates[route.Id] = state;
+            }
+
+            foreach (var key in _sessionRouteBindings
+                         .Where(item => !nextIds.Contains(item.Value.RouteId))
+                         .Select(static item => item.Key)
+                         .ToArray())
+            {
+                _sessionRouteBindings.Remove(key);
+            }
+
+            _config = config with { Routes = nextRoutes };
+            _responseCache.ClearModelsList();
+            _roundRobinCursor = 0;
+        }
+
+        PublishMetrics();
+    }
+
     public void ResetTokenTelemetry()
     {
         _tokenTelemetry.Reset();
