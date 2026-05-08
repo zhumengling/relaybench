@@ -9,4 +9,6 @@ public sealed record ClientApplyTarget(
     bool IsProtocolSupported,
     bool IsDefaultSelected,
     string ConfigSummary,
-    string? DisabledReason);
+    string? DisabledReason,
+    bool HasSettings = false,
+    CodexConfigTemplate? CodexConfigTemplate = null);

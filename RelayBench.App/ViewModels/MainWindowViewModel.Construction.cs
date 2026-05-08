@@ -227,6 +227,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ToggleClientApplyTargetSelectionCommand = new AsyncRelayCommand<ClientApplyTargetItemViewModel?>(ToggleClientApplyTargetSelectionAsync);
         ConfirmClientApplyTargetDialogCommand = new AsyncRelayCommand(ConfirmClientApplyTargetDialogAsync, CanConfirmClientApplyTargetDialog);
         CancelClientApplyTargetDialogCommand = new AsyncRelayCommand(CancelClientApplyTargetDialogAsync);
+        OpenCodexConfigTemplateDialogCommand = new AsyncRelayCommand<ClientApplyTargetItemViewModel?>(OpenCodexConfigTemplateDialogAsync, item => item?.HasSettings == true);
+        SaveCodexConfigTemplateCommand = new AsyncRelayCommand(SaveCodexConfigTemplateDialogAsync, () => IsCodexConfigTemplateDialogOpen);
+        ResetCodexConfigTemplateCommand = new AsyncRelayCommand(ResetCodexConfigTemplateDialogAsync, () => IsCodexConfigTemplateDialogOpen);
+        CloseCodexConfigTemplateDialogCommand = new AsyncRelayCommand(CloseCodexConfigTemplateDialogAsync);
         OpenAboutDialogCommand = new AsyncRelayCommand(OpenAboutDialogAsync);
         CloseAboutDialogCommand = new AsyncRelayCommand(CloseAboutDialogAsync);
         OpenProjectHomepageCommand = new AsyncRelayCommand(OpenProjectHomepageAsync);

@@ -6,20 +6,33 @@ public sealed class ClientAppApplyPlanner
 {
     private static readonly ClientApplyTargetDefinition[] TargetDefinitions =
     [
-        new("codex-cli", "Codex CLI", ClientApplyProtocolKind.Responses, "~/.codex/config.toml（Codex 系列共用配置）"),
-        new("codex-desktop", "Codex Desktop", ClientApplyProtocolKind.Responses, "~/.codex/config.toml（Codex 系列共用配置）"),
-        new("vscode-codex", "VSCode Codex", ClientApplyProtocolKind.Responses, "~/.codex/config.toml（Codex 系列共用配置）"),
-        new("claude-cli", "Claude CLI", ClientApplyProtocolKind.Anthropic, "~/.claude/settings.json")
+        new("codex", "Codex", ClientApplyProtocolKind.Responses, "~/.codex/config.toml（Codex 共享配置）", true),
+        new("claude-cli", "Claude CLI", ClientApplyProtocolKind.Anthropic, "~/.claude/settings.json", false)
+    ];
+
+    private static readonly string[] CodexClientNames =
+    [
+        "Codex",
+        "Codex CLI",
+        "Codex Desktop",
+        "VSCode Codex"
     ];
 
     public IReadOnlyList<ClientApplyTarget> BuildTargets(ClientAppApplyPlanContext context)
     {
         var installedNames = new HashSet<string>(context.InstalledClientNames, StringComparer.OrdinalIgnoreCase);
+        var codexTemplate = CodexFamilyConfigApplyService.CreateDefaultTemplate(
+            context.BaseUrl,
+            context.ApiKey,
+            context.Model,
+            "RelayBench",
+            modelContextWindow: null,
+            preferredWireApi: ProxyWireApiProbeService.ResponsesWireApi);
         List<ClientApplyTarget> targets = [];
 
         foreach (var definition in TargetDefinitions)
         {
-            var installed = installedNames.Count == 0 || installedNames.Contains(definition.DisplayName);
+            var installed = IsInstalled(definition, installedNames);
             var protocol = definition.Protocol;
             var protocolSupported = IsProtocolSupported(definition, context);
             var hasRequiredFields =
@@ -38,10 +51,27 @@ public sealed class ClientAppApplyPlanner
                 protocolSupported,
                 defaultSelected,
                 BuildConfigSummary(definition, context),
-                BuildDisabledReason(installed, protocolSupported, hasRequiredFields, definition)));
+                BuildDisabledReason(installed, protocolSupported, hasRequiredFields, definition),
+                definition.HasSettings,
+                definition.HasSettings ? codexTemplate : null));
         }
 
         return targets;
+    }
+
+    private static bool IsInstalled(ClientApplyTargetDefinition definition, HashSet<string> installedNames)
+    {
+        if (installedNames.Count == 0)
+        {
+            return true;
+        }
+
+        if (IsCodexTarget(definition))
+        {
+            return CodexClientNames.Any(installedNames.Contains);
+        }
+
+        return installedNames.Contains(definition.DisplayName);
     }
 
     private static bool IsProtocolSupported(ClientApplyTargetDefinition definition, ClientAppApplyPlanContext context)
@@ -81,7 +111,9 @@ public sealed class ClientAppApplyPlanner
     {
         if (!installed)
         {
-            return "本机未发现该软件。";
+            return IsCodexTarget(definition)
+                ? "本机未发现 Codex CLI、Codex Desktop 或 VSCode Codex 线索。"
+                : "本机未发现该软件。";
         }
 
         if (!hasRequiredFields)
@@ -98,7 +130,7 @@ public sealed class ClientAppApplyPlanner
 
             return definition.Protocol switch
             {
-                ClientApplyProtocolKind.Responses => "Codex 系列只支持 Responses，当前 /v1/responses 探测未通过。",
+                ClientApplyProtocolKind.Responses => "Codex 只支持 Responses，当前 /v1/responses 探测未通过。",
                 ClientApplyProtocolKind.OpenAiCompatible => "当前模型未通过 OpenAI 兼容探测。",
                 ClientApplyProtocolKind.Anthropic => "当前模型未通过 Anthropic Messages 探测。",
                 _ => "当前模型不支持该协议。"
@@ -108,6 +140,9 @@ public sealed class ClientAppApplyPlanner
         return null;
     }
 
+    private static bool IsCodexTarget(ClientApplyTargetDefinition definition)
+        => string.Equals(definition.Id, "codex", StringComparison.OrdinalIgnoreCase);
+
     private static bool IsClaudeTarget(ClientApplyTargetDefinition definition)
         => string.Equals(definition.Id, "claude-cli", StringComparison.OrdinalIgnoreCase);
 
@@ -115,7 +150,8 @@ public sealed class ClientAppApplyPlanner
         string Id,
         string DisplayName,
         ClientApplyProtocolKind Protocol,
-        string ConfigSummary);
+        string ConfigSummary,
+        bool HasSettings);
 }
 
 public sealed record ClientAppApplyPlanContext(

@@ -109,7 +109,7 @@ public sealed partial class MainWindowViewModel
         => result.AppliedTargets.Count == 0
             ? "未发现可应用的 Codex 软件"
             : mergeResult is { Succeeded: true }
-                ? $"已应用到：{string.Join("、", result.AppliedTargets)}；聊天已整理"
+                ? $"已应用到：{string.Join("、", result.AppliedTargets)}；Codex 历史已同步"
                 : $"已应用到：{string.Join("、", result.AppliedTargets)}";
 
     private void ShowBatchRankingApplyToast(string message)

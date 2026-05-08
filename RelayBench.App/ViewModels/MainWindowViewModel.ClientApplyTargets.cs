@@ -37,7 +37,7 @@ public sealed partial class MainWindowViewModel
         var targets = BuildClientApplyTargets(settings, protocolProbeResult);
         var summary =
             BuildProtocolProbeDetail(protocolProbeResult) +
-            "\n\n请选择本次要写入配置的软件。本次结果来自真实强制探测：Codex 系列只在 Responses 可用时开放；Claude CLI 可直连 Anthropic，或在仅 OpenAI Chat 可用时通过 RelayBench 本地统一出口转换。";
+            "\n\n请选择本次要写入配置的软件。本次结果来自真实强制探测：Codex 只在 Responses 可用时开放；Claude CLI 可直连 Anthropic，或在仅 OpenAI Chat 可用时通过 RelayBench 本地统一出口转换。";
         return await ShowClientApplyTargetDialogAsync(title, summary, targets);
     }
 
@@ -73,7 +73,7 @@ public sealed partial class MainWindowViewModel
             }
         }
 
-        builder.Append($"聊天记录：{mergeResult?.Summary ?? "保持原样"}");
+        builder.Append($"Codex 历史记录：{mergeResult?.Summary ?? "保持原样"}");
         return builder.ToString();
     }
 
@@ -109,7 +109,7 @@ public sealed partial class MainWindowViewModel
         builder.AppendLine();
         builder.AppendLine($"更新文件：{(result.ChangedFiles.Count == 0 ? "无" : string.Join("\n", result.ChangedFiles))}");
         builder.AppendLine($"备份文件：{(result.BackupFiles.Count == 0 ? "无" : string.Join("\n", result.BackupFiles))}");
-        builder.AppendLine($"聊天记录：{mergeResult?.Summary ?? "保持原样"}");
+        builder.AppendLine($"Codex 历史记录：{mergeResult?.Summary ?? "保持原样"}");
         if (mergeResult is not null)
         {
             builder.AppendLine(BuildCodexChatMergeDetail(mergeResult));
@@ -140,7 +140,7 @@ public sealed partial class MainWindowViewModel
 
         return result.Succeeded
             ? mergeResult is { Succeeded: false }
-                ? $"配置已更新，但聊天整理失败：{mergeResult.Error ?? mergeResult.Summary}"
+                ? $"配置已更新，但 Codex 历史同步失败：{mergeResult.Error ?? mergeResult.Summary}"
                 : mergeResult is { Succeeded: true }
                     ? $"{result.Summary}；{mergeResult.Summary}"
                     : result.Summary

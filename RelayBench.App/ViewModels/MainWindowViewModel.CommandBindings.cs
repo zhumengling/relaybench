@@ -415,6 +415,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand CancelClientApplyTargetDialogCommand { get; }
 
+    public AsyncRelayCommand<ClientApplyTargetItemViewModel?> OpenCodexConfigTemplateDialogCommand { get; }
+
+    public AsyncRelayCommand SaveCodexConfigTemplateCommand { get; }
+
+    public AsyncRelayCommand ResetCodexConfigTemplateCommand { get; }
+
+    public AsyncRelayCommand CloseCodexConfigTemplateDialogCommand { get; }
+
     public AsyncRelayCommand OpenAboutDialogCommand { get; }
 
     public AsyncRelayCommand CloseAboutDialogCommand { get; }

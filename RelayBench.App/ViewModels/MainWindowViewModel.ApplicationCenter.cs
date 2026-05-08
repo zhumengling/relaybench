@@ -32,14 +32,12 @@ public sealed partial class MainWindowViewModel
             builder.AppendLine($"显示名称：{ResolveCurrentProxyDisplayName() ?? "默认名称"}");
             builder.AppendLine();
             builder.AppendLine("将会更新：");
-            builder.AppendLine("- ~/.codex/config.toml（Codex 系列共用配置）");
+            builder.AppendLine("- ~/.codex/config.toml（Codex 共享配置）");
             builder.AppendLine("- ~/.codex/auth.json（仅清理旧版 API Key 接管，保留登录态）");
             builder.AppendLine("- ~/.claude/settings.json（Anthropic 直连，或 Chat-only 时指向 RelayBench 本地统一出口）");
             builder.AppendLine();
             builder.AppendLine("适用软件：");
-            builder.AppendLine("- Codex CLI");
-            builder.AppendLine("- Codex Desktop");
-            builder.AppendLine("- VSCode Codex");
+            builder.AppendLine("- Codex");
             builder.AppendLine("- Claude CLI");
             builder.AppendLine();
             builder.AppendLine("完成后会自动重新扫描本地应用状态。");
@@ -48,7 +46,7 @@ public sealed partial class MainWindowViewModel
             if (missing.Count > 0)
             {
                 builder.AppendLine();
-                builder.AppendLine($"待补全：{string.Join("、", missing)}");
+                builder.AppendLine($"待补齐：{string.Join("、", missing)}");
             }
             else if (!CanApplyEndpointToCodexApps(ApplicationCenterBaseUrl, ApplicationCenterApiKey, ApplicationCenterModel))
             {
@@ -126,7 +124,7 @@ public sealed partial class MainWindowViewModel
                 {
                     var shouldMergeChats = await ConfirmCodexChatMergeAsync(
                         CodexChatMergeTarget.ThirdPartyCustom,
-                        "切到第三方");
+                        "切到 RelayBench");
                     mergeResult = await MergeCodexChatsIfRequestedAsync(
                         shouldMergeChats,
                         CodexChatMergeTarget.ThirdPartyCustom);

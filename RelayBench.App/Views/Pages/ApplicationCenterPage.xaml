@@ -497,6 +497,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
                             <StackPanel Grid.Row="0">
@@ -584,6 +585,7 @@
                                          Style="{StaticResource ReadOnlyOutputTextBoxStyle}"
                                          Text="{Binding ApplicationCenterApplyPreviewDetail, Mode=OneWay}" />
                             </Expander>
+
                         </Grid>
                     </Border>
 

@@ -174,7 +174,7 @@ public sealed partial class MainWindowViewModel
     {
         var selectedTargets = ClientApplyTargetItems
             .Where(item => item.IsSelectable && item.IsSelected)
-            .Select(item => new ClientApplyTargetSelection(item.TargetId, item.Protocol))
+            .Select(item => new ClientApplyTargetSelection(item.TargetId, item.Protocol, item.CodexConfigTemplate))
             .ToArray();
 
         if (selectedTargets.Length == 0)

@@ -17,6 +17,8 @@ public sealed class ClientApplyTargetItemViewModel : ObservableObject
         IsProtocolSupported = target.IsProtocolSupported;
         ConfigSummary = target.ConfigSummary;
         DisabledReason = target.DisabledReason ?? string.Empty;
+        HasSettings = target.HasSettings;
+        DefaultCodexConfigTemplate = target.CodexConfigTemplate;
         _isSelected = target.IsSelectable && target.IsProtocolSupported && target.IsDefaultSelected;
     }
 
@@ -40,6 +42,12 @@ public sealed class ClientApplyTargetItemViewModel : ObservableObject
     public string DisabledReason { get; }
 
     public bool HasDisabledReason => !string.IsNullOrWhiteSpace(DisabledReason);
+
+    public bool HasSettings { get; }
+
+    public CodexConfigTemplate? CodexConfigTemplate { get; set; }
+
+    public CodexConfigTemplate? DefaultCodexConfigTemplate { get; }
 
     public bool IsSelected
     {

@@ -39,10 +39,10 @@ public sealed partial class MainWindowViewModel
 
                 StatusMessage = result.Succeeded
                     ? mergeResult is { Succeeded: false }
-                        ? $"默认设置已恢复，但聊天整理失败：{mergeResult.Error ?? mergeResult.Summary}"
+                        ? $"默认设置已恢复，但 Codex 历史同步失败：{mergeResult.Error ?? mergeResult.Summary}"
                         : mergeResult is { Succeeded: true }
-                            ? $"{result.Summary}；{mergeResult.Summary}"
-                            : result.Summary
+                        ? $"{result.Summary}；{mergeResult.Summary}"
+                        : result.Summary
                     : $"还原失败：{result.Error ?? result.Summary}";
 
                 var detail = result.ChangedFiles.Count == 0
@@ -51,12 +51,12 @@ public sealed partial class MainWindowViewModel
 
                 if (mergeResult is not null)
                 {
-                    detail += $"\n\n聊天记录：\n{BuildCodexChatMergeDetail(mergeResult)}";
+                    detail += $"\n\nCodex 历史记录：\n{BuildCodexChatMergeDetail(mergeResult)}";
                 }
 
                 AppendModuleOutput(
                     $"{check.Name} 默认配置还原",
-                    $"{result.Summary}\n聊天记录：{mergeResult?.Summary ?? "保持原样"}",
+                    $"{result.Summary}\nCodex 历史记录：{mergeResult?.Summary ?? "保持原样"}",
                     detail);
 
                 if (result.Succeeded)

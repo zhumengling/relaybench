@@ -6,15 +6,46 @@ namespace RelayBench.Core.Services;
 
 public sealed class CodexFamilyConfigApplyService
 {
-    private const string CodexProviderKey = "custom";
-    private const string CodexProviderName = "RelayBench Custom";
+    private const string CodexProviderKey = "relaybench";
+    private const string CodexProviderName = "RelayBench";
     private const string CodexResponsesWireApi = "responses";
+    private const string CodexDefaultHttpHeaders = "{ \"Content-Type\" = \"application/json\" }";
 
     private readonly IClientApiConfigMutationEnvironment _environment;
 
     public CodexFamilyConfigApplyService(IClientApiConfigMutationEnvironment? environment = null)
     {
         _environment = environment ?? new ClientApiDiagnosticEnvironment();
+    }
+
+    public static CodexConfigTemplate CreateDefaultTemplate(
+        string? baseUrl,
+        string? apiKey,
+        string? model,
+        string? displayName = null,
+        int? modelContextWindow = null,
+        string? preferredWireApi = null)
+    {
+        var normalizedModel = model?.Trim() ?? string.Empty;
+        var normalizedBaseUrl = NormalizeCodexBaseUrl(baseUrl);
+        var resolvedContextWindow = ModelContextWindowCatalog.ResolveContextWindow(normalizedModel, modelContextWindow);
+        var autoCompactTokenLimit = ModelContextWindowCatalog.CalculateAutoCompactTokenLimit(resolvedContextWindow);
+        var wireApi = ResolveCodexWireApiPreference(normalizedBaseUrl, normalizedModel, preferredWireApi);
+
+        return new CodexConfigTemplate(
+            normalizedModel,
+            CodexProviderKey,
+            resolvedContextWindow,
+            autoCompactTokenLimit,
+            NormalizeCodexProviderName(displayName, normalizedModel),
+            normalizedBaseUrl,
+            wireApi,
+            apiKey?.Trim() ?? string.Empty,
+            CodexDefaultHttpHeaders,
+            RequestMaxRetries: null,
+            StreamMaxRetries: null,
+            StreamIdleTimeoutMs: null,
+            AdditionalRawSettings: null);
     }
 
     public Task<ClientAppApplyResult> ApplyAsync(
@@ -25,17 +56,21 @@ public sealed class CodexFamilyConfigApplyService
         int? modelContextWindow = null,
         string? preferredWireApi = null,
         IReadOnlyList<ClientApplyTargetSelection>? targetSelections = null,
+        CodexConfigTemplate? configTemplate = null,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var normalizedBaseUrl = NormalizeCodexBaseUrl(baseUrl);
-        var normalizedApiKey = apiKey?.Trim() ?? string.Empty;
-        var normalizedModel = model?.Trim() ?? string.Empty;
-        var normalizedDisplayName = NormalizeCodexProviderName(displayName, normalizedModel);
-        var resolvedContextWindow = ModelContextWindowCatalog.ResolveContextWindow(normalizedModel, modelContextWindow);
-        var autoCompactTokenLimit = ModelContextWindowCatalog.CalculateAutoCompactTokenLimit(resolvedContextWindow);
-        var wireApi = ResolveCodexWireApiPreference(normalizedBaseUrl, normalizedModel, preferredWireApi);
+        var template = NormalizeTemplate(
+            configTemplate,
+            CreateDefaultTemplate(baseUrl, apiKey, model, displayName, modelContextWindow, preferredWireApi));
+        var normalizedBaseUrl = NormalizeCodexBaseUrl(template.BaseUrl);
+        var normalizedApiKey = template.ExperimentalBearerToken.Trim();
+        var normalizedModel = template.Model.Trim();
+        var normalizedDisplayName = NormalizeCodexProviderName(template.ProviderName, normalizedModel);
+        var resolvedContextWindow = template.ModelContextWindow;
+        var autoCompactTokenLimit = template.ModelAutoCompactTokenLimit;
+        var wireApi = ResolveCodexWireApiPreference(normalizedBaseUrl, normalizedModel, template.WireApi);
 
         if (string.IsNullOrWhiteSpace(normalizedBaseUrl))
         {
@@ -92,7 +127,8 @@ public sealed class CodexFamilyConfigApplyService
                 normalizedDisplayName,
                 resolvedContextWindow,
                 autoCompactTokenLimit,
-                wireApi),
+                wireApi,
+                template),
             changedFiles,
             backupFiles);
         ApplyFile(
@@ -150,31 +186,32 @@ public sealed class CodexFamilyConfigApplyService
                 group => group.First().Protocol,
                 StringComparer.OrdinalIgnoreCase);
 
-        (string Id, string Name)[] knownTargets =
-        [
-            ("codex-cli", "Codex CLI"),
-            ("codex-desktop", "Codex Desktop"),
-            ("vscode-codex", "VSCode Codex")
-        ];
+        if (selectedProtocols is { Count: > 0 } &&
+            !selectedProtocols.ContainsKey("codex") &&
+            !selectedProtocols.Keys.Any(static id =>
+                string.Equals(id, "codex-cli", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(id, "codex-desktop", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(id, "vscode-codex", StringComparison.OrdinalIgnoreCase)))
+        {
+            return [];
+        }
 
-        return knownTargets
-            .Where(target => selectedProtocols is null || selectedProtocols.Count == 0 || selectedProtocols.ContainsKey(target.Id))
-            .Select(target => new ClientAppTargetApplyResult(
-                target.Id,
-                target.Name,
-                selectedProtocols is not null && selectedProtocols.TryGetValue(target.Id, out var protocol)
-                    ? protocol
-                    : ClientApplyProtocolKind.Responses,
+        return
+        [
+            new ClientAppTargetApplyResult(
+                "codex",
+                "Codex",
+                ClientApplyProtocolKind.Responses,
                 succeeded,
                 changedFiles,
                 backupFiles,
-                error))
-            .ToArray();
+                error)
+        ];
     }
 
     private static string FormatAppliedTargets(IReadOnlyList<string> appliedTargets)
         => appliedTargets.Count == 0
-            ? "Codex 系列"
+            ? "Codex"
             : string.Join(" / ", appliedTargets);
 
     private void ApplyFile(
@@ -227,30 +264,128 @@ public sealed class CodexFamilyConfigApplyService
         string displayName,
         int? contextWindow,
         int? autoCompactTokenLimit,
-        string wireApi)
+        string wireApi,
+        CodexConfigTemplate template)
     {
         List<string> lines = SplitLines(existingContent);
 
-        UpsertTopLevelString(lines, "model_provider", CodexProviderKey);
+        RemoveLegacyRelayBenchCustomProvider(lines);
         UpsertTopLevelString(lines, "model", model);
+        UpsertTopLevelString(lines, "model_provider", CodexProviderKey);
         UpsertOptionalTopLevelInteger(lines, "model_context_window", contextWindow);
         UpsertOptionalTopLevelInteger(lines, "model_auto_compact_token_limit", autoCompactTokenLimit);
-        UpsertSectionString(lines, "model_providers.custom", "name", displayName);
-        UpsertSectionString(lines, "model_providers.custom", "base_url", baseUrl);
-        UpsertSectionString(lines, "model_providers.custom", "wire_api", wireApi);
+
+        var providerSection = $"model_providers.{CodexProviderKey}";
+        UpsertSectionString(lines, providerSection, "name", displayName);
+        UpsertSectionString(lines, providerSection, "base_url", baseUrl);
+        UpsertSectionString(lines, providerSection, "wire_api", wireApi);
         UpsertSectionRawValue(
             lines,
-            "model_providers.custom",
+            providerSection,
             "http_headers",
-            "{ \"Content-Type\" = \"application/json\" }");
-        UpsertSectionString(lines, "model_providers.custom", "experimental_bearer_token", apiKey);
+            NormalizeHttpHeaders(template.HttpHeaders));
+        UpsertSectionString(lines, providerSection, "experimental_bearer_token", apiKey);
+        UpsertOptionalSectionInteger(lines, providerSection, "request_max_retries", template.RequestMaxRetries);
+        UpsertOptionalSectionInteger(lines, providerSection, "stream_max_retries", template.StreamMaxRetries);
+        UpsertOptionalSectionInteger(lines, providerSection, "stream_idle_timeout_ms", template.StreamIdleTimeoutMs);
+        ApplyAdditionalTemplateSettings(lines, template.AdditionalRawSettings);
 
         return JoinLines(lines);
+    }
+
+    private static CodexConfigTemplate NormalizeTemplate(CodexConfigTemplate? template, CodexConfigTemplate fallback)
+    {
+        if (template is null)
+        {
+            return fallback;
+        }
+
+        var model = string.IsNullOrWhiteSpace(template.Model) ? fallback.Model : template.Model.Trim();
+        var baseUrl = string.IsNullOrWhiteSpace(template.BaseUrl) ? fallback.BaseUrl : template.BaseUrl.Trim();
+        var apiKey = string.IsNullOrWhiteSpace(template.ExperimentalBearerToken)
+            ? fallback.ExperimentalBearerToken
+            : template.ExperimentalBearerToken.Trim();
+        var providerName = string.IsNullOrWhiteSpace(template.ProviderName)
+            ? fallback.ProviderName
+            : template.ProviderName.Trim();
+
+        return template with
+        {
+            Model = model,
+            ModelProvider = CodexProviderKey,
+            ProviderName = providerName,
+            BaseUrl = baseUrl,
+            WireApi = CodexResponsesWireApi,
+            ExperimentalBearerToken = apiKey,
+            HttpHeaders = NormalizeHttpHeaders(template.HttpHeaders),
+            AdditionalRawSettings = template.AdditionalRawSettings
+        };
+    }
+
+    private static string NormalizeHttpHeaders(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? CodexDefaultHttpHeaders
+            : value.Trim();
+
+    private static void RemoveLegacyRelayBenchCustomProvider(List<string> lines)
+    {
+        var sectionIndex = FindSectionHeader(lines, "[model_providers.custom]");
+        if (sectionIndex < 0)
+        {
+            return;
+        }
+
+        var sectionEnd = FindNextSectionHeader(lines, sectionIndex + 1);
+        if (sectionEnd < 0)
+        {
+            sectionEnd = lines.Count;
+        }
+
+        if (!SectionContainsRelayBenchProviderName(lines, sectionIndex + 1, sectionEnd))
+        {
+            return;
+        }
+
+        lines.RemoveRange(sectionIndex, sectionEnd - sectionIndex);
+        while (sectionIndex < lines.Count &&
+               sectionIndex > 0 &&
+               string.IsNullOrWhiteSpace(lines[sectionIndex]) &&
+               string.IsNullOrWhiteSpace(lines[sectionIndex - 1]))
+        {
+            lines.RemoveAt(sectionIndex);
+        }
+    }
+
+    private static bool SectionContainsRelayBenchProviderName(List<string> lines, int startIndex, int endExclusive)
+    {
+        var nameIndex = FindKeyAssignment(lines, "name", startIndex, endExclusive);
+        if (nameIndex < 0)
+        {
+            return false;
+        }
+
+        return lines[nameIndex].Contains("RelayBench", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void UpsertTopLevelString(List<string> lines, string key, string value)
     {
         var lineContent = $"{key} = {SerializeTomlString(value)}";
+        var firstSectionIndex = FindNextSectionHeader(lines, 0);
+        var searchEnd = firstSectionIndex < 0 ? lines.Count : firstSectionIndex;
+        var existingIndex = FindKeyAssignment(lines, key, 0, searchEnd);
+
+        if (existingIndex >= 0)
+        {
+            lines[existingIndex] = lineContent;
+            return;
+        }
+
+        lines.Insert(searchEnd, lineContent);
+    }
+
+    private static void UpsertTopLevelRawValue(List<string> lines, string key, string rawValue)
+    {
+        var lineContent = $"{key} = {rawValue}";
         var firstSectionIndex = FindNextSectionHeader(lines, 0);
         var searchEnd = firstSectionIndex < 0 ? lines.Count : firstSectionIndex;
         var existingIndex = FindKeyAssignment(lines, key, 0, searchEnd);
@@ -284,6 +419,17 @@ public sealed class CodexFamilyConfigApplyService
         }
 
         lines.Insert(searchEnd, lineContent);
+    }
+
+    private static void UpsertOptionalSectionInteger(List<string> lines, string sectionName, string key, int? value)
+    {
+        if (value is null)
+        {
+            RemoveSectionAssignment(lines, sectionName, key);
+            return;
+        }
+
+        UpsertSectionRawValue(lines, sectionName, key, value.Value.ToString());
     }
 
     private static void UpsertSectionString(List<string> lines, string sectionName, string key, string value)
@@ -332,6 +478,113 @@ public sealed class CodexFamilyConfigApplyService
         {
             lines.RemoveAt(existingIndex);
         }
+    }
+
+    private static void RemoveSectionAssignment(List<string> lines, string sectionName, string key)
+    {
+        var header = $"[{sectionName}]";
+        var sectionIndex = FindSectionHeader(lines, header);
+        if (sectionIndex < 0)
+        {
+            return;
+        }
+
+        var sectionEnd = FindNextSectionHeader(lines, sectionIndex + 1);
+        if (sectionEnd < 0)
+        {
+            sectionEnd = lines.Count;
+        }
+
+        var existingIndex = FindKeyAssignment(lines, key, sectionIndex + 1, sectionEnd);
+        if (existingIndex >= 0)
+        {
+            lines.RemoveAt(existingIndex);
+        }
+    }
+
+    private static void ApplyAdditionalTemplateSettings(
+        List<string> lines,
+        IReadOnlyDictionary<string, string>? additionalRawSettings)
+    {
+        if (additionalRawSettings is null || additionalRawSettings.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var (path, rawValue) in additionalRawSettings)
+        {
+            if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(rawValue) ||
+                IsBuiltInTemplatePath(path))
+            {
+                continue;
+            }
+
+            var splitIndex = FindLastUnquotedDot(path);
+            if (splitIndex <= 0 || splitIndex >= path.Length - 1)
+            {
+                UpsertTopLevelRawValue(lines, path.Trim(), rawValue.Trim());
+                continue;
+            }
+
+            var sectionName = path[..splitIndex].Trim();
+            var key = path[(splitIndex + 1)..].Trim();
+            if (string.IsNullOrWhiteSpace(sectionName) || string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            UpsertSectionRawValue(lines, sectionName, key, rawValue.Trim());
+        }
+    }
+
+    private static bool IsBuiltInTemplatePath(string path)
+        => path is
+            "model" or
+            "model_provider" or
+            "model_context_window" or
+            "model_auto_compact_token_limit" or
+            "model_providers.relaybench.name" or
+            "model_providers.relaybench.base_url" or
+            "model_providers.relaybench.wire_api" or
+            "model_providers.relaybench.experimental_bearer_token" or
+            "model_providers.relaybench.http_headers" or
+            "model_providers.relaybench.request_max_retries" or
+            "model_providers.relaybench.stream_max_retries" or
+            "model_providers.relaybench.stream_idle_timeout_ms";
+
+    private static int FindLastUnquotedDot(string value)
+    {
+        var inQuote = false;
+        var escaped = false;
+        var lastDot = -1;
+        for (var index = 0; index < value.Length; index++)
+        {
+            var ch = value[index];
+            if (escaped)
+            {
+                escaped = false;
+                continue;
+            }
+
+            if (ch == '\\')
+            {
+                escaped = true;
+                continue;
+            }
+
+            if (ch == '"')
+            {
+                inQuote = !inQuote;
+                continue;
+            }
+
+            if (ch == '.' && !inQuote)
+            {
+                lastDot = index;
+            }
+        }
+
+        return lastDot;
     }
 
     private static int FindSectionHeader(List<string> lines, string header)

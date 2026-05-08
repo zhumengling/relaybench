@@ -43,6 +43,9 @@ public sealed class ClientAppConfigApplyService
             var codexPreferredWireApi = ResolveCodexPreferredWireApi(
                 endpoint.PreferredWireApi,
                 codexSelections);
+            var codexTemplate = codexSelections
+                .Select(static target => target.CodexConfigTemplate)
+                .FirstOrDefault(static template => template is not null);
             results.Add(await _codexService.ApplyAsync(
                 endpoint.BaseUrl,
                 endpoint.ApiKey,
@@ -51,6 +54,7 @@ public sealed class ClientAppConfigApplyService
                 endpoint.ContextWindow,
                 codexPreferredWireApi,
                 codexSelections,
+                codexTemplate,
                 cancellationToken));
         }
 

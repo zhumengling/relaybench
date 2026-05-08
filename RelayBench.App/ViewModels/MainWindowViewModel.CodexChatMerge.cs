@@ -16,12 +16,12 @@ public sealed partial class MainWindowViewModel
     {
         if (!shouldMerge)
         {
-            detailBuilder?.AppendLine("聊天记录：保持原样");
+            detailBuilder?.AppendLine("Codex 历史记录：保持原样");
             return null;
         }
 
         var mergeResult = await _codexChatMergeService.MergeAsync(target, targetModel);
-        detailBuilder?.AppendLine("聊天记录：");
+        detailBuilder?.AppendLine("Codex 历史记录：");
         detailBuilder?.AppendLine(BuildCodexChatMergeDetail(mergeResult));
         return mergeResult;
     }
@@ -31,10 +31,10 @@ public sealed partial class MainWindowViewModel
         StringBuilder builder = new();
         builder.AppendLine($"显示位置：{CodexChatMergeService.BuildTargetDisplayName(result.Target)}");
         builder.AppendLine($"结果：{result.Summary}");
-        builder.AppendLine($"整理聊天数：{result.RebuckettedThreadCount}");
+        builder.AppendLine($"SQLite provider 更新：{result.RebuckettedThreadCount}");
         builder.AppendLine($"同步记录文件：{result.UpdatedSessionFileCount}");
         builder.AppendLine($"已处理文件：{(result.ChangedFiles.Count == 0 ? "无" : string.Join("\n", result.ChangedFiles))}");
-        builder.AppendLine($"备份文件：{(result.BackupFiles.Count == 0 ? "无" : string.Join("\n", result.BackupFiles))}");
+        builder.AppendLine($"备份目录：{(result.BackupFiles.Count == 0 ? "无" : string.Join("\n", result.BackupFiles))}");
         builder.AppendLine($"提示：{result.Warning ?? "无"}");
         builder.Append($"错误：{result.Error ?? "无"}");
         return builder.ToString();
