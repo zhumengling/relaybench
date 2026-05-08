@@ -36,7 +36,7 @@ public sealed partial class MainWindowViewModel
                 settings.BaseUrl,
                 settings.ApiKey,
                 FirstNonEmpty(result.EffectiveModel, result.RequestedModel, settings.Model),
-                responsesSupported || result.ChatRequestSucceeded);
+                responsesSupported);
         }
         catch (Exception ex)
         {
@@ -64,7 +64,7 @@ public sealed partial class MainWindowViewModel
                 settings.BaseUrl,
                 settings.ApiKey,
                 settings.Model,
-                result.ResponsesSupported || result.ChatCompletionsSupported);
+                result.ResponsesSupported);
             if (!string.IsNullOrWhiteSpace(result.PreferredWireApi))
             {
                 StatusMessage = $"已识别 Codex 接口链接方式：{result.PreferredWireApi}。";
@@ -107,8 +107,8 @@ public sealed partial class MainWindowViewModel
         return new CodexApplyCachedModelInfo(
             cached?.ContextWindow ?? ResolveProxyModelContextWindow(model),
             hasCurrentProtocolProbe &&
-            (cached is { ResponsesSupported: true } or { ChatCompletionsSupported: true })
-                ? cached.PreferredWireApi
+            cached is { ResponsesSupported: true }
+                ? ProxyWireApiProbeService.ResponsesWireApi
                 : null);
     }
 

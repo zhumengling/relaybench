@@ -153,6 +153,11 @@ internal sealed record CodexOAuthAuthMaterial(
     string AccountLabel,
     DateTimeOffset? ExpiresAt);
 
+internal sealed record CodexOAuthImportResult(
+    CodexOAuthCredential Credential,
+    bool Refreshed,
+    string RefreshError);
+
 internal sealed record CodexOAuthCallbackResult(
     string Code,
     string State,

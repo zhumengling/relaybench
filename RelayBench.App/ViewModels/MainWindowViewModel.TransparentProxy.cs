@@ -940,7 +940,11 @@ public sealed partial class MainWindowViewModel
                     "RelayBench Transparent Proxy",
                     null,
                     protocolProbeResult.PreferredWireApi);
-                var result = await _clientAppConfigApplyService.ApplyAsync(endpoint, selectedTargets);
+                var anthropicEndpoint = BuildLocalClaudeEndpointIfSelected(settings.Model, selectedTargets);
+                var result = await _clientAppConfigApplyService.ApplyAsync(
+                    endpoint,
+                    selectedTargets,
+                    anthropicEndpoint);
 
                 CodexChatMergeResult? mergeResult = null;
                 if (ShouldAskCodexChatMerge(selectedTargets, result))
@@ -1021,6 +1025,7 @@ public sealed partial class MainWindowViewModel
         IsTransparentProxyProviderSettingsOpen = true;
         IsTransparentProxyListenSettingsOpen = false;
         IsTransparentProxyAppCaptureSettingsOpen = false;
+        IsTransparentProxyOAuthPanelOpen = false;
         TransparentProxyStatusSummary = $"已从当前接口和批量入口组生成 {TransparentProxyRouteEditorItems.Count} 个透明代理节点。";
         SaveState();
         return Task.CompletedTask;
@@ -1101,6 +1106,7 @@ public sealed partial class MainWindowViewModel
             IsTransparentProxyListenSettingsOpen = false;
             IsTransparentProxyAppCaptureSettingsOpen = false;
             IsTransparentProxyProviderSettingsOpen = false;
+            IsTransparentProxyOAuthPanelOpen = false;
         }
 
         return Task.CompletedTask;
@@ -1114,6 +1120,7 @@ public sealed partial class MainWindowViewModel
         {
             IsTransparentProxyAppCaptureSettingsOpen = false;
             IsTransparentProxyProviderSettingsOpen = false;
+            IsTransparentProxyOAuthPanelOpen = false;
         }
 
         return Task.CompletedTask;
@@ -1127,6 +1134,7 @@ public sealed partial class MainWindowViewModel
         {
             IsTransparentProxyListenSettingsOpen = false;
             IsTransparentProxyProviderSettingsOpen = false;
+            IsTransparentProxyOAuthPanelOpen = false;
             RefreshTransparentProxyCaptureTargets();
             RefreshTransparentProxyCaptureDiagnostics();
         }
@@ -1615,6 +1623,7 @@ public sealed partial class MainWindowViewModel
         {
             IsTransparentProxyListenSettingsOpen = false;
             IsTransparentProxyAppCaptureSettingsOpen = false;
+            IsTransparentProxyOAuthPanelOpen = false;
         }
 
         return Task.CompletedTask;
@@ -1622,9 +1631,13 @@ public sealed partial class MainWindowViewModel
 
     private Task ToggleTransparentProxyOAuthPanelAsync()
     {
-        IsTransparentProxyOAuthPanelOpen = !IsTransparentProxyOAuthPanelOpen;
-        if (IsTransparentProxyOAuthPanelOpen)
+        var shouldOpen = !IsTransparentProxyOAuthPanelOpen;
+        IsTransparentProxyOAuthPanelOpen = shouldOpen;
+        if (shouldOpen)
         {
+            IsTransparentProxyListenSettingsOpen = false;
+            IsTransparentProxyProviderSettingsOpen = false;
+            IsTransparentProxyAppCaptureSettingsOpen = false;
             RefreshCodexOAuthCredentials();
         }
 
@@ -1633,7 +1646,10 @@ public sealed partial class MainWindowViewModel
 
     private async Task StartCodexOAuthLoginAsync()
     {
-        IsTransparentProxyProviderSettingsOpen = true;
+        IsTransparentProxySettingsDrawerOpen = true;
+        IsTransparentProxyProviderSettingsOpen = false;
+        IsTransparentProxyListenSettingsOpen = false;
+        IsTransparentProxyAppCaptureSettingsOpen = false;
         IsTransparentProxyOAuthPanelOpen = true;
         IsCodexOAuthLoginInProgress = true;
         IsCodexOAuthManualCallbackVisible = false;
@@ -1732,6 +1748,55 @@ public sealed partial class MainWindowViewModel
         }
 
         return Task.CompletedTask;
+    }
+
+    private async Task ImportCodexOAuthCredentialAsync()
+    {
+        IsTransparentProxySettingsDrawerOpen = true;
+        IsTransparentProxyListenSettingsOpen = false;
+        IsTransparentProxyProviderSettingsOpen = false;
+        IsTransparentProxyAppCaptureSettingsOpen = false;
+        IsTransparentProxyOAuthPanelOpen = true;
+
+        OpenFileDialog dialog = new()
+        {
+            Title = "导入 Codex OAuth 令牌",
+            DefaultExt = ".json",
+            CheckFileExists = true,
+            Multiselect = false,
+            Filter = "CPA 认证文件 (*.json)|*.json|JSON 文件 (*.json)|*.json|所有文件 (*.*)|*.*"
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            CodexOAuthLoginStatusText = "已取消导入 Codex OAuth。";
+            return;
+        }
+
+        CodexOAuthLoginStepText = "导入令牌";
+        CodexOAuthLoginStatusText = "正在导入 CPA 兼容 Codex OAuth 认证文件...";
+        try
+        {
+            var result = await _codexOAuthService.ImportCpaCredentialFileAsync(dialog.FileName, CancellationToken.None);
+            RefreshCodexOAuthCredentials();
+            SelectedCodexOAuthCredential = CodexOAuthCredentials.FirstOrDefault(item =>
+                string.Equals(item.Id, result.Credential.Id, StringComparison.OrdinalIgnoreCase));
+            RefreshTransparentProxyRuntimeRoutesAfterOAuthChange();
+            SaveState();
+
+            CodexOAuthLoginStatusText = !string.IsNullOrWhiteSpace(result.RefreshError)
+                ? $"已导入 {result.Credential.DisplayName}，但刷新令牌失败：{result.RefreshError}"
+                : result.Refreshed
+                    ? $"已导入并刷新 Codex OAuth 账号：{result.Credential.DisplayName}"
+                    : $"已导入 Codex OAuth 账号：{result.Credential.DisplayName}";
+            StatusMessage = CodexOAuthLoginStatusText;
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("CodexOAuth.Import", ex);
+            CodexOAuthLoginStepText = "导入失败";
+            CodexOAuthLoginStatusText = $"Codex OAuth 导入失败：{ProbeTraceRedactor.RedactText(ex.Message)}";
+            StatusMessage = CodexOAuthLoginStatusText;
+        }
     }
 
     private async Task RefreshCodexOAuthCredentialAsync(CodexOAuthCredentialViewModel? item)

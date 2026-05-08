@@ -62,13 +62,13 @@ public sealed partial class ProxyDiagnosticsService
             scenarioResults,
             baselineScenarioCount);
 
-        var responsesProbeForConversation = await ProbeJsonScenarioAsync(
+        var responsesProbeForConversation = await ProbeResponsesScenarioAsync(
             client,
             responsesPath,
             BuildResponsesPayload(effectiveModel),
-            ProxyProbeScenarioKind.Responses,
-            "Responses",
-            ParseResponsesPreview,
+            BuildConversationWirePayload(
+                ProxyWireApiProbeService.ResponsesWireApi,
+                BuildChatPayload(effectiveModel, stream: true)),
             cancellationToken);
         var conversationTransport = CreateConversationProbeTransport(
             client,

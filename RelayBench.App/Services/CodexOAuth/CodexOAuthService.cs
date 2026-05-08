@@ -1,5 +1,8 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.IO;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using RelayBench.App.Infrastructure;
@@ -175,6 +178,48 @@ internal sealed class CodexOAuthService
     public async Task RefreshCredentialAsync(string credentialId, CancellationToken cancellationToken)
     {
         await ForceRefreshAsync(credentialId, cancellationToken);
+    }
+
+    public async Task<CodexOAuthImportResult> ImportCpaCredentialFileAsync(string filePath, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            throw new InvalidOperationException("请选择要导入的 Codex OAuth 认证文件。");
+        }
+
+        var json = await File.ReadAllTextAsync(filePath, Encoding.UTF8, cancellationToken);
+        var credential = BuildImportedCpaCredential(json);
+        CodexOAuthCredential? existing;
+        lock (_syncRoot)
+        {
+            existing = _credentials.TryGetValue(credential.Id, out var value) ? value.Clone() : null;
+        }
+
+        if (existing is not null)
+        {
+            credential.CreatedAt = existing.CreatedAt;
+        }
+
+        UpsertCredential(credential);
+
+        var refreshed = false;
+        var refreshError = string.Empty;
+        if (credential.State != CodexOAuthCredentialState.Disabled &&
+            string.IsNullOrWhiteSpace(credential.AccessToken))
+        {
+            try
+            {
+                await ForceRefreshAsync(credential.Id, cancellationToken);
+                refreshed = true;
+            }
+            catch (Exception ex)
+            {
+                refreshError = ProbeTraceRedactor.RedactText(ex.Message);
+                AppDiagnosticLog.Write("CodexOAuth.ImportRefresh", ex);
+            }
+        }
+
+        return new CodexOAuthImportResult(GetCredentialOrThrow(credential.Id), refreshed, refreshError);
     }
 
     public void StartBackgroundRefreshLoop(Action<string>? log = null)
@@ -558,6 +603,71 @@ internal sealed class CodexOAuthService
         };
     }
 
+    private CodexOAuthCredential BuildImportedCpaCredential(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidOperationException("Codex OAuth 认证文件必须是 JSON 对象。");
+        }
+
+        var tokenData = TryReadObject(root, "token_data");
+        var type = FirstNonEmpty(TryReadString(root, "type"), tokenData.HasValue ? TryReadString(tokenData.Value, "type") : string.Empty);
+        if (!string.IsNullOrWhiteSpace(type) &&
+            !string.Equals(type, CodexOAuthConstants.Provider, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"不支持导入 {type} 类型的认证文件，只支持 Codex OAuth。");
+        }
+
+        var idToken = FirstNonEmpty(TryReadString(root, "id_token"), tokenData.HasValue ? TryReadString(tokenData.Value, "id_token") : string.Empty);
+        var accessToken = FirstNonEmpty(TryReadString(root, "access_token"), tokenData.HasValue ? TryReadString(tokenData.Value, "access_token") : string.Empty);
+        var refreshToken = FirstNonEmpty(TryReadString(root, "refresh_token"), tokenData.HasValue ? TryReadString(tokenData.Value, "refresh_token") : string.Empty);
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            throw new InvalidOperationException("导入文件缺少 refresh_token，无法作为长期可用的 Codex OAuth 账号。");
+        }
+
+        var jwt = CodexOAuthJwtParser.Parse(idToken);
+        var email = FirstNonEmpty(jwt.Email, TryReadString(root, "email"), tokenData.HasValue ? TryReadString(tokenData.Value, "email") : string.Empty);
+        var accountId = FirstNonEmpty(jwt.AccountId, TryReadString(root, "account_id"), tokenData.HasValue ? TryReadString(tokenData.Value, "account_id") : string.Empty);
+        var planType = FirstNonEmpty(
+            jwt.PlanType,
+            TryReadString(root, "plan_type"),
+            TryReadString(root, "plan"),
+            tokenData.HasValue ? TryReadString(tokenData.Value, "plan_type") : string.Empty,
+            tokenData.HasValue ? TryReadString(tokenData.Value, "plan") : string.Empty);
+        var now = DateTimeOffset.UtcNow;
+        var lastRefresh = ParseCpaTimestamp(FirstNonEmpty(TryReadString(root, "last_refresh"), tokenData.HasValue ? TryReadString(tokenData.Value, "last_refresh") : string.Empty));
+        var expiresAt = ParseCpaTimestamp(FirstNonEmpty(
+            TryReadString(root, "expired"),
+            TryReadString(root, "expires_at"),
+            tokenData.HasValue ? TryReadString(tokenData.Value, "expired") : string.Empty,
+            tokenData.HasValue ? TryReadString(tokenData.Value, "expires_at") : string.Empty));
+        var disabled = TryReadBool(root, "disabled") || tokenData.HasValue && TryReadBool(tokenData.Value, "disabled");
+
+        return new CodexOAuthCredential
+        {
+            Id = BuildImportedCredentialId(email, planType, accountId, refreshToken),
+            Provider = CodexOAuthConstants.Provider,
+            Email = email,
+            AccountId = accountId,
+            AccountIdHash = CodexOAuthCredential.HashAccountId(accountId),
+            PlanType = planType,
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            IdToken = idToken,
+            AccessTokenExpiresAt = expiresAt,
+            LastRefreshAt = lastRefresh,
+            CreatedAt = now,
+            UpdatedAt = now,
+            State = disabled ? CodexOAuthCredentialState.Disabled : CodexOAuthCredentialState.Ready,
+            LastError = string.Empty,
+            RefreshBackoffUntil = null,
+            RefreshFailureCount = 0
+        };
+    }
+
     private static CodexOAuthAuthMaterial BuildAuthMaterial(CodexOAuthCredential credential)
     {
         if (string.IsNullOrWhiteSpace(credential.AccessToken))
@@ -724,20 +834,104 @@ internal sealed class CodexOAuthService
         }
     }
 
+    private static JsonElement? TryReadObject(JsonElement root, string propertyName)
+        => TryReadProperty(root, propertyName, out var value) &&
+           value.ValueKind == JsonValueKind.Object
+            ? value
+            : null;
+
     private static string TryReadString(JsonElement root, string propertyName)
-        => root.ValueKind == JsonValueKind.Object &&
-           root.TryGetProperty(propertyName, out var value) &&
+        => TryReadProperty(root, propertyName, out var value) &&
            value.ValueKind == JsonValueKind.String
             ? value.GetString() ?? string.Empty
             : string.Empty;
 
     private static int TryReadInt(JsonElement root, string propertyName)
-        => root.ValueKind == JsonValueKind.Object &&
-           root.TryGetProperty(propertyName, out var value) &&
+        => TryReadProperty(root, propertyName, out var value) &&
            value.ValueKind == JsonValueKind.Number &&
            value.TryGetInt32(out var parsed)
             ? Math.Max(0, parsed)
             : 0;
+
+    private static bool TryReadBool(JsonElement root, string propertyName)
+        => TryReadProperty(root, propertyName, out var value) &&
+           value.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+           value.GetBoolean();
+
+    private static bool TryReadProperty(JsonElement root, string propertyName, out JsonElement value)
+    {
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            if (root.TryGetProperty(propertyName, out value))
+            {
+                return true;
+            }
+
+            foreach (var property in root.EnumerateObject())
+            {
+                if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static DateTimeOffset? ParseCpaTimestamp(string value)
+        => DateTimeOffset.TryParse(
+            value,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out var parsed)
+            ? parsed
+            : null;
+
+    private static string BuildImportedCredentialId(string email, string planType, string accountId, string refreshToken)
+    {
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            return CodexOAuthCredential.BuildStableId(email, planType, accountId);
+        }
+
+        var accountHash = CodexOAuthCredential.HashAccountId(accountId);
+        var normalizedPlan = NormalizeImportedIdPart(planType);
+        if (!string.IsNullOrWhiteSpace(accountHash))
+        {
+            return string.IsNullOrWhiteSpace(normalizedPlan)
+                ? $"codex-{accountHash}"
+                : $"codex-{accountHash}-{normalizedPlan}";
+        }
+
+        return $"codex-imported-{HashImportedSecret(refreshToken)}";
+    }
+
+    private static string HashImportedSecret(string value)
+    {
+        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(value.Trim()));
+        return Convert.ToHexString(digest[..6]).ToLowerInvariant();
+    }
+
+    private static string NormalizeImportedIdPart(string value)
+    {
+        var builder = new StringBuilder();
+        foreach (var character in (value ?? string.Empty).Trim().ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(character);
+            }
+            else if (builder.Length > 0 && builder[^1] != '-')
+            {
+                builder.Append('-');
+            }
+        }
+
+        return builder.ToString().Trim('-');
+    }
 
     private static string FirstNonEmpty(params string?[] values)
         => values.FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? string.Empty;

@@ -20,13 +20,13 @@ public sealed class ClientAppApplyPlanner
         foreach (var definition in TargetDefinitions)
         {
             var installed = installedNames.Count == 0 || installedNames.Contains(definition.DisplayName);
-            var protocol = ResolveTargetProtocol(definition.Protocol, context);
-            var protocolSupported = IsProtocolSupported(protocol, context);
+            var protocol = definition.Protocol;
+            var protocolSupported = IsProtocolSupported(definition, context);
             var hasRequiredFields =
                 !string.IsNullOrWhiteSpace(context.BaseUrl) &&
                 !string.IsNullOrWhiteSpace(context.ApiKey) &&
                 !string.IsNullOrWhiteSpace(context.Model);
-            var selectable = installed && hasRequiredFields;
+            var selectable = installed && hasRequiredFields && protocolSupported;
             var defaultSelected = selectable && protocolSupported;
 
             targets.Add(new ClientApplyTarget(
@@ -37,41 +37,47 @@ public sealed class ClientAppApplyPlanner
                 selectable,
                 protocolSupported,
                 defaultSelected,
-                definition.ConfigSummary,
-                BuildDisabledReason(installed, protocolSupported, hasRequiredFields, protocol)));
+                BuildConfigSummary(definition, context),
+                BuildDisabledReason(installed, protocolSupported, hasRequiredFields, definition)));
         }
 
         return targets;
     }
 
-    private static ClientApplyProtocolKind ResolveTargetProtocol(
-        ClientApplyProtocolKind protocol,
-        ClientAppApplyPlanContext context)
-    {
-        if (protocol == ClientApplyProtocolKind.Responses &&
-            !context.ResponsesSupported &&
-            context.OpenAiCompatibleSupported)
-        {
-            return ClientApplyProtocolKind.OpenAiCompatible;
-        }
-
-        return protocol;
-    }
-
-    private static bool IsProtocolSupported(ClientApplyProtocolKind protocol, ClientAppApplyPlanContext context)
-        => protocol switch
+    private static bool IsProtocolSupported(ClientApplyTargetDefinition definition, ClientAppApplyPlanContext context)
+        => definition.Protocol switch
         {
             ClientApplyProtocolKind.Responses => context.ResponsesSupported,
             ClientApplyProtocolKind.OpenAiCompatible => context.OpenAiCompatibleSupported,
+            ClientApplyProtocolKind.Anthropic when IsClaudeTarget(definition) =>
+                context.AnthropicSupported || context.OpenAiCompatibleSupported,
             ClientApplyProtocolKind.Anthropic => context.AnthropicSupported,
             _ => false
         };
+
+    private static string BuildConfigSummary(ClientApplyTargetDefinition definition, ClientAppApplyPlanContext context)
+    {
+        if (IsClaudeTarget(definition))
+        {
+            if (context.AnthropicSupported)
+            {
+                return "~/.claude/settings.json（Anthropic Messages 直连）";
+            }
+
+            if (context.OpenAiCompatibleSupported)
+            {
+                return "~/.claude/settings.json（通过 RelayBench 本地统一出口转换）";
+            }
+        }
+
+        return definition.ConfigSummary;
+    }
 
     private static string? BuildDisabledReason(
         bool installed,
         bool protocolSupported,
         bool hasRequiredFields,
-        ClientApplyProtocolKind protocol)
+        ClientApplyTargetDefinition definition)
     {
         if (!installed)
         {
@@ -85,9 +91,14 @@ public sealed class ClientAppApplyPlanner
 
         if (!protocolSupported)
         {
-            return protocol switch
+            if (IsClaudeTarget(definition))
             {
-                ClientApplyProtocolKind.Responses => "当前模型未通过 Responses 或 OpenAI Chat 探测。",
+                return "Claude CLI 未通过 Anthropic Messages 或 OpenAI Chat 探测；Anthropic 可直连，OpenAI Chat 只能通过 RelayBench 本地统一出口转换。";
+            }
+
+            return definition.Protocol switch
+            {
+                ClientApplyProtocolKind.Responses => "Codex 系列只支持 Responses，当前 /v1/responses 探测未通过。",
                 ClientApplyProtocolKind.OpenAiCompatible => "当前模型未通过 OpenAI 兼容探测。",
                 ClientApplyProtocolKind.Anthropic => "当前模型未通过 Anthropic Messages 探测。",
                 _ => "当前模型不支持该协议。"
@@ -96,6 +107,9 @@ public sealed class ClientAppApplyPlanner
 
         return null;
     }
+
+    private static bool IsClaudeTarget(ClientApplyTargetDefinition definition)
+        => string.Equals(definition.Id, "claude-cli", StringComparison.OrdinalIgnoreCase);
 
     private sealed record ClientApplyTargetDefinition(
         string Id,

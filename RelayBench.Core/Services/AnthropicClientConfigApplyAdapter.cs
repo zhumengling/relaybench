@@ -37,9 +37,10 @@ public sealed class AnthropicClientConfigApplyAdapter
             });
         }
 
-        var normalizedBaseUrl = ClientApiConfigPatterns.NormalizeEndpoint(endpoint.BaseUrl).TrimEnd('/');
+        var normalizedBaseUrl = NormalizeAnthropicBaseUrl(endpoint.BaseUrl);
         var normalizedApiKey = endpoint.ApiKey?.Trim() ?? string.Empty;
         var normalizedModel = endpoint.Model?.Trim() ?? string.Empty;
+        var isRelayBenchLocalEndpoint = ClientApiConfigPatterns.IsLocalEndpoint(normalizedBaseUrl);
         if (string.IsNullOrWhiteSpace(normalizedBaseUrl) ||
             string.IsNullOrWhiteSpace(normalizedApiKey) ||
             string.IsNullOrWhiteSpace(normalizedModel))
@@ -76,25 +77,32 @@ public sealed class AnthropicClientConfigApplyAdapter
         List<string> backupFiles = [];
         ApplyFile(
             settingsPath,
-            existing => UpsertClaudeSettings(existing, normalizedBaseUrl, normalizedApiKey, normalizedModel),
+            existing => UpsertClaudeSettings(
+                existing,
+                normalizedBaseUrl,
+                normalizedApiKey,
+                normalizedModel,
+                isRelayBenchLocalEndpoint),
             changedFiles,
             backupFiles);
 
+        var displayName = isRelayBenchLocalEndpoint
+            ? "Claude CLI（本地转换）"
+            : "Claude CLI";
+
         return Task.FromResult(new ClientAppApplyResult(
             true,
-            changedFiles.Count == 0
-                ? "Claude CLI 配置已与当前入口一致，无需改动。"
-                : $"已将当前入口应用到 Claude CLI，共处理 {changedFiles.Count} 个文件。",
+            BuildSummary(changedFiles.Count, isRelayBenchLocalEndpoint),
             changedFiles,
             backupFiles,
-            ["Claude CLI"],
+            [displayName],
             null)
         {
             TargetResults =
             [
                 new ClientAppTargetApplyResult(
                     "claude-cli",
-                    "Claude CLI",
+                    displayName,
                     ClientApplyProtocolKind.Anthropic,
                     true,
                     changedFiles,
@@ -133,7 +141,8 @@ public sealed class AnthropicClientConfigApplyAdapter
         string existingContent,
         string baseUrl,
         string apiKey,
-        string model)
+        string model,
+        bool useAuthToken)
     {
         var root = ClientApiConfigPatterns.TryParseJsonObject(existingContent) ?? new JsonObject();
         var env = root["env"] as JsonObject;
@@ -143,10 +152,60 @@ public sealed class AnthropicClientConfigApplyAdapter
             root["env"] = env;
         }
 
-        env["ANTHROPIC_API_KEY"] = apiKey;
         env["ANTHROPIC_BASE_URL"] = baseUrl;
         env["ANTHROPIC_MODEL"] = model;
+        if (useAuthToken)
+        {
+            env.Remove("ANTHROPIC_API_KEY");
+            env["ANTHROPIC_AUTH_TOKEN"] = apiKey;
+        }
+        else
+        {
+            env.Remove("ANTHROPIC_AUTH_TOKEN");
+            env["ANTHROPIC_API_KEY"] = apiKey;
+        }
 
         return ClientApiConfigPatterns.SerializeJson(root);
+    }
+
+    private static string BuildSummary(int changedFileCount, bool isRelayBenchLocalEndpoint)
+    {
+        if (changedFileCount == 0)
+        {
+            return isRelayBenchLocalEndpoint
+                ? "Claude CLI 已经指向 RelayBench 本地统一出口，无需改动。"
+                : "Claude CLI 配置已与当前入口一致，无需改动。";
+        }
+
+        return isRelayBenchLocalEndpoint
+            ? $"已将 Claude CLI 指向 RelayBench 本地统一出口，OpenAI Chat 上游会在本地转换为 Anthropic Messages，共处理 {changedFileCount} 个文件。"
+            : $"已将当前入口应用到 Claude CLI，共处理 {changedFileCount} 个文件。";
+    }
+
+    private static string NormalizeAnthropicBaseUrl(string? value)
+    {
+        var normalized = ClientApiConfigPatterns.NormalizeEndpoint(value);
+        if (!Uri.TryCreate(normalized, UriKind.Absolute, out var uri))
+        {
+            return normalized;
+        }
+
+        var builder = new UriBuilder(uri)
+        {
+            Query = string.Empty,
+            Fragment = string.Empty
+        };
+        var path = builder.Path.TrimEnd('/');
+        if (path.EndsWith("/v1/messages", StringComparison.OrdinalIgnoreCase))
+        {
+            path = path[..^"/v1/messages".Length].TrimEnd('/');
+        }
+        else if (path.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
+        {
+            path = path[..^"/v1".Length].TrimEnd('/');
+        }
+
+        builder.Path = string.IsNullOrWhiteSpace(path) ? "/" : path;
+        return builder.Uri.ToString().TrimEnd('/');
     }
 }

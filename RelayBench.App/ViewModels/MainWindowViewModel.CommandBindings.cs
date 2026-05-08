@@ -355,6 +355,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand CopyCodexOAuthLoginUrlCommand { get; }
 
+    public AsyncRelayCommand ImportCodexOAuthCredentialCommand { get; }
+
     public AsyncRelayCommand<CodexOAuthCredentialViewModel?> RefreshCodexOAuthCredentialCommand { get; }
 
     public AsyncRelayCommand<CodexOAuthCredentialViewModel?> DisableCodexOAuthCredentialCommand { get; }

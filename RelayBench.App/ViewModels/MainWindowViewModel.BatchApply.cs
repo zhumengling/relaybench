@@ -59,7 +59,15 @@ public sealed partial class MainWindowViewModel
                     CodexOpenAiProviderDisplayName,
                     cachedApplyInfo.ContextWindow,
                     cachedApplyInfo.PreferredWireApi);
-                var result = await _clientAppConfigApplyService.ApplyAsync(endpoint, selectedTargets);
+                var anthropicEndpoint = await PrepareClaudeRelayEndpointIfNeededAsync(
+                    settings,
+                    protocolProbeResult,
+                    selectedTargets,
+                    row.EntryName);
+                var result = await _clientAppConfigApplyService.ApplyAsync(
+                    endpoint,
+                    selectedTargets,
+                    anthropicEndpoint);
                 CodexChatMergeResult? mergeResult = null;
                 if (ShouldAskCodexChatMerge(selectedTargets, result))
                 {

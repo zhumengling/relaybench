@@ -1,4 +1,5 @@
 using System.Text;
+using RelayBench.App.Services;
 using RelayBench.Core.Models;
 using RelayBench.Core.Services;
 
@@ -36,19 +37,19 @@ public sealed partial class MainWindowViewModel
         var targets = BuildClientApplyTargets(settings, protocolProbeResult);
         var summary =
             BuildProtocolProbeDetail(protocolProbeResult) +
-            "\n\n\u8bf7\u9009\u62e9\u672c\u6b21\u8981\u5199\u5165\u914d\u7f6e\u7684\u8f6f\u4ef6\u3002\u672a\u53d1\u73b0\u8f6f\u4ef6\u6216\u7f3a\u5c11\u63a5\u53e3\u4fe1\u606f\u65f6\u4f1a\u7981\u6b62\u52fe\u9009\uff1b\u4ec5\u534f\u8bae\u4e0d\u4e00\u5b9a\u517c\u5bb9\u7684\u8f6f\u4ef6\u53ef\u4ee5\u52fe\u9009\uff0c\u4f46\u9700\u8981\u4f60\u518d\u786e\u8ba4\u4e00\u6b21\u3002";
+            "\n\n请选择本次要写入配置的软件。本次结果来自真实强制探测：Codex 系列只在 Responses 可用时开放；Claude CLI 可直连 Anthropic，或在仅 OpenAI Chat 可用时通过 RelayBench 本地统一出口转换。";
         return await ShowClientApplyTargetDialogAsync(title, summary, targets);
     }
 
     private static bool HasSucceededCodexTarget(ClientAppApplyResult result)
         => result.TargetResults.Any(target =>
-            (target.Protocol is ClientApplyProtocolKind.Responses or ClientApplyProtocolKind.OpenAiCompatible) &&
+            target.Protocol == ClientApplyProtocolKind.Responses &&
             target.Succeeded);
 
     private static bool ShouldAskCodexChatMerge(
         IReadOnlyList<ClientApplyTargetSelection> selectedTargets,
         ClientAppApplyResult result)
-        => selectedTargets.Any(target => target.Protocol is ClientApplyProtocolKind.Responses or ClientApplyProtocolKind.OpenAiCompatible) &&
+        => selectedTargets.Any(target => target.Protocol == ClientApplyProtocolKind.Responses) &&
            HasSucceededCodexTarget(result);
 
     private static bool HasSucceededTarget(ClientAppApplyResult result)
@@ -145,4 +146,115 @@ public sealed partial class MainWindowViewModel
                     : result.Summary
             : result.Summary;
     }
+
+    private async Task<ClientApplyEndpoint?> PrepareClaudeRelayEndpointIfNeededAsync(
+        ProxyEndpointSettings settings,
+        ProxyEndpointProtocolProbeResult protocolProbeResult,
+        IReadOnlyList<ClientApplyTargetSelection> selectedTargets,
+        string sourceName)
+    {
+        if (!RequiresClaudeRelayEndpoint(protocolProbeResult, selectedTargets))
+        {
+            return null;
+        }
+
+        EnsureTransparentProxyRouteForClientApply(settings, protocolProbeResult, sourceName);
+        if (IsTransparentProxyRunning)
+        {
+            _transparentProxyService.UpdateRoutes(BuildTransparentProxyRuntimeRoutes());
+        }
+        else
+        {
+            await StartTransparentProxyCoreAsync(isAutoStart: false);
+        }
+
+        return BuildClaudeRelayEndpoint(settings.Model);
+    }
+
+    private ClientApplyEndpoint? BuildLocalClaudeEndpointIfSelected(
+        string model,
+        IReadOnlyList<ClientApplyTargetSelection> selectedTargets)
+        => selectedTargets.Any(IsClaudeCliSelection)
+            ? BuildClaudeRelayEndpoint(model)
+            : null;
+
+    private ClientApplyEndpoint BuildClaudeRelayEndpoint(string model)
+        => new(
+            BuildTransparentProxyAnthropicBaseUrl(),
+            "relaybench-local",
+            model,
+            "RelayBench 本地统一出口（Chat 转 Anthropic）",
+            null,
+            ProxyWireApiProbeService.AnthropicMessagesWireApi);
+
+    private static bool RequiresClaudeRelayEndpoint(
+        ProxyEndpointProtocolProbeResult protocolProbeResult,
+        IReadOnlyList<ClientApplyTargetSelection> selectedTargets)
+        => selectedTargets.Any(IsClaudeCliSelection) &&
+           !protocolProbeResult.AnthropicMessagesSupported &&
+           protocolProbeResult.ChatCompletionsSupported;
+
+    private void EnsureTransparentProxyRouteForClientApply(
+        ProxyEndpointSettings settings,
+        ProxyEndpointProtocolProbeResult protocolProbeResult,
+        string sourceName)
+    {
+        var name = BuildClientApplyRelayRouteName(sourceName, settings.Model);
+        var item = TransparentProxyRouteEditorItems.FirstOrDefault(route =>
+            !route.IsCodexOAuthAuth &&
+            string.Equals(NormalizeEndpointForRouteMatch(route.BaseUrl), NormalizeEndpointForRouteMatch(settings.BaseUrl), StringComparison.OrdinalIgnoreCase) &&
+            route.Models.Any(model => string.Equals(model, settings.Model, StringComparison.OrdinalIgnoreCase)));
+        if (item is null)
+        {
+            item = new TransparentProxyRouteEditorItemViewModel();
+            AttachTransparentProxyRouteEditorItem(item);
+            TransparentProxyRouteEditorItems.Add(item);
+        }
+
+        _isRefreshingTransparentProxyRouteEditor = true;
+        try
+        {
+            item.IsEnabled = true;
+            item.Name = name;
+            item.BaseUrl = settings.BaseUrl;
+            item.ApiKey = settings.ApiKey;
+            item.AuthMode = TransparentProxyRouteAuthModes.ApiKey;
+            item.PriorityText = "0";
+            item.ModelsText = settings.Model;
+            SelectedTransparentProxyRouteEditorItem = item;
+        }
+        finally
+        {
+            _isRefreshingTransparentProxyRouteEditor = false;
+        }
+
+        UpdateTransparentProxyRoutesTextFromEditor();
+
+        var routeId = TransparentProxyRouteTextCodec.BuildRouteId(item.Name, item.BaseUrl, item.Prefix);
+        _transparentProxyProtocolSnapshots[routeId] = new TransparentProxyProtocolDiscoverySnapshot(
+            protocolProbeResult.PreferredWireApi,
+            protocolProbeResult.ChatCompletionsSupported,
+            protocolProbeResult.ResponsesSupported,
+            protocolProbeResult.AnthropicMessagesSupported,
+            protocolProbeResult.CheckedAt,
+            WasProbed: true);
+        RefreshTransparentProxyRoutePreview();
+    }
+
+    private string BuildTransparentProxyAnthropicBaseUrl()
+        => $"http://127.0.0.1:{ParseTransparentProxyPort()}";
+
+    private static bool IsClaudeCliSelection(ClientApplyTargetSelection target)
+        => string.Equals(target.TargetId, "claude-cli", StringComparison.OrdinalIgnoreCase) &&
+           target.Protocol == ClientApplyProtocolKind.Anthropic;
+
+    private static string BuildClientApplyRelayRouteName(string sourceName, string model)
+    {
+        var normalizedSource = string.IsNullOrWhiteSpace(sourceName) ? "当前接口" : sourceName.Trim();
+        var normalizedModel = string.IsNullOrWhiteSpace(model) ? "默认模型" : model.Trim();
+        return $"应用接入：{normalizedSource} {normalizedModel}";
+    }
+
+    private static string NormalizeEndpointForRouteMatch(string? value)
+        => (value ?? string.Empty).Trim().TrimEnd('/');
 }

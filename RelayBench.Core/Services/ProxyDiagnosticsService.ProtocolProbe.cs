@@ -101,13 +101,13 @@ public sealed partial class ProxyDiagnosticsService
         }
 
         var responsesPath = BuildApiPath(baseUri, "responses");
-        var responsesProbe = await ProbeJsonScenarioAsync(
+        var responsesProbe = await ProbeResponsesScenarioAsync(
             client,
             responsesPath,
             BuildResponsesPayload(probeModel),
-            ProxyProbeScenarioKind.Responses,
-            "Responses",
-            ParseResponsesPreview,
+            BuildConversationWirePayload(
+                ProxyWireApiProbeService.ResponsesWireApi,
+                BuildChatPayload(probeModel, stream: true)),
             cancellationToken);
         var responsesSupported = responsesProbe.ScenarioResult.Success;
         List<ProxyProbeScenarioResult> scenarioResults = [responsesProbe.ScenarioResult];

@@ -1,6 +1,4 @@
 using System.IO;
-using System.Diagnostics;
-using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using RelayBench.App.Infrastructure;
@@ -106,58 +104,10 @@ internal sealed class CodexOAuthCredentialStore
         if (File.Exists(path))
         {
             File.Replace(temporaryPath, path, null);
-            RestrictCurrentUserAccess(path);
             return;
         }
 
         File.Move(temporaryPath, path);
-        RestrictCurrentUserAccess(path);
-    }
-
-    private static void RestrictCurrentUserAccess(string path)
-    {
-        if (!OperatingSystem.IsWindows())
-        {
-            return;
-        }
-
-        try
-        {
-            using var identity = WindowsIdentity.GetCurrent();
-            var currentUserSid = identity.User?.Value;
-            if (string.IsNullOrWhiteSpace(currentUserSid))
-            {
-                return;
-            }
-
-            using Process process = new()
-            {
-                StartInfo = new ProcessStartInfo("icacls.exe")
-                {
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                }
-            };
-            process.StartInfo.ArgumentList.Add(path);
-            process.StartInfo.ArgumentList.Add("/inheritance:r");
-            process.StartInfo.ArgumentList.Add("/grant:r");
-            process.StartInfo.ArgumentList.Add($"*{currentUserSid}:F");
-            process.StartInfo.ArgumentList.Add("/grant:r");
-            process.StartInfo.ArgumentList.Add("*S-1-5-18:F");
-            process.StartInfo.ArgumentList.Add("/grant:r");
-            process.StartInfo.ArgumentList.Add("*S-1-5-32-544:F");
-            process.Start();
-            if (!process.WaitForExit(1500))
-            {
-                process.Kill(entireProcessTree: true);
-            }
-        }
-        catch (Exception ex)
-        {
-            AppDiagnosticLog.Write("CodexOAuthCredentialStore.RestrictAccess", ex);
-        }
     }
 
     private sealed class CodexOAuthCredentialDocument

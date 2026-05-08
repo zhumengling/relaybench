@@ -8,10 +8,10 @@ public sealed partial class MainWindowViewModel
         => IsCodexWireApiCompatible(baseUrl, apiKey, model);
 
     private static string BuildCodexUnsupportedModelMessage(string? model)
-        => $"当前接口的模型“{FormatPreviewValue(model)}”未通过 Codex 需要的 Responses 或 OpenAI Chat 探测，所以不能直接应用到 Codex。";
+        => $"当前接口的模型“{FormatPreviewValue(model)}”未通过 Codex 需要的 Responses 探测，所以不能直接应用到 Codex。";
 
     private static string BuildCodexUnsupportedModelMessage(string entryName, string? model)
-        => $"“{entryName}”的接口模型“{FormatPreviewValue(model)}”未通过 Codex 需要的 Responses 或 OpenAI Chat 探测，所以不能直接应用到 Codex。";
+        => $"“{entryName}”的接口模型“{FormatPreviewValue(model)}”未通过 Codex 需要的 Responses 探测，所以不能直接应用到 Codex。";
 
     private async Task<bool> ProbeCodexWireApiCompatibilityBeforeApplyAsync(
         ProxyEndpointSettings settings,
@@ -64,9 +64,8 @@ public sealed partial class MainWindowViewModel
             $"模型：{FormatPreviewValue(settings.Model)}\n\n" +
             BuildProtocolProbeDetail(probeResult) +
             "\n\n" +
-            "原因：刚才的接口探测没有确认 /v1/responses 或 /v1/chat/completions 可用。Codex 可以优先写入 wire_api = \"responses\"，" +
-            "也可以在 Responses 不通但 Chat Completions 通过时写入 wire_api = \"chat\"；两者都不通时应用后大概率不能正常请求。\n\n" +
-            "处理方式：换用支持 Responses 或 OpenAI Chat Completions 的接口，或先在中转/本地服务里开启对应兼容。",
+            "原因：Codex 系列客户端只支持 Responses。本次真实探测没有确认 /v1/responses 可用，因此不会写入 Codex 配置。\n\n" +
+            "处理方式：换用支持 Responses 的接口，或先通过 RelayBench 本地统一出口提供 Responses 兼容层。",
             "知道了",
             "关闭");
 

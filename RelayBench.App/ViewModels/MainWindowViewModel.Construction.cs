@@ -197,6 +197,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CancelCodexOAuthLoginCommand = new AsyncRelayCommand(CancelCodexOAuthLoginAsync, () => IsCodexOAuthLoginInProgress, onError: HandleNonFatalCommandException);
         SubmitCodexOAuthCallbackCommand = new AsyncRelayCommand(SubmitCodexOAuthCallbackAsync, () => IsCodexOAuthLoginInProgress, onError: HandleNonFatalCommandException);
         CopyCodexOAuthLoginUrlCommand = new AsyncRelayCommand(CopyCodexOAuthLoginUrlAsync, () => !string.IsNullOrWhiteSpace(CodexOAuthLoginUrlText), onError: HandleNonFatalCommandException);
+        ImportCodexOAuthCredentialCommand = new AsyncRelayCommand(ImportCodexOAuthCredentialAsync, onError: HandleNonFatalCommandException);
         RefreshCodexOAuthCredentialCommand = new AsyncRelayCommand<CodexOAuthCredentialViewModel?>(RefreshCodexOAuthCredentialAsync, item => item is not null, onError: HandleNonFatalCommandException);
         DisableCodexOAuthCredentialCommand = new AsyncRelayCommand<CodexOAuthCredentialViewModel?>(DisableCodexOAuthCredentialAsync, item => item is not null, onError: HandleNonFatalCommandException);
         ExportCodexOAuthCredentialCommand = new AsyncRelayCommand<CodexOAuthCredentialViewModel?>(ExportCodexOAuthCredentialAsync, item => item is not null, onError: HandleNonFatalCommandException);

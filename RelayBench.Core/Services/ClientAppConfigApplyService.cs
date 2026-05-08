@@ -16,6 +16,7 @@ public sealed class ClientAppConfigApplyService
     public async Task<ClientAppApplyResult> ApplyAsync(
         ClientApplyEndpoint endpoint,
         IReadOnlyList<ClientApplyTargetSelection> targetSelections,
+        ClientApplyEndpoint? anthropicEndpointOverride = null,
         CancellationToken cancellationToken = default)
     {
         if (targetSelections.Count == 0)
@@ -35,7 +36,7 @@ public sealed class ClientAppConfigApplyService
         List<ClientAppApplyResult> results = [];
 
         var codexSelections = targetSelections
-            .Where(target => target.Protocol is ClientApplyProtocolKind.Responses or ClientApplyProtocolKind.OpenAiCompatible)
+            .Where(target => target.Protocol == ClientApplyProtocolKind.Responses)
             .ToArray();
         if (codexSelections.Length > 0)
         {
@@ -58,7 +59,10 @@ public sealed class ClientAppConfigApplyService
             .ToArray();
         if (anthropicSelections.Length > 0)
         {
-            results.Add(await _anthropicAdapter.ApplyAsync(endpoint, anthropicSelections, cancellationToken));
+            results.Add(await _anthropicAdapter.ApplyAsync(
+                anthropicEndpointOverride ?? endpoint,
+                anthropicSelections,
+                cancellationToken));
         }
 
         var targetResults = results.SelectMany(result => result.TargetResults).ToArray();
@@ -89,19 +93,9 @@ public sealed class ClientAppConfigApplyService
         string? preferredWireApi,
         IReadOnlyList<ClientApplyTargetSelection> codexSelections)
     {
-        var hasResponsesTarget = codexSelections.Any(target => target.Protocol == ClientApplyProtocolKind.Responses);
-        if (hasResponsesTarget)
-        {
-            return "responses";
-        }
-
-        var hasChatFallbackTarget = codexSelections.Any(target => target.Protocol == ClientApplyProtocolKind.OpenAiCompatible);
-        if (hasChatFallbackTarget)
-        {
-            return "chat";
-        }
-
-        return preferredWireApi;
+        return codexSelections.Any(target => target.Protocol == ClientApplyProtocolKind.Responses)
+            ? "responses"
+            : preferredWireApi;
     }
 
     private static string BuildSummary(IReadOnlyList<ClientAppTargetApplyResult> targetResults)

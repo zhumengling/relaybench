@@ -9,16 +9,7 @@ public static class SecretProtector
     private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("RelayBench.AppStateSecrets.v1");
 
     public static string Protect(string? value)
-    {
-        if (string.IsNullOrEmpty(value) || IsProtected(value))
-        {
-            return value ?? string.Empty;
-        }
-
-        var plainBytes = Encoding.UTF8.GetBytes(value);
-        var protectedBytes = ProtectedData.Protect(plainBytes, Entropy, DataProtectionScope.CurrentUser);
-        return Prefix + Convert.ToBase64String(protectedBytes);
-    }
+        => value ?? string.Empty;
 
     public static string Unprotect(string? value)
     {
@@ -32,10 +23,17 @@ public static class SecretProtector
             return value;
         }
 
-        var payload = value[Prefix.Length..];
-        var protectedBytes = Convert.FromBase64String(payload);
-        var plainBytes = ProtectedData.Unprotect(protectedBytes, Entropy, DataProtectionScope.CurrentUser);
-        return Encoding.UTF8.GetString(plainBytes);
+        try
+        {
+            var payload = value[Prefix.Length..];
+            var protectedBytes = Convert.FromBase64String(payload);
+            var plainBytes = ProtectedData.Unprotect(protectedBytes, Entropy, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(plainBytes);
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     public static bool IsProtected(string value)

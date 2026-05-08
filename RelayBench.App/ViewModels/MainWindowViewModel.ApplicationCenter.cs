@@ -34,7 +34,7 @@ public sealed partial class MainWindowViewModel
             builder.AppendLine("将会更新：");
             builder.AppendLine("- ~/.codex/config.toml（Codex 系列共用配置）");
             builder.AppendLine("- ~/.codex/auth.json（仅清理旧版 API Key 接管，保留登录态）");
-            builder.AppendLine("- ~/.claude/settings.json（仅在选择 Claude CLI 且 Anthropic 可用时）");
+            builder.AppendLine("- ~/.claude/settings.json（Anthropic 直连，或 Chat-only 时指向 RelayBench 本地统一出口）");
             builder.AppendLine();
             builder.AppendLine("适用软件：");
             builder.AppendLine("- Codex CLI");
@@ -53,7 +53,7 @@ public sealed partial class MainWindowViewModel
             else if (!CanApplyEndpointToCodexApps(ApplicationCenterBaseUrl, ApplicationCenterApiKey, ApplicationCenterModel))
             {
                 builder.AppendLine();
-                builder.AppendLine("点击应用时会先探测接口格式；Codex 目标优先使用 Responses，必要时回退 OpenAI Chat，Claude 目标需要 Anthropic Messages。");
+                builder.AppendLine("点击应用时会先强制探测接口格式；Codex 只接受 Responses，Claude 可直连 Anthropic 或通过本地统一出口转换 OpenAI Chat。");
             }
 
             return builder.ToString().TrimEnd();
@@ -111,7 +111,15 @@ public sealed partial class MainWindowViewModel
                     ResolveCurrentProxyDisplayName(),
                     cachedApplyInfo.ContextWindow,
                     cachedApplyInfo.PreferredWireApi);
-                var result = await _clientAppConfigApplyService.ApplyAsync(endpoint, selectedTargets);
+                var anthropicEndpoint = await PrepareClaudeRelayEndpointIfNeededAsync(
+                    settings,
+                    protocolProbeResult,
+                    selectedTargets,
+                    "当前接口");
+                var result = await _clientAppConfigApplyService.ApplyAsync(
+                    endpoint,
+                    selectedTargets,
+                    anthropicEndpoint);
 
                 CodexChatMergeResult? mergeResult = null;
                 if (ShouldAskCodexChatMerge(selectedTargets, result))

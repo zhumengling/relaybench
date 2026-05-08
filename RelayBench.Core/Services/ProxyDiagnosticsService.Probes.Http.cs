@@ -429,6 +429,54 @@ public sealed partial class ProxyDiagnosticsService
         }
     }
 
+    private static async Task<JsonProbeOutcome> ProbeResponsesScenarioAsync(
+        HttpClient client,
+        string path,
+        string payload,
+        string streamingPayload,
+        CancellationToken cancellationToken)
+    {
+        var jsonProbe = await ProbeJsonScenarioAsync(
+            client,
+            path,
+            payload,
+            ProxyProbeScenarioKind.Responses,
+            "Responses",
+            ParseResponsesPreview,
+            cancellationToken);
+
+        if (jsonProbe.ScenarioResult.Success)
+        {
+            return jsonProbe;
+        }
+
+        var streamProbe = await ProbeStreamingScenarioAsync(
+            client,
+            path,
+            streamingPayload,
+            ProxyProbeScenarioKind.Responses,
+            "Responses",
+            TryParseResponsesStreamContent,
+            MatchProbeExpectation,
+            cancellationToken,
+            streamDoneDetector: IsResponsesStreamDone);
+
+        if (!streamProbe.Success)
+        {
+            return jsonProbe;
+        }
+
+        var result = streamProbe with
+        {
+            CapabilityStatus = "支持",
+            Summary = "Responses 非流式返回不可读内容，但流式 Responses 可用，已按 Codex/Responses 客户端判定为可用。",
+            FailureKind = null,
+            FailureStage = "Responses",
+            Error = null
+        };
+        return new JsonProbeOutcome(result, result.Preview);
+    }
+
     private static ProxyProbeTrace BuildProbeTrace(
         HttpClient client,
         string path,

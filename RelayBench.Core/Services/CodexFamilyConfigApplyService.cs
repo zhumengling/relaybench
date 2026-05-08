@@ -9,7 +9,6 @@ public sealed class CodexFamilyConfigApplyService
     private const string CodexProviderKey = "custom";
     private const string CodexProviderName = "RelayBench Custom";
     private const string CodexResponsesWireApi = "responses";
-    private const string CodexChatWireApi = "chat";
 
     private readonly IClientApiConfigMutationEnvironment _environment;
 
@@ -144,7 +143,7 @@ public sealed class CodexFamilyConfigApplyService
         string? error)
     {
         var selectedProtocols = targetSelections?
-            .Where(target => target.Protocol is ClientApplyProtocolKind.Responses or ClientApplyProtocolKind.OpenAiCompatible)
+            .Where(target => target.Protocol == ClientApplyProtocolKind.Responses)
             .GroupBy(target => target.TargetId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 group => group.Key,
@@ -236,11 +235,6 @@ public sealed class CodexFamilyConfigApplyService
         UpsertTopLevelString(lines, "model", model);
         UpsertOptionalTopLevelInteger(lines, "model_context_window", contextWindow);
         UpsertOptionalTopLevelInteger(lines, "model_auto_compact_token_limit", autoCompactTokenLimit);
-        if (string.Equals(wireApi, CodexChatWireApi, StringComparison.Ordinal))
-        {
-            RemoveTopLevelAssignment(lines, "model_reasoning_effort");
-            RemoveTopLevelAssignment(lines, "model_reasoning_summary");
-        }
         UpsertSectionString(lines, "model_providers.custom", "name", displayName);
         UpsertSectionString(lines, "model_providers.custom", "base_url", baseUrl);
         UpsertSectionString(lines, "model_providers.custom", "wire_api", wireApi);
@@ -459,7 +453,8 @@ public sealed class CodexFamilyConfigApplyService
         string? model,
         string? preferredWireApi = null)
     {
-        if (TryNormalizeCodexWireApi(preferredWireApi, out var normalizedPreferredWireApi))
+        if (TryNormalizeCodexWireApi(preferredWireApi, out var normalizedPreferredWireApi) &&
+            string.Equals(normalizedPreferredWireApi, CodexResponsesWireApi, StringComparison.Ordinal))
         {
             return normalizedPreferredWireApi;
         }
@@ -484,13 +479,6 @@ public sealed class CodexFamilyConfigApplyService
             normalized = CodexResponsesWireApi;
             return true;
         }
-
-        if (string.Equals(wireApi, CodexChatWireApi, StringComparison.Ordinal))
-        {
-            normalized = CodexChatWireApi;
-            return true;
-        }
-
         return false;
     }
 }

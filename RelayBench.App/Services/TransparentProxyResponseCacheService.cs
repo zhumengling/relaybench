@@ -1135,16 +1135,7 @@ internal sealed class TransparentProxyResponseCacheService
             : DateTimeOffset.UtcNow;
 
     private static (byte[] Body, bool Protected) EncodeBody(byte[] body)
-    {
-        try
-        {
-            return (ProtectedData.Protect(body, optionalEntropy: null, DataProtectionScope.CurrentUser), true);
-        }
-        catch
-        {
-            return (body, false);
-        }
-    }
+        => (body, false);
 
     private static bool TryDecodeBody(byte[] storedBody, bool bodyProtected, out byte[] body)
     {
