@@ -127,6 +127,6 @@ public sealed partial class ShellViewModel : ObservableObject
             version = typeof(ShellViewModel).Assembly.GetName().Version?.ToString(3);
         }
 
-        return string.IsNullOrWhiteSpace(version) ? "v0.1.8" : $"v{version}";
+        return string.IsNullOrWhiteSpace(version) ? "v0.2" : $"v{version}";
     }
 }
