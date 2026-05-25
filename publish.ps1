@@ -9,6 +9,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSCommandPath
 $projectPath = Join-Path $repoRoot "RelayBench.WinUI\RelayBench.WinUI.csproj"
+$launcherProjectPath = Join-Path $repoRoot "RelayBench.Launcher\RelayBench.Launcher.csproj"
 $nugetConfigPath = Join-Path $repoRoot "NuGet.Config"
 $propsPath = Join-Path $repoRoot "Directory.Build.props"
 $resolvedOutputRoot = Join-Path $repoRoot $OutputRoot
@@ -46,6 +47,19 @@ function Reset-Directory {
     }
 
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
+}
+
+function Move-SymbolsToDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourceDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$SymbolsDirectory
+    )
+
+    New-Item -ItemType Directory -Path $SymbolsDirectory -Force | Out-Null
+    Get-ChildItem -LiteralPath $SourceDirectory -Filter "*.pdb" -File -ErrorAction SilentlyContinue |
+        Move-Item -Destination $SymbolsDirectory -Force
 }
 
 function Set-AppHostManagedAssemblyPath {
@@ -101,38 +115,43 @@ function Set-AppHostManagedAssemblyPath {
     [System.IO.File]::WriteAllBytes($ExePath, $bytes)
 }
 
-function Organize-PublishDirectory {
+function Publish-RootLauncher {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$PublishDirectory
+        [string]$PublishDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$RootDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$Runtime,
+        [Parameter(Mandatory = $true)]
+        [bool]$SelfContained
     )
 
-    $exeName = "RelayBench.WinUI.exe"
-    $assemblyName = "RelayBench.WinUI.dll"
-    $appHostPath = Join-Path $PublishDirectory $exeName
-    $appDirectory = Join-Path $PublishDirectory "app"
-    $symbolsDirectory = Join-Path $PublishDirectory "symbols"
+    $launcherDirectory = Join-Path $PublishDirectory "launcher"
+    $launcherExePath = Join-Path $launcherDirectory "RelayBench.WinUI.exe"
+    $rootExePath = Join-Path $PublishDirectory "RelayBench.WinUI.exe"
+    Reset-Directory -Path $launcherDirectory -Root $PublishDirectory
 
-    if (-not (Test-Path -LiteralPath $appHostPath)) {
-        throw "Missing apphost executable: $appHostPath"
+    & $dotnet publish $launcherProjectPath `
+        -c $Configuration `
+        -r $Runtime `
+        --self-contained $($SelfContained.ToString().ToLowerInvariant()) `
+        --configfile $nugetConfigPath `
+        -p:UseAppHost=true `
+        -p:PublishSingleFile=false `
+        -p:DebugType=none `
+        -p:DebugSymbols=false `
+        -o $launcherDirectory
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet publish failed: RelayBench.Launcher"
     }
 
-    New-Item -ItemType Directory -Path $appDirectory -Force | Out-Null
-    New-Item -ItemType Directory -Path $symbolsDirectory -Force | Out-Null
-
+    Move-Item -LiteralPath $launcherExePath -Destination $rootExePath -Force
     Set-AppHostManagedAssemblyPath `
-        -ExePath $appHostPath `
-        -OriginalAssemblyName $assemblyName `
-        -RelativeAssemblyPath "app\$assemblyName"
-
-    Get-ChildItem -LiteralPath $PublishDirectory -File | ForEach-Object {
-        if ($_.Name -eq $exeName) {
-            return
-        }
-
-        $destination = if ($_.Extension -ieq ".pdb") { $symbolsDirectory } else { $appDirectory }
-        Move-Item -LiteralPath $_.FullName -Destination $destination -Force
-    }
+        -ExePath $rootExePath `
+        -OriginalAssemblyName "RelayBench.WinUI.dll" `
+        -RelativeAssemblyPath "launcher\RelayBench.WinUI.dll"
 }
 
 Push-Location $repoRoot
@@ -170,10 +189,14 @@ try {
     foreach ($target in $targets) {
         $packageName = "relaybench-v$version-$Runtime-winui-$($target.Name)"
         $publishDirectory = Join-Path $resolvedOutputRoot $packageName
+        $appDirectory = Join-Path $publishDirectory "app"
+        $symbolsDirectory = Join-Path $publishDirectory "symbols"
         $zipPath = Join-Path $resolvedOutputRoot "$packageName.zip"
         $hashPath = Join-Path $resolvedOutputRoot "$packageName.sha256.txt"
 
         Reset-Directory -Path $publishDirectory -Root $resolvedOutputRoot
+        New-Item -ItemType Directory -Path $appDirectory -Force | Out-Null
+        New-Item -ItemType Directory -Path $symbolsDirectory -Force | Out-Null
 
         if (Test-Path -LiteralPath $zipPath) {
             Remove-Item -LiteralPath $zipPath -Force
@@ -191,13 +214,18 @@ try {
             --self-contained $($target.SelfContained.ToString().ToLowerInvariant()) `
             --configfile $nugetConfigPath `
             -p:UseAppHost=true `
-            -o $publishDirectory
+            -o $appDirectory
 
         if ($LASTEXITCODE -ne 0) {
             throw "dotnet publish failed: $packageName"
         }
 
-        Organize-PublishDirectory -PublishDirectory $publishDirectory
+        Move-SymbolsToDirectory -SourceDirectory $appDirectory -SymbolsDirectory $symbolsDirectory
+        Publish-RootLauncher `
+            -PublishDirectory $publishDirectory `
+            -RootDirectory $resolvedOutputRoot `
+            -Runtime $Runtime `
+            -SelfContained $target.SelfContained
 
         Compress-Archive -Path (Join-Path $publishDirectory "*") -DestinationPath $zipPath -CompressionLevel Optimal -Force
 

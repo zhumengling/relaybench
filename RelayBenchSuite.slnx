@@ -1,6 +1,9 @@
 <Solution>
   <Project Path="RelayBench.Core/RelayBench.Core.csproj" />
   <Project Path="RelayBench.Services/RelayBench.Services.csproj" />
+  <Project Path="RelayBench.Launcher/RelayBench.Launcher.csproj">
+    <Platform Project="x64" />
+  </Project>
   <Project Path="RelayBench.WinUI/RelayBench.WinUI.csproj">
     <Platform Project="x64" />
   </Project>
