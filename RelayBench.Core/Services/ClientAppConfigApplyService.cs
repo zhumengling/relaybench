@@ -1,0 +1,186 @@
+using RelayBench.Core.Models;
+
+namespace RelayBench.Core.Services;
+
+public sealed class ClientAppConfigApplyService
+{
+    private readonly CodexFamilyConfigApplyService _codexService;
+    private readonly AnthropicClientConfigApplyAdapter _anthropicAdapter;
+    private readonly GeminiClientConfigApplyAdapter _geminiAdapter;
+    private readonly IVsCodeClientConfigApplyAdapter? _vsCodeAdapter;
+
+    public ClientAppConfigApplyService(
+        IClientApiConfigMutationEnvironment? environment = null,
+        IVsCodeClientConfigApplyAdapter? vsCodeAdapter = null)
+    {
+        _codexService = new CodexFamilyConfigApplyService(environment);
+        _anthropicAdapter = new AnthropicClientConfigApplyAdapter(environment);
+        _geminiAdapter = new GeminiClientConfigApplyAdapter(environment);
+        _vsCodeAdapter = vsCodeAdapter;
+    }
+
+    public async Task<ClientAppApplyResult> ApplyAsync(
+        ClientApplyEndpoint endpoint,
+        IReadOnlyList<ClientApplyTargetSelection> targetSelections,
+        ClientApplyEndpoint? anthropicEndpointOverride = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (targetSelections.Count == 0)
+        {
+            return new ClientAppApplyResult(
+                false,
+                "没有选择要应用的软件。",
+                [],
+                [],
+                [],
+                "empty-selection")
+            {
+                TargetResults = []
+            };
+        }
+
+        List<ClientAppApplyResult> results = [];
+
+        var codexSelections = targetSelections
+            .Where(target => target.Protocol == ClientApplyProtocolKind.Responses)
+            .ToArray();
+        if (codexSelections.Length > 0)
+        {
+            var codexPreferredWireApi = ResolveCodexPreferredWireApi(
+                endpoint.PreferredWireApi,
+                codexSelections);
+            var codexTemplate = codexSelections
+                .Select(static target => target.CodexConfigTemplate)
+                .FirstOrDefault(static template => template is not null);
+            results.Add(await _codexService.ApplyAsync(
+                endpoint.BaseUrl,
+                endpoint.ApiKey,
+                endpoint.Model,
+                endpoint.DisplayName,
+                endpoint.ContextWindow,
+                codexPreferredWireApi,
+                codexSelections,
+                codexTemplate,
+                cancellationToken));
+        }
+
+        var anthropicSelections = targetSelections
+            .Where(target => target.Protocol == ClientApplyProtocolKind.Anthropic)
+            .ToArray();
+        if (anthropicSelections.Length > 0)
+        {
+            results.Add(await _anthropicAdapter.ApplyAsync(
+                anthropicEndpointOverride ?? endpoint,
+                anthropicSelections,
+                cancellationToken));
+        }
+
+        var geminiSelections = targetSelections
+            .Where(target => target.Protocol == ClientApplyProtocolKind.Gemini)
+            .ToArray();
+        if (geminiSelections.Length > 0)
+        {
+            results.Add(await _geminiAdapter.ApplyAsync(
+                endpoint,
+                geminiSelections,
+                cancellationToken));
+        }
+
+        var vsCodeSelections = targetSelections
+            .Where(static target => IsVsCodeTarget(target.TargetId))
+            .ToArray();
+        if (vsCodeSelections.Length > 0)
+        {
+            results.Add(_vsCodeAdapter is null
+                ? BuildMissingVsCodeAdapterResult(vsCodeSelections)
+                : await _vsCodeAdapter.ApplyAsync(
+                    endpoint,
+                    vsCodeSelections,
+                    cancellationToken));
+        }
+
+        var targetResults = results.SelectMany(result => result.TargetResults).ToArray();
+        var changedFiles = results.SelectMany(result => result.ChangedFiles).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var backupFiles = results.SelectMany(result => result.BackupFiles).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var appliedTargets = targetResults
+            .Where(result => result.Succeeded)
+            .Select(result => result.DisplayName)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var failures = targetResults.Where(result => !result.Succeeded).ToArray();
+        var succeeded = targetResults.Length > 0 && failures.Length == 0 && appliedTargets.Length > 0;
+        var summary = BuildSummary(targetResults);
+
+        return new ClientAppApplyResult(
+            succeeded,
+            summary,
+            changedFiles,
+            backupFiles,
+            appliedTargets,
+            failures.Length == 0 ? null : string.Join("；", failures.Select(failure => $"{failure.DisplayName}: {failure.Error ?? "失败"}")))
+        {
+            TargetResults = targetResults
+        };
+    }
+
+    private static string? ResolveCodexPreferredWireApi(
+        string? preferredWireApi,
+        IReadOnlyList<ClientApplyTargetSelection> codexSelections)
+    {
+        return codexSelections.Any(target => target.Protocol == ClientApplyProtocolKind.Responses)
+            ? "responses"
+            : preferredWireApi;
+    }
+
+    private static bool IsVsCodeTarget(string targetId)
+        => string.Equals(targetId, "vscode-codex", StringComparison.OrdinalIgnoreCase);
+
+    private static ClientAppApplyResult BuildMissingVsCodeAdapterResult(
+        IReadOnlyList<ClientApplyTargetSelection> targetSelections)
+    {
+        const string error = "VS Code 接入适配器未注入。";
+        var targetResults = targetSelections
+            .Select(static target => new ClientAppTargetApplyResult(
+                target.TargetId,
+                "VS Code",
+                target.Protocol,
+                false,
+                [],
+                [],
+                error))
+            .ToArray();
+
+        return new ClientAppApplyResult(
+            false,
+            error,
+            [],
+            [],
+            [],
+            error)
+        {
+            TargetResults = targetResults
+        };
+    }
+
+    private static string BuildSummary(IReadOnlyList<ClientAppTargetApplyResult> targetResults)
+    {
+        if (targetResults.Count == 0)
+        {
+            return "没有软件被应用。";
+        }
+
+        var successTargets = targetResults.Where(target => target.Succeeded).Select(target => target.DisplayName).ToArray();
+        var failedTargets = targetResults.Where(target => !target.Succeeded).Select(target => target.DisplayName).ToArray();
+        if (failedTargets.Length == 0)
+        {
+            return $"已应用到：{string.Join("、", successTargets)}";
+        }
+
+        if (successTargets.Length == 0)
+        {
+            return $"应用失败：{string.Join("、", failedTargets)}";
+        }
+
+        return $"部分软件应用成功：{string.Join("、", successTargets)}；失败：{string.Join("、", failedTargets)}";
+    }
+}

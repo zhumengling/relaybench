@@ -1,0 +1,774 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Card background overrides with Acrylic for frosted glass effect.
+        FallbackColor values are set for BOTH light and dark themes so that
+        on Windows 10 systems where Acrylic/Mica is not supported, the UI
+        still renders correctly with semi-transparent solid colors.
+    -->
+
+    <!-- Light theme fallbacks -->
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            <AcrylicBrush x:Key="AppChromeTitleBarBackgroundBrush"
+                          TintColor="#F8FAFC"
+                          TintOpacity="0.9"
+                          FallbackColor="#F8FAFC" />
+            <AcrylicBrush x:Key="AppChromePaneBackgroundBrush"
+                          TintColor="#F8FAFC"
+                          TintOpacity="0.9"
+                          FallbackColor="#F5F8FC" />
+            <AcrylicBrush x:Key="AppChromeStatusBarBackgroundBrush"
+                          TintColor="#F8FAFC"
+                          TintOpacity="0.86"
+                          FallbackColor="#F8FAFC" />
+            <AcrylicBrush x:Key="RxAcrylicPanelBrush"
+                          TintColor="#F8FAFC"
+                          TintOpacity="0.82"
+                          FallbackColor="#F5F8FC" />
+            <AcrylicBrush x:Key="RxAcrylicOverlayBrush"
+                          TintColor="#FFFFFF"
+                          TintOpacity="0.92"
+                          FallbackColor="#FAFCFF" />
+            <SolidColorBrush x:Key="AppChromePrimaryTextBrush" Color="#0F172A" />
+            <SolidColorBrush x:Key="AppChromeSecondaryTextBrush" Color="#475569" />
+            <SolidColorBrush x:Key="AppChromeMutedTextBrush" Color="#64748B" />
+            <SolidColorBrush x:Key="AppChromeAccentTextBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="AppChromeLiveStatusBrush" Color="#08763A" />
+            <SolidColorBrush x:Key="AppChromeIconButtonForegroundBrush" Color="#1E293B" />
+            <SolidColorBrush x:Key="AppChromeIconButtonBackgroundPointerOverBrush" Color="#EAF2FF" />
+            <SolidColorBrush x:Key="AppChromeIconButtonBackgroundPressedBrush" Color="#DDEBFF" />
+            <AcrylicBrush x:Key="NavigationViewDefaultPaneBackground"
+                          TintColor="#F8FAFC"
+                          TintOpacity="0.9"
+                          FallbackColor="#F5F8FC" />
+            <AcrylicBrush x:Key="NavigationViewExpandedPaneBackground"
+                          TintColor="#F8FAFC"
+                          TintOpacity="0.9"
+                          FallbackColor="#F5F8FC" />
+            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewContentGridBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewItemForeground" Color="#334155" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundPointerOver" Color="#0F172A" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundPressed" Color="#0F172A" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="#0F172A" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="#0F172A" />
+            <SolidColorBrush x:Key="NavigationViewItemIconForeground" Color="#475569" />
+            <SolidColorBrush x:Key="NavigationViewItemIconForegroundPointerOver" Color="#1E293B" />
+            <SolidColorBrush x:Key="NavigationViewItemIconForegroundSelected" Color="#2563EB" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundPointerOver" Color="#EAF2FF" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="#DDEBFF" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="#D4E6FF" />
+            <AcrylicBrush x:Key="TrayMenuBackgroundBrush"
+                          TintColor="#FFFFFF"
+                          TintOpacity="0.92"
+                          FallbackColor="#FAFCFF" />
+            <SolidColorBrush x:Key="TrayMenuBorderBrush" Color="#CAD8EA" />
+            <SolidColorBrush x:Key="TrayMenuDividerBrush" Color="#D7E2F2" />
+            <SolidColorBrush x:Key="TrayMenuIconBackgroundBrush" Color="#EEF5FF" />
+            <SolidColorBrush x:Key="TrayMenuIconBorderBrush" Color="#C7DAF8" />
+            <SolidColorBrush x:Key="TrayMenuPillBackgroundBrush" Color="#EEF5FF" />
+            <SolidColorBrush x:Key="TrayMenuPrimaryTextBrush" Color="#0F172A" />
+            <SolidColorBrush x:Key="TrayMenuSecondaryTextBrush" Color="#475569" />
+            <SolidColorBrush x:Key="TrayMenuAccentTextBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="TrayMenuLiveStatusBrush" Color="#08763A" />
+            <SolidColorBrush x:Key="TrayMenuIdleStatusBrush" Color="#64748B" />
+            <SolidColorBrush x:Key="TrayMenuButtonBackgroundPointerOverBrush" Color="#EAF2FF" />
+            <SolidColorBrush x:Key="TrayMenuButtonBackgroundPressedBrush" Color="#DDEBFF" />
+            <SolidColorBrush x:Key="TrayMenuButtonBorderPointerOverBrush" Color="#B8D4F8" />
+            <SolidColorBrush x:Key="TrayMenuButtonBorderPressedBrush" Color="#94BFF5" />
+            <SolidColorBrush x:Key="TrayMenuFocusPrimaryBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="TrayMenuFocusSecondaryBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="TrayMenuDangerBackgroundBrush" Color="#FFECEF" />
+            <SolidColorBrush x:Key="TrayMenuDangerBorderBrush" Color="#FFB8C2" />
+            <SolidColorBrush x:Key="TrayMenuDangerTextBrush" Color="#B42318" />
+            <SolidColorBrush x:Key="TrayMenuDangerMetaTextBrush" Color="#9A3412" />
+            <AcrylicBrush x:Key="CardBackgroundFillColorDefaultBrush"
+                          TintColor="#FFFFFF"
+                          TintOpacity="0.86"
+                          FallbackColor="#FAFCFF" />
+            <AcrylicBrush x:Key="CardBackgroundFillColorSecondaryBrush"
+                          TintColor="#F7FAFF"
+                          TintOpacity="0.78"
+                          FallbackColor="#F3F7FC" />
+            <AcrylicBrush x:Key="FlyoutPresenterBackground"
+                          TintColor="#FFFFFF"
+                          TintOpacity="0.92"
+                          FallbackColor="#FAFCFF" />
+            <AcrylicBrush x:Key="MenuFlyoutPresenterBackground"
+                          TintColor="#FFFFFF"
+                          TintOpacity="0.92"
+                          FallbackColor="#FAFCFF" />
+            <AcrylicBrush x:Key="ContentDialogBackground"
+                          TintColor="#FFFFFF"
+                          TintOpacity="0.92"
+                          FallbackColor="#FAFCFF" />
+            <SolidColorBrush x:Key="FlyoutPresenterBorderBrush" Color="#D7E2F2" />
+            <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#D7E2F2" />
+            <SolidColorBrush x:Key="ContentDialogBorderBrush" Color="#D7E2F2" />
+            <SolidColorBrush x:Key="DialogAccentChipBackgroundBrush" Color="#EEF5FF" />
+            <SolidColorBrush x:Key="DialogAccentChipBorderBrush" Color="#C7DAF8" />
+            <SolidColorBrush x:Key="DialogAccentChipForegroundBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="DialogSuccessChipBackgroundBrush" Color="#ECFDF3" />
+            <SolidColorBrush x:Key="DialogSuccessChipBorderBrush" Color="#BBF7D0" />
+            <SolidColorBrush x:Key="DialogSuccessChipForegroundBrush" Color="#08763A" />
+            <SolidColorBrush x:Key="DialogWarningChipBackgroundBrush" Color="#FFF7E6" />
+            <SolidColorBrush x:Key="DialogWarningChipBorderBrush" Color="#F2C46D" />
+            <SolidColorBrush x:Key="DialogWarningChipForegroundBrush" Color="#8A4B00" />
+            <SolidColorBrush x:Key="DialogDangerChipBackgroundBrush" Color="#FEF2F2" />
+            <SolidColorBrush x:Key="DialogDangerChipBorderBrush" Color="#F8B4B4" />
+            <SolidColorBrush x:Key="DialogDangerChipForegroundBrush" Color="#B42318" />
+            <SolidColorBrush x:Key="DialogTerminalBackgroundBrush" Color="#F8FAFC" />
+            <SolidColorBrush x:Key="DialogTerminalBorderBrush" Color="#CBD5E1" />
+            <SolidColorBrush x:Key="DialogTerminalForegroundBrush" Color="#166534" />
+            <SolidColorBrush x:Key="CodeBlockBackgroundBrush" Color="#F8FAFC" />
+            <SolidColorBrush x:Key="CodeBlockBorderBrush" Color="#CBD5E1" />
+            <SolidColorBrush x:Key="CodeBlockLabelForegroundBrush" Color="#64748B" />
+            <SolidColorBrush x:Key="CodeBlockTextForegroundBrush" Color="#1F2937" />
+            <SolidColorBrush x:Key="CodeBlockKeywordForegroundBrush" Color="#1D4ED8" />
+            <SolidColorBrush x:Key="CodeBlockStringForegroundBrush" Color="#A35219" />
+            <SolidColorBrush x:Key="CodeBlockCommentForegroundBrush" Color="#047857" />
+            <SolidColorBrush x:Key="CodeBlockNumberForegroundBrush" Color="#7C3AED" />
+            <SolidColorBrush x:Key="MarkdownTextForegroundBrush" Color="#1F2937" />
+            <SolidColorBrush x:Key="MarkdownQuoteBorderBrush" Color="#C7DAF8" />
+            <SolidColorBrush x:Key="MarkdownQuoteBackgroundBrush" Color="#EEF5FF" />
+            <SolidColorBrush x:Key="MarkdownListMarkerForegroundBrush" Color="#475569" />
+            <SolidColorBrush x:Key="MarkdownTableBorderBrush" Color="#D7E2F2" />
+            <SolidColorBrush x:Key="MarkdownTableHeaderBackgroundBrush" Color="#EEF5FF" />
+            <SolidColorBrush x:Key="MarkdownTableCellBackgroundBrush" Color="#FAFCFF" />
+            <SolidColorBrush x:Key="MarkdownDividerBrush" Color="#E4E7EC" />
+            <SolidColorBrush x:Key="MarkdownInlineCodeForegroundBrush" Color="#B42318" />
+            <SolidColorBrush x:Key="MarkdownImageLinkForegroundBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="MarkdownHtmlInlineForegroundBrush" Color="#64748B" />
+            <SolidColorBrush x:Key="ModelCompareOpenAiBadgeBackgroundBrush" Color="#E8F1FF" />
+            <SolidColorBrush x:Key="ModelCompareOpenAiBadgeBorderBrush" Color="#B8D0FF" />
+            <SolidColorBrush x:Key="ModelCompareOpenAiBadgeForegroundBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="ModelCompareAnthropicBadgeBackgroundBrush" Color="#FFF1E8" />
+            <SolidColorBrush x:Key="ModelCompareAnthropicBadgeBorderBrush" Color="#F7C6A0" />
+            <SolidColorBrush x:Key="ModelCompareAnthropicBadgeForegroundBrush" Color="#DA5E1F" />
+            <SolidColorBrush x:Key="ModelCompareDeepSeekBadgeBackgroundBrush" Color="#EFECFF" />
+            <SolidColorBrush x:Key="ModelCompareDeepSeekBadgeBorderBrush" Color="#CAC4FF" />
+            <SolidColorBrush x:Key="ModelCompareDeepSeekBadgeForegroundBrush" Color="#6650D6" />
+            <SolidColorBrush x:Key="ModelCompareHealthyDotBrush" Color="#129C5B" />
+            <SolidColorBrush x:Key="ModelCompareSlowDotBrush" Color="#F59E0B" />
+            <SolidColorBrush x:Key="ProxyPolicyAccentChipBackgroundBrush" Color="#EEF5FF" />
+            <SolidColorBrush x:Key="ProxyPolicyAccentChipBorderBrush" Color="#C7DAF8" />
+            <SolidColorBrush x:Key="ProxyPolicyAccentChipForegroundBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="ProxyPolicyHealthyChipBackgroundBrush" Color="#ECFDF3" />
+            <SolidColorBrush x:Key="ProxyPolicyHealthyChipBorderBrush" Color="#BBF7D0" />
+            <SolidColorBrush x:Key="ProxyPolicyHealthyChipForegroundBrush" Color="#08763A" />
+            <SolidColorBrush x:Key="ProxyPolicyWarningChipBackgroundBrush" Color="#FFF7E6" />
+            <SolidColorBrush x:Key="ProxyPolicyWarningChipBorderBrush" Color="#F2C46D" />
+            <SolidColorBrush x:Key="ProxyPolicyWarningChipForegroundBrush" Color="#8A4B00" />
+            <SolidColorBrush x:Key="CapabilitySupportedChipBackgroundBrush" Color="#ECFDF3" />
+            <SolidColorBrush x:Key="CapabilitySupportedChipBorderBrush" Color="#BBF7D0" />
+            <SolidColorBrush x:Key="CapabilitySupportedChipForegroundBrush" Color="#08763A" />
+            <SolidColorBrush x:Key="CapabilityWarningChipBackgroundBrush" Color="#FFF7E6" />
+            <SolidColorBrush x:Key="CapabilityWarningChipBorderBrush" Color="#F2C46D" />
+            <SolidColorBrush x:Key="CapabilityWarningChipForegroundBrush" Color="#8A4B00" />
+            <SolidColorBrush x:Key="CapabilityUnknownChipBackgroundBrush" Color="#EEF2F7" />
+            <SolidColorBrush x:Key="CapabilityUnknownChipBorderBrush" Color="#CAD8EA" />
+            <SolidColorBrush x:Key="CapabilityUnknownChipForegroundBrush" Color="#475569" />
+            <SolidColorBrush x:Key="HistoryAccentChipBackgroundBrush" Color="#EEF5FF" />
+            <SolidColorBrush x:Key="HistoryAccentChipBorderBrush" Color="#C7DAF8" />
+            <SolidColorBrush x:Key="HistoryAccentChipForegroundBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="HistoryHealthyChipBackgroundBrush" Color="#ECFDF3" />
+            <SolidColorBrush x:Key="HistoryHealthyChipBorderBrush" Color="#BBF7D0" />
+            <SolidColorBrush x:Key="HistoryHealthyChipForegroundBrush" Color="#08763A" />
+            <SolidColorBrush x:Key="HistoryWarningChipBackgroundBrush" Color="#FFF7E6" />
+            <SolidColorBrush x:Key="HistoryWarningChipBorderBrush" Color="#F2C46D" />
+            <SolidColorBrush x:Key="HistoryWarningChipForegroundBrush" Color="#8A4B00" />
+            <SolidColorBrush x:Key="HistoryDangerChipBackgroundBrush" Color="#FEF2F2" />
+            <SolidColorBrush x:Key="HistoryDangerChipBorderBrush" Color="#F8B4B4" />
+            <SolidColorBrush x:Key="HistoryDangerChipForegroundBrush" Color="#B42318" />
+            <SolidColorBrush x:Key="AccessHeaderIconBackgroundBrush" Color="#EEF5FF" />
+            <SolidColorBrush x:Key="AccessHeaderIconBorderBrush" Color="#C7DAF8" />
+            <SolidColorBrush x:Key="AccessHeaderIconForegroundBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="AccessAccentChipBackgroundBrush" Color="#EEF5FF" />
+            <SolidColorBrush x:Key="AccessAccentChipBorderBrush" Color="#C7DAF8" />
+            <SolidColorBrush x:Key="AccessAccentChipForegroundBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="AccessHealthyChipBackgroundBrush" Color="#ECFDF3" />
+            <SolidColorBrush x:Key="AccessHealthyChipBorderBrush" Color="#BBF7D0" />
+            <SolidColorBrush x:Key="AccessHealthyChipForegroundBrush" Color="#08763A" />
+            <SolidColorBrush x:Key="AccessWarningChipBackgroundBrush" Color="#FFF7E6" />
+            <SolidColorBrush x:Key="AccessWarningChipBorderBrush" Color="#F2C46D" />
+            <SolidColorBrush x:Key="AccessWarningChipForegroundBrush" Color="#8A4B00" />
+            <SolidColorBrush x:Key="AccessDangerChipBackgroundBrush" Color="#FEF2F2" />
+            <SolidColorBrush x:Key="AccessDangerChipBorderBrush" Color="#F8B4B4" />
+            <SolidColorBrush x:Key="AccessDangerChipForegroundBrush" Color="#B42318" />
+            <SolidColorBrush x:Key="AccessTraceChipBackgroundBrush" Color="#F8FAFC" />
+            <SolidColorBrush x:Key="AccessTraceChipBorderBrush" Color="#CBD5E1" />
+            <SolidColorBrush x:Key="ChatAccentChipBackgroundBrush" Color="#EEF5FF" />
+            <SolidColorBrush x:Key="ChatAccentChipBorderBrush" Color="#C7DAF8" />
+            <SolidColorBrush x:Key="ChatAccentChipForegroundBrush" Color="#2563EB" />
+            <SolidColorBrush x:Key="ChatHealthyChipBackgroundBrush" Color="#ECFDF3" />
+            <SolidColorBrush x:Key="ChatHealthyChipBorderBrush" Color="#BBF7D0" />
+            <SolidColorBrush x:Key="ChatHealthyChipForegroundBrush" Color="#08763A" />
+            <SolidColorBrush x:Key="ChatWarningChipBackgroundBrush" Color="#FFF7E6" />
+            <SolidColorBrush x:Key="ChatWarningChipBorderBrush" Color="#F2C46D" />
+            <SolidColorBrush x:Key="ChatWarningChipForegroundBrush" Color="#8A4B00" />
+            <SolidColorBrush x:Key="ChatDangerChipForegroundBrush" Color="#B42318" />
+            <SolidColorBrush x:Key="ChatVioletChipBackgroundBrush" Color="#F3EFFF" />
+            <SolidColorBrush x:Key="ChatVioletChipBorderBrush" Color="#C7BFFF" />
+            <SolidColorBrush x:Key="ChatVioletChipForegroundBrush" Color="#6D5DF2" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+            <AcrylicBrush x:Key="AppChromeTitleBarBackgroundBrush"
+                          TintColor="#111827"
+                          TintOpacity="0.78"
+                          FallbackColor="#151A1F" />
+            <AcrylicBrush x:Key="AppChromePaneBackgroundBrush"
+                          TintColor="#111827"
+                          TintOpacity="0.82"
+                          FallbackColor="#151A1F" />
+            <AcrylicBrush x:Key="AppChromeStatusBarBackgroundBrush"
+                          TintColor="#111827"
+                          TintOpacity="0.78"
+                          FallbackColor="#151A1F" />
+            <AcrylicBrush x:Key="RxAcrylicPanelBrush"
+                          TintColor="#111827"
+                          TintOpacity="0.78"
+                          FallbackColor="#151A1F" />
+            <AcrylicBrush x:Key="RxAcrylicOverlayBrush"
+                          TintColor="#24272E"
+                          TintOpacity="0.90"
+                          FallbackColor="#24272E" />
+            <SolidColorBrush x:Key="AppChromePrimaryTextBrush" Color="#F8FAFC" />
+            <SolidColorBrush x:Key="AppChromeSecondaryTextBrush" Color="#94A3B8" />
+            <SolidColorBrush x:Key="AppChromeMutedTextBrush" Color="#CBD5E1" />
+            <SolidColorBrush x:Key="AppChromeAccentTextBrush" Color="#60A5FA" />
+            <SolidColorBrush x:Key="AppChromeLiveStatusBrush" Color="#8FF2B6" />
+            <SolidColorBrush x:Key="AppChromeIconButtonForegroundBrush" Color="#CBD5E1" />
+            <SolidColorBrush x:Key="AppChromeIconButtonBackgroundPointerOverBrush" Color="#263244" />
+            <SolidColorBrush x:Key="AppChromeIconButtonBackgroundPressedBrush" Color="#1E293B" />
+            <AcrylicBrush x:Key="NavigationViewDefaultPaneBackground"
+                          TintColor="#111827"
+                          TintOpacity="0.82"
+                          FallbackColor="#151A1F" />
+            <AcrylicBrush x:Key="NavigationViewExpandedPaneBackground"
+                          TintColor="#111827"
+                          TintOpacity="0.82"
+                          FallbackColor="#151A1F" />
+            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewContentGridBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewItemForeground" Color="#DDE6F3" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundPointerOver" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundPressed" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="NavigationViewItemIconForeground" Color="#B8C7E0" />
+            <SolidColorBrush x:Key="NavigationViewItemIconForegroundPointerOver" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="NavigationViewItemIconForegroundSelected" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundPointerOver" Color="#263244" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="#223B66" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="#294678" />
+            <AcrylicBrush x:Key="TrayMenuBackgroundBrush"
+                          TintColor="#111827"
+                          TintOpacity="0.84"
+                          FallbackColor="#151A1F" />
+            <SolidColorBrush x:Key="TrayMenuBorderBrush" Color="#475569" />
+            <SolidColorBrush x:Key="TrayMenuDividerBrush" Color="#334155" />
+            <SolidColorBrush x:Key="TrayMenuIconBackgroundBrush" Color="#1E293B" />
+            <SolidColorBrush x:Key="TrayMenuIconBorderBrush" Color="#334155" />
+            <SolidColorBrush x:Key="TrayMenuPillBackgroundBrush" Color="#172033" />
+            <SolidColorBrush x:Key="TrayMenuPrimaryTextBrush" Color="#F8FAFC" />
+            <SolidColorBrush x:Key="TrayMenuSecondaryTextBrush" Color="#CBD5E1" />
+            <SolidColorBrush x:Key="TrayMenuAccentTextBrush" Color="#60A5FA" />
+            <SolidColorBrush x:Key="TrayMenuLiveStatusBrush" Color="#8FF2B6" />
+            <SolidColorBrush x:Key="TrayMenuIdleStatusBrush" Color="#94A3B8" />
+            <SolidColorBrush x:Key="TrayMenuButtonBackgroundPointerOverBrush" Color="#263244" />
+            <SolidColorBrush x:Key="TrayMenuButtonBackgroundPressedBrush" Color="#1E293B" />
+            <SolidColorBrush x:Key="TrayMenuButtonBorderPointerOverBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="TrayMenuButtonBorderPressedBrush" Color="#60A5FA" />
+            <SolidColorBrush x:Key="TrayMenuFocusPrimaryBrush" Color="#8FC7FF" />
+            <SolidColorBrush x:Key="TrayMenuFocusSecondaryBrush" Color="#111827" />
+            <SolidColorBrush x:Key="TrayMenuDangerBackgroundBrush" Color="#3B1F2A" />
+            <SolidColorBrush x:Key="TrayMenuDangerBorderBrush" Color="#7F1D1D" />
+            <SolidColorBrush x:Key="TrayMenuDangerTextBrush" Color="#FCA5A5" />
+            <SolidColorBrush x:Key="TrayMenuDangerMetaTextBrush" Color="#FDBA74" />
+            <AcrylicBrush x:Key="CardBackgroundFillColorDefaultBrush"
+                          TintColor="#2D2D2D"
+                          TintOpacity="0.72"
+                          FallbackColor="#2D2D2D" />
+            <AcrylicBrush x:Key="CardBackgroundFillColorSecondaryBrush"
+                          TintColor="#383838"
+                          TintOpacity="0.6"
+                          FallbackColor="#383838" />
+            <AcrylicBrush x:Key="FlyoutPresenterBackground"
+                          TintColor="#111827"
+                          TintOpacity="0.88"
+                          FallbackColor="#1B2230" />
+            <AcrylicBrush x:Key="MenuFlyoutPresenterBackground"
+                          TintColor="#111827"
+                          TintOpacity="0.88"
+                          FallbackColor="#1B2230" />
+            <AcrylicBrush x:Key="ContentDialogBackground"
+                          TintColor="#24272E"
+                          TintOpacity="0.86"
+                          FallbackColor="#24272E" />
+            <SolidColorBrush x:Key="FlyoutPresenterBorderBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="ContentDialogBorderBrush" Color="#424A58" />
+            <SolidColorBrush x:Key="DialogAccentChipBackgroundBrush" Color="#102A4A" />
+            <SolidColorBrush x:Key="DialogAccentChipBorderBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="DialogAccentChipForegroundBrush" Color="#7CCBFF" />
+            <SolidColorBrush x:Key="DialogSuccessChipBackgroundBrush" Color="#143827" />
+            <SolidColorBrush x:Key="DialogSuccessChipBorderBrush" Color="#2D8D62" />
+            <SolidColorBrush x:Key="DialogSuccessChipForegroundBrush" Color="#8FF2B6" />
+            <SolidColorBrush x:Key="DialogWarningChipBackgroundBrush" Color="#4A3210" />
+            <SolidColorBrush x:Key="DialogWarningChipBorderBrush" Color="#8A5A14" />
+            <SolidColorBrush x:Key="DialogWarningChipForegroundBrush" Color="#FFC36D" />
+            <SolidColorBrush x:Key="DialogDangerChipBackgroundBrush" Color="#4A1218" />
+            <SolidColorBrush x:Key="DialogDangerChipBorderBrush" Color="#8A2632" />
+            <SolidColorBrush x:Key="DialogDangerChipForegroundBrush" Color="#FDA4AF" />
+            <SolidColorBrush x:Key="DialogTerminalBackgroundBrush" Color="#0B1220" />
+            <SolidColorBrush x:Key="DialogTerminalBorderBrush" Color="#172033" />
+            <SolidColorBrush x:Key="DialogTerminalForegroundBrush" Color="#C8F7C5" />
+            <SolidColorBrush x:Key="CodeBlockBackgroundBrush" Color="#0B1220" />
+            <SolidColorBrush x:Key="CodeBlockBorderBrush" Color="#172033" />
+            <SolidColorBrush x:Key="CodeBlockLabelForegroundBrush" Color="#B4B4B4" />
+            <SolidColorBrush x:Key="CodeBlockTextForegroundBrush" Color="#D4D4D4" />
+            <SolidColorBrush x:Key="CodeBlockKeywordForegroundBrush" Color="#569CD6" />
+            <SolidColorBrush x:Key="CodeBlockStringForegroundBrush" Color="#CE9178" />
+            <SolidColorBrush x:Key="CodeBlockCommentForegroundBrush" Color="#6A9955" />
+            <SolidColorBrush x:Key="CodeBlockNumberForegroundBrush" Color="#B5CEA8" />
+            <SolidColorBrush x:Key="MarkdownTextForegroundBrush" Color="#DDE6F3" />
+            <SolidColorBrush x:Key="MarkdownQuoteBorderBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="MarkdownQuoteBackgroundBrush" Color="#102A4A" />
+            <SolidColorBrush x:Key="MarkdownListMarkerForegroundBrush" Color="#CBD5E1" />
+            <SolidColorBrush x:Key="MarkdownTableBorderBrush" Color="#334155" />
+            <SolidColorBrush x:Key="MarkdownTableHeaderBackgroundBrush" Color="#172033" />
+            <SolidColorBrush x:Key="MarkdownTableCellBackgroundBrush" Color="#111827" />
+            <SolidColorBrush x:Key="MarkdownDividerBrush" Color="#334155" />
+            <SolidColorBrush x:Key="MarkdownInlineCodeForegroundBrush" Color="#FCA5A5" />
+            <SolidColorBrush x:Key="MarkdownImageLinkForegroundBrush" Color="#7CCBFF" />
+            <SolidColorBrush x:Key="MarkdownHtmlInlineForegroundBrush" Color="#94A3B8" />
+            <SolidColorBrush x:Key="ModelCompareOpenAiBadgeBackgroundBrush" Color="#102A4A" />
+            <SolidColorBrush x:Key="ModelCompareOpenAiBadgeBorderBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="ModelCompareOpenAiBadgeForegroundBrush" Color="#7CCBFF" />
+            <SolidColorBrush x:Key="ModelCompareAnthropicBadgeBackgroundBrush" Color="#4A3210" />
+            <SolidColorBrush x:Key="ModelCompareAnthropicBadgeBorderBrush" Color="#8A5A14" />
+            <SolidColorBrush x:Key="ModelCompareAnthropicBadgeForegroundBrush" Color="#FFC36D" />
+            <SolidColorBrush x:Key="ModelCompareDeepSeekBadgeBackgroundBrush" Color="#201B4A" />
+            <SolidColorBrush x:Key="ModelCompareDeepSeekBadgeBorderBrush" Color="#5B4FD9" />
+            <SolidColorBrush x:Key="ModelCompareDeepSeekBadgeForegroundBrush" Color="#C4B5FD" />
+            <SolidColorBrush x:Key="ModelCompareHealthyDotBrush" Color="#8FF2B6" />
+            <SolidColorBrush x:Key="ModelCompareSlowDotBrush" Color="#FFC36D" />
+            <SolidColorBrush x:Key="ProxyPolicyAccentChipBackgroundBrush" Color="#102A4A" />
+            <SolidColorBrush x:Key="ProxyPolicyAccentChipBorderBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="ProxyPolicyAccentChipForegroundBrush" Color="#7CCBFF" />
+            <SolidColorBrush x:Key="ProxyPolicyHealthyChipBackgroundBrush" Color="#143827" />
+            <SolidColorBrush x:Key="ProxyPolicyHealthyChipBorderBrush" Color="#2D8D62" />
+            <SolidColorBrush x:Key="ProxyPolicyHealthyChipForegroundBrush" Color="#8FF2B6" />
+            <SolidColorBrush x:Key="ProxyPolicyWarningChipBackgroundBrush" Color="#4A3210" />
+            <SolidColorBrush x:Key="ProxyPolicyWarningChipBorderBrush" Color="#8A5A14" />
+            <SolidColorBrush x:Key="ProxyPolicyWarningChipForegroundBrush" Color="#FFC36D" />
+            <SolidColorBrush x:Key="CapabilitySupportedChipBackgroundBrush" Color="#143827" />
+            <SolidColorBrush x:Key="CapabilitySupportedChipBorderBrush" Color="#2D8D62" />
+            <SolidColorBrush x:Key="CapabilitySupportedChipForegroundBrush" Color="#8FF2B6" />
+            <SolidColorBrush x:Key="CapabilityWarningChipBackgroundBrush" Color="#4A3210" />
+            <SolidColorBrush x:Key="CapabilityWarningChipBorderBrush" Color="#8A5A14" />
+            <SolidColorBrush x:Key="CapabilityWarningChipForegroundBrush" Color="#FFC36D" />
+            <SolidColorBrush x:Key="CapabilityUnknownChipBackgroundBrush" Color="#172033" />
+            <SolidColorBrush x:Key="CapabilityUnknownChipBorderBrush" Color="#334155" />
+            <SolidColorBrush x:Key="CapabilityUnknownChipForegroundBrush" Color="#CBD5E1" />
+            <SolidColorBrush x:Key="HistoryAccentChipBackgroundBrush" Color="#102A4A" />
+            <SolidColorBrush x:Key="HistoryAccentChipBorderBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="HistoryAccentChipForegroundBrush" Color="#7CCBFF" />
+            <SolidColorBrush x:Key="HistoryHealthyChipBackgroundBrush" Color="#143827" />
+            <SolidColorBrush x:Key="HistoryHealthyChipBorderBrush" Color="#2D8D62" />
+            <SolidColorBrush x:Key="HistoryHealthyChipForegroundBrush" Color="#8FF2B6" />
+            <SolidColorBrush x:Key="HistoryWarningChipBackgroundBrush" Color="#4A3210" />
+            <SolidColorBrush x:Key="HistoryWarningChipBorderBrush" Color="#8A5A14" />
+            <SolidColorBrush x:Key="HistoryWarningChipForegroundBrush" Color="#FFC36D" />
+            <SolidColorBrush x:Key="HistoryDangerChipBackgroundBrush" Color="#4A1820" />
+            <SolidColorBrush x:Key="HistoryDangerChipBorderBrush" Color="#9F283A" />
+            <SolidColorBrush x:Key="HistoryDangerChipForegroundBrush" Color="#FDA4AF" />
+            <SolidColorBrush x:Key="AccessHeaderIconBackgroundBrush" Color="#14213F" />
+            <SolidColorBrush x:Key="AccessHeaderIconBorderBrush" Color="#2F6FED" />
+            <SolidColorBrush x:Key="AccessHeaderIconForegroundBrush" Color="#7CCBFF" />
+            <SolidColorBrush x:Key="AccessAccentChipBackgroundBrush" Color="#102A4A" />
+            <SolidColorBrush x:Key="AccessAccentChipBorderBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="AccessAccentChipForegroundBrush" Color="#7CCBFF" />
+            <SolidColorBrush x:Key="AccessHealthyChipBackgroundBrush" Color="#143827" />
+            <SolidColorBrush x:Key="AccessHealthyChipBorderBrush" Color="#2D8D62" />
+            <SolidColorBrush x:Key="AccessHealthyChipForegroundBrush" Color="#8FF2B6" />
+            <SolidColorBrush x:Key="AccessWarningChipBackgroundBrush" Color="#4A3210" />
+            <SolidColorBrush x:Key="AccessWarningChipBorderBrush" Color="#8A5A14" />
+            <SolidColorBrush x:Key="AccessWarningChipForegroundBrush" Color="#FFC36D" />
+            <SolidColorBrush x:Key="AccessDangerChipBackgroundBrush" Color="#4A1820" />
+            <SolidColorBrush x:Key="AccessDangerChipBorderBrush" Color="#9F283A" />
+            <SolidColorBrush x:Key="AccessDangerChipForegroundBrush" Color="#FDA4AF" />
+            <SolidColorBrush x:Key="AccessTraceChipBackgroundBrush" Color="#111827" />
+            <SolidColorBrush x:Key="AccessTraceChipBorderBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="ChatAccentChipBackgroundBrush" Color="#102A4A" />
+            <SolidColorBrush x:Key="ChatAccentChipBorderBrush" Color="#34506E" />
+            <SolidColorBrush x:Key="ChatAccentChipForegroundBrush" Color="#7CCBFF" />
+            <SolidColorBrush x:Key="ChatHealthyChipBackgroundBrush" Color="#143827" />
+            <SolidColorBrush x:Key="ChatHealthyChipBorderBrush" Color="#2D8D62" />
+            <SolidColorBrush x:Key="ChatHealthyChipForegroundBrush" Color="#8FF2B6" />
+            <SolidColorBrush x:Key="ChatWarningChipBackgroundBrush" Color="#4A3210" />
+            <SolidColorBrush x:Key="ChatWarningChipBorderBrush" Color="#8A5A14" />
+            <SolidColorBrush x:Key="ChatWarningChipForegroundBrush" Color="#FFC36D" />
+            <SolidColorBrush x:Key="ChatDangerChipForegroundBrush" Color="#FDA4AF" />
+            <SolidColorBrush x:Key="ChatVioletChipBackgroundBrush" Color="#201B4A" />
+            <SolidColorBrush x:Key="ChatVioletChipBorderBrush" Color="#5B4FD9" />
+            <SolidColorBrush x:Key="ChatVioletChipForegroundBrush" Color="#C4B5FD" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="HighContrast">
+            <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="CardBackgroundFillColorSecondaryBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="AppChromeTitleBarBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="AppChromePaneBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="AppChromeStatusBarBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="RxAcrylicPanelBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="RxAcrylicOverlayBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="AppChromePrimaryTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AppChromeSecondaryTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AppChromeMutedTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AppChromeAccentTextBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="AppChromeLiveStatusBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="AppChromeIconButtonForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AppChromeIconButtonBackgroundPointerOverBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="AppChromeIconButtonBackgroundPressedBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewContentGridBackground" Color="Transparent" />
+            <SolidColorBrush x:Key="NavigationViewItemForeground" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundPointerOver" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundPressed" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="{ThemeResource SystemColorHighlightTextColor}" />
+            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="{ThemeResource SystemColorHighlightTextColor}" />
+            <SolidColorBrush x:Key="NavigationViewItemIconForeground" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="NavigationViewItemIconForegroundPointerOver" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="NavigationViewItemIconForegroundSelected" Color="{ThemeResource SystemColorHighlightTextColor}" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundPointerOver" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="TrayMenuBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="TrayMenuBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuDividerBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuIconBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="TrayMenuIconBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuPillBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="TrayMenuPrimaryTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuSecondaryTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuAccentTextBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="TrayMenuLiveStatusBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="TrayMenuIdleStatusBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuButtonBackgroundPointerOverBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="TrayMenuButtonBackgroundPressedBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="TrayMenuButtonBorderPointerOverBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuButtonBorderPressedBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuFocusPrimaryBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="TrayMenuFocusSecondaryBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuDangerBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="TrayMenuDangerBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuDangerTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="TrayMenuDangerMetaTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="FlyoutPresenterBackground" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ContentDialogBackground" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="FlyoutPresenterBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ContentDialogBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="DialogAccentChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="DialogAccentChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="DialogAccentChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="DialogSuccessChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="DialogSuccessChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="DialogSuccessChipForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="DialogWarningChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="DialogWarningChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="DialogWarningChipForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="DialogDangerChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="DialogDangerChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="DialogDangerChipForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="DialogTerminalBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="DialogTerminalBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="DialogTerminalForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CodeBlockBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="CodeBlockBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CodeBlockLabelForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CodeBlockTextForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CodeBlockKeywordForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="CodeBlockStringForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="CodeBlockCommentForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="CodeBlockNumberForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="MarkdownTextForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="MarkdownQuoteBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="MarkdownQuoteBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="MarkdownListMarkerForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="MarkdownTableBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="MarkdownTableHeaderBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="MarkdownTableCellBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="MarkdownDividerBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="MarkdownInlineCodeForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="MarkdownImageLinkForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="MarkdownHtmlInlineForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ModelCompareOpenAiBadgeBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ModelCompareOpenAiBadgeBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ModelCompareOpenAiBadgeForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="ModelCompareAnthropicBadgeBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ModelCompareAnthropicBadgeBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ModelCompareAnthropicBadgeForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="ModelCompareDeepSeekBadgeBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ModelCompareDeepSeekBadgeBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ModelCompareDeepSeekBadgeForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="ModelCompareHealthyDotBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ModelCompareSlowDotBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="ProxyPolicyAccentChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ProxyPolicyAccentChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ProxyPolicyAccentChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="ProxyPolicyHealthyChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ProxyPolicyHealthyChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ProxyPolicyHealthyChipForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ProxyPolicyWarningChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ProxyPolicyWarningChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ProxyPolicyWarningChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="CapabilitySupportedChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="CapabilitySupportedChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CapabilitySupportedChipForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CapabilityWarningChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="CapabilityWarningChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CapabilityWarningChipForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CapabilityUnknownChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="CapabilityUnknownChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="CapabilityUnknownChipForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="HistoryAccentChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="HistoryAccentChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="HistoryAccentChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="HistoryHealthyChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="HistoryHealthyChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="HistoryHealthyChipForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="HistoryWarningChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="HistoryWarningChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="HistoryWarningChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="HistoryDangerChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="HistoryDangerChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="HistoryDangerChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="AccessHeaderIconBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="AccessHeaderIconBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AccessHeaderIconForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="AccessAccentChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="AccessAccentChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AccessAccentChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="AccessHealthyChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="AccessHealthyChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AccessHealthyChipForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AccessWarningChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="AccessWarningChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AccessWarningChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="AccessDangerChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="AccessDangerChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="AccessDangerChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="AccessTraceChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="AccessTraceChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ChatAccentChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ChatAccentChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ChatAccentChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="ChatHealthyChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ChatHealthyChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ChatHealthyChipForegroundBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ChatWarningChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ChatWarningChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ChatWarningChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="ChatDangerChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+            <SolidColorBrush x:Key="ChatVioletChipBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+            <SolidColorBrush x:Key="ChatVioletChipBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+            <SolidColorBrush x:Key="ChatVioletChipForegroundBrush" Color="{ThemeResource SystemColorHotlightColor}" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
+    <Style x:Key="AppToolbarButton" TargetType="Button">
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="AppAccentToolbarButton" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="AppIconButton" TargetType="Button">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinWidth" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="AppAccentIconButton" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinWidth" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="AppChromeIconButton" TargetType="Button" BasedOn="{StaticResource AppIconButton}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{ThemeResource AppChromeIconButtonForegroundBrush}" />
+    </Style>
+
+    <Style x:Key="AppRowIconButton" TargetType="Button">
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="MinWidth" Value="34" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="AppModeRadio" TargetType="RadioButton">
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="AppModeToggle" TargetType="ToggleButton">
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="CornerRadius" Value="7" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="AppHeaderIcon" TargetType="Border">
+        <Setter Property="Width" Value="44" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="CornerRadius" Value="22" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="AppStatusPill" TargetType="Border">
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Padding" Value="9,4" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="AppCompactCheckBox" TargetType="CheckBox">
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="DialogTerminalTextBox" TargetType="TextBox">
+        <Setter Property="IsReadOnly" Value="True" />
+        <Setter Property="AcceptsReturn" Value="True" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{ThemeResource DialogTerminalForegroundBrush}" />
+        <Setter Property="Background" Value="{ThemeResource DialogTerminalBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource DialogTerminalBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="12,10" />
+    </Style>
+
+    <Style TargetType="FlyoutPresenter">
+        <Setter Property="Background" Value="{ThemeResource FlyoutPresenterBackground}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource FlyoutPresenterBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="MinWidth" Value="280" />
+        <Setter Property="MaxWidth" Value="640" />
+        <Setter Property="MaxHeight" Value="620" />
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="Transitions">
+            <Setter.Value>
+                <TransitionCollection>
+                    <EntranceThemeTransition FromVerticalOffset="8" IsStaggeringEnabled="False" />
+                    <RepositionThemeTransition />
+                </TransitionCollection>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="MenuFlyoutPresenter">
+        <Setter Property="Background" Value="{ThemeResource MenuFlyoutPresenterBackground}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource MenuFlyoutPresenterBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="MinWidth" Value="220" />
+        <Setter Property="MaxWidth" Value="420" />
+        <Setter Property="MaxHeight" Value="620" />
+        <Setter Property="Transitions">
+            <Setter.Value>
+                <TransitionCollection>
+                    <EntranceThemeTransition FromVerticalOffset="6" IsStaggeringEnabled="False" />
+                    <RepositionThemeTransition />
+                </TransitionCollection>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ContentDialog">
+        <Setter Property="Background" Value="{ThemeResource ContentDialogBackground}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource ContentDialogBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style TargetType="ListView">
+        <Setter Property="ItemContainerTransitions">
+            <Setter.Value>
+                <TransitionCollection>
+                    <EntranceThemeTransition FromVerticalOffset="8" IsStaggeringEnabled="True" />
+                    <RepositionThemeTransition />
+                </TransitionCollection>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="GridView">
+        <Setter Property="ItemContainerTransitions">
+            <Setter.Value>
+                <TransitionCollection>
+                    <EntranceThemeTransition FromVerticalOffset="8" IsStaggeringEnabled="True" />
+                    <RepositionThemeTransition />
+                </TransitionCollection>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

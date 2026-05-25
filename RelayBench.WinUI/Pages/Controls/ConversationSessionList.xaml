@@ -1,0 +1,169 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<UserControl
+    x:Class="RelayBench.WinUI.Pages.Controls.ConversationSessionList"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:RelayBench.WinUI.ViewModels"
+    xmlns:converters="using:RelayBench.WinUI.Converters">
+
+    <UserControl.Resources>
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
+        <Style x:Key="RailCaption" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid RowSpacing="10">
+        <Grid.ChildrenTransitions>
+            <TransitionCollection>
+                <EntranceThemeTransition FromVerticalOffset="8" IsStaggeringEnabled="True" />
+                <RepositionThemeTransition />
+            </TransitionCollection>
+        </Grid.ChildrenTransitions>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="18" Padding="8,0,8,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Spacing="6">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource AppChromeAccentTextBrush}" Text="&#x4F1A;&#x8BDD;&#x5217;&#x8868;" TextTrimming="CharacterEllipsis" />
+                <Border Height="2" Background="{ThemeResource AppChromeAccentTextBrush}" CornerRadius="1" />
+            </StackPanel>
+            <TextBlock Grid.Column="1" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x9884;&#x8BBE;&#x6A21;&#x677F;" TextTrimming="CharacterEllipsis" />
+        </Grid>
+
+        <AutoSuggestBox
+            Grid.Row="1"
+            Margin="0,0,0,8"
+            PlaceholderText="&#x641C;&#x7D22;&#x4F1A;&#x8BDD;"
+            QueryIcon="Find" />
+
+        <TextBlock Grid.Row="2" Margin="8,0,0,0" Style="{StaticResource RailCaption}" Text="&#x4ECA;&#x5929;" TextTrimming="CharacterEllipsis" />
+
+        <ListView
+            x:Name="SessionListView"
+            Grid.Row="3"
+            ItemsSource="{x:Bind Sessions, Mode=OneWay}"
+            SelectedItem="{x:Bind SelectedSession, Mode=TwoWay}"
+            SelectionChanged="OnSelectionChanged"
+            SelectionMode="Single">
+            <ListView.Transitions>
+                <TransitionCollection>
+                    <EntranceThemeTransition FromVerticalOffset="8" IsStaggeringEnabled="True" />
+                    <RepositionThemeTransition />
+                </TransitionCollection>
+            </ListView.Transitions>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0,0,0,4" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChatSession">
+                    <Border CornerRadius="6" Padding="10,9">
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Text="{x:Bind Title, Mode=OneWay}"
+                                TextTrimming="CharacterEllipsis"
+                                Visibility="{x:Bind IsRenaming, Mode=OneWay, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                            <TextBox
+                                FontSize="13"
+                                Text="{x:Bind RenameText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                Visibility="{x:Bind IsRenaming, Mode=OneWay}"
+                                Padding="2,1"
+                                MinHeight="0"
+                                KeyDown="OnRenameKeyDown"
+                                LostFocus="OnRenameLostFocus"
+                                Tag="{x:Bind Id}" />
+
+                            <TextBlock
+                                Grid.Column="1"
+                                FontSize="11"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{x:Bind DisplayTime, Mode=OneWay}"
+                                TextTrimming="CharacterEllipsis" />
+
+                            <TextBlock
+                                Grid.Row="1"
+                                FontSize="11"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{x:Bind SummaryLine, Mode=OneWay}"
+                                TextTrimming="CharacterEllipsis" />
+
+                            <Button
+                                Grid.Row="0"
+                                Grid.RowSpan="2"
+                                Grid.Column="2"
+                                Padding="4"
+                                VerticalAlignment="Center"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="OnRenameClick"
+                                Tag="{x:Bind Id}"
+                                AutomationProperties.Name="重命名对话会话"
+                                ToolTipService.ToolTip="&#x91CD;&#x547D;&#x540D;">
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="11" Glyph="&#xE70F;" />
+                            </Button>
+
+                            <Button
+                                Grid.Row="0"
+                                Grid.RowSpan="2"
+                                Grid.Column="3"
+                                Padding="4"
+                                VerticalAlignment="Center"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="OnDeleteClick"
+                                Tag="{x:Bind Id}"
+                                AutomationProperties.Name="删除对话会话"
+                                ToolTipService.ToolTip="&#x5220;&#x9664;&#x4F1A;&#x8BDD;">
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="11" Glyph="&#xE711;" />
+                            </Button>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <Button
+            Grid.Row="4"
+            Margin="0,8,0,0"
+            HorizontalAlignment="Stretch"
+            Click="OnNewSessionClick"
+            AutomationProperties.Name="管理对话会话"
+            ToolTipService.ToolTip="&#x7BA1;&#x7406;&#x6216;&#x65B0;&#x5EFA;&#x4F1A;&#x8BDD;">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="13" Glyph="&#xE70F;" />
+                <TextBlock Text="&#x7BA1;&#x7406;&#x4F1A;&#x8BDD;" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+        </Button>
+    </Grid>
+</UserControl>

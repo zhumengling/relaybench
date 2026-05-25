@@ -1,0 +1,130 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentDialog
+    x:Class="RelayBench.WinUI.Dialogs.HistoryEvidenceDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="&#x8BC1;&#x636E;&#x8BE6;&#x60C5;"
+    CloseButtonText="&#x5173;&#x95ED;"
+    DefaultButton="Close">
+
+    <ScrollViewer MaxHeight="640"
+                  HorizontalScrollBarVisibility="Disabled"
+                  HorizontalScrollMode="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <Border Padding="16"
+                CornerRadius="10"
+                Background="{ThemeResource RxAcrylicOverlayBrush}"
+                BorderBrush="{ThemeResource ContentDialogBorderBrush}"
+                BorderThickness="1">
+            <StackPanel Spacing="14" MinWidth="0" MaxWidth="900">
+                <StackPanel.ChildrenTransitions>
+                    <TransitionCollection>
+                        <EntranceThemeTransition FromVerticalOffset="10" IsStaggeringEnabled="True" />
+                        <RepositionThemeTransition />
+                    </TransitionCollection>
+                </StackPanel.ChildrenTransitions>
+
+                <Grid ColumnSpacing="14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="42" Height="42" Background="{ThemeResource DialogAccentChipBackgroundBrush}" BorderBrush="{ThemeResource DialogAccentChipBorderBrush}" BorderThickness="1" CornerRadius="12">
+                        <FontIcon HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                  FontSize="20"
+                                  Foreground="{ThemeResource DialogAccentChipForegroundBrush}"
+                                  Glyph="&#xE946;" />
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" MinWidth="0">
+                        <TextBlock FontSize="18" FontWeight="SemiBold" Text="{x:Bind EvidenceName, Mode=OneWay}" TextWrapping="WrapWholeWords" TextTrimming="CharacterEllipsis" MaxLines="2" />
+                        <TextBlock FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind Summary, Mode=OneWay}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2" />
+                    </StackPanel>
+                    <Button Grid.Column="2"
+                            Padding="9,5"
+                            Click="OnCopyClick"
+                            AutomationProperties.Name="复制历史证据"
+                            ToolTipService.ToolTip="复制历史证据">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12" Glyph="&#xE8C8;" />
+                            <TextBlock FontSize="12" Text="&#x590D;&#x5236;" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Padding="10,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x72B6;&#x6001;" TextTrimming="CharacterEllipsis" />
+                            <Grid>
+                                <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource HistoryAccentChipForegroundBrush}" Text="{x:Bind State, Mode=OneWay}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind AccentToneVisibility, Mode=OneWay}" />
+                                <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource HistoryHealthyChipForegroundBrush}" Text="{x:Bind State, Mode=OneWay}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind HealthyToneVisibility, Mode=OneWay}" />
+                                <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource HistoryWarningChipForegroundBrush}" Text="{x:Bind State, Mode=OneWay}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind WarningToneVisibility, Mode=OneWay}" />
+                                <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource HistoryDangerChipForegroundBrush}" Text="{x:Bind State, Mode=OneWay}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind DangerToneVisibility, Mode=OneWay}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Padding="10,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x5EF6;&#x8FDF; / P50" TextTrimming="CharacterEllipsis" />
+                            <TextBlock FontSize="14" FontWeight="SemiBold" Text="{x:Bind Latency, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Padding="10,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="TTFT / &#x6B21;&#x7EA7;&#x6307;&#x6807;" TextTrimming="CharacterEllipsis" />
+                            <TextBlock FontSize="14" FontWeight="SemiBold" Text="{x:Bind Ttft, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="3" Padding="10,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
+                        <StackPanel Spacing="3">
+                            <TextBlock FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x8BC1;&#x636E;" TextTrimming="CharacterEllipsis" />
+                            <TextBlock FontSize="14" FontWeight="SemiBold" Text="{x:Bind EvidenceLengthText, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Padding="12,10" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="15" Foreground="{ThemeResource DialogAccentChipForegroundBrush}" Glyph="&#xE946;" />
+                        <TextBlock Grid.Column="1"
+                                   FontSize="12"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="&#x4EE5;&#x4E0B;&#x5185;&#x5BB9;&#x6765;&#x81EA;&#x5386;&#x53F2; payload &#x4E2D;&#x7684;&#x771F;&#x5B9E;&#x8BC1;&#x636E;&#x5B57;&#x6BB5;&#xFF1A;trace id&#x3001;raw output&#x3001;verdict&#x3001;failure summary&#x3001;client check evidence &#x7B49;&#x3002;"
+                                   TextWrapping="Wrap"
+                                   MaxLines="3" />
+                    </Grid>
+                </Border>
+
+                <Border Padding="12"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                    <TextBox FontFamily="Cascadia Mono, Consolas"
+                             FontSize="12"
+                             Text="{x:Bind EvidenceText, Mode=OneWay}"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             IsReadOnly="True"
+                             MinHeight="220"
+                             MaxHeight="360"
+                             AutomationProperties.Name="历史证据文本"
+                             ToolTipService.ToolTip="读取所选报告的证据文本" />
+                </Border>
+            </StackPanel>
+        </Border>
+    </ScrollViewer>
+</ContentDialog>

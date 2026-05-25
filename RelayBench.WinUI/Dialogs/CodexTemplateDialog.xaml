@@ -1,0 +1,178 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentDialog
+    x:Class="RelayBench.WinUI.Dialogs.CodexTemplateDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="&#x7F16;&#x8F91; Codex &#x914D;&#x7F6E;&#x6A21;&#x677F;"
+    PrimaryButtonText="&#x4FDD;&#x5B58;"
+    SecondaryButtonText="&#x91CD;&#x7F6E;"
+    CloseButtonText="&#x53D6;&#x6D88;"
+    DefaultButton="Primary">
+
+    <ScrollViewer MaxHeight="640"
+                  MaxWidth="760"
+                  HorizontalScrollBarVisibility="Disabled"
+                  HorizontalScrollMode="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <Border Padding="16"
+                CornerRadius="10"
+                BorderBrush="{ThemeResource ContentDialogBorderBrush}"
+                BorderThickness="1"
+                Background="{ThemeResource RxAcrylicOverlayBrush}">
+        <StackPanel Spacing="14" MinWidth="0" MaxWidth="720" HorizontalAlignment="Stretch">
+            <StackPanel.ChildrenTransitions>
+                <TransitionCollection>
+                    <EntranceThemeTransition FromVerticalOffset="10" IsStaggeringEnabled="True" />
+                    <RepositionThemeTransition />
+                </TransitionCollection>
+            </StackPanel.ChildrenTransitions>
+
+            <Grid ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Width="42" Height="42" CornerRadius="12" Background="{ThemeResource DialogAccentChipBackgroundBrush}" BorderBrush="{ThemeResource DialogAccentChipBorderBrush}" BorderThickness="1">
+                    <FontIcon HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              FontFamily="{StaticResource SymbolThemeFontFamily}"
+                              FontSize="20"
+                              Foreground="{ThemeResource DialogAccentChipForegroundBrush}"
+                              Glyph="&#xE713;" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" MinWidth="0">
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="Codex &#x914D;&#x7F6E;&#x6A21;&#x677F;" TextTrimming="CharacterEllipsis" />
+                    <TextBlock FontSize="12"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="&#x5199;&#x5165; config.toml &#x7684; provider&#x3001;wire_api&#x3001;&#x91CD;&#x8BD5;&#x4E0E;&#x4E0A;&#x4E0B;&#x6587;&#x7B56;&#x7565;&#x3002;"
+                               TextWrapping="Wrap"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="2" />
+                </StackPanel>
+                <Border Grid.Column="2" Padding="8,4" CornerRadius="10" Background="{ThemeResource DialogSuccessChipBackgroundBrush}" BorderBrush="{ThemeResource DialogSuccessChipBorderBrush}" BorderThickness="1" VerticalAlignment="Center" MaxWidth="130">
+                    <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource DialogSuccessChipForegroundBrush}" Text="&#x5B89;&#x5168;&#x5199;&#x5165;" TextTrimming="CharacterEllipsis" />
+                </Border>
+            </Grid>
+
+            <TextBlock
+                FontSize="12"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="&#x8FD9;&#x4E9B;&#x53C2;&#x6570;&#x4F1A;&#x5199;&#x5165; %USERPROFILE%\.codex\config.toml&#xFF0C;&#x5E76;&#x4FDD;&#x7559;&#x539F;&#x6709;&#x5907;&#x4EFD;&#x6D41;&#x7A0B;&#x3002;"
+                TextWrapping="Wrap"
+                MaxLines="3" />
+
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="&#x6A21;&#x578B;" TextTrimming="CharacterEllipsis" />
+                    <TextBox x:Name="ModelBox" TextChanged="OnRequiredTextChanged"
+                             AutomationProperties.Name="Codex 模板模型"
+                             ToolTipService.ToolTip="设置写入 Codex config.toml 的默认模型" />
+                    <TextBlock x:Name="ModelError" FontSize="11" Foreground="{ThemeResource DialogDangerChipForegroundBrush}" Visibility="Collapsed" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="&#x63D0;&#x4F9B;&#x65B9;&#x540D;&#x79F0;" TextTrimming="CharacterEllipsis" />
+                    <TextBox x:Name="ProviderNameBox" TextChanged="OnRequiredTextChanged"
+                             AutomationProperties.Name="Codex 提供方名称"
+                             ToolTipService.ToolTip="设置写入 Codex config.toml 的提供方名称" />
+                    <TextBlock x:Name="ProviderNameError" FontSize="11" Foreground="{ThemeResource DialogDangerChipForegroundBrush}" Visibility="Collapsed" />
+                </StackPanel>
+            </Grid>
+
+            <StackPanel Spacing="4">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="基础 URL" TextTrimming="CharacterEllipsis" />
+                <TextBox x:Name="BaseUrlBox" TextChanged="OnRequiredTextChanged"
+                         AutomationProperties.Name="Codex 提供方基础 URL"
+                         ToolTipService.ToolTip="设置写入 Codex config.toml 的提供方基础 URL" />
+                <TextBlock x:Name="BaseUrlError" FontSize="11" Foreground="{ThemeResource DialogDangerChipForegroundBrush}" Visibility="Collapsed" />
+            </StackPanel>
+
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1.1*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="wire_api" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="WireApiBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex wire API"
+                              ToolTipService.ToolTip="选择 Codex wire API 模式">
+                        <ComboBoxItem Content="responses" />
+                        <ComboBoxItem Content="anthropic" />
+                        <ComboBoxItem Content="chat" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="上下文窗口" TextTrimming="CharacterEllipsis" />
+                    <NumberBox x:Name="ContextWindowBox" Minimum="0" Maximum="20000000" SpinButtonPlacementMode="Compact"
+                               AutomationProperties.Name="Codex 上下文窗口"
+                               ToolTipService.ToolTip="设置 Codex 提供方的上下文窗口值" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="自动压缩" TextTrimming="CharacterEllipsis" />
+                    <NumberBox x:Name="AutoCompactBox" Minimum="0" Maximum="20000000" SpinButtonPlacementMode="Compact"
+                               AutomationProperties.Name="Codex 自动压缩 Token 上限"
+                               ToolTipService.ToolTip="设置 Codex 自动压缩 Token 上限" />
+                </StackPanel>
+            </Grid>
+
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="request_max_retries" TextTrimming="CharacterEllipsis" />
+                    <NumberBox x:Name="RequestRetriesBox" Minimum="0" Maximum="20" SpinButtonPlacementMode="Compact"
+                               AutomationProperties.Name="Codex 请求最大重试次数"
+                               ToolTipService.ToolTip="设置 Codex 的 request_max_retries" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="stream_max_retries" TextTrimming="CharacterEllipsis" />
+                    <NumberBox x:Name="StreamRetriesBox" Minimum="0" Maximum="20" SpinButtonPlacementMode="Compact"
+                               AutomationProperties.Name="Codex 流式最大重试次数"
+                               ToolTipService.ToolTip="设置 Codex 的 stream_max_retries" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="stream_idle_timeout_ms" TextTrimming="CharacterEllipsis" />
+                    <NumberBox x:Name="StreamIdleTimeoutBox" Minimum="0" Maximum="600000" SpinButtonPlacementMode="Compact"
+                               AutomationProperties.Name="Codex 流式空闲超时毫秒数"
+                               ToolTipService.ToolTip="设置 Codex 的 stream_idle_timeout_ms" />
+                </StackPanel>
+            </Grid>
+
+            <StackPanel Spacing="4">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="API &#x5BC6;&#x94A5;" TextTrimming="CharacterEllipsis" />
+                <PasswordBox x:Name="ApiKeyBox" PasswordChanged="OnRequiredPasswordChanged"
+                             AutomationProperties.Name="Codex 提供方 API 密钥"
+                             ToolTipService.ToolTip="输入写入 Codex config.toml 的提供方 API 密钥" />
+                <TextBlock x:Name="ApiKeyError" FontSize="11" Foreground="{ThemeResource DialogDangerChipForegroundBrush}" Visibility="Collapsed" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="http_headers" TextTrimming="CharacterEllipsis" />
+                <TextBox x:Name="HttpHeadersBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" FontFamily="Consolas"
+                         AutomationProperties.Name="Codex HTTP 头"
+                         ToolTipService.ToolTip="编辑 Codex 提供方的附加 HTTP 头" />
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="&#x9644;&#x52A0;&#x539F;&#x59CB;&#x8BBE;&#x7F6E;" TextTrimming="CharacterEllipsis" />
+                <TextBox x:Name="AdditionalSettingsBox"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         MinHeight="100"
+                         FontFamily="Consolas"
+                         PlaceholderText="tools.web_search = true" />
+                <TextBlock FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x6BCF;&#x884C;&#x4E00;&#x6761;&#xFF1A;path = raw_value&#xFF0C;&#x4F8B;&#x5982; tools.web_search = true" TextWrapping="Wrap" MaxLines="2" />
+            </StackPanel>
+        </StackPanel>
+        </Border>
+    </ScrollViewer>
+</ContentDialog>

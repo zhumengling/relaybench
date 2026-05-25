@@ -1,0 +1,265 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Window
+    x:Class="RelayBench.WinUI.Desktop.TrayMenuWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="RelayBench 托盘">
+    <Window.SystemBackdrop>
+        <DesktopAcrylicBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootSurface" Background="Transparent" KeyDown="RootSurface_KeyDown">
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.ThemeDictionaries>
+                    <ResourceDictionary x:Key="Light">
+                        <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="TrayMenuButtonBackgroundPointerOverBrush" />
+                        <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="TrayMenuButtonBackgroundPressedBrush" />
+                        <StaticResource x:Key="ButtonBorderBrushPointerOver" ResourceKey="TrayMenuButtonBorderPointerOverBrush" />
+                        <StaticResource x:Key="ButtonBorderBrushPressed" ResourceKey="TrayMenuButtonBorderPressedBrush" />
+                        <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="TrayMenuPrimaryTextBrush" />
+                        <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="TrayMenuPrimaryTextBrush" />
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Dark">
+                        <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="TrayMenuButtonBackgroundPointerOverBrush" />
+                        <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="TrayMenuButtonBackgroundPressedBrush" />
+                        <StaticResource x:Key="ButtonBorderBrushPointerOver" ResourceKey="TrayMenuButtonBorderPointerOverBrush" />
+                        <StaticResource x:Key="ButtonBorderBrushPressed" ResourceKey="TrayMenuButtonBorderPressedBrush" />
+                        <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="TrayMenuPrimaryTextBrush" />
+                        <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="TrayMenuPrimaryTextBrush" />
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="HighContrast">
+                        <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="TrayMenuButtonBackgroundPointerOverBrush" />
+                        <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="TrayMenuButtonBackgroundPressedBrush" />
+                        <StaticResource x:Key="ButtonBorderBrushPointerOver" ResourceKey="TrayMenuButtonBorderPointerOverBrush" />
+                        <StaticResource x:Key="ButtonBorderBrushPressed" ResourceKey="TrayMenuButtonBorderPressedBrush" />
+                        <StaticResource x:Key="ButtonForegroundPointerOver" ResourceKey="TrayMenuPrimaryTextBrush" />
+                        <StaticResource x:Key="ButtonForegroundPressed" ResourceKey="TrayMenuPrimaryTextBrush" />
+                    </ResourceDictionary>
+                </ResourceDictionary.ThemeDictionaries>
+
+                <Style x:Key="TrayMenuButtonStyle" TargetType="Button">
+                    <Setter Property="MinHeight" Value="46" />
+                    <Setter Property="Padding" Value="9,7" />
+                    <Setter Property="HorizontalAlignment" Value="Stretch" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="CornerRadius" Value="9" />
+                    <Setter Property="Foreground" Value="{ThemeResource TrayMenuPrimaryTextBrush}" />
+                    <Setter Property="UseSystemFocusVisuals" Value="True" />
+                    <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource TrayMenuFocusPrimaryBrush}" />
+                    <Setter Property="FocusVisualSecondaryBrush" Value="{ThemeResource TrayMenuFocusSecondaryBrush}" />
+                    <Setter Property="FocusVisualMargin" Value="1" />
+                    <Setter Property="Transitions">
+                        <Setter.Value>
+                            <TransitionCollection>
+                                <RepositionThemeTransition IsStaggeringEnabled="False" />
+                            </TransitionCollection>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ResourceDictionary>
+        </Grid.Resources>
+
+        <Border x:Name="RootChrome"
+                Width="286"
+                Padding="10"
+                BorderBrush="{ThemeResource TrayMenuBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="14"
+                Background="{ThemeResource TrayMenuBackgroundBrush}"
+                Loaded="RootChrome_Loaded">
+            <Border.Transitions>
+                <TransitionCollection>
+                    <EntranceThemeTransition FromVerticalOffset="8" />
+                </TransitionCollection>
+            </Border.Transitions>
+
+            <ScrollViewer x:Name="MenuScrollViewer"
+                          HorizontalScrollBarVisibility="Disabled"
+                          HorizontalScrollMode="Disabled"
+                          IsTabStop="False"
+                          VerticalScrollBarVisibility="Auto"
+                          VerticalScrollMode="Auto">
+                <Grid RowSpacing="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="1" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="1" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Margin="4,2,4,0" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="34" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Width="34" Height="34" Background="{ThemeResource TrayMenuIconBackgroundBrush}" CornerRadius="10" BorderBrush="{ThemeResource TrayMenuIconBorderBrush}" BorderThickness="1">
+                        <FontIcon HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                  FontSize="15"
+                                  Foreground="{ThemeResource TrayMenuAccentTextBrush}"
+                                  Glyph="&#xEC27;" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1" MinWidth="0">
+                        <TextBlock FontSize="13.2" FontWeight="SemiBold" Foreground="{ThemeResource TrayMenuPrimaryTextBrush}" Text="RelayBench" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="ProxyStatusTextBlock"
+                                   FontSize="10.6"
+                                   Foreground="{ThemeResource TrayMenuSecondaryTextBrush}"
+                                   Text="后台就绪"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <Border Grid.Column="2"
+                            Padding="7,3"
+                            VerticalAlignment="Center"
+                            Background="{ThemeResource TrayMenuPillBackgroundBrush}"
+                            BorderBrush="{ThemeResource TrayMenuIconBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="999">
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <Grid Width="6" Height="6" VerticalAlignment="Center">
+                                <Ellipse x:Name="ProxyStatusIdleDot"
+                                         Fill="{ThemeResource TrayMenuIdleStatusBrush}" />
+                                <Ellipse x:Name="ProxyStatusLiveDot"
+                                         Fill="{ThemeResource TrayMenuLiveStatusBrush}"
+                                         Visibility="Collapsed" />
+                            </Grid>
+                            <Grid MaxWidth="72">
+                                <TextBlock x:Name="ProxyStatusIdlePillTextBlock"
+                                           FontSize="10.2"
+                                           FontWeight="SemiBold"
+                                           Foreground="{ThemeResource TrayMenuIdleStatusBrush}"
+                                           Text="空闲"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="ProxyStatusLivePillTextBlock"
+                                           FontSize="10.2"
+                                           FontWeight="SemiBold"
+                                           Foreground="{ThemeResource TrayMenuLiveStatusBrush}"
+                                           Text="运行"
+                                           TextTrimming="CharacterEllipsis"
+                                           Visibility="Collapsed" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Row="1" Margin="4,0" Background="{ThemeResource TrayMenuDividerBrush}" Opacity="0.75" />
+
+                <StackPanel Grid.Row="2" Spacing="1">
+                        <Button Style="{StaticResource TrayMenuButtonStyle}"
+                            Click="OpenMainWindowButton_Click"
+                            AutomationProperties.Name="打开 RelayBench 工作台"
+                            ToolTipService.ToolTip="恢复 RelayBench 主工作台">
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="28" Height="28" Background="{ThemeResource TrayMenuIconBackgroundBrush}" BorderBrush="{ThemeResource TrayMenuIconBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="13" Foreground="{ThemeResource TrayMenuAccentTextBrush}" Glyph="&#xE8A7;" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
+                                <TextBlock FontSize="12.6" FontWeight="SemiBold" Foreground="{ThemeResource TrayMenuPrimaryTextBrush}" Text="打开 RelayBench" TextTrimming="CharacterEllipsis" />
+                                <TextBlock FontSize="10.6" Foreground="{ThemeResource TrayMenuSecondaryTextBrush}" Text="恢复主窗口" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </Button>
+
+                        <Button x:Name="ProxyActionButton"
+                            Style="{StaticResource TrayMenuButtonStyle}"
+                            Click="ProxyActionButton_Click"
+                            AutomationProperties.Name="启动或停止透明代理入口"
+                            ToolTipService.ToolTip="启动或停止本地透明代理入口">
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="28" Height="28" Background="{ThemeResource TrayMenuIconBackgroundBrush}" BorderBrush="{ThemeResource TrayMenuIconBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                <FontIcon x:Name="ProxyActionGlyph"
+                                          FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                          FontSize="13"
+                                          Foreground="{ThemeResource TrayMenuAccentTextBrush}"
+                                          Glyph="&#xE768;" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
+                                <TextBlock x:Name="ProxyActionTitleTextBlock" FontSize="12.6" FontWeight="SemiBold" Foreground="{ThemeResource TrayMenuPrimaryTextBrush}" Text="启动透明代理" TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="ProxyActionMetaTextBlock" FontSize="10.6" Foreground="{ThemeResource TrayMenuSecondaryTextBrush}" Text="打开本地统一入口" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </Button>
+
+                        <Button x:Name="TokenMeterActionButton"
+                            Style="{StaticResource TrayMenuButtonStyle}"
+                            Click="TokenMeterActionButton_Click"
+                            AutomationProperties.Name="显示或隐藏浮动 Token 计"
+                            ToolTipService.ToolTip="显示或隐藏浮动 Token 计">
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="28" Height="28" Background="{ThemeResource TrayMenuIconBackgroundBrush}" BorderBrush="{ThemeResource TrayMenuIconBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="13" Foreground="{ThemeResource TrayMenuAccentTextBrush}" Glyph="&#xE9D2;" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
+                                <TextBlock x:Name="TokenMeterTitleTextBlock" FontSize="12.6" FontWeight="SemiBold" Foreground="{ThemeResource TrayMenuPrimaryTextBrush}" Text="显示 Token 计" TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="TokenMeterMetaTextBlock" FontSize="10.6" Foreground="{ThemeResource TrayMenuSecondaryTextBrush}" Text="浮动 tok/s 监视器" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </Button>
+
+                        <Button Style="{StaticResource TrayMenuButtonStyle}"
+                            Click="OpenLogDirectoryButton_Click"
+                            AutomationProperties.Name="打开运行日志目录"
+                            ToolTipService.ToolTip="在文件资源管理器中打开 RelayBench 运行日志">
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="28" Height="28" Background="{ThemeResource TrayMenuIconBackgroundBrush}" BorderBrush="{ThemeResource TrayMenuIconBorderBrush}" BorderThickness="1" CornerRadius="8">
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="13" Foreground="{ThemeResource TrayMenuAccentTextBrush}" Glyph="&#xE838;" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
+                                <TextBlock FontSize="12.6" FontWeight="SemiBold" Foreground="{ThemeResource TrayMenuPrimaryTextBrush}" Text="打开日志目录" TextTrimming="CharacterEllipsis" />
+                                <TextBlock FontSize="10.6" Foreground="{ThemeResource TrayMenuSecondaryTextBrush}" Text="运行与诊断文件" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+
+                <Border Grid.Row="3" Margin="4,0" Background="{ThemeResource TrayMenuDividerBrush}" Opacity="0.75" />
+
+                    <Button Grid.Row="4"
+                        Style="{StaticResource TrayMenuButtonStyle}"
+                        Click="ExitButton_Click"
+                        AutomationProperties.Name="退出 RelayBench"
+                        ToolTipService.ToolTip="停止后台服务并退出 RelayBench">
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="28" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="28" Height="28" Background="{ThemeResource TrayMenuDangerBackgroundBrush}" BorderBrush="{ThemeResource TrayMenuDangerBorderBrush}" BorderThickness="1" CornerRadius="8">
+                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="13" Foreground="{ThemeResource TrayMenuDangerTextBrush}" Glyph="&#xE711;" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="0">
+                            <TextBlock FontSize="12.6" FontWeight="SemiBold" Foreground="{ThemeResource TrayMenuDangerTextBrush}" Text="退出 RelayBench" TextTrimming="CharacterEllipsis" />
+                            <TextBlock FontSize="10.6" Foreground="{ThemeResource TrayMenuDangerMetaTextBrush}" Text="停止代理并关闭应用" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
+                </Button>
+                </Grid>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Window>

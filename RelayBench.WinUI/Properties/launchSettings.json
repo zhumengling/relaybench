@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "RelayBench.WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "RelayBench.WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

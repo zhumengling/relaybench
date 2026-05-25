@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentDialog
+    x:Class="RelayBench.WinUI.Dialogs.ClientApiStatusDetailDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="客户端 API 诊断详情"
+    CloseButtonText="关闭"
+    DefaultButton="Close">
+
+    <ScrollViewer MaxHeight="640"
+                  HorizontalScrollBarVisibility="Disabled"
+                  HorizontalScrollMode="Disabled"
+                  VerticalScrollBarVisibility="Auto"
+                  VerticalScrollMode="Auto"
+                  ZoomMode="Disabled">
+        <Border Padding="16"
+                CornerRadius="10"
+                Background="{ThemeResource RxAcrylicOverlayBrush}"
+                BorderBrush="{ThemeResource ContentDialogBorderBrush}"
+                BorderThickness="1">
+            <StackPanel Spacing="14" MinWidth="0" MaxWidth="760">
+                <StackPanel.ChildrenTransitions>
+                    <TransitionCollection>
+                        <EntranceThemeTransition FromVerticalOffset="10" IsStaggeringEnabled="True" />
+                        <RepositionThemeTransition />
+                    </TransitionCollection>
+                </StackPanel.ChildrenTransitions>
+
+                <Grid ColumnSpacing="14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="42" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="42"
+                            Height="42"
+                            CornerRadius="12"
+                            Background="{ThemeResource DialogAccentChipBackgroundBrush}"
+                            BorderBrush="{ThemeResource DialogAccentChipBorderBrush}"
+                            BorderThickness="1">
+                        <FontIcon HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                  FontSize="19"
+                                  Foreground="{ThemeResource DialogAccentChipForegroundBrush}"
+                                  Glyph="&#xE946;" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center" MinWidth="0">
+                        <TextBlock FontSize="18" FontWeight="SemiBold" Text="{x:Bind Row.Name, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind Row.BriefResultText, Mode=OneWay}" TextWrapping="Wrap" MaxLines="2" />
+                    </StackPanel>
+                    <Border Grid.Column="2" Padding="8,4" VerticalAlignment="Center" Background="{ThemeResource DialogAccentChipBackgroundBrush}" BorderBrush="{ThemeResource DialogAccentChipBorderBrush}" BorderThickness="1" CornerRadius="10" MaxWidth="150">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource DialogAccentChipForegroundBrush}" Text="{x:Bind Row.Provider, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                    </Border>
+                </Grid>
+
+                <TextBox MinHeight="280"
+                         MaxHeight="420"
+                         MinWidth="0"
+                         IsReadOnly="True"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.HorizontalScrollMode="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         FontFamily="Cascadia Mono, Consolas, Courier New"
+                         FontSize="11"
+                         Text="{x:Bind Row.DetailText, Mode=OneWay}"
+                         AutomationProperties.Name="客户端 API 诊断完整详情"
+                         ToolTipService.ToolTip="查看该客户端 API 诊断的完整路径、探测和证据" />
+            </StackPanel>
+        </Border>
+    </ScrollViewer>
+</ContentDialog>

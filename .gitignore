@@ -12,8 +12,11 @@ release/
 artifacts/
 .codex-screenshots/
 .codex/
+.codex-tools/
 .dotnet-cli-home/
 .dotnet-cli/
+.kiro/
+.vscode/
 .superpowers/
 .superpowers/
 docs/superpowers/

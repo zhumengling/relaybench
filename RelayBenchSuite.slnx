@@ -1,4 +1,7 @@
 <Solution>
-  <Project Path="RelayBench.App/RelayBench.App.csproj" />
   <Project Path="RelayBench.Core/RelayBench.Core.csproj" />
+  <Project Path="RelayBench.Services/RelayBench.Services.csproj" />
+  <Project Path="RelayBench.WinUI/RelayBench.WinUI.csproj">
+    <Platform Project="x64" />
+  </Project>
 </Solution>

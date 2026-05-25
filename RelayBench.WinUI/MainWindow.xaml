@@ -1,0 +1,350 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Window
+    x:Class="RelayBench.WinUI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="RelayBench">
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Custom TitleBar -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Padding="14,0" ColumnSpacing="8" Background="{ThemeResource AppChromeTitleBarBackgroundBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="140" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0" ColumnSpacing="8" VerticalAlignment="Center" MinWidth="0" MaxWidth="190">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="18" Foreground="{ThemeResource AppChromeAccentTextBrush}" Glyph="&#xEC27;" />
+                <TextBlock Grid.Column="1" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource AppChromePrimaryTextBrush}" Text="RelayBench" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" FontSize="11" Foreground="{ThemeResource AppChromeSecondaryTextBrush}" Text="{x:Bind Shell.StatusBarVersion, Mode=OneWay}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </Grid>
+
+            <AutoSuggestBox
+                x:Name="CommandPaletteBox"
+                Grid.Column="1"
+                MaxWidth="520"
+                MinWidth="220"
+                VerticalAlignment="Center"
+                PlaceholderText="&#x641C;&#x7D22;&#x547D;&#x4EE4;&#x3001;&#x8DEF;&#x7531;&#x3001;&#x6A21;&#x578B;&#x6216; IP..."
+                QueryIcon="Find"
+                DisplayMemberPath="Title"
+                TextChanged="CommandPaletteBox_TextChanged"
+                SuggestionChosen="CommandPaletteBox_SuggestionChosen" />
+
+            <Border x:Name="EnvironmentStatusPill" Grid.Column="2" MaxWidth="260" Style="{StaticResource AppStatusPill}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                <Grid ColumnSpacing="7" MinWidth="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontSize="12" Text="&#x672C;&#x5730;&#x73AF;&#x5883;" TextTrimming="CharacterEllipsis" />
+                    <Ellipse Grid.Column="1" Width="7" Height="7" Fill="{ThemeResource AppChromeLiveStatusBrush}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="2" Spacing="0" MinWidth="0">
+                        <TextBlock FontSize="11" Foreground="{ThemeResource AppChromeLiveStatusBrush}" Text="{x:Bind Shell.StatusBarMode, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="{x:Bind Shell.StatusBarProxyAddress, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Button Grid.Column="3" Style="{StaticResource AppChromeIconButton}" KeyDown="FlyoutButton_KeyDown" AutomationProperties.Name="打开系统菜单" ToolTipService.ToolTip="系统菜单">
+                <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                        <MenuFlyoutSubItem Text="RelayBench" AccessKey="R">
+                            <MenuFlyoutSubItem.Icon>
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xEC27;" />
+                            </MenuFlyoutSubItem.Icon>
+                            <MenuFlyoutItem Text="关于" AccessKey="A" Command="{x:Bind Shell.OpenAboutDialogCommand}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE946;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="项目主页" AccessKey="H" Command="{x:Bind Shell.OpenProjectHomepageCommand}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE774;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="复制运行摘要" AccessKey="C" Click="CopyRuntimeSummaryMenuItem_Click">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8C8;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyoutSubItem>
+                        <MenuFlyoutSubItem Text="工作区" AccessKey="W">
+                            <MenuFlyoutSubItem.Icon>
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8A0;" />
+                            </MenuFlyoutSubItem.Icon>
+                            <MenuFlyoutItem Text="切换导航栏" AccessKey="N" Command="{x:Bind Shell.ToggleNavigationRailCommand}">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8C7;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyoutSubItem>
+                        <MenuFlyoutSubItem Text="目录" AccessKey="F">
+                            <MenuFlyoutSubItem.Icon>
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8B7;" />
+                            </MenuFlyoutSubItem.Icon>
+                            <MenuFlyoutItem Text="打开数据目录" AccessKey="D" Click="OpenDataDirectoryMenuItem_Click">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8B7;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="打开配置目录" AccessKey="C" Click="OpenConfigDirectoryMenuItem_Click">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE713;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="打开根目录" AccessKey="R" Click="OpenRootDirectoryMenuItem_Click">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE838;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyoutSubItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="15" Glyph="&#xE91C;" />
+            </Button>
+
+            <Button Grid.Column="4" Style="{StaticResource AppChromeIconButton}" KeyDown="FlyoutButton_KeyDown" AutomationProperties.Name="打开 Token 计菜单" ToolTipService.ToolTip="Token 计">
+                <Button.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                        <MenuFlyoutSubItem Text="浮动计数器" AccessKey="F">
+                            <MenuFlyoutSubItem.Icon>
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE9D2;" />
+                            </MenuFlyoutSubItem.Icon>
+                            <MenuFlyoutItem Text="显示计数器" AccessKey="S" Click="ShowTokenMeterMenuItem_Click">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE890;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="隐藏计数器" AccessKey="H" Click="HideTokenMeterMenuItem_Click">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE711;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyoutSubItem>
+                        <MenuFlyoutSubItem Text="Token 计数" AccessKey="T">
+                            <MenuFlyoutSubItem.Icon>
+                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE9D9;" />
+                            </MenuFlyoutSubItem.Icon>
+                            <MenuFlyoutItem Text="重置阶段计数" AccessKey="R" Click="ResetTokenMeterMenuItem_Click">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE777;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="复制状态摘要" AccessKey="C" Click="CopyTokenMeterSummaryMenuItem_Click">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8C8;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyoutSubItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="15" Glyph="&#xE9D2;" />
+            </Button>
+
+        </Grid>
+
+        <NavigationView
+            x:Name="NavView"
+            Grid.Row="1"
+            Background="Transparent"
+            IsBackButtonVisible="Collapsed"
+            IsPaneToggleButtonVisible="True"
+            IsSettingsVisible="False"
+            OpenPaneLength="200"
+            CompactPaneLength="48"
+            PaneDisplayMode="Left"
+            SelectionChanged="NavView_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Tag="dashboard" AutomationProperties.Name="&#x6982;&#x89C8;" ToolTipService.ToolTip="&#x6982;&#x89C8;">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE80F;" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <TextBlock MaxWidth="132" Text="&#x6982;&#x89C8;" TextTrimming="CharacterEllipsis" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="single" AutomationProperties.Name="&#x5355;&#x7AD9;&#x6D4B;&#x8BD5;" ToolTipService.ToolTip="&#x5355;&#x7AD9;&#x6D4B;&#x8BD5;">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE9D9;" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <TextBlock MaxWidth="132" Text="&#x5355;&#x7AD9;&#x6D4B;&#x8BD5;" TextTrimming="CharacterEllipsis" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="safety" AutomationProperties.Name="&#x6570;&#x636E;&#x5B89;&#x5168;" ToolTipService.ToolTip="&#x6570;&#x636E;&#x5B89;&#x5168;">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE72E;" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <TextBlock MaxWidth="132" Text="&#x6570;&#x636E;&#x5B89;&#x5168;" TextTrimming="CharacterEllipsis" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="batch" AutomationProperties.Name="&#x6279;&#x91CF;&#x8BC4;&#x6D4B;" ToolTipService.ToolTip="&#x6279;&#x91CF;&#x8BC4;&#x6D4B;">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE9D5;" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <TextBlock MaxWidth="132" Text="&#x6279;&#x91CF;&#x8BC4;&#x6D4B;" TextTrimming="CharacterEllipsis" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="proxy" AutomationProperties.Name="&#x900F;&#x660E;&#x4EE3;&#x7406;" ToolTipService.ToolTip="&#x900F;&#x660E;&#x4EE3;&#x7406;">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xEC27;" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <TextBlock MaxWidth="132" Text="&#x900F;&#x660E;&#x4EE3;&#x7406;" TextTrimming="CharacterEllipsis" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="chat" AutomationProperties.Name="&#x5927;&#x6A21;&#x578B;&#x5BF9;&#x8BDD;" ToolTipService.ToolTip="&#x5927;&#x6A21;&#x578B;&#x5BF9;&#x8BDD;">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE8BD;" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <TextBlock MaxWidth="132" Text="&#x5927;&#x6A21;&#x578B;&#x5BF9;&#x8BDD;" TextTrimming="CharacterEllipsis" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="apps" AutomationProperties.Name="&#x5E94;&#x7528;&#x63A5;&#x5165;" ToolTipService.ToolTip="&#x5E94;&#x7528;&#x63A5;&#x5165;">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xECAA;" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <TextBlock MaxWidth="132" Text="&#x5E94;&#x7528;&#x63A5;&#x5165;" TextTrimming="CharacterEllipsis" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="network" AutomationProperties.Name="&#x7F51;&#x7EDC;&#x590D;&#x6838;" ToolTipService.ToolTip="&#x7F51;&#x7EDC;&#x590D;&#x6838;">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE968;" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <TextBlock MaxWidth="132" Text="&#x7F51;&#x7EDC;&#x590D;&#x6838;" TextTrimming="CharacterEllipsis" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+                <NavigationViewItem Tag="history" AutomationProperties.Name="&#x5386;&#x53F2;&#x62A5;&#x544A;" ToolTipService.ToolTip="&#x5386;&#x53F2;&#x62A5;&#x544A;">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE81C;" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <TextBlock MaxWidth="132" Text="&#x5386;&#x53F2;&#x62A5;&#x544A;" TextTrimming="CharacterEllipsis" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Tag="settings" AutomationProperties.Name="打开设置" ToolTipService.ToolTip="&#x8BBE;&#x7F6E;">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE713;" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <TextBlock MaxWidth="132" Text="&#x8BBE;&#x7F6E;" TextTrimming="CharacterEllipsis" />
+                    </NavigationViewItem.Content>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
+            <Frame x:Name="ContentFrame" Background="Transparent" />
+        </NavigationView>
+
+        <!-- Status bar -->
+        <Border Grid.Row="2" MinHeight="28" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Background="{ThemeResource AppChromeStatusBarBackgroundBrush}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <!-- Global Progress Bar -->
+                <ProgressBar Grid.Row="0" Height="2" Minimum="0" Maximum="100"
+                             Value="{x:Bind Shell.ProgressPercent, Mode=OneWay}"
+                             Visibility="{x:Bind Shell.IsProgressVisible, Mode=OneWay}"
+                             Foreground="{ThemeResource AppChromeAccentTextBrush}" Background="Transparent" />
+            <Grid Grid.Row="1" MinHeight="26" Padding="14,0" ColumnSpacing="10">
+                <Grid.Resources>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{ThemeResource AppChromeSecondaryTextBrush}" />
+                        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                        <Setter Property="TextWrapping" Value="NoWrap" />
+                    </Style>
+                    <Style TargetType="FontIcon">
+                        <Setter Property="Foreground" Value="{ThemeResource AppChromeSecondaryTextBrush}" />
+                    </Style>
+                </Grid.Resources>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid x:Name="StatusAssistantSummary" VerticalAlignment="Center" ColumnSpacing="4" MaxWidth="150" MinWidth="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="11" Glyph="&#xE8BD;" Opacity="0.5" />
+                    <TextBlock Grid.Column="1" FontSize="11" Opacity="0.6" Text="&#x52A9;&#x624B;" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="2" FontSize="11" MaxWidth="92" Text="{x:Bind Shell.StatusBarAssistantSummary, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                </Grid>
+                <Grid x:Name="StatusThroughputSummary" Grid.Column="1" VerticalAlignment="Center" ColumnSpacing="4" MaxWidth="122" MinWidth="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="11" Glyph="&#xE916;" Opacity="0.5" />
+                    <TextBlock Grid.Column="1" FontSize="11" MaxWidth="96" Text="{x:Bind Shell.StatusBarThroughputSummary, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                </Grid>
+                <Grid x:Name="StatusProxyAddress" Grid.Column="2" VerticalAlignment="Center" ColumnSpacing="4" MaxWidth="170" MinWidth="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontSize="11" Opacity="0.6" Text="&#x4EE3;&#x7406;&#x5730;&#x5740;:" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" FontSize="11" MaxWidth="100" Text="{x:Bind Shell.StatusBarProxyAddress, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                </Grid>
+                <Grid x:Name="StatusModeSummary" Grid.Column="3" VerticalAlignment="Center" ColumnSpacing="4" MaxWidth="130" MinWidth="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontSize="11" Opacity="0.6" Text="&#x6A21;&#x5F0F;:" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" FontSize="11" MaxWidth="80" Text="{x:Bind Shell.StatusBarMode, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                </Grid>
+                <Grid x:Name="StatusSystemProxy" Grid.Column="4" VerticalAlignment="Center" ColumnSpacing="4" MaxWidth="130" MinWidth="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid Width="7" Height="7" VerticalAlignment="Center">
+                        <Ellipse Width="7" Height="7" Fill="{ThemeResource AppChromeLiveStatusBrush}" Visibility="{x:Bind Shell.StatusBarSystemProxyLiveVisibility, Mode=OneWay}" />
+                        <Ellipse Width="7" Height="7" Fill="{ThemeResource AppChromeMutedTextBrush}" Visibility="{x:Bind Shell.StatusBarSystemProxyIdleVisibility, Mode=OneWay}" />
+                    </Grid>
+                    <Grid Grid.Column="1" MinWidth="0">
+                        <TextBlock FontSize="11" MaxWidth="104" Foreground="{ThemeResource AppChromeLiveStatusBrush}" Text="{x:Bind Shell.StatusBarSystemProxyText, Mode=OneWay}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind Shell.StatusBarSystemProxyLiveVisibility, Mode=OneWay}" />
+                        <TextBlock FontSize="11" MaxWidth="104" Foreground="{ThemeResource AppChromeMutedTextBrush}" Text="{x:Bind Shell.StatusBarSystemProxyText, Mode=OneWay}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind Shell.StatusBarSystemProxyIdleVisibility, Mode=OneWay}" />
+                    </Grid>
+                </Grid>
+                <Grid x:Name="StatusUptime" Grid.Column="6" VerticalAlignment="Center" ColumnSpacing="4" MaxWidth="120" MinWidth="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontSize="11" Opacity="0.6" Text="&#x8FD0;&#x884C;&#x65F6;&#x95F4;:" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" FontSize="11" MaxWidth="70" Text="{x:Bind Shell.StatusBarUptime, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                </Grid>
+                <Grid x:Name="StatusVersion" Grid.Column="7" VerticalAlignment="Center" ColumnSpacing="4" MaxWidth="100" MinWidth="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontSize="11" Opacity="0.6" Text="&#x7248;&#x672C;:" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Grid.Column="1" FontSize="11" MaxWidth="55" Text="{x:Bind Shell.StatusBarVersion, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                </Grid>
+                <Button x:Name="StatusUpdateButton" Grid.Column="8" MaxWidth="76" Padding="6,2" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" HorizontalContentAlignment="Stretch">
+                    <TextBlock FontSize="11" Foreground="{ThemeResource AppChromeAccentTextBrush}" Text="&#x68C0;&#x67E5;&#x66F4;&#x65B0;" TextTrimming="CharacterEllipsis" />
+                </Button>
+            </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
