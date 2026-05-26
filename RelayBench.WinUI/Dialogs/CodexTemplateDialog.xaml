@@ -45,7 +45,7 @@
                     <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="Codex &#x914D;&#x7F6E;&#x6A21;&#x677F;" TextTrimming="CharacterEllipsis" />
                     <TextBlock FontSize="12"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="&#x5199;&#x5165; config.toml &#x7684; provider&#x3001;wire_api&#x3001;&#x91CD;&#x8BD5;&#x4E0E;&#x4E0A;&#x4E0B;&#x6587;&#x7B56;&#x7565;&#x3002;"
+                               Text="Codex 固定使用响应接口；本地入口优先写入官方入口字段，高级入口可继续设置提供方、推理与权限策略。"
                                TextWrapping="Wrap"
                                TextTrimming="CharacterEllipsis"
                                MaxLines="2" />
@@ -58,7 +58,7 @@
             <TextBlock
                 FontSize="12"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Text="&#x8FD9;&#x4E9B;&#x53C2;&#x6570;&#x4F1A;&#x5199;&#x5165; %USERPROFILE%\.codex\config.toml&#xFF0C;&#x5E76;&#x4FDD;&#x7559;&#x539F;&#x6709;&#x5907;&#x4EFD;&#x6D41;&#x7A0B;&#x3002;"
+                Text="这些参数会写入 %USERPROFILE%\.codex\config.toml，并保留原有备份流程；本地透明代理模式不会把接口密钥写入 config.toml，常用项保持空白则不写入。"
                 TextWrapping="Wrap"
                 MaxLines="3" />
 
@@ -84,10 +84,10 @@
             </Grid>
 
             <StackPanel Spacing="4">
-                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="基础 URL" TextTrimming="CharacterEllipsis" />
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="基础地址" TextTrimming="CharacterEllipsis" />
                 <TextBox x:Name="BaseUrlBox" TextChanged="OnRequiredTextChanged"
-                         AutomationProperties.Name="Codex 提供方基础 URL"
-                         ToolTipService.ToolTip="设置写入 Codex config.toml 的提供方基础 URL" />
+                         AutomationProperties.Name="Codex 提供方基础地址"
+                         ToolTipService.ToolTip="设置写入 Codex config.toml 的提供方基础地址" />
                 <TextBlock x:Name="BaseUrlError" FontSize="11" Foreground="{ThemeResource DialogDangerChipForegroundBrush}" Visibility="Collapsed" />
             </StackPanel>
 
@@ -98,26 +98,149 @@
                     <ColumnDefinition Width="1.1*" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Spacing="4">
-                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="wire_api" TextTrimming="CharacterEllipsis" />
-                    <ComboBox x:Name="WireApiBox" HorizontalAlignment="Stretch"
-                              AutomationProperties.Name="Codex wire API"
-                              ToolTipService.ToolTip="选择 Codex wire API 模式">
-                        <ComboBoxItem Content="responses" />
-                        <ComboBoxItem Content="anthropic" />
-                        <ComboBoxItem Content="chat" />
-                    </ComboBox>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Spacing="4">
                     <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="上下文窗口" TextTrimming="CharacterEllipsis" />
                     <NumberBox x:Name="ContextWindowBox" Minimum="0" Maximum="20000000" SpinButtonPlacementMode="Compact"
                                AutomationProperties.Name="Codex 上下文窗口"
-                               ToolTipService.ToolTip="设置 Codex 提供方的上下文窗口值" />
+                               ToolTipService.ToolTip="限制 Codex 可使用的最大上下文令牌数；留空时由模型目录自动推断，不写入固定值。" />
                 </StackPanel>
-                <StackPanel Grid.Column="2" Spacing="4">
+                <StackPanel Grid.Column="1" Spacing="4">
                     <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="自动压缩" TextTrimming="CharacterEllipsis" />
                     <NumberBox x:Name="AutoCompactBox" Minimum="0" Maximum="20000000" SpinButtonPlacementMode="Compact"
-                               AutomationProperties.Name="Codex 自动压缩 Token 上限"
-                               ToolTipService.ToolTip="设置 Codex 自动压缩 Token 上限" />
+                               AutomationProperties.Name="Codex 自动压缩令牌上限"
+                               ToolTipService.ToolTip="会话接近该令牌数时自动压缩上下文；留空时按上下文窗口自动计算，不写入固定值。" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="推理强度" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="ReasoningEffortBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex 推理强度"
+                              ToolTipService.ToolTip="控制模型投入多少推理预算；最小更快，高更细致。保存时写入官方推理强度字段。">
+                        <ComboBoxItem Content="不写入" Tag="" ToolTipService.ToolTip="不写入该项，交给 Codex 使用默认推理强度。" />
+                        <ComboBoxItem Content="最小" Tag="minimal" ToolTipService.ToolTip="尽量减少推理预算，速度更快，适合简单任务。" />
+                        <ComboBoxItem Content="低" Tag="low" ToolTipService.ToolTip="较低推理预算，适合日常轻量修改。" />
+                        <ComboBoxItem Content="中" Tag="medium" ToolTipService.ToolTip="平衡速度和质量，适合多数任务。" />
+                        <ComboBoxItem Content="高" Tag="high" ToolTipService.ToolTip="提高推理预算，适合复杂规划、排错和大改动。" />
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1.1*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="推理摘要" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="ReasoningSummaryBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex 推理摘要"
+                              ToolTipService.ToolTip="控制是否输出推理过程摘要；自动由 Codex 决定，简洁/详细用于调整摘要长度。保存时写入官方推理摘要字段。">
+                        <ComboBoxItem Content="不写入" Tag="" ToolTipService.ToolTip="不写入该项，交给 Codex 使用默认推理摘要策略。" />
+                        <ComboBoxItem Content="自动" Tag="auto" ToolTipService.ToolTip="由 Codex 自动决定是否输出推理摘要。" />
+                        <ComboBoxItem Content="简洁" Tag="concise" ToolTipService.ToolTip="输出较短的推理摘要，便于快速了解思路。" />
+                        <ComboBoxItem Content="详细" Tag="detailed" ToolTipService.ToolTip="输出更完整的推理摘要，适合复杂任务复盘。" />
+                        <ComboBoxItem Content="关闭" Tag="none" ToolTipService.ToolTip="关闭推理摘要输出。" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="回答详细度" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="VerbosityBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex 输出详细度"
+                              ToolTipService.ToolTip="控制 Codex 回复的详细程度；低更简短，高更完整。保存时写入官方详细度字段。">
+                        <ComboBoxItem Content="不写入" Tag="" ToolTipService.ToolTip="不写入该项，交给 Codex 使用默认回答详细度。" />
+                        <ComboBoxItem Content="低" Tag="low" ToolTipService.ToolTip="回复更短，适合只要结果的场景。" />
+                        <ComboBoxItem Content="中" Tag="medium" ToolTipService.ToolTip="回复长度适中，适合多数开发任务。" />
+                        <ComboBoxItem Content="高" Tag="high" ToolTipService.ToolTip="回复更完整，适合需要解释和上下文的任务。" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="网页搜索" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="WebSearchBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex 网页搜索"
+                              ToolTipService.ToolTip="控制是否允许 Codex 使用网页搜索工具；开启后 Codex 可按需要联网检索。保存时写入官方工具开关。">
+                        <ComboBoxItem Content="不写入" Tag="" ToolTipService.ToolTip="不写入该项，保留 Codex 默认网页搜索设置。" />
+                        <ComboBoxItem Content="开启" Tag="true" ToolTipService.ToolTip="允许 Codex 在需要时使用网页搜索。" />
+                        <ComboBoxItem Content="关闭" Tag="false" ToolTipService.ToolTip="禁止 Codex 使用网页搜索工具。" />
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1.1*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="审批策略" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="ApprovalPolicyBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex 审批策略"
+                              ToolTipService.ToolTip="控制 Codex 执行命令前何时需要用户确认；从不审批风险最高，适合完全信任的本地环境。保存时写入官方审批策略字段。">
+                        <ComboBoxItem Content="不写入" Tag="" ToolTipService.ToolTip="不写入该项，保留 Codex 默认审批策略。" />
+                        <ComboBoxItem Content="未信任时审批" Tag="untrusted" ToolTipService.ToolTip="在不受信任的项目或操作中要求确认。" />
+                        <ComboBoxItem Content="按需审批" Tag="on-request" ToolTipService.ToolTip="Codex 遇到需要提升权限或风险操作时请求确认。" />
+                        <ComboBoxItem Content="失败后审批" Tag="on-failure" ToolTipService.ToolTip="命令在沙盒中失败后，再请求提升权限重试。" />
+                        <ComboBoxItem Content="从不审批" Tag="never" ToolTipService.ToolTip="不再请求确认，自动执行更多操作；仅建议完全信任环境使用。" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="沙盒模式" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="SandboxModeBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex 沙盒模式"
+                              ToolTipService.ToolTip="控制 Codex 命令的文件系统权限；只读最保守，工作区可写适合改代码，完全访问权限最高。保存时写入官方沙盒字段。">
+                        <ComboBoxItem Content="不写入" Tag="" ToolTipService.ToolTip="不写入该项，保留 Codex 默认沙盒模式。" />
+                        <ComboBoxItem Content="只读" Tag="read-only" ToolTipService.ToolTip="只允许读取文件，不能直接写入工作区。" />
+                        <ComboBoxItem Content="工作区可写" Tag="workspace-write" ToolTipService.ToolTip="允许修改当前工作区，适合日常代码编辑。" />
+                        <ComboBoxItem Content="完全访问" Tag="danger-full-access" ToolTipService.ToolTip="允许更高文件系统访问权限；风险较高，需谨慎使用。" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="沙盒网络访问" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="SandboxNetworkBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex 沙盒网络访问"
+                              ToolTipService.ToolTip="控制工作区可写沙盒中是否允许联网；需要安装依赖或访问外部服务时可允许。保存时写入官方沙盒网络字段。">
+                        <ComboBoxItem Content="不写入" Tag="" ToolTipService.ToolTip="不写入该项，保留 Codex 默认沙盒网络设置。" />
+                        <ComboBoxItem Content="允许" Tag="true" ToolTipService.ToolTip="工作区可写沙盒中允许联网，适合安装依赖或访问外部服务。" />
+                        <ComboBoxItem Content="禁止" Tag="false" ToolTipService.ToolTip="工作区可写沙盒中禁止联网，更保守。" />
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="1.1*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="助手风格" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="PersonalityBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex 助手风格"
+                              ToolTipService.ToolTip="调整 Codex 回复语气；不影响模型能力，只影响表达风格。保存时写入官方助手风格字段。">
+                        <ComboBoxItem Content="不写入" Tag="" ToolTipService.ToolTip="不写入该项，保留 Codex 默认助手风格。" />
+                        <ComboBoxItem Content="无" Tag="none" ToolTipService.ToolTip="不额外施加助手风格。" />
+                        <ComboBoxItem Content="友好" Tag="friendly" ToolTipService.ToolTip="回复更温和、解释更充分。" />
+                        <ComboBoxItem Content="务实" Tag="pragmatic" ToolTipService.ToolTip="回复更直接，偏向工程执行。" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="启用钩子" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="FeatureHooksBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex 钩子功能开关"
+                              ToolTipService.ToolTip="控制 Codex 是否启用 hooks 功能；这里只开关功能，不会修改已有钩子脚本。保存时写入官方功能开关。">
+                        <ComboBoxItem Content="不写入" Tag="" ToolTipService.ToolTip="不写入该项，保留 Codex 默认钩子功能状态。" />
+                        <ComboBoxItem Content="开启" Tag="true" ToolTipService.ToolTip="启用 Codex hooks 功能，但不修改任何已有钩子脚本。" />
+                        <ComboBoxItem Content="关闭" Tag="false" ToolTipService.ToolTip="关闭 Codex hooks 功能。" />
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="命令行快照" TextTrimming="CharacterEllipsis" />
+                    <ComboBox x:Name="ShellSnapshotBox" HorizontalAlignment="Stretch"
+                              AutomationProperties.Name="Codex 命令行快照"
+                              ToolTipService.ToolTip="控制 Codex 是否记录命令行环境快照，便于恢复会话上下文。保存时写入官方功能开关。">
+                        <ComboBoxItem Content="不写入" Tag="" ToolTipService.ToolTip="不写入该项，保留 Codex 默认命令行快照设置。" />
+                        <ComboBoxItem Content="开启" Tag="true" ToolTipService.ToolTip="记录命令行环境快照，便于恢复会话上下文。" />
+                        <ComboBoxItem Content="关闭" Tag="false" ToolTipService.ToolTip="不记录命令行环境快照。" />
+                    </ComboBox>
                 </StackPanel>
             </Grid>
 
@@ -128,38 +251,38 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Spacing="4">
-                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="request_max_retries" TextTrimming="CharacterEllipsis" />
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="请求重试次数" TextTrimming="CharacterEllipsis" />
                     <NumberBox x:Name="RequestRetriesBox" Minimum="0" Maximum="20" SpinButtonPlacementMode="Compact"
                                AutomationProperties.Name="Codex 请求最大重试次数"
-                               ToolTipService.ToolTip="设置 Codex 的 request_max_retries" />
+                               ToolTipService.ToolTip="普通请求失败后的最大重试次数；留空时使用 Codex 默认策略，不写入固定值。" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Spacing="4">
-                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="stream_max_retries" TextTrimming="CharacterEllipsis" />
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="流式重试次数" TextTrimming="CharacterEllipsis" />
                     <NumberBox x:Name="StreamRetriesBox" Minimum="0" Maximum="20" SpinButtonPlacementMode="Compact"
                                AutomationProperties.Name="Codex 流式最大重试次数"
-                               ToolTipService.ToolTip="设置 Codex 的 stream_max_retries" />
+                               ToolTipService.ToolTip="流式响应中断后的最大重试次数；留空时使用 Codex 默认策略，不写入固定值。" />
                 </StackPanel>
                 <StackPanel Grid.Column="2" Spacing="4">
-                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="stream_idle_timeout_ms" TextTrimming="CharacterEllipsis" />
+                    <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="流式空闲超时" TextTrimming="CharacterEllipsis" />
                     <NumberBox x:Name="StreamIdleTimeoutBox" Minimum="0" Maximum="600000" SpinButtonPlacementMode="Compact"
                                AutomationProperties.Name="Codex 流式空闲超时毫秒数"
-                               ToolTipService.ToolTip="设置 Codex 的 stream_idle_timeout_ms" />
+                               ToolTipService.ToolTip="流式响应多久没有新数据后视为超时，单位毫秒；留空时使用 Codex 默认策略。" />
                 </StackPanel>
             </Grid>
 
             <StackPanel Spacing="4">
-                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="API &#x5BC6;&#x94A5;" TextTrimming="CharacterEllipsis" />
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="接口密钥" TextTrimming="CharacterEllipsis" />
                 <PasswordBox x:Name="ApiKeyBox" PasswordChanged="OnRequiredPasswordChanged"
-                             AutomationProperties.Name="Codex 提供方 API 密钥"
-                             ToolTipService.ToolTip="输入写入 Codex config.toml 的提供方 API 密钥" />
+                             AutomationProperties.Name="Codex 提供方接口密钥"
+                             ToolTipService.ToolTip="输入写入 Codex config.toml 的提供方接口密钥" />
                 <TextBlock x:Name="ApiKeyError" FontSize="11" Foreground="{ThemeResource DialogDangerChipForegroundBrush}" Visibility="Collapsed" />
             </StackPanel>
 
             <StackPanel Spacing="4">
-                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="http_headers" TextTrimming="CharacterEllipsis" />
+                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorPrimaryBrush}" Text="请求头" TextTrimming="CharacterEllipsis" />
                 <TextBox x:Name="HttpHeadersBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" FontFamily="Consolas"
-                         AutomationProperties.Name="Codex HTTP 头"
-                         ToolTipService.ToolTip="编辑 Codex 提供方的附加 HTTP 头" />
+                         AutomationProperties.Name="Codex 请求头"
+                         ToolTipService.ToolTip="编辑 Codex 提供方的附加请求头" />
             </StackPanel>
 
             <StackPanel Spacing="4">
@@ -169,8 +292,8 @@
                          TextWrapping="Wrap"
                          MinHeight="100"
                          FontFamily="Consolas"
-                         PlaceholderText="tools.web_search = true" />
-                <TextBlock FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x6BCF;&#x884C;&#x4E00;&#x6761;&#xFF1A;path = raw_value&#xFF0C;&#x4F8B;&#x5982; tools.web_search = true" TextWrapping="Wrap" MaxLines="2" />
+                         PlaceholderText="可按文档填写原始配置键值" />
+                <TextBlock FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Text="&#x6BCF;&#x884C;&#x4E00;&#x6761;&#xFF1A;&#x914D;&#x7F6E;&#x8DEF;&#x5F84; = &#x539F;&#x59CB;&#x503C;&#xFF1B;&#x4FDD;&#x5B58;&#x65F6;&#x4F1A;&#x6309;&#x5B98;&#x65B9;&#x952E;&#x540D;&#x539F;&#x6837;&#x5199;&#x5165;&#x3002;" TextWrapping="Wrap" MaxLines="2" />
             </StackPanel>
         </StackPanel>
         </Border>

@@ -33,14 +33,15 @@ internal sealed class TransparentProxyLaunchWrapperService
         var env = _environmentService.Build(port);
         var powerShellPath = Path.Combine(_rootDirectory, $"{safeId}.ps1");
         var cmdPath = Path.Combine(_rootDirectory, $"{safeId}.cmd");
+        var useCodexCliOverride = IsCodexLauncher(safeId, normalizedCommand);
         return new TransparentProxyLaunchWrapperPreview(
             safeId,
             string.IsNullOrWhiteSpace(displayName) ? safeId : displayName.Trim(),
             normalizedCommand,
             powerShellPath,
             cmdPath,
-            BuildPowerShellScript(normalizedCommand, env),
-            BuildCmdScript(normalizedCommand, env));
+            BuildPowerShellScript(normalizedCommand, env, useCodexCliOverride),
+            BuildCmdScript(normalizedCommand, env, useCodexCliOverride));
     }
 
     public TransparentProxyLaunchWrapperWriteResult Write(string id, string displayName, string command, int port)
@@ -105,36 +106,59 @@ internal sealed class TransparentProxyLaunchWrapperService
             summary);
     }
 
-    private static string BuildPowerShellScript(string command, TransparentProxyCliEnvironmentSnapshot env)
-        => string.Join(
-            Environment.NewLine,
-            [
-                "# RelayBench temporary launcher. This does not change system proxy or global environment variables.",
-                $"$env:OPENAI_BASE_URL = '{EscapePowerShell(env.OpenAiBaseUrl)}'",
-                $"$env:OPENAI_API_KEY = '{EscapePowerShell(env.LocalToken)}'",
-                $"$env:ANTHROPIC_BASE_URL = '{EscapePowerShell(env.AnthropicBaseUrl)}'",
-                $"$env:ANTHROPIC_AUTH_TOKEN = '{EscapePowerShell(env.LocalToken)}'",
-                $"$env:RELAYBENCH_BASE_URL = '{EscapePowerShell(env.OpenAiBaseUrl)}'",
-                $"& '{EscapePowerShell(command)}' @args",
-                "exit $LASTEXITCODE",
-                string.Empty
-            ]);
+    private static string BuildPowerShellScript(
+        string command,
+        TransparentProxyCliEnvironmentSnapshot env,
+        bool useCodexCliOverride)
+    {
+        List<string> lines =
+        [
+            "# RelayBench temporary launcher. This does not change system proxy or global environment variables.",
+            $"$env:OPENAI_BASE_URL = '{EscapePowerShell(env.OpenAiBaseUrl)}'",
+            $"$env:OPENAI_API_KEY = '{EscapePowerShell(env.LocalToken)}'",
+            $"$env:ANTHROPIC_BASE_URL = '{EscapePowerShell(env.AnthropicBaseUrl)}'",
+            $"$env:ANTHROPIC_AUTH_TOKEN = '{EscapePowerShell(env.LocalToken)}'",
+            $"$env:RELAYBENCH_BASE_URL = '{EscapePowerShell(env.OpenAiBaseUrl)}'"
+        ];
 
-    private static string BuildCmdScript(string command, TransparentProxyCliEnvironmentSnapshot env)
-        => string.Join(
-            Environment.NewLine,
-            [
-                "@echo off",
-                "rem RelayBench temporary launcher. This does not change system proxy or global environment variables.",
-                $"set OPENAI_BASE_URL={env.OpenAiBaseUrl}",
-                $"set OPENAI_API_KEY={env.LocalToken}",
-                $"set ANTHROPIC_BASE_URL={env.AnthropicBaseUrl}",
-                $"set ANTHROPIC_AUTH_TOKEN={env.LocalToken}",
-                $"set RELAYBENCH_BASE_URL={env.OpenAiBaseUrl}",
-                $"\"{EscapeCmd(command)}\" %*",
-                "exit /b %ERRORLEVEL%",
-                string.Empty
-            ]);
+        if (useCodexCliOverride)
+        {
+            lines.Add($"$relayBenchCodexConfig = @('-c', \"openai_base_url='{EscapePowerShell(env.OpenAiBaseUrl)}'\")");
+            lines.Add($"& '{EscapePowerShell(command)}' @relayBenchCodexConfig @args");
+        }
+        else
+        {
+            lines.Add($"& '{EscapePowerShell(command)}' @args");
+        }
+
+        lines.Add("exit $LASTEXITCODE");
+        lines.Add(string.Empty);
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildCmdScript(
+        string command,
+        TransparentProxyCliEnvironmentSnapshot env,
+        bool useCodexCliOverride)
+    {
+        List<string> lines =
+        [
+            "@echo off",
+            "rem RelayBench temporary launcher. This does not change system proxy or global environment variables.",
+            $"set OPENAI_BASE_URL={env.OpenAiBaseUrl}",
+            $"set OPENAI_API_KEY={env.LocalToken}",
+            $"set ANTHROPIC_BASE_URL={env.AnthropicBaseUrl}",
+            $"set ANTHROPIC_AUTH_TOKEN={env.LocalToken}",
+            $"set RELAYBENCH_BASE_URL={env.OpenAiBaseUrl}"
+        ];
+
+        lines.Add(useCodexCliOverride
+            ? $"\"{EscapeCmd(command)}\" -c \"openai_base_url='{env.OpenAiBaseUrl}'\" %*"
+            : $"\"{EscapeCmd(command)}\" %*");
+        lines.Add("exit /b %ERRORLEVEL%");
+        lines.Add(string.Empty);
+        return string.Join(Environment.NewLine, lines);
+    }
 
     private static string NormalizeId(string value)
     {
@@ -150,6 +174,10 @@ internal sealed class TransparentProxyLaunchWrapperService
 
     private static string NormalizeCommand(string value)
         => string.IsNullOrWhiteSpace(value) ? "cmd" : value.Trim();
+
+    private static bool IsCodexLauncher(string id, string command)
+        => id.Contains("codex", StringComparison.OrdinalIgnoreCase) ||
+           string.Equals(Path.GetFileNameWithoutExtension(command), "codex", StringComparison.OrdinalIgnoreCase);
 
     private static string EscapePowerShell(string value)
         => value.Replace("'", "''", StringComparison.Ordinal);

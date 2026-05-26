@@ -25,6 +25,9 @@ internal sealed class TrayLifecycleService : IDisposable
     private const uint NifInfo = 0x00000010;
     private const uint NotifyIconVersion4 = 4;
     private const uint NiifInfo = 0x00000001;
+    private const uint ImageIcon = 1;
+    private const uint LrLoadFromFile = 0x00000010;
+    private const uint LrDefaultSize = 0x00000040;
     private static readonly IntPtr IdiApplication = new(32512);
 
     private readonly MainWindow _owner;
@@ -40,6 +43,7 @@ internal sealed class TrayLifecycleService : IDisposable
     private readonly WndProcDelegate _wndProcDelegate;
     private IntPtr _oldWndProc;
     private IntPtr _trayIcon;
+    private bool _ownsTrayIcon;
     private TrayMenuWindow? _trayMenuWindow;
     private bool _hasShownBackgroundHint;
     private bool _isInitialized;
@@ -80,7 +84,7 @@ internal sealed class TrayLifecycleService : IDisposable
             _ownerHwnd,
             GwlpWndProc,
             Marshal.GetFunctionPointerForDelegate(_wndProcDelegate));
-        _trayIcon = LoadIcon(IntPtr.Zero, IdiApplication);
+        _trayIcon = LoadApplicationTrayIcon(out _ownsTrayIcon);
 
         var data = CreateNotifyData(NifMessage | NifIcon | NifTip);
         data.hIcon = _trayIcon;
@@ -153,6 +157,13 @@ internal sealed class TrayLifecycleService : IDisposable
             SetWindowLongPtr(_ownerHwnd, GwlpWndProc, _oldWndProc);
             _oldWndProc = IntPtr.Zero;
         }
+
+        if (_ownsTrayIcon && _trayIcon != IntPtr.Zero)
+        {
+            DestroyIcon(_trayIcon);
+            _trayIcon = IntPtr.Zero;
+            _ownsTrayIcon = false;
+        }
     }
 
     private IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
@@ -223,6 +234,31 @@ internal sealed class TrayLifecycleService : IDisposable
             ? "RelayBench - 透明代理运行中"
             : "RelayBench";
 
+    private static IntPtr LoadApplicationTrayIcon(out bool ownsHandle)
+    {
+        ownsHandle = false;
+
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+            if (File.Exists(iconPath))
+            {
+                var icon = LoadImage(IntPtr.Zero, iconPath, ImageIcon, 0, 0, LrLoadFromFile | LrDefaultSize);
+                if (icon != IntPtr.Zero)
+                {
+                    ownsHandle = true;
+                    return icon;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("TrayLifecycleService.LoadApplicationTrayIcon", ex);
+        }
+
+        return LoadIcon(IntPtr.Zero, IdiApplication);
+    }
+
     private static bool IsTrayIconCallback(IntPtr wParam, IntPtr lParam)
     {
         if (wParam.ToInt64() == TrayIconId)
@@ -285,6 +321,12 @@ internal sealed class TrayLifecycleService : IDisposable
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr LoadIcon(IntPtr instance, IntPtr iconName);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr LoadImage(IntPtr instance, string iconPath, uint imageType, int desiredWidth, int desiredHeight, uint loadFlags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DestroyIcon(IntPtr icon);
 
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out POINT point);

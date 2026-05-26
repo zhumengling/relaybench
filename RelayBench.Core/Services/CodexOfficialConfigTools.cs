@@ -4,7 +4,8 @@ namespace RelayBench.Core.Services;
 
 internal static class CodexOfficialConfigTools
 {
-    private const string CodexProviderKey = "custom";
+    private const string CustomProviderKey = "custom";
+    private const string RelayBenchProviderKey = "relaybench";
 
     public static CodexRewriteResult RewriteToOfficialLike(string filePath, string content)
     {
@@ -106,7 +107,12 @@ internal static class CodexOfficialConfigTools
         var changed = false;
 
         changed |= RemoveSection(lines, "[model_providers.custom]");
-        changed |= RemoveTopLevelStringAssignmentIfValue(lines, "model_provider", CodexProviderKey);
+        changed |= RemoveSection(lines, "[model_providers.relaybench]");
+        changed |= RemoveSection(lines, "[profiles.relaybench]");
+        changed |= RemoveTopLevelStringAssignmentIfValue(lines, "model_provider", CustomProviderKey);
+        changed |= RemoveTopLevelStringAssignmentIfValue(lines, "model_provider", RelayBenchProviderKey);
+        changed |= RemoveTopLevelStringAssignmentIfValue(lines, "profile", RelayBenchProviderKey);
+        changed |= RemoveTopLevelLocalEndpointAssignment(lines, "openai_base_url");
 
         if (!changed)
         {
@@ -224,6 +230,38 @@ internal static class CodexOfficialConfigTools
 
         lines.RemoveAt(existingIndex);
         return true;
+    }
+
+    private static bool RemoveTopLevelLocalEndpointAssignment(List<string> lines, string key)
+    {
+        var firstSectionIndex = FindNextSectionHeader(lines, 0);
+        var searchEnd = firstSectionIndex < 0 ? lines.Count : firstSectionIndex;
+        var existingIndex = FindKeyAssignment(lines, key, 0, searchEnd);
+        if (existingIndex < 0)
+        {
+            return false;
+        }
+
+        var currentValue = ParseAssignmentValue(lines[existingIndex]);
+        if (!IsLocalEndpoint(currentValue))
+        {
+            return false;
+        }
+
+        lines.RemoveAt(existingIndex);
+        return true;
+    }
+
+    private static bool IsLocalEndpoint(string value)
+    {
+        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(uri.Host, "::1", StringComparison.OrdinalIgnoreCase);
     }
 
     private static int FindSectionHeader(List<string> lines, string header)

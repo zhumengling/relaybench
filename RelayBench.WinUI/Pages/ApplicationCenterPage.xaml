@@ -352,9 +352,6 @@
                                     </Border>
                                     <TextBlock Grid.Column="5" FontSize="11" VerticalAlignment="Center" Text="{x:Bind ConfigFile}" TextTrimming="CharacterEllipsis" />
                                     <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                        <Button Style="{StaticResource AppRowIconButton}" AutomationProperties.Name="预览应用目标配置" ToolTipService.ToolTip="&#x9884;&#x89C8;&#x914D;&#x7F6E;" Click="OnPreviewTargetClick">
-                                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12" Glyph="&#xE713;" />
-                                        </Button>
                                         <Button Style="{StaticResource AppRowIconButton}" AutomationProperties.Name="写入应用目标配置" ToolTipService.ToolTip="&#x5199;&#x5165;&#x914D;&#x7F6E;" Click="OnApplyTargetClick">
                                             <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="12" Glyph="&#xE8FB;" />
                                         </Button>
@@ -370,37 +367,17 @@
                                                             <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE896;" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="聊天记录导入" AccessKey="I" Click="OnImportChatHistoryClick">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8B5;" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="还原所选配置" AccessKey="R" Click="OnRestoreSelectedMenuClick">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE777;" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
                                                     <MenuFlyoutSeparator />
-                                                    <MenuFlyoutSubItem Text="&#x590D;&#x5236;" AccessKey="C">
-                                                        <MenuFlyoutSubItem.Icon>
-                                                            <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE8C8;" />
-                                                        </MenuFlyoutSubItem.Icon>
-                                                        <MenuFlyoutItem Text="&#x5E94;&#x7528;&#x540D;&#x79F0;" AccessKey="N" Click="OnCopyTargetNameClick" Tag="{Binding}">
-                                                            <MenuFlyoutItem.Icon>
-                                                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xECAA;" />
-                                                            </MenuFlyoutItem.Icon>
-                                                        </MenuFlyoutItem>
-                                                        <MenuFlyoutItem Text="&#x914D;&#x7F6E;&#x8DEF;&#x5F84;" AccessKey="P" Click="OnCopyTargetConfigPathClick" Tag="{Binding}">
-                                                            <MenuFlyoutItem.Icon>
-                                                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE838;" />
-                                                            </MenuFlyoutItem.Icon>
-                                                        </MenuFlyoutItem>
-                                                        <MenuFlyoutItem Text="&#x5F53;&#x524D;&#x914D;&#x7F6E;" AccessKey="G" Click="OnCopyTargetCurrentConfigClick" Tag="{Binding}">
-                                                            <MenuFlyoutItem.Icon>
-                                                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE713;" />
-                                                            </MenuFlyoutItem.Icon>
-                                                        </MenuFlyoutItem>
-                                                        <MenuFlyoutItem Text="&#x63A5;&#x5165;&#x7AEF;&#x70B9;" AccessKey="E" Click="OnCopyTargetEndpointClick" Tag="{Binding}">
-                                                            <MenuFlyoutItem.Icon>
-                                                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE774;" />
-                                                            </MenuFlyoutItem.Icon>
-                                                        </MenuFlyoutItem>
-                                                        <MenuFlyoutItem Text="&#x63A5;&#x5165;&#x6458;&#x8981;" AccessKey="S" Click="OnCopyTargetSummaryClick" Tag="{Binding}">
-                                                            <MenuFlyoutItem.Icon>
-                                                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE9D9;" />
-                                                            </MenuFlyoutItem.Icon>
-                                                        </MenuFlyoutItem>
-                                                    </MenuFlyoutSubItem>
                                                     <MenuFlyoutSubItem Text="&#x8BCA;&#x65AD;" AccessKey="D">
                                                         <MenuFlyoutSubItem.Icon>
                                                             <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE9D9;" />
@@ -552,7 +529,6 @@
                 <Grid Grid.Column="2" RowSpacing="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
@@ -733,36 +709,6 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Row="2" Style="{StaticResource AccessCard}" Padding="14,12">
-                        <Grid ColumnSpacing="18">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel MinWidth="0">
-                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="&#x8FD8;&#x539F;&#x5B98;&#x65B9;&#x914D;&#x7F6E;" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Style="{StaticResource AccessCaption}" Text="&#x5C06;&#x6240;&#x9009;&#x5E94;&#x7528;&#x7684;&#x914D;&#x7F6E;&#x8FD8;&#x539F;&#x4E3A;&#x5B98;&#x65B9;&#x9ED8;&#x8BA4;&#x8BBE;&#x7F6E;&#x3002;" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" MinWidth="0">
-                                <TextBlock FontSize="13" FontWeight="SemiBold" Text="&#x6279;&#x91CF;&#x64CD;&#x4F5C;" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Style="{StaticResource AccessCaption}" Text="&#x5C06;&#x5F53;&#x524D;&#x63A5;&#x53E3;&#x5E94;&#x7528;&#x5230;&#x5DF2;&#x9009;&#x4E2D;&#x7684;&#x5E94;&#x7528;&#x3002;" TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <Button Style="{StaticResource AppToolbarButton}"
-                                        Command="{x:Bind ViewModel.ImportClientChatHistoryCommand}"
-                                        AutomationProperties.Name="聊天记录导入"
-                                        ToolTipService.ToolTip="导入 RelayBench 导出的 Codex / Claude 聊天记录归档">
-                                    <TextBlock FontSize="12" Text="聊天记录导入" TextTrimming="CharacterEllipsis" />
-                                </Button>
-                                <Button Style="{StaticResource AppToolbarButton}"
-                                        Command="{x:Bind ViewModel.RestoreSelectedCommand}"
-                                        ToolTipService.ToolTip="还原所选应用的官方配置">
-                                    <TextBlock FontSize="12" Foreground="{ThemeResource AccessDangerChipForegroundBrush}" MaxWidth="126" Text="{x:Bind ViewModel.RestoreSelectedButtonText, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
                 </Grid>
             </Grid>
         </Grid>

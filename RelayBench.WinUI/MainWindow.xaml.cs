@@ -51,6 +51,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         _hwnd = WindowNative.GetWindowHandle(this);
         _appWindow = TryGetAppWindow(_hwnd);
+        ConfigureAppIcon();
         if (_appWindow is not null)
         {
             _appWindow.Closing += MainAppWindow_Closing;
@@ -192,6 +193,27 @@ public sealed partial class MainWindow : Window
         titleBar.ButtonHoverForegroundColor = titleBar.ButtonForegroundColor;
         titleBar.ButtonPressedBackgroundColor = ResolveTitleBarBrushColor("AppChromeIconButtonBackgroundPressedBrush", Colors.Transparent);
         titleBar.ButtonPressedForegroundColor = titleBar.ButtonForegroundColor;
+    }
+
+    private void ConfigureAppIcon()
+    {
+        if (_appWindow is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+            if (File.Exists(iconPath))
+            {
+                _appWindow.SetIcon(iconPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppDiagnosticLog.Write("MainWindow.ConfigureAppIcon", ex);
+        }
     }
 
     private static Color ResolveTitleBarBrushColor(string resourceKey, Color fallback)

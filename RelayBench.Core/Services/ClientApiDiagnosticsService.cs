@@ -1,5 +1,6 @@
 using System.Net.Http;
 using System.Text;
+using System.Text.Json.Nodes;
 using RelayBench.Core.Models;
 
 namespace RelayBench.Core.Services;
@@ -220,6 +221,8 @@ public sealed class ClientApiDiagnosticsService
                                                      !file.Content.Contains("PROXY_MANAGED", StringComparison.OrdinalIgnoreCase)),
             restoreHint: "支持还原 .codex/config.toml、.codex/auth.json 与 .codex/settings.json 中的代理接管或自定义入口。");
 
+        profile = AppendRoutingNote(profile, BuildCodexProjectConfigOverrideNote(environment, codexRoot));
+
         return BuildState(
             installed: commandPaths.Count > 0 || environment.DirectoryExists(codexRoot),
             configDetected: configFiles.Count > 0 || envVars.Count > 0,
@@ -271,6 +274,8 @@ public sealed class ClientApiDiagnosticsService
             hasOfficialOAuth: configFiles.Any(file => file.Path.EndsWith("auth.json", StringComparison.OrdinalIgnoreCase) &&
                                                      !file.Content.Contains("PROXY_MANAGED", StringComparison.OrdinalIgnoreCase)),
             restoreHint: "支持还原 .codex/config.toml、.codex/auth.json 与 .codex/settings.json 中的代理接管或自定义入口。");
+
+        profile = AppendRoutingNote(profile, BuildCodexProjectConfigOverrideNote(environment, Path.Combine(userProfile, ".codex")));
 
         return BuildState(
             installed: appCandidates.Count > 0 || processHits.Length > 0,
@@ -508,6 +513,268 @@ public sealed class ClientApiDiagnosticsService
             profile: profile);
     }
 
+    private static AccessProfile AppendRoutingNote(AccessProfile profile, string? note)
+        => string.IsNullOrWhiteSpace(note)
+            ? profile
+            : profile with { RoutingNote = $"{profile.RoutingNote}；{note}" };
+
+    private static string BuildCodexProjectConfigOverrideNote(
+        IClientApiDiagnosticEnvironment environment,
+        string codexRoot)
+    {
+        var roots = ReadCodexWorkspaceRoots(environment, codexRoot)
+            .Take(32)
+            .ToArray();
+        if (roots.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        List<CodexProjectConfigRisk> risks = [];
+        foreach (var root in roots)
+        {
+            var configPath = Path.Combine(root, ".codex", "config.toml");
+            if (!environment.FileExists(configPath))
+            {
+                continue;
+            }
+
+            var content = environment.ReadFileText(configPath);
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                continue;
+            }
+
+            var keys = DetectProjectConfigOverrideKeys(content);
+            if (keys.Count == 0)
+            {
+                continue;
+            }
+
+            risks.Add(new CodexProjectConfigRisk(root, configPath, keys));
+        }
+
+        if (risks.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var preview = string.Join(
+            "；",
+            risks
+                .Take(3)
+                .Select(static risk =>
+                    $"{Path.GetFileName(risk.WorkspaceRoot)}({string.Join("/", risk.Keys.Take(4))})"));
+        var remaining = risks.Count > 3 ? $"，另有 {risks.Count - 3} 个" : string.Empty;
+        return $"发现 {risks.Count} 个最近工作区存在项目级 .codex/config.toml 覆盖键：{preview}{remaining}。Codex 受信任项目配置优先级高于用户级配置；如 RelayBench 接管未生效，请使用临时启动器的 -c 覆盖或清理项目级入口。";
+    }
+
+    private static IReadOnlyList<string> ReadCodexWorkspaceRoots(
+        IClientApiDiagnosticEnvironment environment,
+        string codexRoot)
+    {
+        List<string> roots = [];
+        AddWorkspaceRoot(roots, Environment.CurrentDirectory);
+
+        var statePath = Path.Combine(codexRoot, ".codex-global-state.json");
+        var stateText = environment.ReadFileText(statePath);
+        if (string.IsNullOrWhiteSpace(stateText))
+        {
+            return roots;
+        }
+
+        try
+        {
+            if (JsonNode.Parse(stateText) is not JsonObject state)
+            {
+                return roots;
+            }
+
+            foreach (var key in new[]
+                     {
+                         "active-workspace-roots",
+                         "project-order",
+                         "electron-saved-workspace-roots"
+                     })
+            {
+                AddWorkspaceRootsFromNode(roots, state[key]);
+            }
+        }
+        catch
+        {
+            // Project config hints are best effort; malformed state must not break diagnostics.
+        }
+
+        return roots
+            .Where(path => !string.IsNullOrWhiteSpace(path) && environment.DirectoryExists(path))
+            .DistinctBy(NormalizeComparablePath, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static void AddWorkspaceRootsFromNode(List<string> roots, JsonNode? node)
+    {
+        if (node is JsonArray array)
+        {
+            foreach (var item in array)
+            {
+                AddWorkspaceRoot(roots, ReadJsonString(item));
+            }
+
+            return;
+        }
+
+        AddWorkspaceRoot(roots, ReadJsonString(node));
+    }
+
+    private static void AddWorkspaceRoot(List<string> roots, string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        var normalized = ToDesktopWorkspacePath(path);
+        if (!string.IsNullOrWhiteSpace(normalized))
+        {
+            roots.Add(normalized);
+        }
+    }
+
+    private static string? ReadJsonString(JsonNode? node)
+    {
+        try
+        {
+            return node?.GetValue<string>();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static IReadOnlyList<string> DetectProjectConfigOverrideKeys(string content)
+    {
+        HashSet<string> keys = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var rawLine in content
+                     .Replace("\r\n", "\n", StringComparison.Ordinal)
+                     .Replace('\r', '\n')
+                     .Split('\n'))
+        {
+            var line = StripTomlInlineComment(rawLine).Trim();
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            if (line.StartsWith('[') && line.EndsWith(']'))
+            {
+                var section = line.Trim('[', ']').Trim();
+                var topSection = section.Split('.', 2)[0].Trim();
+                if (IsProjectSensitiveCodexConfigKey(topSection))
+                {
+                    keys.Add(topSection);
+                }
+
+                continue;
+            }
+
+            var equalsIndex = line.IndexOf('=');
+            if (equalsIndex <= 0)
+            {
+                continue;
+            }
+
+            var key = line[..equalsIndex].Trim();
+            var topKey = key.Split('.', 2)[0].Trim();
+            if (IsProjectSensitiveCodexConfigKey(topKey))
+            {
+                keys.Add(topKey);
+            }
+        }
+
+        return keys.Order(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    private static bool IsProjectSensitiveCodexConfigKey(string key)
+    {
+        var normalized = key.Trim().ToLowerInvariant();
+        return normalized is
+            "openai_base_url" or
+            "chatgpt_base_url" or
+            "model_provider" or
+            "model_providers" or
+            "profile" or
+            "profiles" or
+            "mcp_servers" or
+            "hooks" or
+            "notify" or
+            "otel" or
+            "approval_policy" or
+            "sandbox_mode" or
+            "default_permissions" or
+            "shell_environment_policy" or
+            "experimental_realtime_ws_base_url";
+    }
+
+    private static string StripTomlInlineComment(string value)
+    {
+        var inSingleQuote = false;
+        var inDoubleQuote = false;
+        var escaped = false;
+        for (var index = 0; index < value.Length; index++)
+        {
+            var ch = value[index];
+            if (escaped)
+            {
+                escaped = false;
+                continue;
+            }
+
+            if (ch == '\\' && inDoubleQuote)
+            {
+                escaped = true;
+                continue;
+            }
+
+            if (ch == '\'' && !inDoubleQuote)
+            {
+                inSingleQuote = !inSingleQuote;
+                continue;
+            }
+
+            if (ch == '"' && !inSingleQuote)
+            {
+                inDoubleQuote = !inDoubleQuote;
+                continue;
+            }
+
+            if (ch == '#' && !inSingleQuote && !inDoubleQuote)
+            {
+                return value[..index].TrimEnd();
+            }
+        }
+
+        return value;
+    }
+
+    private static string ToDesktopWorkspacePath(string value)
+    {
+        var normalized = value.Trim();
+        if (normalized.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = @"\\" + normalized[8..];
+        }
+        else if (normalized.StartsWith(@"\\?\", StringComparison.Ordinal))
+        {
+            normalized = normalized[4..];
+        }
+
+        return normalized.Replace('/', Path.DirectorySeparatorChar);
+    }
+
+    private static string NormalizeComparablePath(string value)
+        => ToDesktopWorkspacePath(value).TrimEnd('\\', '/').ToLowerInvariant();
+
     private static LocalClientState BuildState(
         bool installed,
         bool configDetected,
@@ -664,6 +931,11 @@ public sealed class ClientApiDiagnosticsService
     private sealed record EnvironmentVariableValue(string Name, string? Value);
 
     private sealed record EndpointCandidate(string Url, string Source);
+
+    private sealed record CodexProjectConfigRisk(
+        string WorkspaceRoot,
+        string ConfigPath,
+        IReadOnlyList<string> Keys);
 
     private sealed record AccessProfile(
         string AccessPathLabel,

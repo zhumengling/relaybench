@@ -15,19 +15,22 @@ namespace RelayBench.WinUI.ViewModels;
 
 public sealed partial class ApplicationCenterViewModel : ObservableObject
 {
-    private bool TryBuildSettings(out ProxyEndpointSettings settings, bool requireModel)
+    private bool TryBuildSettings(out ProxyEndpointSettings settings, bool requireModel, bool requireApiKey = true)
     {
         settings = default!;
         if (string.IsNullOrWhiteSpace(BaseUrl) ||
-            string.IsNullOrWhiteSpace(ApiKey) ||
+            (requireApiKey && string.IsNullOrWhiteSpace(ApiKey)) ||
             (requireModel && string.IsNullOrWhiteSpace(Model)))
         {
             return false;
         }
 
+        var effectiveApiKey = string.IsNullOrWhiteSpace(ApiKey)
+            ? "relaybench-local"
+            : ApiKey.Trim();
         settings = new ProxyEndpointSettings(
             BaseUrl.Trim(),
-            ApiKey.Trim(),
+            effectiveApiKey,
             Model.Trim(),
             IgnoreTlsErrors: false,
             TimeoutSeconds: 15);

@@ -115,10 +115,11 @@ public sealed partial class ApplicationCenterViewModel : ObservableObject
         var protocolBackedTargets = selected
             .Where(static target => !IsVsCodeTarget(target))
             .ToList();
+        var requireApiKey = protocolBackedTargets.Any(RequiresApiKeyForTarget);
         if (protocolBackedTargets.Count > 0 &&
-            !TryBuildSettings(out _, requireModel: true))
+            !TryBuildSettings(out _, requireModel: true, requireApiKey: requireApiKey))
         {
-            StatusText = "请补全入口 URL、API 密钥和模型";
+            StatusText = requireApiKey ? "请补全入口 URL、API 密钥和模型" : "请补全入口 URL 和模型";
             return;
         }
 
@@ -222,9 +223,9 @@ public sealed partial class ApplicationCenterViewModel : ObservableObject
                 return ApplicationAccessOperationReceipt.Failed(target, StatusText, StatusText);
             }
         }
-        else if (!TryBuildSettings(out _, requireModel: true))
+        else if (!TryBuildSettings(out _, requireModel: true, requireApiKey: RequiresApiKeyForTarget(target)))
         {
-            StatusText = "请补全入口 URL、API 密钥和模型";
+            StatusText = RequiresApiKeyForTarget(target) ? "请补全入口 URL、API 密钥和模型" : "请补全入口 URL 和模型";
             return ApplicationAccessOperationReceipt.Failed(target, StatusText, StatusText);
         }
 
@@ -266,9 +267,9 @@ public sealed partial class ApplicationCenterViewModel : ObservableObject
 
             if (target.TargetId is "codex" or "claude-cli" or "antigravity")
             {
-                if (!TryBuildSettings(out var settings, requireModel: true))
+                if (!TryBuildSettings(out var settings, requireModel: true, requireApiKey: RequiresApiKeyForTarget(target)))
                 {
-                    StatusText = "请补全入口 URL、API 密钥和模型";
+                    StatusText = RequiresApiKeyForTarget(target) ? "请补全入口 URL、API 密钥和模型" : "请补全入口 URL 和模型";
                     return ApplicationAccessOperationReceipt.Failed(target, StatusText, StatusText);
                 }
 
@@ -383,6 +384,10 @@ public sealed partial class ApplicationCenterViewModel : ObservableObject
            target.ProtocolKind == ClientApplyProtocolKind.Anthropic &&
            !probeResult.AnthropicMessagesSupported &&
            probeResult.ChatCompletionsSupported;
+
+    private bool RequiresApiKeyForTarget(AppTargetItem target)
+        => !string.Equals(target.TargetId, "codex", StringComparison.OrdinalIgnoreCase) ||
+           !CodexFamilyConfigApplyService.ShouldUseOpenAiBaseUrlMode(BaseUrl);
 
     private async Task RequestCodexHistoryMergeReviewIfNeededAsync(
         IReadOnlyList<ApplicationAccessOperationReceipt> receipts)

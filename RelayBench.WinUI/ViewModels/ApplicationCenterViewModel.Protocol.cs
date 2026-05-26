@@ -29,9 +29,10 @@ public sealed partial class ApplicationCenterViewModel : ObservableObject
 
     private async Task<ProxyEndpointProtocolProbeResult?> ProbeProtocolCoreAsync(bool forceProbe, bool useCache)
     {
-        if (!TryBuildSettings(out var settings, requireModel: true))
+        var requireApiKey = !CodexFamilyConfigApplyService.ShouldUseOpenAiBaseUrlMode(BaseUrl);
+        if (!TryBuildSettings(out var settings, requireModel: true, requireApiKey: requireApiKey))
         {
-            StatusText = "请填写入口 URL、API 密钥和模型";
+            StatusText = requireApiKey ? "请填写入口 URL、API 密钥和模型" : "请填写入口 URL 和模型";
             return null;
         }
 

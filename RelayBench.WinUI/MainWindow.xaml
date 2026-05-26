@@ -33,7 +33,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="18" Foreground="{ThemeResource AppChromeAccentTextBrush}" Glyph="&#xEC27;" />
+                <Image Width="22" Height="22" Source="ms-appx:///Assets/RelayBenchLogo.png" Stretch="Uniform" />
                 <TextBlock Grid.Column="1" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource AppChromePrimaryTextBrush}" Text="RelayBench" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <TextBlock Grid.Column="2" FontSize="11" Foreground="{ThemeResource AppChromeSecondaryTextBrush}" Text="{x:Bind Shell.StatusBarVersion, Mode=OneWay}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
             </Grid>

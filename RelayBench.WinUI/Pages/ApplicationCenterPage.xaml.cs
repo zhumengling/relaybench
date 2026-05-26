@@ -211,6 +211,22 @@ public sealed partial class ApplicationCenterPage : PageBase
         }
     }
 
+    private async void OnImportChatHistoryClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.ImportClientChatHistoryCommand.CanExecute(null))
+        {
+            await ViewModel.ImportClientChatHistoryCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void OnRestoreSelectedMenuClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.RestoreSelectedCommand.CanExecute(null))
+        {
+            await ViewModel.RestoreSelectedCommand.ExecuteAsync(null);
+        }
+    }
+
     private async void OnCodexConfigTemplateDialogOpenRequested(object? sender, EventArgs e)
         => await OpenCodexTemplateDialogAsync();
 

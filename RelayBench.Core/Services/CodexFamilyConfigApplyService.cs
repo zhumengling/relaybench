@@ -10,6 +10,8 @@ public sealed class CodexFamilyConfigApplyService
     private const string CodexProviderName = "RelayBench";
     private const string CodexResponsesWireApi = "responses";
     private const string CodexDefaultHttpHeaders = "{ \"Content-Type\" = \"application/json\" }";
+    private const string CodexOpenAiBaseUrlKey = "openai_base_url";
+    private const string CodexProfileSection = "profiles.relaybench";
 
     private readonly IClientApiConfigMutationEnvironment _environment;
 
@@ -71,6 +73,7 @@ public sealed class CodexFamilyConfigApplyService
         var resolvedContextWindow = template.ModelContextWindow;
         var autoCompactTokenLimit = template.ModelAutoCompactTokenLimit;
         var wireApi = ResolveCodexWireApiPreference(normalizedBaseUrl, normalizedModel, template.WireApi);
+        var useOpenAiBaseUrlMode = ShouldUseOpenAiBaseUrlMode(normalizedBaseUrl);
 
         if (string.IsNullOrWhiteSpace(normalizedBaseUrl))
         {
@@ -83,7 +86,7 @@ public sealed class CodexFamilyConfigApplyService
                 "missing-base-url"));
         }
 
-        if (string.IsNullOrWhiteSpace(normalizedApiKey))
+        if (!useOpenAiBaseUrlMode && string.IsNullOrWhiteSpace(normalizedApiKey))
         {
             return Task.FromResult(new ClientAppApplyResult(
                 false,
@@ -128,7 +131,8 @@ public sealed class CodexFamilyConfigApplyService
                 resolvedContextWindow,
                 autoCompactTokenLimit,
                 wireApi,
-                template),
+                template,
+                useOpenAiBaseUrlMode),
             changedFiles,
             backupFiles);
         ApplyFile(
@@ -242,6 +246,11 @@ public sealed class CodexFamilyConfigApplyService
 
     private static string RemoveCodexApiKeyAuthOverrides(string existingContent)
     {
+        if (string.IsNullOrWhiteSpace(existingContent))
+        {
+            return existingContent;
+        }
+
         var root = ClientApiConfigPatterns.TryParseJsonObject(existingContent) ?? new JsonObject();
         if (root.TryGetPropertyValue("auth_mode", out var authModeNode) &&
             authModeNode is JsonValue authModeValue &&
@@ -265,17 +274,25 @@ public sealed class CodexFamilyConfigApplyService
         int? contextWindow,
         int? autoCompactTokenLimit,
         string wireApi,
-        CodexConfigTemplate template)
+        CodexConfigTemplate template,
+        bool useOpenAiBaseUrlMode)
     {
         List<string> lines = SplitLines(existingContent);
 
         RemoveLegacyRelayBenchCustomProvider(lines);
         UpsertTopLevelString(lines, "model", model);
-        UpsertTopLevelString(lines, "model_provider", CodexProviderKey);
         UpsertOptionalTopLevelInteger(lines, "model_context_window", contextWindow);
         UpsertOptionalTopLevelInteger(lines, "model_auto_compact_token_limit", autoCompactTokenLimit);
+        if (useOpenAiBaseUrlMode)
+        {
+            RemoveRelayBenchProviderProfile(lines);
+            UpsertTopLevelString(lines, CodexOpenAiBaseUrlKey, baseUrl);
+            ApplyAdditionalTemplateSettings(lines, template.AdditionalRawSettings);
+            return JoinLines(lines);
+        }
 
         var providerSection = $"model_providers.{CodexProviderKey}";
+        UpsertTopLevelString(lines, "model_provider", CodexProviderKey);
         UpsertSectionString(lines, providerSection, "name", displayName);
         UpsertSectionString(lines, providerSection, "base_url", baseUrl);
         UpsertSectionString(lines, providerSection, "wire_api", wireApi);
@@ -365,6 +382,48 @@ public sealed class CodexFamilyConfigApplyService
         }
 
         return lines[nameIndex].Contains("RelayBench", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void RemoveRelayBenchProviderProfile(List<string> lines)
+    {
+        RemoveSection(lines, $"[model_providers.{CodexProviderKey}]");
+        RemoveSection(lines, $"[{CodexProfileSection}]");
+        RemoveTopLevelStringAssignmentIfValue(lines, "model_provider", CodexProviderKey);
+        RemoveTopLevelStringAssignmentIfValue(lines, "profile", CodexProviderKey);
+    }
+
+    private static void RemoveSection(List<string> lines, string header)
+    {
+        var sectionIndex = FindSectionHeader(lines, header);
+        if (sectionIndex < 0)
+        {
+            return;
+        }
+
+        var sectionEnd = FindNextSectionHeader(lines, sectionIndex + 1);
+        if (sectionEnd < 0)
+        {
+            sectionEnd = lines.Count;
+        }
+
+        lines.RemoveRange(sectionIndex, sectionEnd - sectionIndex);
+    }
+
+    private static void RemoveTopLevelStringAssignmentIfValue(List<string> lines, string key, string expectedValue)
+    {
+        var firstSectionIndex = FindNextSectionHeader(lines, 0);
+        var searchEnd = firstSectionIndex < 0 ? lines.Count : firstSectionIndex;
+        var existingIndex = FindKeyAssignment(lines, key, 0, searchEnd);
+        if (existingIndex < 0)
+        {
+            return;
+        }
+
+        var currentValue = ParseAssignmentValue(lines[existingIndex]);
+        if (string.Equals(currentValue, expectedValue, StringComparison.OrdinalIgnoreCase))
+        {
+            lines.RemoveAt(existingIndex);
+        }
     }
 
     private static void UpsertTopLevelString(List<string> lines, string key, string value)
@@ -539,10 +598,14 @@ public sealed class CodexFamilyConfigApplyService
 
     private static bool IsBuiltInTemplatePath(string path)
         => path is
+            "openai_base_url" or
             "model" or
             "model_provider" or
+            "profile" or
             "model_context_window" or
             "model_auto_compact_token_limit" or
+            "profiles.relaybench.model" or
+            "profiles.relaybench.model_provider" or
             "model_providers.relaybench.name" or
             "model_providers.relaybench.base_url" or
             "model_providers.relaybench.wire_api" or
@@ -621,6 +684,15 @@ public sealed class CodexFamilyConfigApplyService
     {
         var trimmed = line.Trim();
         return trimmed.StartsWith('[') && trimmed.EndsWith(']');
+    }
+
+    private static string ParseAssignmentValue(string line)
+    {
+        var trimmed = line.Trim();
+        var assignmentIndex = trimmed.IndexOf('=');
+        return assignmentIndex < 0
+            ? string.Empty
+            : trimmed[(assignmentIndex + 1)..].Trim().Trim('"', '\'');
     }
 
     private static List<string> SplitLines(string content)
@@ -706,10 +778,22 @@ public sealed class CodexFamilyConfigApplyService
         string? model,
         string? preferredWireApi = null)
     {
-        return ProxyWireApiProbeService.NormalizeWireApi(preferredWireApi) ?? CodexResponsesWireApi;
+        return CodexResponsesWireApi;
     }
 
     private static bool IsDeepSeekModel(string model)
         => model.Contains("deepseek", StringComparison.OrdinalIgnoreCase);
+
+    public static bool ShouldUseOpenAiBaseUrlMode(string? baseUrl)
+    {
+        if (!Uri.TryCreate(baseUrl?.Trim(), UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(uri.Host, "::1", StringComparison.OrdinalIgnoreCase);
+    }
 
 }

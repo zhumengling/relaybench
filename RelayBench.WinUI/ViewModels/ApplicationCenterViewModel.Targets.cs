@@ -252,28 +252,50 @@ public sealed partial class ApplicationCenterViewModel : ObservableObject
 
     private void RefreshTemplateRows(AppTargetItem? target = null)
     {
-        var protocol = _lastProbeResult?.PreferredWireApi ?? PreferredProtocol;
-        if (string.IsNullOrWhiteSpace(protocol) || protocol == "--")
-        {
-            protocol = "responses";
-        }
         var template = GetCurrentCodexTemplate(target);
-        protocol = template.WireApi;
+        var useOpenAiBaseUrlMode = CodexFamilyConfigApplyService.ShouldUseOpenAiBaseUrlMode(template.BaseUrl);
+        var commonOptionCount = CountCommonCodexOptions(template.AdditionalRawSettings);
 
         TemplateRows.Clear();
         TemplateRows.Add(new ConfigTemplateRow("model", string.IsNullOrWhiteSpace(Model) ? "--" : Model.Trim(), "默认模型 ID"));
-        TemplateRows.Add(new ConfigTemplateRow("model_provider", "relaybench", "Codex 提供方标识"));
+        TemplateRows.Add(useOpenAiBaseUrlMode
+            ? new ConfigTemplateRow("openai_base_url", string.IsNullOrWhiteSpace(template.BaseUrl) ? "--" : template.BaseUrl, "Codex 文档推荐入口")
+            : new ConfigTemplateRow("model_provider", "relaybench", "Codex 自定义 provider"));
         TemplateRows.Add(new ConfigTemplateRow("base_url", string.IsNullOrWhiteSpace(BaseUrl) ? "--" : BaseUrl.Trim(), "目标入口"));
-        TemplateRows.Add(new ConfigTemplateRow("wire_api", protocol, "优先探测路由"));
+        TemplateRows.Add(new ConfigTemplateRow("protocol", "responses", "Codex 固定使用 Responses API"));
         TemplateRows.Add(new ConfigTemplateRow("target", target?.Name ?? "所选目标", "预览或写入目标"));
-        TemplateRows.Add(new ConfigTemplateRow("api_key", MaskApiKey(ApiKey), "用于本地配置写入"));
+        TemplateRows.Add(new ConfigTemplateRow(
+            "api_key",
+            MaskApiKey(ApiKey),
+            useOpenAiBaseUrlMode ? "本地透明代理模式不写入 config.toml" : "用于 provider bearer token"));
         TemplateRows.Add(new ConfigTemplateRow("provider_name", template.ProviderName, "Codex 提供方名称"));
         TemplateRows.Add(new ConfigTemplateRow("model_context_window", template.ModelContextWindow?.ToString() ?? "--", "上下文窗口"));
         TemplateRows.Add(new ConfigTemplateRow("model_auto_compact_token_limit", template.ModelAutoCompactTokenLimit?.ToString() ?? "--", "自动压缩"));
         TemplateRows.Add(new ConfigTemplateRow("request_max_retries", template.RequestMaxRetries?.ToString() ?? "--", "请求重试"));
         TemplateRows.Add(new ConfigTemplateRow("stream_max_retries", template.StreamMaxRetries?.ToString() ?? "--", "流式重试"));
         TemplateRows.Add(new ConfigTemplateRow("stream_idle_timeout_ms", template.StreamIdleTimeoutMs?.ToString() ?? "--", "流式空闲超时"));
+        TemplateRows.Add(new ConfigTemplateRow("common_options", commonOptionCount.ToString(), "推理、权限、工具等常用项"));
         TemplateRows.Add(new ConfigTemplateRow("additional", template.AdditionalRawSettings?.Count.ToString() ?? "0", "原始设置"));
+    }
+
+    private static int CountCommonCodexOptions(IReadOnlyDictionary<string, string>? settings)
+    {
+        if (settings is null || settings.Count == 0)
+        {
+            return 0;
+        }
+
+        return settings.Keys.Count(static key => key is
+            "model_reasoning_effort" or
+            "model_reasoning_summary" or
+            "model_verbosity" or
+            "tools.web_search" or
+            "approval_policy" or
+            "sandbox_mode" or
+            "sandbox_workspace_write.network_access" or
+            "personality" or
+            "features.hooks" or
+            "features.shell_snapshot");
     }
 
     private void ResetTraceSteps()
@@ -365,17 +387,33 @@ public sealed partial class ApplicationCenterViewModel : ObservableObject
     }
 
     private string BuildCodexPreview()
-        => string.Join(
+    {
+        var template = GetCurrentCodexTemplate();
+        if (CodexFamilyConfigApplyService.ShouldUseOpenAiBaseUrlMode(template.BaseUrl))
+        {
+            return string.Join(
+                Environment.NewLine,
+                [
+                    "目标文件: %USERPROFILE%\\.codex\\config.toml",
+                    "操作: 按 Codex 文档推荐写入 openai_base_url，并清理旧版 RelayBench provider/profile 残留。",
+                    $"openai_base_url = \"{template.BaseUrl}\"",
+                    $"model = \"{template.Model}\"",
+                    "不会改动: MCP servers、hooks、权限策略、项目级 .codex/config.toml。"
+                ]);
+        }
+
+        return string.Join(
             Environment.NewLine,
             [
                 "目标文件: %USERPROFILE%\\.codex\\config.toml",
-                "操作: 写入 RelayBench 提供方，并在变更前保留备份。",
-                $"model = \"{GetCurrentCodexTemplate().Model}\"",
+                "操作: 写入 RelayBench 自定义 provider，并在变更前保留备份。",
+                $"model = \"{template.Model}\"",
                 "model_provider = \"relaybench\"",
-                $"base_url = \"{GetCurrentCodexTemplate().BaseUrl}\"",
-                $"wire_api = \"{GetCurrentCodexTemplate().WireApi}\"",
-                $"experimental_bearer_token = \"{MaskApiKey(GetCurrentCodexTemplate().ExperimentalBearerToken)}\""
+                $"base_url = \"{template.BaseUrl}\"",
+                $"wire_api = \"{template.WireApi}\"",
+                $"experimental_bearer_token = \"{MaskApiKey(template.ExperimentalBearerToken)}\""
             ]);
+    }
 
     private string BuildClaudePreview()
         => string.Join(
