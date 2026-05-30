@@ -5,6 +5,9 @@ namespace RelayBench.Core.Services;
 
 public sealed class AnthropicClientConfigApplyAdapter
 {
+    private const string AnthropicOfficialBaseUrl = "https://api.anthropic.com";
+    private const string ClaudeCodeEffortLevel = "max";
+
     private readonly IClientApiConfigMutationEnvironment _environment;
 
     public AnthropicClientConfigApplyAdapter(IClientApiConfigMutationEnvironment? environment = null)
@@ -70,11 +73,14 @@ public sealed class AnthropicClientConfigApplyAdapter
 
         var claudeRoot = Path.Combine(_environment.UserProfilePath, ".claude");
         var settingsPath = Path.Combine(claudeRoot, "settings.json");
+        var onboardingPath = Path.Combine(_environment.UserProfilePath, ".claude.json");
         _environment.EnsureDirectoryExists(claudeRoot);
         RelayBenchBackupRetention.PruneAllUnderDirectory(_environment, claudeRoot);
 
         List<string> changedFiles = [];
         List<string> backupFiles = [];
+        var useAuthToken = isRelayBenchLocalEndpoint ||
+                           !ClientApiConfigPatterns.IsOfficialEndpoint(normalizedBaseUrl, AnthropicOfficialBaseUrl);
         ApplyFile(
             settingsPath,
             existing => UpsertClaudeSettings(
@@ -82,7 +88,12 @@ public sealed class AnthropicClientConfigApplyAdapter
                 normalizedBaseUrl,
                 normalizedApiKey,
                 normalizedModel,
-                isRelayBenchLocalEndpoint),
+                useAuthToken),
+            changedFiles,
+            backupFiles);
+        ApplyFile(
+            onboardingPath,
+            UpsertClaudeOnboarding,
             changedFiles,
             backupFiles);
 
@@ -154,6 +165,19 @@ public sealed class AnthropicClientConfigApplyAdapter
 
         env["ANTHROPIC_BASE_URL"] = baseUrl;
         env["ANTHROPIC_MODEL"] = model;
+        env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = model;
+        env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = model;
+        env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = ResolveClaudeFastModel(model);
+        env["CLAUDE_CODE_SUBAGENT_MODEL"] = ResolveClaudeFastModel(model);
+        if (ShouldUseMaxEffort(baseUrl, model))
+        {
+            env["CLAUDE_CODE_EFFORT_LEVEL"] = ClaudeCodeEffortLevel;
+        }
+        else
+        {
+            env.Remove("CLAUDE_CODE_EFFORT_LEVEL");
+        }
+
         if (useAuthToken)
         {
             env.Remove("ANTHROPIC_API_KEY");
@@ -167,6 +191,25 @@ public sealed class AnthropicClientConfigApplyAdapter
 
         return ClientApiConfigPatterns.SerializeJson(root);
     }
+
+    private static string UpsertClaudeOnboarding(string existingContent)
+    {
+        var root = ClientApiConfigPatterns.TryParseJsonObject(existingContent) ?? new JsonObject();
+        root["hasCompletedOnboarding"] = true;
+        return ClientApiConfigPatterns.SerializeJson(root);
+    }
+
+    private static string ResolveClaudeFastModel(string model)
+        => IsDeepSeekModel(model)
+            ? "deepseek-v4-flash"
+            : model;
+
+    private static bool ShouldUseMaxEffort(string baseUrl, string model)
+        => IsDeepSeekModel(model) ||
+           baseUrl.Contains("deepseek.com", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsDeepSeekModel(string model)
+        => model.StartsWith("deepseek-", StringComparison.OrdinalIgnoreCase);
 
     private static string BuildSummary(int changedFileCount, bool isRelayBenchLocalEndpoint)
     {

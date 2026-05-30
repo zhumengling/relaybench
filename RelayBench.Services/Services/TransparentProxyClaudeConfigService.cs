@@ -8,6 +8,12 @@ internal sealed class TransparentProxyClaudeConfigService
 {
     private const string BaseUrlKey = "ANTHROPIC_BASE_URL";
     private const string AuthTokenKey = "ANTHROPIC_AUTH_TOKEN";
+    private const string ModelKey = "ANTHROPIC_MODEL";
+    private const string DefaultOpusModelKey = "ANTHROPIC_DEFAULT_OPUS_MODEL";
+    private const string DefaultSonnetModelKey = "ANTHROPIC_DEFAULT_SONNET_MODEL";
+    private const string DefaultHaikuModelKey = "ANTHROPIC_DEFAULT_HAIKU_MODEL";
+    private const string SubagentModelKey = "CLAUDE_CODE_SUBAGENT_MODEL";
+    private const string DefaultClaudeModel = "claude-sonnet-4-5";
     private const string LocalBearerToken = "relaybench-local";
     private const string BackupMarker = ".relaybench-app-capture-backup-";
 
@@ -36,23 +42,30 @@ internal sealed class TransparentProxyClaudeConfigService
             : Path.GetFullPath(userProfilePath);
     }
 
-    public TransparentProxyClaudeConfigPreview Preview(string baseUrl)
+    public TransparentProxyClaudeConfigPreview Preview(string baseUrl, string? model = null)
     {
         var settingsPath = ResolveSettingsPath();
+        var onboardingPath = ResolveOnboardingPath();
         var existing = File.Exists(settingsPath)
             ? File.ReadAllText(settingsPath)
             : string.Empty;
-        var updated = BuildUpdatedSettings(existing, baseUrl);
-        var changed = !string.Equals(NormalizeJson(existing), updated, StringComparison.Ordinal);
+        var onboardingExisting = File.Exists(onboardingPath)
+            ? File.ReadAllText(onboardingPath)
+            : string.Empty;
+        var updated = BuildUpdatedSettings(existing, baseUrl, model);
+        var onboardingUpdated = BuildUpdatedOnboarding(onboardingExisting);
+        var changed = !string.Equals(NormalizeJson(existing), updated, StringComparison.Ordinal) ||
+                      !string.Equals(NormalizeJson(onboardingExisting), onboardingUpdated, StringComparison.Ordinal);
         return new TransparentProxyClaudeConfigPreview(
             settingsPath,
             changed,
-            BuildPreviewText(settingsPath, baseUrl, changed));
+            BuildPreviewText(settingsPath, onboardingPath, baseUrl, model, changed));
     }
 
-    public TransparentProxyClaudeConfigMutationResult Apply(string baseUrl)
+    public TransparentProxyClaudeConfigMutationResult Apply(string baseUrl, string? model = null)
     {
         var settingsPath = ResolveSettingsPath();
+        var onboardingPath = ResolveOnboardingPath();
         var directory = Path.GetDirectoryName(settingsPath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -62,9 +75,15 @@ internal sealed class TransparentProxyClaudeConfigService
         var existing = File.Exists(settingsPath)
             ? File.ReadAllText(settingsPath)
             : string.Empty;
+        var onboardingExisting = File.Exists(onboardingPath)
+            ? File.ReadAllText(onboardingPath)
+            : string.Empty;
         var normalizedExisting = NormalizeJson(existing);
-        var updated = BuildUpdatedSettings(existing, baseUrl);
-        if (string.Equals(normalizedExisting, updated, StringComparison.Ordinal))
+        var updated = BuildUpdatedSettings(existing, baseUrl, model);
+        var settingsChanged = !string.Equals(normalizedExisting, updated, StringComparison.Ordinal);
+        var onboardingUpdated = BuildUpdatedOnboarding(onboardingExisting);
+        var onboardingChanged = !string.Equals(NormalizeJson(onboardingExisting), onboardingUpdated, StringComparison.Ordinal);
+        if (!settingsChanged && !onboardingChanged)
         {
             return new TransparentProxyClaudeConfigMutationResult(
                 true,
@@ -74,14 +93,37 @@ internal sealed class TransparentProxyClaudeConfigService
         }
 
         string? backupPath = null;
-        if (!string.IsNullOrWhiteSpace(existing))
+        if (settingsChanged && !string.IsNullOrWhiteSpace(existing))
         {
             backupPath = $"{settingsPath}{BackupMarker}{DateTime.Now:yyyyMMddHHmmss}";
             File.WriteAllText(backupPath, existing);
             PruneBackups(settingsPath);
         }
 
-        File.WriteAllText(settingsPath, updated);
+        if (settingsChanged)
+        {
+            File.WriteAllText(settingsPath, updated);
+        }
+
+        if (onboardingChanged)
+        {
+            var onboardingDirectory = Path.GetDirectoryName(onboardingPath);
+            if (!string.IsNullOrWhiteSpace(onboardingDirectory))
+            {
+                Directory.CreateDirectory(onboardingDirectory);
+            }
+
+            if (!string.IsNullOrWhiteSpace(onboardingExisting))
+            {
+                var onboardingBackupPath = $"{onboardingPath}{BackupMarker}{DateTime.Now:yyyyMMddHHmmss}";
+                File.WriteAllText(onboardingBackupPath, onboardingExisting);
+                PruneBackups(onboardingPath);
+                backupPath = backupPath is null ? onboardingBackupPath : $"{backupPath};{onboardingBackupPath}";
+            }
+
+            File.WriteAllText(onboardingPath, onboardingUpdated);
+        }
+
         return new TransparentProxyClaudeConfigMutationResult(
             true,
             "已写入 Claude CLI 接管配置，后续 Claude CLI 会通过 RelayBench 本地统一出口进入共享路由队列。",
@@ -140,7 +182,10 @@ internal sealed class TransparentProxyClaudeConfigService
     private string ResolveSettingsPath()
         => Path.Combine(_userProfilePath, ".claude", "settings.json");
 
-    private static string BuildUpdatedSettings(string existing, string baseUrl)
+    private string ResolveOnboardingPath()
+        => Path.Combine(_userProfilePath, ".claude.json");
+
+    private static string BuildUpdatedSettings(string existing, string baseUrl, string? model)
     {
         var root = LoadRootObject(existing);
         var env = root["env"] as JsonObject;
@@ -152,6 +197,19 @@ internal sealed class TransparentProxyClaudeConfigService
 
         env[BaseUrlKey] = NormalizeAnthropicBaseUrl(baseUrl);
         env[AuthTokenKey] = LocalBearerToken;
+        env[ModelKey] = ResolveModel(model);
+        env[DefaultOpusModelKey] = ResolveModel(model);
+        env[DefaultSonnetModelKey] = ResolveModel(model);
+        env[DefaultHaikuModelKey] = ResolveModel(model);
+        env[SubagentModelKey] = ResolveModel(model);
+        env.Remove("CLAUDE_CODE_EFFORT_LEVEL");
+        return root.ToJsonString(WriteOptions) + Environment.NewLine;
+    }
+
+    private static string BuildUpdatedOnboarding(string existing)
+    {
+        var root = LoadRootObject(existing);
+        root["hasCompletedOnboarding"] = true;
         return root.ToJsonString(WriteOptions) + Environment.NewLine;
     }
 
@@ -174,6 +232,11 @@ internal sealed class TransparentProxyClaudeConfigService
 
         RestoreJsonValue(env, backupEnv, BaseUrlKey);
         RestoreJsonValue(env, backupEnv, AuthTokenKey);
+        RestoreJsonValue(env, backupEnv, ModelKey);
+        RestoreJsonValue(env, backupEnv, DefaultOpusModelKey);
+        RestoreJsonValue(env, backupEnv, DefaultSonnetModelKey);
+        RestoreJsonValue(env, backupEnv, DefaultHaikuModelKey);
+        RestoreJsonValue(env, backupEnv, SubagentModelKey);
         return root.ToJsonString(WriteOptions) + Environment.NewLine;
     }
 
@@ -207,18 +270,30 @@ internal sealed class TransparentProxyClaudeConfigService
             ? string.Empty
             : LoadRootObject(existing).ToJsonString(WriteOptions) + Environment.NewLine;
 
-    private static string BuildPreviewText(string settingsPath, string baseUrl, bool changed)
+    private static string BuildPreviewText(string settingsPath, string onboardingPath, string baseUrl, string? model, bool changed)
         => string.Join(
             Environment.NewLine,
             [
                 $"目标文件：{settingsPath}",
+                $"辅助文件：{onboardingPath}",
                 changed ? "动作：写入或更新 env 中的 RelayBench 接管变量，并在改动前备份原文件。" : "动作：无需改动，当前配置已经一致。",
                 "写入内容：",
                 "\"env\": {",
                 $"  \"{BaseUrlKey}\": \"{NormalizeAnthropicBaseUrl(baseUrl)}\",",
-                $"  \"{AuthTokenKey}\": \"{LocalBearerToken}\"",
-                "}"
+                $"  \"{AuthTokenKey}\": \"{LocalBearerToken}\",",
+                $"  \"{ModelKey}\": \"{ResolveModel(model)}\",",
+                $"  \"{DefaultOpusModelKey}\": \"{ResolveModel(model)}\",",
+                $"  \"{DefaultSonnetModelKey}\": \"{ResolveModel(model)}\",",
+                $"  \"{DefaultHaikuModelKey}\": \"{ResolveModel(model)}\",",
+                $"  \"{SubagentModelKey}\": \"{ResolveModel(model)}\"",
+                "}",
+                "\"hasCompletedOnboarding\": true"
             ]);
+
+    private static string ResolveModel(string? model)
+        => string.IsNullOrWhiteSpace(model)
+            ? DefaultClaudeModel
+            : model.Trim();
 
     private static string NormalizeAnthropicBaseUrl(string? value)
     {

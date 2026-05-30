@@ -420,9 +420,13 @@ public sealed partial class ApplicationCenterViewModel : ObservableObject
             Environment.NewLine,
             [
                 "目标文件: %USERPROFILE%\\.claude\\settings.json",
+                "辅助文件: %USERPROFILE%\\.claude.json",
                 "操作: 写入 Anthropic 环境变量；本地统一入口使用 RelayBench 转换。",
                 $"ANTHROPIC_BASE_URL = {BaseUrl.Trim()}",
                 $"ANTHROPIC_MODEL = {Model.Trim()}",
+                $"ANTHROPIC_DEFAULT_OPUS_MODEL = {Model.Trim()}",
+                $"ANTHROPIC_DEFAULT_SONNET_MODEL = {Model.Trim()}",
+                $"ANTHROPIC_DEFAULT_HAIKU_MODEL = {Model.Trim()}",
                 $"API Key = {MaskApiKey(ApiKey)}"
             ]);
 

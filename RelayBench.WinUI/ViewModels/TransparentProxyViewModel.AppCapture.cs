@@ -189,7 +189,7 @@ public sealed partial class TransparentProxyViewModel
             var previewText = app.Id switch
             {
                 "codex-cli" or "codex-desktop" => _codexConfigService.Preview(baseUrl, model, wireApi).PreviewText,
-                "claude-cli" => _claudeConfigService.Preview(baseUrl).PreviewText,
+                "claude-cli" => _claudeConfigService.Preview(baseUrl, model).PreviewText,
                 "vs-codex" => _vsCodeSettingsService.Preview(baseUrl).PreviewText,
                 "antigravity" => BuildAntigravityCapturePreview(baseUrl, model),
                 _ => $"\u6682\u4E0D\u652F\u6301\u9884\u89C8 {app.Name} \u7684\u914D\u7F6E"
@@ -220,7 +220,7 @@ public sealed partial class TransparentProxyViewModel
                 }),
                 "claude-cli" => await Task.Run(() =>
                 {
-                    var r = _claudeConfigService.Apply(baseUrl);
+                    var r = _claudeConfigService.Apply(baseUrl, model);
                     return (Succeeded: r.Succeeded, Summary: r.Summary);
                 }),
                 "vs-codex" => await Task.Run(() =>
